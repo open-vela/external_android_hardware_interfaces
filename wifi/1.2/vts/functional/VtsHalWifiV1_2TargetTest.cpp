@@ -17,12 +17,14 @@
 #include <android-base/logging.h>
 #include <android/hardware/wifi/1.2/IWifi.h>
 
+#include <VtsHalHidlTargetTestEnvBase.h>
+
 #include "wifi_hidl_test_utils.h"
 
 using ::android::hardware::wifi::V1_2::IWifi;
 
 // Test environment for Wifi HIDL HAL.
-class WifiHidlEnvironment_1_2 : public WifiHidlEnvironment {
+class WifiHidlEnvironment_1_2 : public ::testing::VtsHalHidlTargetTestEnvBase {
    public:
     // get the test environment singleton
     static WifiHidlEnvironment_1_2* Instance() {

@@ -18,6 +18,7 @@ cc_library_static {
     name: "VtsHalNeuralnetworksTest_utils",
     srcs: [
         "Callbacks.cpp",
+        "Models.cpp",
         "GeneratedTestHarness.cpp",
     ],
     defaults: ["VtsHalTargetTestDefaults"],
@@ -25,10 +26,8 @@ cc_library_static {
     static_libs: [
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
-        "android.hardware.neuralnetworks@1.2",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
-        "libgmock",
         "libhidlmemory",
         "libneuralnetworks_utils",
     ],
@@ -39,21 +38,19 @@ cc_library_static {
     ],
 }
 
-cc_defaults {
-    name: "VtsHalNeuralNetworksTargetTestDefaults",
-    defaults: ["VtsHalTargetTestDefaults"],
+cc_test {
+    name: "VtsHalNeuralnetworksV1_0TargetTest",
     srcs: [
-        "ValidateModel.cpp",
-        "ValidateRequest.cpp",
-        "VtsHalNeuralnetworks.cpp",
+        "VtsHalNeuralnetworksV1_0.cpp",
+        "VtsHalNeuralnetworksV1_0BasicTest.cpp",
+        "VtsHalNeuralnetworksV1_0GeneratedTest.cpp",
     ],
+    defaults: ["VtsHalTargetTestDefaults"],
     static_libs: [
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
-        "android.hardware.neuralnetworks@1.2",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
-        "libgmock",
         "libhidlmemory",
         "libneuralnetworks_utils",
         "VtsHalNeuralnetworksTest_utils",
@@ -63,23 +60,4 @@ cc_defaults {
         "libneuralnetworks_generated_test_harness_headers",
         "libneuralnetworks_generated_tests",
     ],
-    // Bug: http://b/74200014 - Disable arm32 asan since it triggers internal
-    // error in ld.gold.
-    arch: {
-        arm: {
-            sanitize: {
-                never: true,
-            },
-        },
-    },
-}
-
-cc_test {
-    name: "VtsHalNeuralnetworksV1_0TargetTest",
-    defaults: ["VtsHalNeuralNetworksTargetTestDefaults"],
-    srcs: [
-        "BasicTests.cpp",
-        "GeneratedTests.cpp",
-    ],
-    test_suites: ["general-tests"],
 }

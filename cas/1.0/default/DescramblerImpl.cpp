@@ -50,12 +50,12 @@ CHECK_SUBSAMPLE_DEF(CryptoPlugin);
 
 DescramblerImpl::DescramblerImpl(
         const sp<SharedLibrary>& library, DescramblerPlugin *plugin) :
-        mLibrary(library), mPluginHolder(plugin) {
-    ALOGV("CTOR: plugin=%p", mPluginHolder.get());
+        mLibrary(library), mPlugin(plugin) {
+    ALOGV("CTOR: mPlugin=%p", mPlugin);
 }
 
 DescramblerImpl::~DescramblerImpl() {
-    ALOGV("DTOR: plugin=%p", mPluginHolder.get());
+    ALOGV("DTOR: mPlugin=%p", mPlugin);
     release();
 }
 
@@ -63,22 +63,12 @@ Return<Status> DescramblerImpl::setMediaCasSession(const HidlCasSessionId& sessi
     ALOGV("%s: sessionId=%s", __FUNCTION__,
             sessionIdToString(sessionId).string());
 
-    std::shared_ptr<DescramblerPlugin> holder = std::atomic_load(&mPluginHolder);
-    if (holder.get() == nullptr) {
-        return toStatus(INVALID_OPERATION);
-    }
-
-    return toStatus(holder->setMediaCasSession(sessionId));
+    return toStatus(mPlugin->setMediaCasSession(sessionId));
 }
 
 Return<bool> DescramblerImpl::requiresSecureDecoderComponent(
         const hidl_string& mime) {
-    std::shared_ptr<DescramblerPlugin> holder = std::atomic_load(&mPluginHolder);
-    if (holder.get() == nullptr) {
-        return false;
-    }
-
-    return holder->requiresSecureDecoderComponent(String8(mime.c_str()));
+    return mPlugin->requiresSecureDecoderComponent(String8(mime.c_str()));
 }
 
 static inline bool validateRangeForSize(
@@ -95,16 +85,6 @@ Return<void> DescramblerImpl::descramble(
         uint64_t dstOffset,
         descramble_cb _hidl_cb) {
     ALOGV("%s", __FUNCTION__);
-
-    // hidl_memory's size is stored in uint64_t, but mapMemory's mmap will map
-    // size in size_t. If size is over SIZE_MAX, mapMemory mapMemory could succeed
-    // but the mapped memory's actual size will be smaller than the reported size.
-    if (srcBuffer.heapBase.size() > SIZE_MAX) {
-        ALOGE("Invalid hidl_memory size: %llu", srcBuffer.heapBase.size());
-        android_errorWriteLog(0x534e4554, "79376389");
-        _hidl_cb(toStatus(BAD_VALUE), 0, NULL);
-        return Void();
-    }
 
     sp<IMemory> srcMem = mapMemory(srcBuffer.heapBase);
 
@@ -163,21 +143,10 @@ Return<void> DescramblerImpl::descramble(
                 dstBuffer.secureMemory.getNativeHandle());
         dstPtr = static_cast<void *>(handle);
     }
-
-    // Get a local copy of the shared_ptr for the plugin. Note that before
-    // calling the HIDL callback, this shared_ptr must be manually reset,
-    // since the client side could proceed as soon as the callback is called
-    // without waiting for this method to go out of scope.
-    std::shared_ptr<DescramblerPlugin> holder = std::atomic_load(&mPluginHolder);
-    if (holder.get() == nullptr) {
-        _hidl_cb(toStatus(INVALID_OPERATION), 0, NULL);
-        return Void();
-    }
-
     // Casting hidl SubSample to DescramblerPlugin::SubSample, but need
     // to ensure structs are actually idential
 
-    int32_t result = holder->descramble(
+    int32_t result = mPlugin->descramble(
             dstBuffer.type != BufferType::SHARED_MEMORY,
             (DescramblerPlugin::ScramblingControl)scramblingControl,
             subSamples.size(),
@@ -188,17 +157,17 @@ Return<void> DescramblerImpl::descramble(
             dstOffset,
             NULL);
 
-    holder.reset();
     _hidl_cb(toStatus(result >= 0 ? OK : result), result, NULL);
     return Void();
 }
 
 Return<Status> DescramblerImpl::release() {
-    ALOGV("%s: plugin=%p", __FUNCTION__, mPluginHolder.get());
+    ALOGV("%s: mPlugin=%p", __FUNCTION__, mPlugin);
 
-    std::shared_ptr<DescramblerPlugin> holder(nullptr);
-    std::atomic_store(&mPluginHolder, holder);
-
+    if (mPlugin != NULL) {
+        delete mPlugin;
+        mPlugin = NULL;
+    }
     return Status::OK;
 }
 

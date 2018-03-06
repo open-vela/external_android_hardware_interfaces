@@ -17,18 +17,14 @@
 #include <radio_hidl_hal_utils_v1_2.h>
 
 void RadioHidlTest_v1_2::SetUp() {
-    radio_v1_2 =
-        ::testing::VtsHalHidlTargetTestBase::getService<::android::hardware::radio::V1_2::IRadio>(
-            RadioHidlEnvironment::Instance()
-                ->getServiceName<::android::hardware::radio::V1_2::IRadio>(
-                    hidl_string(RADIO_SERVICE_NAME)));
+    radio_v1_2 = ::testing::VtsHalHidlTargetTestBase::getService<V1_2::IRadio>(
+        RadioHidlEnvironment::Instance()->getServiceName<V1_2::IRadio>(
+            hidl_string(RADIO_SERVICE_NAME)));
     if (radio_v1_2 == NULL) {
         sleep(60);
-        radio_v1_2 = ::testing::VtsHalHidlTargetTestBase::getService<
-            ::android::hardware::radio::V1_2::IRadio>(
-            RadioHidlEnvironment::Instance()
-                ->getServiceName<::android::hardware::radio::V1_2::IRadio>(
-                    hidl_string(RADIO_SERVICE_NAME)));
+        radio_v1_2 = ::testing::VtsHalHidlTargetTestBase::getService<V1_2::IRadio>(
+            RadioHidlEnvironment::Instance()->getServiceName<V1_2::IRadio>(
+                hidl_string(RADIO_SERVICE_NAME)));
     }
     ASSERT_NE(nullptr, radio_v1_2.get());
 
@@ -42,24 +38,21 @@ void RadioHidlTest_v1_2::SetUp() {
 
     radio_v1_2->setResponseFunctions(radioRsp_v1_2, radioInd_v1_2);
 
-    updateSimCardStatus();
+    int serial = GetRandomSerialNumber();
+    radio_v1_2->getIccCardStatus(serial);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_2->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_2->rspInfo.serial);
     EXPECT_EQ(RadioError::NONE, radioRsp_v1_2->rspInfo.error);
-
-    /* Enforce Vts Testing with Sim Status Present only. */
-    EXPECT_EQ(CardState::PRESENT, cardStatus.base.cardState);
 }
 
 /*
  * Notify that the response message is received.
  */
-void RadioHidlTest_v1_2::notify(int receivedSerial) {
+void RadioHidlTest_v1_2::notify() {
     std::unique_lock<std::mutex> lock(mtx_);
-    if (serial == receivedSerial) {
-        count_++;
-        cv_.notify_one();
-    }
+    count_++;
+    cv_.notify_one();
 }
 
 /*
@@ -78,10 +71,4 @@ std::cv_status RadioHidlTest_v1_2::wait() {
     }
     count_--;
     return status;
-}
-
-void RadioHidlTest_v1_2::updateSimCardStatus() {
-    serial = GetRandomSerialNumber();
-    radio_v1_2->getIccCardStatus(serial);
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
 }

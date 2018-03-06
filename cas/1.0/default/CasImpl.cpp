@@ -31,8 +31,19 @@ namespace cas {
 namespace V1_0 {
 namespace implementation {
 
+struct CasImpl::PluginHolder : public RefBase {
+public:
+    explicit PluginHolder(CasPlugin *plugin) : mPlugin(plugin) {}
+    ~PluginHolder() { if (mPlugin != NULL) delete mPlugin; }
+    CasPlugin* get() { return mPlugin; }
+
+private:
+    CasPlugin *mPlugin;
+    DISALLOW_EVIL_CONSTRUCTORS(PluginHolder);
+};
+
 CasImpl::CasImpl(const sp<ICasListener> &listener)
-    : mListener(listener) {
+    : mPluginHolder(NULL), mListener(listener) {
     ALOGV("CTOR");
 }
 
@@ -58,8 +69,7 @@ void CasImpl::OnEvent(
 
 void CasImpl::init(const sp<SharedLibrary>& library, CasPlugin *plugin) {
     mLibrary = library;
-    std::shared_ptr<CasPlugin> holder(plugin);
-    std::atomic_store(&mPluginHolder, holder);
+    mPluginHolder = new PluginHolder(plugin);
 }
 
 void CasImpl::onEvent(
@@ -78,22 +88,22 @@ void CasImpl::onEvent(
 
 Return<Status> CasImpl::setPrivateData(const HidlCasData& pvtData) {
     ALOGV("%s", __FUNCTION__);
-    std::shared_ptr<CasPlugin> holder = std::atomic_load(&mPluginHolder);
-    if (holder.get() == nullptr) {
+    sp<PluginHolder> holder = mPluginHolder;
+    if (holder == NULL) {
         return toStatus(INVALID_OPERATION);
     }
-    return toStatus(holder->setPrivateData(pvtData));
+    return toStatus(holder->get()->setPrivateData(pvtData));
 }
 
 Return<void> CasImpl::openSession(openSession_cb _hidl_cb) {
     ALOGV("%s", __FUNCTION__);
     CasSessionId sessionId;
 
-    std::shared_ptr<CasPlugin> holder = std::atomic_load(&mPluginHolder);
+    sp<PluginHolder> holder = mPluginHolder;
     status_t err = INVALID_OPERATION;
-    if (holder.get() != nullptr) {
-        err = holder->openSession(&sessionId);
-        holder.reset();
+    if (holder != NULL) {
+        err = holder->get()->openSession(&sessionId);
+        holder.clear();
     }
 
     _hidl_cb(toStatus(err), sessionId);
@@ -105,87 +115,87 @@ Return<Status> CasImpl::setSessionPrivateData(
         const HidlCasSessionId &sessionId, const HidlCasData& pvtData) {
     ALOGV("%s: sessionId=%s", __FUNCTION__,
             sessionIdToString(sessionId).string());
-    std::shared_ptr<CasPlugin> holder = std::atomic_load(&mPluginHolder);
-    if (holder.get() == nullptr) {
+    sp<PluginHolder> holder = mPluginHolder;
+    if (holder == NULL) {
         return toStatus(INVALID_OPERATION);
     }
-    return toStatus(holder->setSessionPrivateData(sessionId, pvtData));
+    return toStatus(
+            holder->get()->setSessionPrivateData(
+                    sessionId, pvtData));
 }
 
 Return<Status> CasImpl::closeSession(const HidlCasSessionId &sessionId) {
     ALOGV("%s: sessionId=%s", __FUNCTION__,
             sessionIdToString(sessionId).string());
-    std::shared_ptr<CasPlugin> holder = std::atomic_load(&mPluginHolder);
-    if (holder.get() == nullptr) {
+    sp<PluginHolder> holder = mPluginHolder;
+    if (holder == NULL) {
         return toStatus(INVALID_OPERATION);
     }
-    return toStatus(holder->closeSession(sessionId));
+    return toStatus(holder->get()->closeSession(sessionId));
 }
 
 Return<Status> CasImpl::processEcm(
         const HidlCasSessionId &sessionId, const HidlCasData& ecm) {
     ALOGV("%s: sessionId=%s", __FUNCTION__,
             sessionIdToString(sessionId).string());
-    std::shared_ptr<CasPlugin> holder = std::atomic_load(&mPluginHolder);
-    if (holder.get() == nullptr) {
+    sp<PluginHolder> holder = mPluginHolder;
+    if (holder == NULL) {
         return toStatus(INVALID_OPERATION);
     }
 
-    return toStatus(holder->processEcm(sessionId, ecm));
+    return toStatus(holder->get()->processEcm(sessionId, ecm));
 }
 
 Return<Status> CasImpl::processEmm(const HidlCasData& emm) {
     ALOGV("%s", __FUNCTION__);
-    std::shared_ptr<CasPlugin> holder = std::atomic_load(&mPluginHolder);
-    if (holder.get() == nullptr) {
+    sp<PluginHolder> holder = mPluginHolder;
+    if (holder == NULL) {
         return toStatus(INVALID_OPERATION);
     }
 
-    return toStatus(holder->processEmm(emm));
+    return toStatus(holder->get()->processEmm(emm));
 }
 
 Return<Status> CasImpl::sendEvent(
         int32_t event, int32_t arg,
         const HidlCasData& eventData) {
     ALOGV("%s", __FUNCTION__);
-    std::shared_ptr<CasPlugin> holder = std::atomic_load(&mPluginHolder);
-    if (holder.get() == nullptr) {
+    sp<PluginHolder> holder = mPluginHolder;
+    if (holder == NULL) {
         return toStatus(INVALID_OPERATION);
     }
 
-    status_t err = holder->sendEvent(event, arg, eventData);
+    status_t err = holder->get()->sendEvent(event, arg, eventData);
     return toStatus(err);
 }
 
 Return<Status> CasImpl::provision(const hidl_string& provisionString) {
     ALOGV("%s: provisionString=%s", __FUNCTION__, provisionString.c_str());
-    std::shared_ptr<CasPlugin> holder = std::atomic_load(&mPluginHolder);
-    if (holder.get() == nullptr) {
+    sp<PluginHolder> holder = mPluginHolder;
+    if (holder == NULL) {
         return toStatus(INVALID_OPERATION);
     }
 
-    return toStatus(holder->provision(String8(provisionString.c_str())));
+    return toStatus(holder->get()->provision(String8(provisionString.c_str())));
 }
 
 Return<Status> CasImpl::refreshEntitlements(
         int32_t refreshType,
         const HidlCasData& refreshData) {
     ALOGV("%s", __FUNCTION__);
-    std::shared_ptr<CasPlugin> holder = std::atomic_load(&mPluginHolder);
-    if (holder.get() == nullptr) {
+    sp<PluginHolder> holder = mPluginHolder;
+    if (holder == NULL) {
         return toStatus(INVALID_OPERATION);
     }
 
-    status_t err = holder->refreshEntitlements(refreshType, refreshData);
+    status_t err = holder->get()->refreshEntitlements(refreshType, refreshData);
     return toStatus(err);
 }
 
 Return<Status> CasImpl::release() {
-    ALOGV("%s: plugin=%p", __FUNCTION__, mPluginHolder.get());
-
-    std::shared_ptr<CasPlugin> holder(nullptr);
-    std::atomic_store(&mPluginHolder, holder);
-
+    ALOGV("%s: plugin=%p", __FUNCTION__,
+            mPluginHolder != NULL ? mPluginHolder->get() : NULL);
+    mPluginHolder.clear();
     return Status::OK;
 }
 

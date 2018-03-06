@@ -16,7 +16,6 @@
 #define LOG_TAG "android.hardware.health@2.0-impl"
 #include <android-base/logging.h>
 
-#include <android-base/file.h>
 #include <health2/Health.h>
 
 #include <hal_conversion.h>
@@ -46,7 +45,7 @@ Return<Result> Health::registerCallback(const sp<IHealthInfoCallback>& callback)
     }
 
     {
-        std::lock_guard<decltype(callbacks_lock_)> lock(callbacks_lock_);
+        std::lock_guard<std::mutex> _lock(callbacks_lock_);
         callbacks_.push_back(callback);
         // unlock
     }
@@ -58,14 +57,14 @@ Return<Result> Health::registerCallback(const sp<IHealthInfoCallback>& callback)
         // ignore the error
     }
 
-    return updateAndNotify(callback);
+    return update();
 }
 
 bool Health::unregisterCallbackInternal(const sp<IBase>& callback) {
     if (callback == nullptr) return false;
 
     bool removed = false;
-    std::lock_guard<decltype(callbacks_lock_)> lock(callbacks_lock_);
+    std::lock_guard<std::mutex> _lock(callbacks_lock_);
     for (auto it = callbacks_.begin(); it != callbacks_.end();) {
         if (interfacesEqual(*it, callback)) {
             it = callbacks_.erase(it);
@@ -142,7 +141,7 @@ Return<void> Health::getChargeStatus(getChargeStatus_cb _hidl_cb) {
 Return<Result> Health::update() {
     if (!healthd_mode_ops || !healthd_mode_ops->battery_update) {
         LOG(WARNING) << "health@2.0: update: not initialized. "
-                     << "update() should not be called in charger";
+                     << "update() should not be called in charger / recovery.";
         return Result::UNKNOWN;
     }
 
@@ -154,18 +153,6 @@ Return<Result> Health::update() {
     healthd_battery_update_internal(chargerOnline);
 
     return Result::SUCCESS;
-}
-
-Return<Result> Health::updateAndNotify(const sp<IHealthInfoCallback>& callback) {
-    std::lock_guard<decltype(callbacks_lock_)> lock(callbacks_lock_);
-    std::vector<sp<IHealthInfoCallback>> storedCallbacks{std::move(callbacks_)};
-    callbacks_.clear();
-    if (callback != nullptr) {
-        callbacks_.push_back(callback);
-    }
-    Return<Result> result = update();
-    callbacks_ = std::move(storedCallbacks);
-    return result;
 }
 
 void Health::notifyListeners(HealthInfo* healthInfo) {
@@ -187,7 +174,7 @@ void Health::notifyListeners(HealthInfo* healthInfo) {
     healthInfo->diskStats = stats;
     healthInfo->storageInfos = info;
 
-    std::lock_guard<decltype(callbacks_lock_)> lock(callbacks_lock_);
+    std::lock_guard<std::mutex> _lock(callbacks_lock_);
     for (auto it = callbacks_.begin(); it != callbacks_.end();) {
         auto ret = (*it)->healthInfoChanged(*healthInfo);
         if (!ret.isOk() && ret.isDeadObject()) {
@@ -202,17 +189,6 @@ Return<void> Health::debug(const hidl_handle& handle, const hidl_vec<hidl_string
     if (handle != nullptr && handle->numFds >= 1) {
         int fd = handle->data[0];
         battery_monitor_->dumpState(fd);
-
-        getHealthInfo([fd](auto res, const auto& info) {
-            android::base::WriteStringToFd("\ngetHealthInfo -> ", fd);
-            if (res == Result::SUCCESS) {
-                android::base::WriteStringToFd(toString(info), fd);
-            } else {
-                android::base::WriteStringToFd(toString(res), fd);
-            }
-            android::base::WriteStringToFd("\n", fd);
-        });
-
         fsync(fd);
     }
     return Void();
@@ -245,7 +221,7 @@ Return<void> Health::getDiskStats(getDiskStats_cb _hidl_cb) {
 Return<void> Health::getHealthInfo(getHealthInfo_cb _hidl_cb) {
     using android::hardware::health::V1_0::hal_conversion::convertToHealthInfo;
 
-    updateAndNotify(nullptr);
+    update();
     struct android::BatteryProperties p = getBatteryProperties(battery_monitor_.get());
 
     V1_0::HealthInfo batteryInfo;

@@ -20,7 +20,7 @@
  * Test ISap.connectReq() for the response returned.
  */
 TEST_F(SapHidlTest, connectReq) {
-    token = GetRandomSerialNumber();
+    int32_t token = GetRandomSerialNumber();
     int32_t maxMsgSize = 100;
 
     sap->connectReq(token, maxMsgSize);
@@ -32,7 +32,7 @@ TEST_F(SapHidlTest, connectReq) {
  * Test IRadio.disconnectReq() for the response returned
  */
 TEST_F(SapHidlTest, disconnectReq) {
-    token = GetRandomSerialNumber();
+    int32_t token = GetRandomSerialNumber();
 
     sap->disconnectReq(token);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
@@ -43,7 +43,7 @@ TEST_F(SapHidlTest, disconnectReq) {
  * Test IRadio.apduReq() for the response returned.
  */
 TEST_F(SapHidlTest, apduReq) {
-    token = GetRandomSerialNumber();
+    int32_t token = GetRandomSerialNumber();
     SapApduType sapApduType = SapApduType::APDU;
     android::hardware::hidl_vec<uint8_t> command = {};
 
@@ -61,7 +61,7 @@ TEST_F(SapHidlTest, apduReq) {
  * Test IRadio.transferAtrReq() for the response returned.
  */
 TEST_F(SapHidlTest, transferAtrReq) {
-    token = GetRandomSerialNumber();
+    int32_t token = GetRandomSerialNumber();
 
     sap->transferAtrReq(token);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
@@ -77,7 +77,7 @@ TEST_F(SapHidlTest, transferAtrReq) {
  * Test IRadio.powerReq() for the response returned.
  */
 TEST_F(SapHidlTest, powerReq) {
-    token = GetRandomSerialNumber();
+    int32_t token = GetRandomSerialNumber();
     bool state = true;
 
     sap->powerReq(token, state);
@@ -94,7 +94,7 @@ TEST_F(SapHidlTest, powerReq) {
  * Test IRadio.resetSimReq() for the response returned.
  */
 TEST_F(SapHidlTest, resetSimReq) {
-    token = GetRandomSerialNumber();
+    int32_t token = GetRandomSerialNumber();
 
     sap->resetSimReq(token);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
@@ -110,7 +110,7 @@ TEST_F(SapHidlTest, resetSimReq) {
  * Test IRadio.transferCardReaderStatusReq() for the response returned.
  */
 TEST_F(SapHidlTest, transferCardReaderStatusReq) {
-    token = GetRandomSerialNumber();
+    int32_t token = GetRandomSerialNumber();
 
     sap->transferCardReaderStatusReq(token);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
@@ -124,7 +124,7 @@ TEST_F(SapHidlTest, transferCardReaderStatusReq) {
  * Test IRadio.setTransferProtocolReq() for the response returned.
  */
 TEST_F(SapHidlTest, setTransferProtocolReq) {
-    token = GetRandomSerialNumber();
+    int32_t token = GetRandomSerialNumber();
     SapTransferProtocol sapTransferProtocol = SapTransferProtocol::T0;
 
     sap->setTransferProtocolReq(token, sapTransferProtocol);

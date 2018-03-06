@@ -24,8 +24,6 @@
 #include <linux/videodev2.h>
 #include "ExternalCameraProvider.h"
 #include "ExternalCameraDevice_3_4.h"
-#include "ExternalCameraDevice_3_5.h"
-#include <cutils/properties.h>
 
 namespace android {
 namespace hardware {
@@ -64,21 +62,6 @@ ExternalCameraProvider::ExternalCameraProvider() :
         mCfg(ExternalCameraConfig::loadFromCfg()),
         mHotPlugThread(this) {
     mHotPlugThread.run("ExtCamHotPlug", PRIORITY_BACKGROUND);
-
-    mPreferredHal3MinorVersion =
-        property_get_int32("ro.vendor.camera.external.hal3TrebleMinorVersion", 4);
-    ALOGV("Preferred HAL 3 minor version is %d", mPreferredHal3MinorVersion);
-    switch(mPreferredHal3MinorVersion) {
-        case 4:
-        case 5:
-            // OK
-            break;
-        default:
-            ALOGW("Unknown minor camera device HAL version %d in property "
-                    "'camera.external.hal3TrebleMinorVersion', defaulting to 4",
-                    mPreferredHal3MinorVersion);
-            mPreferredHal3MinorVersion = 4;
-    }
 }
 
 ExternalCameraProvider::~ExternalCameraProvider() {
@@ -91,9 +74,6 @@ Return<Status> ExternalCameraProvider::setCallback(
     {
         Mutex::Autolock _l(mLock);
         mCallbacks = callback;
-    }
-    if (mCallbacks == nullptr) {
-        return Status::OK;
     }
     // Send a callback for all devices to initialize
     {
@@ -122,9 +102,8 @@ Return<void> ExternalCameraProvider::getCameraIdList(getCameraIdList_cb _hidl_cb
 
 Return<void> ExternalCameraProvider::isSetTorchModeSupported(
         isSetTorchModeSupported_cb _hidl_cb) {
-    // setTorchMode API is supported, though right now no external camera device
-    // has a flash unit.
-    _hidl_cb (Status::OK, true);
+    // No torch mode support for USB camera
+    _hidl_cb (Status::OK, false);
     return Void();
 }
 
@@ -153,43 +132,20 @@ Return<void> ExternalCameraProvider::getCameraDeviceInterface_V3_x(
         return Void();
     }
 
-    sp<device::V3_4::implementation::ExternalCameraDevice> deviceImpl;
-    switch (mPreferredHal3MinorVersion) {
-        case 4: {
-            ALOGV("Constructing v3.4 external camera device");
-            deviceImpl = new device::V3_4::implementation::ExternalCameraDevice(
+    ALOGV("Constructing v3.4 external camera device");
+    sp<device::V3_2::ICameraDevice> device;
+    sp<device::V3_4::implementation::ExternalCameraDevice> deviceImpl =
+            new device::V3_4::implementation::ExternalCameraDevice(
                     cameraId, mCfg);
-            break;
-        }
-        case 5: {
-            ALOGV("Constructing v3.5 external camera device");
-            deviceImpl = new device::V3_5::implementation::ExternalCameraDevice(
-                    cameraId, mCfg);
-            break;
-        }
-        default:
-            ALOGE("%s: Unknown HAL minor version %d!", __FUNCTION__, mPreferredHal3MinorVersion);
-            _hidl_cb(Status::INTERNAL_ERROR, nullptr);
-            return Void();
-    }
-
     if (deviceImpl == nullptr || deviceImpl->isInitFailed()) {
         ALOGE("%s: camera device %s init failed!", __FUNCTION__, cameraId.c_str());
+        device = nullptr;
         _hidl_cb(Status::INTERNAL_ERROR, nullptr);
         return Void();
     }
+    device = deviceImpl;
 
-    IF_ALOGV() {
-        deviceImpl->getInterface()->interfaceChain([](
-            ::android::hardware::hidl_vec<::android::hardware::hidl_string> interfaceChain) {
-                ALOGV("Device interface chain:");
-                for (auto iface : interfaceChain) {
-                    ALOGV("  %s", iface.c_str());
-                }
-            });
-    }
-
-    _hidl_cb (Status::OK, deviceImpl->getInterface());
+    _hidl_cb (Status::OK, device);
 
     return Void();
 }
@@ -197,12 +153,7 @@ Return<void> ExternalCameraProvider::getCameraDeviceInterface_V3_x(
 void ExternalCameraProvider::addExternalCamera(const char* devName) {
     ALOGI("ExtCam: adding %s to External Camera HAL!", devName);
     Mutex::Autolock _l(mLock);
-    std::string deviceName;
-    if (mPreferredHal3MinorVersion == 5) {
-        deviceName = std::string("device@3.5/external/") + devName;
-    } else {
-        deviceName = std::string("device@3.4/external/") + devName;
-    }
+    std::string deviceName = std::string("device@3.4/external/") + devName;
     mCameraStatusMap[deviceName] = CameraDeviceStatus::PRESENT;
     if (mCallbacks != nullptr) {
         mCallbacks->cameraDeviceStatusChange(deviceName, CameraDeviceStatus::PRESENT);
@@ -210,46 +161,35 @@ void ExternalCameraProvider::addExternalCamera(const char* devName) {
 }
 
 void ExternalCameraProvider::deviceAdded(const char* devName) {
-    {
-        base::unique_fd fd(::open(devName, O_RDWR));
-        if (fd.get() < 0) {
-            ALOGE("%s open v4l2 device %s failed:%s", __FUNCTION__, devName, strerror(errno));
-            return;
-        }
+    int fd = -1;
+    if ((fd = ::open(devName, O_RDWR)) < 0) {
+        ALOGE("%s open v4l2 device %s failed:%s", __FUNCTION__, devName, strerror(errno));
+        return;
+    }
 
+    do {
         struct v4l2_capability capability;
-        int ret = ioctl(fd.get(), VIDIOC_QUERYCAP, &capability);
+        int ret = ioctl(fd, VIDIOC_QUERYCAP, &capability);
         if (ret < 0) {
             ALOGE("%s v4l2 QUERYCAP %s failed", __FUNCTION__, devName);
-            return;
+            break;
         }
 
         if (!(capability.device_caps & V4L2_CAP_VIDEO_CAPTURE)) {
             ALOGW("%s device %s does not support VIDEO_CAPTURE", __FUNCTION__, devName);
-            return;
+            break;
         }
-    }
-    // See if we can initialize ExternalCameraDevice correctly
-    sp<device::V3_4::implementation::ExternalCameraDevice> deviceImpl =
-            new device::V3_4::implementation::ExternalCameraDevice(devName, mCfg);
-    if (deviceImpl == nullptr || deviceImpl->isInitFailed()) {
-        ALOGW("%s: Attempt to init camera device %s failed!", __FUNCTION__, devName);
-        return;
-    }
-    deviceImpl.clear();
 
-    addExternalCamera(devName);
+        addExternalCamera(devName);
+    } while (0);
+
+    close(fd);
     return;
 }
 
 void ExternalCameraProvider::deviceRemoved(const char* devName) {
     Mutex::Autolock _l(mLock);
-    std::string deviceName;
-    if (mPreferredHal3MinorVersion == 5) {
-        deviceName = std::string("device@3.5/external/") + devName;
-    } else {
-        deviceName = std::string("device@3.4/external/") + devName;
-    }
+    std::string deviceName = std::string("device@3.4/external/") + devName;
     if (mCameraStatusMap.find(deviceName) != mCameraStatusMap.end()) {
         mCameraStatusMap.erase(deviceName);
         if (mCallbacks != nullptr) {

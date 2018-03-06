@@ -40,8 +40,8 @@ class ComposerCommandEngine : public V2_1::hal::ComposerCommandEngine {
    protected:
     bool executeCommand(V2_1::IComposerClient::Command command, uint16_t length) override {
         switch (static_cast<IComposerClient::Command>(command)) {
-            case IComposerClient::Command::SET_LAYER_PER_FRAME_METADATA:
-                return executeSetLayerPerFrameMetadata(length);
+            case IComposerClient::Command::SET_PER_FRAME_METADATA:
+                return executeSetPerFrameMetadata(length);
             case IComposerClient::Command::SET_LAYER_FLOAT_COLOR:
                 return executeSetLayerFloatColor(length);
             default:
@@ -49,7 +49,7 @@ class ComposerCommandEngine : public V2_1::hal::ComposerCommandEngine {
         }
     }
 
-    bool executeSetLayerPerFrameMetadata(uint16_t length) {
+    bool executeSetPerFrameMetadata(uint16_t length) {
         // (key, value) pairs
         if (length % 2 != 0) {
             return false;
@@ -63,7 +63,7 @@ class ComposerCommandEngine : public V2_1::hal::ComposerCommandEngine {
             length -= 2;
         }
 
-        auto err = mHal->setLayerPerFrameMetadata(mCurrentDisplay, mCurrentLayer, metadata);
+        auto err = mHal->setPerFrameMetadata(mCurrentDisplay, metadata);
         if (err != Error::NONE) {
             mWriter.setError(getCommandLoc(), err);
         }

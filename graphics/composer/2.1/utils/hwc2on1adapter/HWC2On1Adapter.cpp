@@ -858,20 +858,18 @@ Error HWC2On1Adapter::Display::setColorMode(android_color_mode_t mode) {
         return Error::Unsupported;
     }
 
-    if (mDevice.mHwc1MinorVersion >= 4) {
-        uint32_t hwc1Config = 0;
-        auto error = mActiveConfig->getHwc1IdForColorMode(mode, &hwc1Config);
-        if (error != Error::None) {
-            return error;
-        }
+    uint32_t hwc1Config = 0;
+    auto error = mActiveConfig->getHwc1IdForColorMode(mode, &hwc1Config);
+    if (error != Error::None) {
+        return error;
+    }
 
-        ALOGV("[%" PRIu64 "] Setting HWC1 config %u", mId, hwc1Config);
-        int intError =
-            mDevice.mHwc1Device->setActiveConfig(mDevice.mHwc1Device, mHwc1Id, hwc1Config);
-        if (intError != 0) {
-            ALOGE("[%" PRIu64 "] Failed to set HWC1 config (%d)", mId, intError);
-            return Error::Unsupported;
-        }
+    ALOGV("[%" PRIu64 "] Setting HWC1 config %u", mId, hwc1Config);
+    int intError = mDevice.mHwc1Device->setActiveConfig(mDevice.mHwc1Device,
+            mHwc1Id, hwc1Config);
+    if (intError != 0) {
+        ALOGE("[%" PRIu64 "] Failed to set HWC1 config (%d)", mId, intError);
+        return Error::Unsupported;
     }
 
     mActiveColorMode = mode;
@@ -2096,7 +2094,8 @@ std::string HWC2On1Adapter::Layer::dump() const {
     } else if (mCompositionType == HWC2::Composition::Sideband) {
         output << "  Handle: " << mSidebandStream << '\n';
     } else {
-        output << "  Buffer: " << mBuffer.getBuffer() << '\n';
+        output << "  Buffer: " << mBuffer.getBuffer() << "/" <<
+                mBuffer.getFence() << '\n';
         output << fill << "  Display frame [LTRB]: " <<
                 rectString(mDisplayFrame) << '\n';
         output << fill << "  Source crop: " <<

@@ -88,10 +88,7 @@ class WifiChipHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     uint32_t configureChipForStaIfaceAndGetCapabilities() {
         configureChipForIfaceType(IfaceType::STA, true);
         const auto& status_and_caps = HIDL_INVOKE(wifi_chip_, getCapabilities);
-        if (status_and_caps.first.code != WifiStatusCode::SUCCESS) {
-            EXPECT_EQ(WifiStatusCode::ERROR_NOT_SUPPORTED, status_and_caps.first.code);
-            return 0;
-        }
+        EXPECT_EQ(WifiStatusCode::SUCCESS, status_and_caps.first.code);
         return status_and_caps.second;
     }
 
@@ -196,10 +193,7 @@ TEST_F(WifiChipHidlTest, ConfigureChip) {
 TEST_F(WifiChipHidlTest, GetCapabilities) {
     configureChipForIfaceType(IfaceType::STA, true);
     const auto& status_and_caps = HIDL_INVOKE(wifi_chip_, getCapabilities);
-    if (status_and_caps.first.code != WifiStatusCode::SUCCESS) {
-        EXPECT_EQ(WifiStatusCode::ERROR_NOT_SUPPORTED, status_and_caps.first.code);
-        return;
-    }
+    EXPECT_EQ(WifiStatusCode::SUCCESS, status_and_caps.first.code);
     EXPECT_NE(0u, status_and_caps.second);
 }
 
@@ -735,10 +729,10 @@ TEST_F(WifiChipHidlTest, RemoveStaIface) {
  * CreateRttController
  */
 TEST_F(WifiChipHidlTest, CreateRttController) {
-    configureChipForIfaceType(IfaceType::STA, true);
+    configureChipForIfaceType(IfaceType::AP, true);
 
-    sp<IWifiStaIface> iface;
-    EXPECT_EQ(WifiStatusCode::SUCCESS, createStaIface(&iface));
+    sp<IWifiApIface> iface;
+    EXPECT_EQ(WifiStatusCode::SUCCESS, createApIface(&iface));
     EXPECT_NE(nullptr, iface.get());
 
     const auto& status_and_rtt_controller =

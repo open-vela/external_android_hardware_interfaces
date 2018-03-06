@@ -16,7 +16,6 @@ hidl_interface {
         "CameraMetadataEnumAndroidControlAeMode",
         "CameraMetadataEnumAndroidControlAfSceneChange",
         "CameraMetadataEnumAndroidControlCaptureIntent",
-        "CameraMetadataEnumAndroidDistortionCorrectionMode",
         "CameraMetadataEnumAndroidInfoSupportedHardwareLevel",
         "CameraMetadataEnumAndroidLensPoseReference",
         "CameraMetadataEnumAndroidLogicalMultiCameraSensorSyncType",

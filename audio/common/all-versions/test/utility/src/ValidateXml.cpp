@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -129,7 +129,6 @@ struct Libxml2Global {
     return ::testing::AssertionSuccess();
 }
 
-template <bool atLeastOneRequired>
 ::testing::AssertionResult validateXmlMultipleLocations(
     const char* xmlFileNameExpr, const char* xmlFileLocationsExpr, const char* xsdFilePathExpr,
     const char* xmlFileName, std::vector<const char*> xmlFileLocations, const char* xsdFilePath) {
@@ -151,7 +150,7 @@ template <bool atLeastOneRequired>
         }
     }
 
-    if (atLeastOneRequired && foundFiles.empty()) {
+    if (foundFiles.empty()) {
         errors.push_back("No xml file found in provided locations.\n");
     }
 
@@ -161,19 +160,8 @@ template <bool atLeastOneRequired>
            << "     While validating all: " << xmlFileNameExpr
            << "\n                 Which is: " << xmlFileName
            << "\n In the following folders: " << xmlFileLocationsExpr
-           << "\n                 Which is: " << ::testing::PrintToString(xmlFileLocations)
-           << (atLeastOneRequired ? "\nWhere at least one file must be found."
-                                  : "\nWhere no file might exist.");
+           << "\n                 Which is: " << ::testing::PrintToString(xmlFileLocations);
 }
-
-template ::testing::AssertionResult validateXmlMultipleLocations<true>(const char*, const char*,
-                                                                       const char*, const char*,
-                                                                       std::vector<const char*>,
-                                                                       const char*);
-template ::testing::AssertionResult validateXmlMultipleLocations<false>(const char*, const char*,
-                                                                        const char*, const char*,
-                                                                        std::vector<const char*>,
-                                                                        const char*);
 
 }  // namespace utility
 }  // namespace test

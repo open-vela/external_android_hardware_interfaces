@@ -22,7 +22,7 @@ using namespace ::android::hardware::radio::V1_0;
  * Test IRadio.getDataRegistrationState() for the response returned.
  */
 TEST_F(RadioHidlTest, getDataRegistrationState) {
-    serial = GetRandomSerialNumber();
+    int serial = GetRandomSerialNumber();
 
     radio->getDataRegistrationState(serial);
 
@@ -32,67 +32,6 @@ TEST_F(RadioHidlTest, getDataRegistrationState) {
 
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
-    } else if (cardStatus.cardState == CardState::PRESENT) {
-        ASSERT_TRUE(CheckAnyOfErrors(
-            radioRsp->rspInfo.error,
-            {RadioError::NONE, RadioError::NOT_PROVISIONED, RadioError::CANCELLED}));
-
-        // Check the mcc [0, 999] and mnc [0, 999].
-        string hidl_mcc;
-        string hidl_mnc;
-        bool checkMccMnc = true;
-        int totalIdentitySizeExpected = 1;
-        CellIdentity cellIdentities = radioRsp->dataRegResp.cellIdentity;
-        CellInfoType cellInfoType = cellIdentities.cellInfoType;
-
-        if (cellInfoType == CellInfoType::NONE) {
-            // All the fields are 0
-            totalIdentitySizeExpected = 0;
-            checkMccMnc = false;
-        } else if (cellInfoType == CellInfoType::GSM) {
-            EXPECT_EQ(1, cellIdentities.cellIdentityGsm.size());
-            CellIdentityGsm cig = cellIdentities.cellIdentityGsm[0];
-            hidl_mcc = cig.mcc;
-            hidl_mnc = cig.mnc;
-        } else if (cellInfoType == CellInfoType::LTE) {
-            EXPECT_EQ(1, cellIdentities.cellIdentityLte.size());
-            CellIdentityLte cil = cellIdentities.cellIdentityLte[0];
-            hidl_mcc = cil.mcc;
-            hidl_mnc = cil.mnc;
-        } else if (cellInfoType == CellInfoType::WCDMA) {
-            EXPECT_EQ(1, cellIdentities.cellIdentityWcdma.size());
-            CellIdentityWcdma ciw = cellIdentities.cellIdentityWcdma[0];
-            hidl_mcc = ciw.mcc;
-            hidl_mnc = ciw.mnc;
-        } else if (cellInfoType == CellInfoType::TD_SCDMA) {
-            EXPECT_EQ(1, cellIdentities.cellIdentityTdscdma.size());
-            CellIdentityTdscdma cit = cellIdentities.cellIdentityTdscdma[0];
-            hidl_mcc = cit.mcc;
-            hidl_mnc = cit.mnc;
-        } else {
-            // CellIndentityCdma has no mcc and mnc.
-            EXPECT_EQ(CellInfoType::CDMA, cellInfoType);
-            EXPECT_EQ(1, cellIdentities.cellIdentityCdma.size());
-            checkMccMnc = false;
-        }
-
-        // Check only one CellIdentity is size 1, and others must be 0.
-        EXPECT_EQ(totalIdentitySizeExpected, cellIdentities.cellIdentityGsm.size() +
-                                                 cellIdentities.cellIdentityCdma.size() +
-                                                 cellIdentities.cellIdentityLte.size() +
-                                                 cellIdentities.cellIdentityWcdma.size() +
-                                                 cellIdentities.cellIdentityTdscdma.size());
-
-        if (checkMccMnc) {
-            // 32 bit system gets result: "\xff\xff\xff..." from RIL, which is not testable. Only
-            // test for 64 bit here. TODO: remove this limit after b/113181277 being fixed.
-            if (hidl_mcc.size() < 4 && hidl_mnc.size() < 4) {
-                int mcc = stoi(hidl_mcc);
-                int mnc = stoi(hidl_mnc);
-                EXPECT_TRUE(mcc >= 0 && mcc <= 999);
-                EXPECT_TRUE(mnc >= 0 && mnc <= 999);
-            }
-        }
     }
 }
 
@@ -100,7 +39,7 @@ TEST_F(RadioHidlTest, getDataRegistrationState) {
  * Test IRadio.setupDataCall() for the response returned.
  */
 TEST_F(RadioHidlTest, setupDataCall) {
-    serial = GetRandomSerialNumber();
+    int serial = GetRandomSerialNumber();
 
     RadioTechnology radioTechnology = RadioTechnology::LTE;
 
@@ -131,7 +70,7 @@ TEST_F(RadioHidlTest, setupDataCall) {
     radio->setupDataCall(serial, radioTechnology, dataProfileInfo, modemCognitive, roamingAllowed,
                          isRoaming);
 
-    EXPECT_EQ(std::cv_status::no_timeout, wait(300));
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp->rspInfo.type);
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
@@ -148,7 +87,7 @@ TEST_F(RadioHidlTest, setupDataCall) {
  * Test IRadio.deactivateDataCall() for the response returned.
  */
 TEST_F(RadioHidlTest, deactivateDataCall) {
-    serial = GetRandomSerialNumber();
+    int serial = GetRandomSerialNumber();
     int cid = 1;
     bool reasonRadioShutDown = false;
 
@@ -170,7 +109,7 @@ TEST_F(RadioHidlTest, deactivateDataCall) {
  * Test IRadio.getDataCallList() for the response returned.
  */
 TEST_F(RadioHidlTest, getDataCallList) {
-    serial = GetRandomSerialNumber();
+    int serial = GetRandomSerialNumber();
 
     radio->getDataCallList(serial);
 
@@ -189,7 +128,7 @@ TEST_F(RadioHidlTest, getDataCallList) {
  * Test IRadio.setInitialAttachApn() for the response returned.
  */
 TEST_F(RadioHidlTest, setInitialAttachApn) {
-    serial = GetRandomSerialNumber();
+    int serial = GetRandomSerialNumber();
 
     DataProfileInfo dataProfileInfo;
     memset(&dataProfileInfo, 0, sizeof(dataProfileInfo));
@@ -232,7 +171,7 @@ TEST_F(RadioHidlTest, setInitialAttachApn) {
  * Test IRadio.setDataAllowed() for the response returned.
  */
 TEST_F(RadioHidlTest, setDataAllowed) {
-    serial = GetRandomSerialNumber();
+    int serial = GetRandomSerialNumber();
     bool allow = true;
 
     radio->setDataAllowed(serial, allow);
@@ -250,7 +189,7 @@ TEST_F(RadioHidlTest, setDataAllowed) {
  * Test IRadio.setDataProfile() for the response returned.
  */
 TEST_F(RadioHidlTest, setDataProfile) {
-    serial = GetRandomSerialNumber();
+    int serial = GetRandomSerialNumber();
 
     // Create a dataProfileInfo
     DataProfileInfo dataProfileInfo;

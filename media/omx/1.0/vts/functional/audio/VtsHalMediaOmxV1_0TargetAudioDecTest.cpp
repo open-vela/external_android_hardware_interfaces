@@ -86,11 +86,6 @@ class AudioDecHidlTest : public ::testing::VtsHalHidlTargetTestBase {
                                this->omxNode = _nl;
                            })
                         .isOk());
-        if (status == android::hardware::media::omx::V1_0::Status::NAME_NOT_FOUND) {
-            disableTest = true;
-            std::cout << "[   WARN   ] Test Disabled, component not present\n";
-            return;
-        }
         ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
         ASSERT_NE(omxNode, nullptr);
         ASSERT_NE(gEnv->getRole().empty(), true) << "Invalid Component Role";
@@ -151,15 +146,6 @@ class AudioDecHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         framesReceived = 0;
         timestampUs = 0;
         timestampDevTest = false;
-        isSecure = false;
-        size_t suffixLen = strlen(".secure");
-        if (strlen(gEnv->getComponent().c_str()) >= suffixLen) {
-            isSecure =
-                !strcmp(gEnv->getComponent().c_str() +
-                            strlen(gEnv->getComponent().c_str()) - suffixLen,
-                        ".secure");
-        }
-        if (isSecure) disableTest = true;
         if (disableTest) std::cout << "[   WARN   ] Test Disabled \n";
     }
 
@@ -256,7 +242,6 @@ class AudioDecHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     OMX_AUDIO_CODINGTYPE eEncoding;
     bool disableTest;
     bool eosFlag;
-    bool isSecure;
     uint32_t framesReceived;
     uint64_t timestampUs;
     ::android::List<uint64_t> timestampUslist;
@@ -297,7 +282,6 @@ void setDefaultPortParam(
             setupAACPort(omxNode, portIndex, OMX_AUDIO_AACObjectNull,
                          OMX_AUDIO_AACStreamFormatMP4FF, nChannels, 0,
                          nSampleRate);
-            break;
         default:
             break;
     }

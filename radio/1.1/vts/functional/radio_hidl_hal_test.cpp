@@ -42,21 +42,22 @@ void RadioHidlTest_v1_1::SetUp() {
 
     radio_v1_1->setResponseFunctions(radioRsp_v1_1, radioInd_v1_1);
 
-    updateSimCardStatus();
+    int serial = GetRandomSerialNumber();
+    radio_v1_1->getIccCardStatus(serial);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_1->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_1->rspInfo.serial);
     EXPECT_EQ(RadioError::NONE, radioRsp_v1_1->rspInfo.error);
 
-    /* Enforce Vts Testing with Sim Status Present only. */
-    EXPECT_EQ(CardState::PRESENT, cardStatus.cardState);
+    /* Vts Testing with Sim Absent only. This needs to be removed later in P when sim present
+     * scenarios will be tested. */
+    EXPECT_EQ(CardState::ABSENT, cardStatus.cardState);
 }
 
-void RadioHidlTest_v1_1::notify(int receivedSerial) {
+void RadioHidlTest_v1_1::notify() {
     std::unique_lock<std::mutex> lock(mtx);
-    if (serial == receivedSerial) {
-        count++;
-        cv.notify_one();
-    }
+    count++;
+    cv.notify_one();
 }
 
 std::cv_status RadioHidlTest_v1_1::wait(int sec) {
@@ -72,10 +73,4 @@ std::cv_status RadioHidlTest_v1_1::wait(int sec) {
     }
     count--;
     return status;
-}
-
-void RadioHidlTest_v1_1::updateSimCardStatus() {
-    serial = GetRandomSerialNumber();
-    radio_v1_1->getIccCardStatus(serial);
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
 }

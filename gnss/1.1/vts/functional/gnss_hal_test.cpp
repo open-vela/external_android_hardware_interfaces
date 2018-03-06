@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "GnssHalTest"
-
 #include <gnss_hal_test.h>
 
 #include <chrono>
@@ -33,8 +31,6 @@ void GnssHalTest::SetUp() {
         GnssHidlEnvironment::Instance()->getServiceName<IGnss>());
     list_gnss_sv_status_.clear();
     ASSERT_NE(gnss_hal_, nullptr);
-
-    SetUpGnssCallback();
 }
 
 void GnssHalTest::TearDown() {
@@ -44,30 +40,6 @@ void GnssHalTest::TearDown() {
     if (notify_count_ > 0) {
         ALOGW("%d unprocessed callbacks discarded", notify_count_);
     }
-}
-
-void GnssHalTest::SetUpGnssCallback() {
-    gnss_cb_ = new GnssCallback(*this);
-    ASSERT_NE(gnss_cb_, nullptr);
-
-    auto result = gnss_hal_->setCallback_1_1(gnss_cb_);
-    if (!result.isOk()) {
-        ALOGE("result of failed setCallback %s", result.description().c_str());
-    }
-
-    ASSERT_TRUE(result.isOk());
-    ASSERT_TRUE(result);
-
-    /*
-     * All capabilities, name and systemInfo callbacks should trigger
-     */
-    EXPECT_EQ(std::cv_status::no_timeout, wait(TIMEOUT_SEC));
-    EXPECT_EQ(std::cv_status::no_timeout, wait(TIMEOUT_SEC));
-    EXPECT_EQ(std::cv_status::no_timeout, wait(TIMEOUT_SEC));
-
-    EXPECT_EQ(capabilities_called_count_, 1);
-    EXPECT_EQ(info_called_count_, 1);
-    EXPECT_EQ(name_called_count_, 1);
 }
 
 void GnssHalTest::StopAndClearLocations() {
@@ -83,7 +55,6 @@ void GnssHalTest::StopAndClearLocations() {
      */
     while (wait(TIMEOUT_SEC) == std::cv_status::no_timeout) {
     }
-    location_called_count_ = 0;
 }
 
 void GnssHalTest::SetPositionMode(const int min_interval_msec, const bool low_power_mode) {
@@ -98,17 +69,17 @@ void GnssHalTest::SetPositionMode(const int min_interval_msec, const bool low_po
     EXPECT_TRUE(result);
 }
 
-bool GnssHalTest::StartAndCheckFirstLocation() {
+bool GnssHalTest::StartAndGetSingleLocation() {
     auto result = gnss_hal_->start();
 
     EXPECT_TRUE(result.isOk());
     EXPECT_TRUE(result);
 
     /*
-     * GnssLocationProvider support of AGPS SUPL & XtraDownloader is not available in VTS,
-     * so allow time to demodulate ephemeris over the air.
+     * GPS signals initially optional for this test, so don't expect fast fix,
+     * or no timeout, unless signal is present
      */
-    const int kFirstGnssLocationTimeoutSeconds = 75;
+    const int kFirstGnssLocationTimeoutSeconds = 15;
 
     wait(kFirstGnssLocationTimeoutSeconds);
     EXPECT_EQ(location_called_count_, 1);
@@ -192,11 +163,11 @@ void GnssHalTest::CheckLocation(GnssLocation& location, bool check_speed) {
 void GnssHalTest::StartAndCheckLocations(int count) {
     const int kMinIntervalMsec = 500;
     const int kLocationTimeoutSubsequentSec = 2;
-    const bool kLowPowerMode = false;
+    const bool kLowPowerMode = true;
 
     SetPositionMode(kMinIntervalMsec, kLowPowerMode);
 
-    EXPECT_TRUE(StartAndCheckFirstLocation());
+    EXPECT_TRUE(StartAndGetSingleLocation());
 
     for (int i = 1; i < count; i++) {
         EXPECT_EQ(std::cv_status::no_timeout, wait(kLocationTimeoutSubsequentSec));

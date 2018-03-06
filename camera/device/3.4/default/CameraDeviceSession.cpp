@@ -51,34 +51,6 @@ CameraDeviceSession::CameraDeviceSession(
             }
         }
     }
-
-    mResultBatcher_3_4.setNumPartialResults(mNumPartialResults);
-
-    camera_metadata_entry_t capabilities =
-            mDeviceInfo.find(ANDROID_REQUEST_AVAILABLE_CAPABILITIES);
-    bool isLogicalMultiCamera = false;
-    for (size_t i = 0; i < capabilities.count; i++) {
-        if (capabilities.data.u8[i] ==
-                ANDROID_REQUEST_AVAILABLE_CAPABILITIES_LOGICAL_MULTI_CAMERA) {
-            isLogicalMultiCamera = true;
-            break;
-        }
-    }
-    if (isLogicalMultiCamera) {
-        camera_metadata_entry entry =
-                mDeviceInfo.find(ANDROID_LOGICAL_MULTI_CAMERA_PHYSICAL_IDS);
-        const uint8_t* ids = entry.data.u8;
-        size_t start = 0;
-        for (size_t i = 0; i < entry.count; ++i) {
-            if (ids[i] == '\0') {
-                if (start != i) {
-                    const char* physicalId = reinterpret_cast<const char*>(ids+start);
-                    mPhysicalCameraIds.emplace(physicalId);
-                }
-                start = i + 1;
-            }
-        }
-    }
 }
 
 CameraDeviceSession::~CameraDeviceSession() {
@@ -154,8 +126,6 @@ Return<void> CameraDeviceSession::configureStreams_3_4(
     // the corresponding resources of the deleted streams.
     if (ret == OK) {
         postProcessConfigurationLocked_3_4(requestedConfiguration);
-    } else {
-        postProcessConfigurationFailureLocked_3_4(requestedConfiguration);
     }
 
     if (ret == -EINVAL) {
@@ -217,23 +187,6 @@ bool CameraDeviceSession::preProcessConfigurationLocked_3_4(
         (*streams)[i] = &mStreamMap[id];
     }
 
-    if (mFreeBufEarly) {
-        // Remove buffers of deleted streams
-        for(auto it = mStreamMap.begin(); it != mStreamMap.end(); it++) {
-            int id = it->first;
-            bool found = false;
-            for (const auto& stream : requestedConfiguration.streams) {
-                if (id == stream.v3_2.id) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                // Unmap all buffers of deleted stream
-                cleanupBuffersLocked(id);
-            }
-        }
-    }
     return true;
 }
 
@@ -255,9 +208,7 @@ void CameraDeviceSession::postProcessConfigurationLocked_3_4(
             // Unmap all buffers of deleted stream
             // in case the configuration call succeeds and HAL
             // is able to release the corresponding resources too.
-            if (!mFreeBufEarly) {
-                cleanupBuffersLocked(id);
-            }
+            cleanupBuffersLocked(id);
             it = mStreamMap.erase(it);
         } else {
             ++it;
@@ -274,26 +225,6 @@ void CameraDeviceSession::postProcessConfigurationLocked_3_4(
         }
     }
     mResultBatcher_3_4.setBatchedStreams(mVideoStreamIds);
-}
-
-void CameraDeviceSession::postProcessConfigurationFailureLocked_3_4(
-        const StreamConfiguration& requestedConfiguration) {
-    if (mFreeBufEarly) {
-        // Re-build the buf cache entry for deleted streams
-        for(auto it = mStreamMap.begin(); it != mStreamMap.end(); it++) {
-            int id = it->first;
-            bool found = false;
-            for (const auto& stream : requestedConfiguration.streams) {
-                if (id == stream.v3_2.id) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                mCirculatingBuffers.emplace(id, CirculatingBuffers{});
-            }
-        }
-    }
 }
 
 Return<void> CameraDeviceSession::processCaptureRequest_3_4(
@@ -519,41 +450,18 @@ void CameraDeviceSession::sProcessCaptureResult_3_4(
     CameraDeviceSession *d =
             const_cast<CameraDeviceSession*>(static_cast<const CameraDeviceSession*>(cb));
 
-    CaptureResult result = {};
-    camera3_capture_result shadowResult;
-    bool handlePhysCam = (d->mDeviceVersion >= CAMERA_DEVICE_API_VERSION_3_5);
-    std::vector<::android::hardware::camera::common::V1_0::helper::CameraMetadata> compactMds;
-    std::vector<const camera_metadata_t*> physCamMdArray;
-    sShrinkCaptureResult(&shadowResult, hal_result, &compactMds, &physCamMdArray, handlePhysCam);
-
-    status_t ret = d->constructCaptureResult(result.v3_2, &shadowResult);
-    if (ret != OK) {
-        return;
-    }
-
-    if (handlePhysCam) {
-        if (shadowResult.num_physcam_metadata > d->mPhysicalCameraIds.size()) {
-            ALOGE("%s: Fatal: Invalid num_physcam_metadata %u", __FUNCTION__,
-                    shadowResult.num_physcam_metadata);
-            return;
-        }
-        result.physicalCameraMetadata.resize(shadowResult.num_physcam_metadata);
-        for (uint32_t i = 0; i < shadowResult.num_physcam_metadata; i++) {
-            std::string physicalId = shadowResult.physcam_ids[i];
-            if (d->mPhysicalCameraIds.find(physicalId) == d->mPhysicalCameraIds.end()) {
-                ALOGE("%s: Fatal: Invalid physcam_ids[%u]: %s", __FUNCTION__,
-                      i, shadowResult.physcam_ids[i]);
-                return;
-            }
-            V3_2::CameraMetadata physicalMetadata;
-            V3_2::implementation::convertToHidl(
-                    shadowResult.physcam_metadata[i], &physicalMetadata);
-            PhysicalCameraMetadata physicalCameraMetadata = {
-                    .fmqMetadataSize = 0,
-                    .physicalCameraId = physicalId,
-                    .metadata = physicalMetadata };
-            result.physicalCameraMetadata[i] = physicalCameraMetadata;
-        }
+    CaptureResult result;
+    d->constructCaptureResult(result.v3_2, hal_result);
+    result.physicalCameraMetadata.resize(hal_result->num_physcam_metadata);
+    for (uint32_t i = 0; i < hal_result->num_physcam_metadata; i++) {
+        std::string physicalId = hal_result->physcam_ids[i];
+        V3_2::CameraMetadata physicalMetadata;
+        V3_2::implementation::convertToHidl(hal_result->physcam_metadata[i], &physicalMetadata);
+        PhysicalCameraMetadata physicalCameraMetadata = {
+                .fmqMetadataSize = 0,
+                .physicalCameraId = physicalId,
+                .metadata = physicalMetadata };
+        result.physicalCameraMetadata[i] = physicalCameraMetadata;
     }
     d->mResultBatcher_3_4.processCaptureResult_3_4(result);
 }

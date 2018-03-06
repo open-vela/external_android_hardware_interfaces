@@ -220,11 +220,3 @@ TEST_F(HostapdHidlTest, AddInvalidPskAccessPointWithoutAcs) {
                     getInvalidPskNwParams());
     EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
 }
-
-/*
- * Terminate
- * This terminates the service.
- */
-TEST_F(HostapdHidlTest, Terminate) {
-    hostapd_->terminate();
-}

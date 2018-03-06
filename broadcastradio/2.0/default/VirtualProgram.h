@@ -40,8 +40,8 @@ struct VirtualProgram {
     operator ProgramInfo() const;
 
     /**
-     * Defines order in which virtual programs appear on the "air" with
-     * ITunerSession::scan().
+     * Defines order on how virtual programs appear on the "air" with
+     * ITunerSession::scan operation.
      *
      * It's for default implementation purposes, may not be complete or correct.
      */

@@ -18,7 +18,6 @@
 #include <android/log.h>
 
 #include <set>
-#include <cutils/properties.h>
 #include <utils/Trace.h>
 #include <hardware/gralloc.h>
 #include <hardware/gralloc1.h>
@@ -32,16 +31,9 @@ namespace V3_2 {
 namespace implementation {
 
 // Size of request metadata fast message queue. Change to 0 to always use hwbinder buffer.
-static constexpr int32_t CAMERA_REQUEST_METADATA_QUEUE_SIZE = 1 << 20 /* 1MB */;
+static constexpr size_t CAMERA_REQUEST_METADATA_QUEUE_SIZE = 1 << 20 /* 1MB */;
 // Size of result metadata fast message queue. Change to 0 to always use hwbinder buffer.
-static constexpr int32_t CAMERA_RESULT_METADATA_QUEUE_SIZE  = 1 << 20 /* 1MB */;
-
-// Metadata sent by HAL will be replaced by a compact copy
-// if their (total size >= compact size + METADATA_SHRINK_ABS_THRESHOLD &&
-//           total_size >= compact size * METADATA_SHRINK_REL_THRESHOLD)
-// Heuristically picked by size of one page
-static constexpr int METADATA_SHRINK_ABS_THRESHOLD = 4096;
-static constexpr int METADATA_SHRINK_REL_THRESHOLD = 2;
+static constexpr size_t CAMERA_RESULT_METADATA_QUEUE_SIZE  = 1 << 20 /* 1MB */;
 
 HandleImporter CameraDeviceSession::sHandleImporter;
 const int CameraDeviceSession::ResultBatcher::NOT_BATCHED;
@@ -53,7 +45,6 @@ CameraDeviceSession::CameraDeviceSession(
         camera3_callback_ops({&sProcessCaptureResult, &sNotify}),
         mDevice(device),
         mDeviceVersion(device->common.version),
-        mFreeBufEarly(shouldFreeBufEarly()),
         mIsAELockAvailable(false),
         mDerivePostRawSensKey(false),
         mNumPartialResults(1),
@@ -97,30 +88,14 @@ bool CameraDeviceSession::initialize() {
         return true;
     }
 
-    int32_t reqFMQSize = property_get_int32("ro.camera.req.fmq.size", /*default*/-1);
-    if (reqFMQSize < 0) {
-        reqFMQSize = CAMERA_REQUEST_METADATA_QUEUE_SIZE;
-    } else {
-        ALOGV("%s: request FMQ size overridden to %d", __FUNCTION__, reqFMQSize);
-    }
-
     mRequestMetadataQueue = std::make_unique<RequestMetadataQueue>(
-            static_cast<size_t>(reqFMQSize),
-            false /* non blocking */);
+            CAMERA_REQUEST_METADATA_QUEUE_SIZE, false /* non blocking */);
     if (!mRequestMetadataQueue->isValid()) {
         ALOGE("%s: invalid request fmq", __FUNCTION__);
         return true;
     }
-
-    int32_t resFMQSize = property_get_int32("ro.camera.res.fmq.size", /*default*/-1);
-    if (resFMQSize < 0) {
-        resFMQSize = CAMERA_RESULT_METADATA_QUEUE_SIZE;
-    } else {
-        ALOGV("%s: result FMQ size overridden to %d", __FUNCTION__, resFMQSize);
-    }
     mResultMetadataQueue = std::make_shared<RequestMetadataQueue>(
-            static_cast<size_t>(resFMQSize),
-            false /* non blocking */);
+            CAMERA_RESULT_METADATA_QUEUE_SIZE, false /* non blocking */);
     if (!mResultMetadataQueue->isValid()) {
         ALOGE("%s: invalid result fmq", __FUNCTION__);
         return true;
@@ -128,10 +103,6 @@ bool CameraDeviceSession::initialize() {
     mResultBatcher.setResultMetadataQueue(mResultMetadataQueue);
 
     return false;
-}
-
-bool CameraDeviceSession::shouldFreeBufEarly() {
-    return property_get_bool("ro.vendor.camera.free_buf_early", 0) == 1;
 }
 
 CameraDeviceSession::~CameraDeviceSession() {
@@ -422,11 +393,7 @@ void CameraDeviceSession::ResultBatcher::sendBatchShutterCbsLocked(
         return;
     }
 
-    auto ret = mCallback->notify(batch->mShutterMsgs);
-    if (!ret.isOk()) {
-        ALOGE("%s: notify shutter transaction failed: %s",
-                __FUNCTION__, ret.description().c_str());
-    }
+    mCallback->notify(batch->mShutterMsgs);
     batch->mShutterDelivered = true;
     batch->mShutterMsgs.clear();
 }
@@ -596,11 +563,7 @@ void CameraDeviceSession::ResultBatcher::sendBatchMetadataLocked(
 }
 
 void CameraDeviceSession::ResultBatcher::notifySingleMsg(NotifyMsg& msg) {
-    auto ret = mCallback->notify({msg});
-    if (!ret.isOk()) {
-        ALOGE("%s: notify transaction failed: %s",
-                __FUNCTION__, ret.description().c_str());
-    }
+    mCallback->notify({msg});
     return;
 }
 
@@ -682,20 +645,13 @@ void CameraDeviceSession::ResultBatcher::invokeProcessCaptureResultCallback(
                     result.fmqResultSize = result.result.size();
                     result.result.resize(0);
                 } else {
-                    ALOGW("%s: couldn't utilize fmq, fall back to hwbinder, result size: %zu,"
-                    "shared message queue available size: %zu",
-                        __FUNCTION__, result.result.size(),
-                        mResultMetadataQueue->availableToWrite());
+                    ALOGW("%s: couldn't utilize fmq, fall back to hwbinder", __FUNCTION__);
                     result.fmqResultSize = 0;
                 }
             }
         }
     }
-    auto ret = mCallback->processCaptureResult(results);
-    if (!ret.isOk()) {
-        ALOGE("%s: processCaptureResult transaction failed: %s",
-                __FUNCTION__, ret.description().c_str());
-    }
+    mCallback->processCaptureResult(results);
     mProcessCaptureResultLock.unlock();
 }
 
@@ -809,11 +765,13 @@ Status CameraDeviceSession::constructDefaultRequestSettingsRaw(int type, CameraM
                 mOverridenRequest.update(
                         ANDROID_CONTROL_POST_RAW_SENSITIVITY_BOOST,
                         defaultBoost, 1);
+                const camera_metadata_t *metaBuffer =
+                        mOverridenRequest.getAndLock();
+                convertToHidl(metaBuffer, outMetadata);
+                mOverridenRequest.unlock(metaBuffer);
+            } else {
+                convertToHidl(rawRequest, outMetadata);
             }
-            const camera_metadata_t *metaBuffer =
-                    mOverridenRequest.getAndLock();
-            convertToHidl(metaBuffer, outMetadata);
-            mOverridenRequest.unlock(metaBuffer);
         }
     }
     return status;
@@ -892,24 +850,6 @@ bool CameraDeviceSession::preProcessConfigurationLocked(
         (*streams)[i] = &mStreamMap[id];
     }
 
-    if (mFreeBufEarly) {
-        // Remove buffers of deleted streams
-        for(auto it = mStreamMap.begin(); it != mStreamMap.end(); it++) {
-            int id = it->first;
-            bool found = false;
-            for (const auto& stream : requestedConfiguration.streams) {
-                if (id == stream.id) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                // Unmap all buffers of deleted stream
-                cleanupBuffersLocked(id);
-            }
-        }
-    }
-
     return true;
 }
 
@@ -931,9 +871,7 @@ void CameraDeviceSession::postProcessConfigurationLocked(
             // Unmap all buffers of deleted stream
             // in case the configuration call succeeds and HAL
             // is able to release the corresponding resources too.
-            if (!mFreeBufEarly) {
-                cleanupBuffersLocked(id);
-            }
+            cleanupBuffersLocked(id);
             it = mStreamMap.erase(it);
         } else {
             ++it;
@@ -950,27 +888,6 @@ void CameraDeviceSession::postProcessConfigurationLocked(
         }
     }
     mResultBatcher.setBatchedStreams(mVideoStreamIds);
-}
-
-
-void CameraDeviceSession::postProcessConfigurationFailureLocked(
-        const StreamConfiguration& requestedConfiguration) {
-    if (mFreeBufEarly) {
-        // Re-build the buf cache entry for deleted streams
-        for(auto it = mStreamMap.begin(); it != mStreamMap.end(); it++) {
-            int id = it->first;
-            bool found = false;
-            for (const auto& stream : requestedConfiguration.streams) {
-                if (id == stream.id) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                mCirculatingBuffers.emplace(id, CirculatingBuffers{});
-            }
-        }
-    }
 }
 
 Return<void> CameraDeviceSession::configureStreams(
@@ -1025,8 +942,6 @@ Return<void> CameraDeviceSession::configureStreams(
     // the corresponding resources of the deleted streams.
     if (ret == OK) {
         postProcessConfigurationLocked(requestedConfiguration);
-    } else {
-        postProcessConfigurationFailureLocked(requestedConfiguration);
     }
 
     if (ret == -EINVAL) {
@@ -1283,7 +1198,7 @@ Return<void> CameraDeviceSession::close()  {
     return Void();
 }
 
-status_t CameraDeviceSession::constructCaptureResult(CaptureResult& result,
+void CameraDeviceSession::constructCaptureResult(CaptureResult& result,
                                                  const camera3_capture_result *hal_result) {
     uint32_t frameNumber = hal_result->frame_number;
     bool hasInputBuf = (hal_result->input_buffer != nullptr);
@@ -1298,7 +1213,7 @@ status_t CameraDeviceSession::constructCaptureResult(CaptureResult& result,
             if (mInflightBuffers.count(key) != 1) {
                 ALOGE("%s: input buffer for stream %d frame %d is not inflight!",
                         __FUNCTION__, streamId, frameNumber);
-                return -EINVAL;
+                return;
             }
         }
 
@@ -1309,7 +1224,7 @@ status_t CameraDeviceSession::constructCaptureResult(CaptureResult& result,
             if (mInflightBuffers.count(key) != 1) {
                 ALOGE("%s: output buffer for stream %d frame %d is not inflight!",
                         __FUNCTION__, streamId, frameNumber);
-                return -EINVAL;
+                return;
             }
         }
     }
@@ -1429,65 +1344,7 @@ status_t CameraDeviceSession::constructCaptureResult(CaptureResult& result,
             ALOGV("%s: inflight buffer queue is now empty!", __FUNCTION__);
         }
     }
-    return OK;
-}
 
-// Static helper method to copy/shrink capture result metadata sent by HAL
-void CameraDeviceSession::sShrinkCaptureResult(
-        camera3_capture_result* dst, const camera3_capture_result* src,
-        std::vector<::android::hardware::camera::common::V1_0::helper::CameraMetadata>* mds,
-        std::vector<const camera_metadata_t*>* physCamMdArray,
-        bool handlePhysCam) {
-    *dst = *src;
-    // Reserve maximum number of entries to avoid metadata re-allocation.
-    mds->reserve(1 + (handlePhysCam ? src->num_physcam_metadata : 0));
-    if (sShouldShrink(src->result)) {
-        mds->emplace_back(sCreateCompactCopy(src->result));
-        dst->result = mds->back().getAndLock();
-    }
-
-    if (handlePhysCam) {
-        // First determine if we need to create new camera_metadata_t* array
-        bool needShrink = false;
-        for (uint32_t i = 0; i < src->num_physcam_metadata; i++) {
-            if (sShouldShrink(src->physcam_metadata[i])) {
-                needShrink = true;
-            }
-        }
-
-        if (!needShrink) return;
-
-        physCamMdArray->reserve(src->num_physcam_metadata);
-        dst->physcam_metadata = physCamMdArray->data();
-        for (uint32_t i = 0; i < src->num_physcam_metadata; i++) {
-            if (sShouldShrink(src->physcam_metadata[i])) {
-                mds->emplace_back(sCreateCompactCopy(src->physcam_metadata[i]));
-                dst->physcam_metadata[i] = mds->back().getAndLock();
-            } else {
-                dst->physcam_metadata[i] = src->physcam_metadata[i];
-            }
-        }
-    }
-}
-
-bool CameraDeviceSession::sShouldShrink(const camera_metadata_t* md) {
-    size_t compactSize = get_camera_metadata_compact_size(md);
-    size_t totalSize = get_camera_metadata_size(md);
-    if (totalSize >= compactSize + METADATA_SHRINK_ABS_THRESHOLD &&
-            totalSize >= compactSize * METADATA_SHRINK_REL_THRESHOLD) {
-        ALOGV("Camera metadata should be shrunk from %zu to %zu", totalSize, compactSize);
-        return true;
-    }
-    return false;
-}
-
-camera_metadata_t* CameraDeviceSession::sCreateCompactCopy(const camera_metadata_t* src) {
-    size_t compactSize = get_camera_metadata_compact_size(src);
-    void* buffer = calloc(1, compactSize);
-    if (buffer == nullptr) {
-        ALOGE("%s: Allocating %zu bytes failed", __FUNCTION__, compactSize);
-    }
-    return copy_camera_metadata(buffer, compactSize, src);
 }
 
 /**
@@ -1499,17 +1356,10 @@ void CameraDeviceSession::sProcessCaptureResult(
     CameraDeviceSession *d =
             const_cast<CameraDeviceSession*>(static_cast<const CameraDeviceSession*>(cb));
 
-    CaptureResult result = {};
-    camera3_capture_result shadowResult;
-    bool handlePhysCam = (d->mDeviceVersion >= CAMERA_DEVICE_API_VERSION_3_5);
-    std::vector<::android::hardware::camera::common::V1_0::helper::CameraMetadata> compactMds;
-    std::vector<const camera_metadata_t*> physCamMdArray;
-    sShrinkCaptureResult(&shadowResult, hal_result, &compactMds, &physCamMdArray, handlePhysCam);
+    CaptureResult result;
+    d->constructCaptureResult(result, hal_result);
 
-    status_t ret = d->constructCaptureResult(result, &shadowResult);
-    if (ret == OK) {
-        d->mResultBatcher.processCaptureResult(result);
-    }
+    d->mResultBatcher.processCaptureResult(result);
 }
 
 void CameraDeviceSession::sNotify(
