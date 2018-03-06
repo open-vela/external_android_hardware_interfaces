@@ -19,18 +19,15 @@
 #include <VtsHalHidlTargetTestBase.h>
 #include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/logging.h>
-#include <android-base/properties.h>
 #include <android/hardware/biometrics/fingerprint/2.1/IBiometricsFingerprint.h>
 #include <android/hardware/biometrics/fingerprint/2.1/IBiometricsFingerprintClientCallback.h>
 #include <hidl/HidlSupport.h>
 #include <hidl/HidlTransportSupport.h>
-#include <utils/Condition.h>
 
 #include <cinttypes>
 #include <future>
 #include <utility>
 
-using android::base::GetUintProperty;
 using android::Condition;
 using android::hardware::biometrics::fingerprint::V2_1::IBiometricsFingerprint;
 using android::hardware::biometrics::fingerprint::V2_1::IBiometricsFingerprintClientCallback;
@@ -47,7 +44,7 @@ namespace {
 static const uint32_t kTimeout = 3;
 static const std::chrono::seconds kTimeoutInSeconds = std::chrono::seconds(kTimeout);
 static const uint32_t kGroupId = 99;
-static std::string kTmpDir = "";
+static const std::string kTmpDir = "/data/system/users/0/fpdata/";
 static const uint32_t kIterations = 1000;
 
 // Wait for a callback to occur (signaled by the given future) up to the
@@ -202,25 +199,9 @@ class FingerprintHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         FingerprintHidlEnvironment::Instance()->getServiceName<IBiometricsFingerprint>());
     ASSERT_FALSE(mService == nullptr);
 
-    /*
-     * Devices shipped from now on will instead store
-     * fingerprint data under /data/vendor_de/<user-id>/fpdata.
-     * Support for /data/vendor_de and /data/vendor_ce has been added to vold.
-     */
-
-    uint64_t api_level = GetUintProperty<uint64_t>("ro.product.first_api_level", 0);
-    if (api_level == 0) {
-      api_level = GetUintProperty<uint64_t>("ro.build.version.sdk", 0);
-    }
-    ASSERT_TRUE(api_level != 0);
-
-    // 27 is the API number for O-MR1
-    if (api_level <= 27) {
-      kTmpDir = "/data/system/users/0/fpdata/";
-    } else {
-      kTmpDir = "/data/vendor_de/0/fpdata/";
-    }
-
+    // Create an active group
+    // FP service can only write to /data/system/users/*/fpdata/ due to
+    // SELinux Policy and Linux Dir Permissions
     Return<RequestStatus> res = mService->setActiveGroup(kGroupId, kTmpDir);
     ASSERT_EQ(RequestStatus::SYS_OK, static_cast<RequestStatus>(res));
   }

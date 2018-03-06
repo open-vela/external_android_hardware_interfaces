@@ -57,10 +57,10 @@ class Composer {
     std::unique_ptr<ComposerClient> createClient();
 
    protected:
-    explicit Composer(const sp<IComposer>& composer);
+    sp<IComposer> mComposer;
 
    private:
-    const sp<IComposer> mComposer;
+    void init();
 
     std::unordered_set<IComposer::Capability> mCapabilities;
 };
@@ -68,7 +68,7 @@ class Composer {
 // A wrapper to IComposerClient.
 class ComposerClient {
    public:
-    explicit ComposerClient(const sp<IComposerClient>& client);
+    ComposerClient(const sp<IComposerClient>& client);
     ~ComposerClient();
 
     sp<IComposerClient> getRaw() const;
@@ -104,7 +104,9 @@ class ComposerClient {
 
     void execute(TestCommandReader* reader, CommandWriterBase* writer);
 
-   protected:
+   private:
+    sp<IComposerClient> mClient;
+
     // Keep track of all virtual displays and layers.  When a test fails with
     // ASSERT_*, the destructor will clean up the resources for the test.
     struct DisplayResource {
@@ -114,9 +116,6 @@ class ComposerClient {
         std::unordered_set<Layer> layers;
     };
     std::unordered_map<Display, DisplayResource> mDisplayResources;
-
-   private:
-    const sp<IComposerClient> mClient;
 };
 
 }  // namespace vts

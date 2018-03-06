@@ -16,9 +16,6 @@
 
 #include "KeymasterHidlTest.h"
 
-#include <vector>
-
-#include <android-base/logging.h>
 #include <android/hidl/manager/1.0/IServiceManager.h>
 
 #include <keymasterV4_0/key_param_output.h>
@@ -386,18 +383,12 @@ string KeymasterHidlTest::ProcessMessage(const HidlBuf& key_blob, KeyPurpose ope
     AuthorizationSet begin_out_params;
     EXPECT_EQ(ErrorCode::OK, Begin(operation, key_blob, in_params, &begin_out_params, &op_handle_));
 
-    string output;
-    size_t consumed = 0;
-    AuthorizationSet update_params;
-    AuthorizationSet update_out_params;
-    EXPECT_EQ(ErrorCode::OK,
-              Update(op_handle_, update_params, message, &update_out_params, &output, &consumed));
-
     string unused;
     AuthorizationSet finish_params;
     AuthorizationSet finish_out_params;
-    EXPECT_EQ(ErrorCode::OK, Finish(op_handle_, finish_params, message.substr(consumed), unused,
-                                    &finish_out_params, &output));
+    string output;
+    EXPECT_EQ(ErrorCode::OK,
+              Finish(op_handle_, finish_params, message, unused, &finish_out_params, &output));
     op_handle_ = kOpHandleSentinel;
 
     out_params->push_back(begin_out_params);
@@ -471,7 +462,6 @@ void KeymasterHidlTest::CheckTripleDesTestVector(KeyPurpose purpose, BlockMode b
     auto authset = AuthorizationSetBuilder()
                        .TripleDesEncryptionKey(key.size() * 7)
                        .BlockMode(block_mode)
-                       .Authorization(TAG_NO_AUTH_REQUIRED)
                        .Padding(padding_mode);
     if (iv.size()) authset.Authorization(TAG_CALLER_NONCE);
     ASSERT_EQ(ErrorCode::OK, ImportKey(authset, KeyFormat::RAW, key));
@@ -489,20 +479,12 @@ void KeymasterHidlTest::VerifyMessage(const HidlBuf& key_blob, const string& mes
     ASSERT_EQ(ErrorCode::OK,
               Begin(KeyPurpose::VERIFY, key_blob, params, &begin_out_params, &op_handle_));
 
-    string output;
-    AuthorizationSet update_params;
-    AuthorizationSet update_out_params;
-    size_t consumed;
-    ASSERT_EQ(ErrorCode::OK,
-              Update(op_handle_, update_params, message, &update_out_params, &output, &consumed));
-    EXPECT_TRUE(output.empty());
-    EXPECT_GT(consumed, 0U);
-
     string unused;
     AuthorizationSet finish_params;
     AuthorizationSet finish_out_params;
-    EXPECT_EQ(ErrorCode::OK, Finish(op_handle_, finish_params, message.substr(consumed), signature,
-                                    &finish_out_params, &output));
+    string output;
+    EXPECT_EQ(ErrorCode::OK,
+              Finish(op_handle_, finish_params, message, signature, &finish_out_params, &output));
     op_handle_ = kOpHandleSentinel;
     EXPECT_TRUE(output.empty());
 }
@@ -553,7 +535,7 @@ string KeymasterHidlTest::EncryptMessage(const string& message, BlockMode block_
     EXPECT_EQ(1U, out_params.size());
     auto ivVal = out_params.GetTagValue(TAG_NONCE);
     EXPECT_TRUE(ivVal.isOk());
-    if (ivVal.isOk()) *iv_out = ivVal.value();
+    *iv_out = ivVal.value();
     return ciphertext;
 }
 
@@ -601,113 +583,6 @@ std::pair<ErrorCode, HidlBuf> KeymasterHidlTest::UpgradeKey(const HidlBuf& key_b
                                retval = std::tie(error, upgraded_blob);
                            });
     return retval;
-}
-std::vector<uint32_t> KeymasterHidlTest::ValidKeySizes(Algorithm algorithm) {
-    switch (algorithm) {
-        case Algorithm::RSA:
-            switch (SecLevel()) {
-                case SecurityLevel::TRUSTED_ENVIRONMENT:
-                    return {2048, 3072, 4096};
-                case SecurityLevel::STRONGBOX:
-                    return {2048};
-                default:
-                    CHECK(false) << "Invalid security level " << uint32_t(SecLevel());
-                    break;
-            }
-            break;
-        case Algorithm::EC:
-            switch (SecLevel()) {
-                case SecurityLevel::TRUSTED_ENVIRONMENT:
-                    return {224, 256, 384, 521};
-                case SecurityLevel::STRONGBOX:
-                    return {256};
-                default:
-                    CHECK(false) << "Invalid security level " << uint32_t(SecLevel());
-                    break;
-            }
-            break;
-        case Algorithm::AES:
-            return {128, 256};
-        case Algorithm::TRIPLE_DES:
-            return {168};
-        case Algorithm::HMAC: {
-            std::vector<uint32_t> retval((512 - 64) / 8 + 1);
-            uint32_t size = 64 - 8;
-            std::generate(retval.begin(), retval.end(), [&]() { return (size += 8); });
-            return retval;
-        }
-        default:
-            CHECK(false) << "Invalid Algorithm: " << algorithm;
-            return {};
-    }
-    CHECK(false) << "Should be impossible to get here";
-    return {};
-}
-std::vector<uint32_t> KeymasterHidlTest::InvalidKeySizes(Algorithm algorithm) {
-    if (SecLevel() == SecurityLevel::TRUSTED_ENVIRONMENT) return {};
-    CHECK(SecLevel() == SecurityLevel::STRONGBOX);
-    switch (algorithm) {
-        case Algorithm::RSA:
-            return {3072, 4096};
-        case Algorithm::EC:
-            return {224, 384, 521};
-        case Algorithm::AES:
-            return {192};
-        default:
-            return {};
-    }
-}
-
-std::vector<EcCurve> KeymasterHidlTest::ValidCurves() {
-    if (securityLevel_ == SecurityLevel::STRONGBOX) {
-        return {EcCurve::P_256};
-    } else {
-        return {EcCurve::P_224, EcCurve::P_256, EcCurve::P_384, EcCurve::P_521};
-    }
-}
-
-std::vector<EcCurve> KeymasterHidlTest::InvalidCurves() {
-    if (SecLevel() == SecurityLevel::TRUSTED_ENVIRONMENT) return {};
-    CHECK(SecLevel() == SecurityLevel::STRONGBOX);
-    return {EcCurve::P_224, EcCurve::P_384, EcCurve::P_521};
-}
-
-std::vector<Digest> KeymasterHidlTest::ValidDigests(bool withNone, bool withMD5) {
-    switch (SecLevel()) {
-        case SecurityLevel::TRUSTED_ENVIRONMENT:
-            if (withNone) {
-                if (withMD5)
-                    return {Digest::NONE,      Digest::MD5,       Digest::SHA1,
-                            Digest::SHA_2_224, Digest::SHA_2_256, Digest::SHA_2_384,
-                            Digest::SHA_2_512};
-                else
-                    return {Digest::NONE,      Digest::SHA1,      Digest::SHA_2_224,
-                            Digest::SHA_2_256, Digest::SHA_2_384, Digest::SHA_2_512};
-            } else {
-                if (withMD5)
-                    return {Digest::MD5,       Digest::SHA1,      Digest::SHA_2_224,
-                            Digest::SHA_2_256, Digest::SHA_2_384, Digest::SHA_2_512};
-                else
-                    return {Digest::SHA1, Digest::SHA_2_224, Digest::SHA_2_256, Digest::SHA_2_384,
-                            Digest::SHA_2_512};
-            }
-            break;
-        case SecurityLevel::STRONGBOX:
-            if (withNone)
-                return {Digest::NONE, Digest::SHA_2_256};
-            else
-                return {Digest::SHA_2_256};
-            break;
-        default:
-            CHECK(false) << "Invalid security level " << uint32_t(SecLevel());
-            break;
-    }
-    CHECK(false) << "Should be impossible to get here";
-    return {};
-}
-
-std::vector<Digest> KeymasterHidlTest::InvalidDigests() {
-    return {};
 }
 
 }  // namespace test

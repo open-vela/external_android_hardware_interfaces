@@ -4,10 +4,6 @@
 #include <android/hardware/gnss/1.1/IGnss.h>
 #include <hidl/MQDescriptor.h>
 #include <hidl/Status.h>
-#include <atomic>
-#include <mutex>
-#include <thread>
-#include "GnssConfiguration.h"
 
 namespace android {
 namespace hardware {
@@ -23,18 +19,7 @@ using ::android::hardware::Return;
 using ::android::hardware::Void;
 using ::android::sp;
 
-using GnssConstellationType = V1_0::GnssConstellationType;
-using GnssLocation = V1_0::GnssLocation;
-using GnssSvInfo = V1_0::IGnssCallback::GnssSvInfo;
-using GnssSvStatus = V1_0::IGnssCallback::GnssSvStatus;
-
-/**
- * Unlike the gnss/1.0/default implementation, which is a shim layer to the legacy gps.h, this
- * default implementation serves as a mock implementation for emulators
- */
 struct Gnss : public IGnss {
-    Gnss();
-    ~Gnss();
     // Methods from ::android::hardware::gnss::V1_0::IGnss follow.
     Return<bool> setCallback(
         const sp<::android::hardware::gnss::V1_0::IGnssCallback>& callback) override;
@@ -83,20 +68,6 @@ struct Gnss : public IGnss {
         const ::android::hardware::gnss::V1_0::GnssLocation& location) override;
 
     // Methods from ::android::hidl::base::V1_0::IBase follow.
-   private:
-    Return<GnssLocation> getMockLocation() const;
-    Return<GnssSvStatus> getMockSvStatus() const;
-    Return<GnssSvInfo> getSvInfo(int16_t svid, GnssConstellationType type, float cN0DbHz,
-                                 float elevationDegress, float azimuthDegress) const;
-    Return<void> reportLocation(const GnssLocation&) const;
-    Return<void> reportSvStatus(const GnssSvStatus&) const;
-
-    static sp<IGnssCallback> sGnssCallback;
-    std::atomic<long> mMinIntervalMs;
-    sp<GnssConfiguration> mGnssConfiguration;
-    std::atomic<bool> mIsActive;
-    std::thread mThread;
-    mutable std::mutex mMutex;
 };
 
 }  // namespace implementation

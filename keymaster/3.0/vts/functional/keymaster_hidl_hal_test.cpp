@@ -20,7 +20,6 @@
 #include <iostream>
 
 #include <openssl/evp.h>
-#include <openssl/mem.h>
 #include <openssl/x509.h>
 
 #include <android/hardware/keymaster/3.0/IKeymasterDevice.h>
@@ -295,7 +294,7 @@ X509* parse_cert_blob(const hidl_vec<uint8_t>& blob) {
 }
 
 bool verify_chain(const hidl_vec<hidl_vec<uint8_t>>& chain) {
-    for (size_t i = 0; i < chain.size(); ++i) {
+    for (size_t i = 0; i < chain.size() - 1; ++i) {
         X509_Ptr key_cert(parse_cert_blob(chain[i]));
         X509_Ptr signing_cert;
         if (i < chain.size() - 1) {
@@ -323,11 +322,11 @@ bool verify_chain(const hidl_vec<hidl_vec<uint8_t>>& chain) {
             char* cert_sub = X509_NAME_oneline(X509_get_subject_name(key_cert.get()), nullptr, 0);
             EXPECT_STREQ("/CN=Android Keystore Key", cert_sub)
                 << "Cert " << i << " has wrong subject.  (Possibly b/38394614)";
-            OPENSSL_free(cert_sub);
+            free(cert_sub);
         }
 
-        OPENSSL_free(cert_issuer);
-        OPENSSL_free(signer_subj);
+        free(cert_issuer);
+        free(signer_subj);
 
         if (dump_Attestations) std::cout << bin2hex(chain[i]) << std::endl;
     }
@@ -1083,7 +1082,7 @@ class NewKeyGenerationTest : public KeymasterHidlTest {
         AuthorizationSet auths(keyCharacteristics.teeEnforced);
         auths.push_back(AuthorizationSet(keyCharacteristics.softwareEnforced));
 
-        if (IsSecure() && !SupportsSymmetric() && asymmetric) {
+        if (!SupportsSymmetric() && asymmetric) {
             EXPECT_TRUE(auths.Contains(TAG_ORIGIN, KeyOrigin::UNKNOWN));
         } else {
             EXPECT_TRUE(auths.Contains(TAG_ORIGIN, KeyOrigin::GENERATED));

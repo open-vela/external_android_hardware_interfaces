@@ -17,15 +17,12 @@ package android.hardware.broadcastradio@2.0;
 
 interface ITunerCallback {
     /**
-     * Method called by the HAL when a tuning operation fails asynchronously
-     * following ITunerSession::tune(), ITunerSession::scan() or
-     * ITunerSession::step().
+     * Method called by the HAL when a tuning operation fails
+     * following a step(), scan() or tune() command.
      *
-     * This callback is only called when the step(), scan() or tune() command
-     * returned OK at first.
-     *
-     * @param result TIMEOUT in case of time out.
-     * @param selector A ProgramSelector structure passed from tune() call;
+     * @param result OK if tune succeeded;
+     *               TIMEOUT in case of time out.
+     * @param selector A ProgramSelector structure passed from tune(),
      *                 empty for step() and scan().
      */
     oneway onTuneFailed(Result result, ProgramSelector selector);

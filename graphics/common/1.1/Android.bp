@@ -15,10 +15,8 @@ hidl_interface {
     ],
     types: [
         "BufferUsage",
-        "ColorMode",
         "Dataspace",
         "PixelFormat",
-        "RenderIntent",
     ],
     gen_java: true,
     gen_java_constants: true,

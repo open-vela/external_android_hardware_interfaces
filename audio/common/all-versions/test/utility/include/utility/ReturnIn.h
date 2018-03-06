@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ class ReturnIn {
     template <class Head, class... Tail>
     void set(Head&& head, Tail&&... tail) {
         std::get<sizeof...(ResultStore) - sizeof...(Tail) - 1>(results) = std::forward<Head>(head);
-        set(std::forward<Tail>(tail)...);
+        set(tail...);
     }
     // Trivial case
     void set() {}
@@ -56,7 +56,7 @@ class ReturnIn {
 }  // namespace detail
 
 // Generate the HIDL synchronous callback with a copy policy
-// Input: the variables (lvalue references) where to copy the return values
+// Input: the variables (lvalue reference) where to save the return values
 // Output: the callback to provide to a HIDL call with a synchronous callback
 // The output parameters *will be copied* do not use this function if you have
 // a zero copy policy

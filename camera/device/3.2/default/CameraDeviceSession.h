@@ -120,8 +120,6 @@ protected:
             hidl_vec<camera3_stream_t*> *streams /*out*/);
     void postProcessConfigurationLocked(const StreamConfiguration& requestedConfiguration);
 
-    void postProcessConfigurationFailureLocked(const StreamConfiguration& requestedConfiguration);
-
 protected:
 
     // protecting mClosed/mDisconnected/mInitFail
@@ -143,8 +141,7 @@ protected:
     };
 
     camera3_device_t* mDevice;
-    const uint32_t mDeviceVersion;
-    const bool mFreeBufEarly;
+    uint32_t mDeviceVersion;
     bool mIsAELockAvailable;
     bool mDerivePostRawSensKey;
     uint32_t mNumPartialResults;
@@ -296,8 +293,6 @@ protected:
 
     bool initialize();
 
-    static bool shouldFreeBufEarly();
-
     Status initStatus() const;
 
     // Validate and import request's input buffer and acquire fence
@@ -332,19 +327,8 @@ protected:
     static callbacks_process_capture_result_t sProcessCaptureResult;
     static callbacks_notify_t sNotify;
 
-    status_t constructCaptureResult(CaptureResult& result,
+    void constructCaptureResult(CaptureResult& result,
                                 const camera3_capture_result *hal_result);
-
-    // Static helper method to copy/shrink capture result metadata sent by HAL
-    // Temporarily allocated metadata copy will be hold in mds
-    static void sShrinkCaptureResult(
-            camera3_capture_result* dst, const camera3_capture_result* src,
-            std::vector<::android::hardware::camera::common::V1_0::helper::CameraMetadata>* mds,
-            std::vector<const camera_metadata_t*>* physCamMdArray,
-            bool handlePhysCam);
-    static bool sShouldShrink(const camera_metadata_t* md);
-    static camera_metadata_t* sCreateCompactCopy(const camera_metadata_t* src);
-
 private:
 
     struct TrampolineSessionInterface_3_2 : public ICameraDeviceSession {

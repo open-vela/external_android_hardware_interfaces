@@ -22,7 +22,7 @@ using namespace ::android::hardware::radio::V1_0;
  * Test IRadio.sendEnvelope() for the response returned.
  */
 TEST_F(RadioHidlTest, sendEnvelope) {
-    serial = GetRandomSerialNumber();
+    int serial = GetRandomSerialNumber();
 
     // Test with sending empty string
     std::string content = "";
@@ -45,7 +45,7 @@ TEST_F(RadioHidlTest, sendEnvelope) {
  * Test IRadio.sendTerminalResponseToSim() for the response returned.
  */
 TEST_F(RadioHidlTest, sendTerminalResponseToSim) {
-    serial = GetRandomSerialNumber();
+    int serial = GetRandomSerialNumber();
 
     // Test with sending empty string
     std::string commandResponse = "";
@@ -68,7 +68,7 @@ TEST_F(RadioHidlTest, sendTerminalResponseToSim) {
  * Test IRadio.handleStkCallSetupRequestFromSim() for the response returned.
  */
 TEST_F(RadioHidlTest, handleStkCallSetupRequestFromSim) {
-    serial = GetRandomSerialNumber();
+    int serial = GetRandomSerialNumber();
     bool accept = false;
 
     radio->handleStkCallSetupRequestFromSim(serial, accept);
@@ -89,7 +89,7 @@ TEST_F(RadioHidlTest, handleStkCallSetupRequestFromSim) {
  * Test IRadio.reportStkServiceIsRunning() for the response returned.
  */
 TEST_F(RadioHidlTest, reportStkServiceIsRunning) {
-    serial = GetRandomSerialNumber();
+    int serial = GetRandomSerialNumber();
 
     radio->reportStkServiceIsRunning(serial);
 
@@ -108,7 +108,7 @@ TEST_F(RadioHidlTest, reportStkServiceIsRunning) {
  * string.
  */
 TEST_F(RadioHidlTest, sendEnvelopeWithStatus) {
-    serial = GetRandomSerialNumber();
+    int serial = GetRandomSerialNumber();
 
     // Test with sending empty string
     std::string contents = "";

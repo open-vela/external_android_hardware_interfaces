@@ -18,7 +18,7 @@
 
 #include <VtsHalHidlTargetTestBase.h>
 #include <android-base/logging.h>
-#include <android/hardware/graphics/mapper/2.0/IMapper.h>
+#include <android/hardware/graphics/mapper/2.1/IMapper.h>
 #include <composer-vts/2.1/GraphicsComposerCallback.h>
 #include <composer-vts/2.1/TestCommandReader.h>
 #include <composer-vts/2.2/ComposerVts.h>
@@ -32,15 +32,16 @@ namespace V2_2 {
 namespace vts {
 namespace {
 
-using common::V1_0::BufferUsage;
-using common::V1_0::ColorTransform;
-using common::V1_0::Transform;
-using common::V1_1::ColorMode;
-using common::V1_1::Dataspace;
-using common::V1_1::PixelFormat;
-using common::V1_1::RenderIntent;
-using mapper::V2_0::IMapper;
-using mapper::V2_0::vts::Gralloc;
+using android::hardware::graphics::common::V1_0::BufferUsage;
+using android::hardware::graphics::common::V1_0::ColorMode;
+using android::hardware::graphics::common::V1_0::ColorTransform;
+using android::hardware::graphics::common::V1_0::Dataspace;
+using android::hardware::graphics::common::V1_0::PixelFormat;
+using android::hardware::graphics::common::V1_0::Transform;
+using android::hardware::graphics::composer::V2_2::IComposerClient;
+using android::hardware::graphics::mapper::V2_0::IMapper;
+using android::hardware::graphics::mapper::V2_0::vts::Gralloc;
+using GrallocError = android::hardware::graphics::mapper::V2_0::Error;
 
 // Test environment for graphics.composer
 class GraphicsComposerHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
@@ -63,9 +64,9 @@ class GraphicsComposerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    protected:
     void SetUp() override {
         ASSERT_NO_FATAL_FAILURE(
-            mComposer = std::make_unique<Composer>(
+            mComposer = std::make_unique<Composer_v2_2>(
                 GraphicsComposerHidlEnvironment::Instance()->getServiceName<IComposer>()));
-        ASSERT_NO_FATAL_FAILURE(mComposerClient = mComposer->createClient());
+        ASSERT_NO_FATAL_FAILURE(mComposerClient = mComposer->createClient_v2_2());
 
         mComposerCallback = new V2_1::vts::GraphicsComposerCallback;
         mComposerClient->registerCallback(mComposerCallback);
@@ -73,29 +74,9 @@ class GraphicsComposerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         // assume the first display is primary and is never removed
         mPrimaryDisplay = waitForFirstDisplay();
 
-        Config config = mComposerClient->getActiveConfig(mPrimaryDisplay);
-        mDisplayWidth = mComposerClient->getDisplayAttribute(mPrimaryDisplay, config,
-                                                             IComposerClient::Attribute::WIDTH);
-        mDisplayHeight = mComposerClient->getDisplayAttribute(mPrimaryDisplay, config,
-                                                              IComposerClient::Attribute::HEIGHT);
-
         // explicitly disable vsync
         mComposerClient->setVsyncEnabled(mPrimaryDisplay, false);
         mComposerCallback->setVsyncAllowed(false);
-
-        mComposerClient->getRaw()->getReadbackBufferAttributes(
-            mPrimaryDisplay,
-            [&](const auto& tmpError, const auto& tmpPixelFormat, const auto& tmpDataspace) {
-                mHasReadbackBuffer = tmpError == Error::NONE;
-                if (mHasReadbackBuffer) {
-                    mReadbackPixelFormat = tmpPixelFormat;
-                    mReadbackDataspace = tmpDataspace;
-                    ASSERT_LT(static_cast<PixelFormat>(0), mReadbackPixelFormat);
-                    ASSERT_NE(Dataspace::UNKNOWN, mReadbackDataspace);
-                }
-            });
-
-        mInvalidDisplayId = GetInvalidDisplayId();
     }
 
     void TearDown() override {
@@ -106,38 +87,14 @@ class GraphicsComposerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         }
     }
 
-    // returns an invalid display id (one that has not been registered to a
-    // display.  Currently assuming that a device will never have close to
-    // std::numeric_limit<uint64_t>::max() displays registered while running tests
-    Display GetInvalidDisplayId() {
-        std::vector<Display> validDisplays = mComposerCallback->getDisplays();
-        uint64_t id = std::numeric_limits<uint64_t>::max();
-        while (id > 0) {
-            if (std::find(validDisplays.begin(), validDisplays.end(), id) == validDisplays.end()) {
-                return id;
-            }
-            id--;
-        }
-
-        return 0;
-    }
-
     // use the slot count usually set by SF
     static constexpr uint32_t kBufferSlotCount = 64;
 
-    std::unique_ptr<Composer> mComposer;
-    std::unique_ptr<ComposerClient> mComposerClient;
+    std::unique_ptr<Composer_v2_2> mComposer;
+    std::unique_ptr<ComposerClient_v2_2> mComposerClient;
     sp<V2_1::vts::GraphicsComposerCallback> mComposerCallback;
     // the first display and is assumed never to be removed
     Display mPrimaryDisplay;
-    int32_t mDisplayWidth;
-    int32_t mDisplayHeight;
-
-    bool mHasReadbackBuffer;
-
-    uint64_t mInvalidDisplayId;
-    PixelFormat mReadbackPixelFormat;
-    Dataspace mReadbackDataspace;
 
    private:
     Display waitForFirstDisplay() {
@@ -161,30 +118,27 @@ class GraphicsComposerHidlCommandTest : public GraphicsComposerHidlTest {
 
         ASSERT_NO_FATAL_FAILURE(mGralloc = std::make_unique<Gralloc>());
 
-        mWriter = std::make_unique<CommandWriterBase>(1024);
+        mWriter = std::make_unique<V2_2::CommandWriterBase>(1024);
         mReader = std::make_unique<V2_1::vts::TestCommandReader>();
     }
 
-    void TearDown() override {
-        ASSERT_EQ(0, mReader->mErrors.size());
-        ASSERT_NO_FATAL_FAILURE(GraphicsComposerHidlTest::TearDown());
-    }
+    void TearDown() override { ASSERT_NO_FATAL_FAILURE(GraphicsComposerHidlTest::TearDown()); }
 
     const native_handle_t* allocate() {
         IMapper::BufferDescriptorInfo info{};
         info.width = 64;
         info.height = 64;
         info.layerCount = 1;
-        info.format = static_cast<common::V1_0::PixelFormat>(PixelFormat::RGBA_8888);
+        info.format = PixelFormat::RGBA_8888;
         info.usage =
             static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN);
 
         return mGralloc->allocate(info);
     }
 
-    void execute() { mComposerClient->execute(mReader.get(), mWriter.get()); }
+    void execute() { mComposerClient->execute_v2_2(mReader.get(), mWriter.get()); }
 
-    std::unique_ptr<CommandWriterBase> mWriter;
+    std::unique_ptr<V2_2::CommandWriterBase> mWriter;
     std::unique_ptr<V2_1::vts::TestCommandReader> mReader;
 
    private:
@@ -192,9 +146,9 @@ class GraphicsComposerHidlCommandTest : public GraphicsComposerHidlTest {
 };
 
 /**
- * Test IComposerClient::Command::SET_LAYER_PER_FRAME_METADATA.
+ * Test IComposerClient::Command::SET_PER_FRAME_METADATA.
  */
-TEST_F(GraphicsComposerHidlCommandTest, SET_LAYER_PER_FRAME_METADATA) {
+TEST_F(GraphicsComposerHidlCommandTest, SET_PER_FRAME_METADATA) {
     Layer layer;
     ASSERT_NO_FATAL_FAILURE(layer =
                                 mComposerClient->createLayer(mPrimaryDisplay, kBufferSlotCount));
@@ -228,18 +182,8 @@ TEST_F(GraphicsComposerHidlCommandTest, SET_LAYER_PER_FRAME_METADATA) {
     hidlMetadata.push_back({IComposerClient::PerFrameMetadataKey::MAX_CONTENT_LIGHT_LEVEL, 78.0});
     hidlMetadata.push_back(
         {IComposerClient::PerFrameMetadataKey::MAX_FRAME_AVERAGE_LIGHT_LEVEL, 62.0});
-    mWriter->setLayerPerFrameMetadata(hidlMetadata);
+    mWriter->setPerFrameMetadata(hidlMetadata);
     execute();
-
-    if (mReader->mErrors.size() == 1 &&
-        static_cast<Error>(mReader->mErrors[0].second) == Error::UNSUPPORTED) {
-        mReader->mErrors.clear();
-        GTEST_SUCCEED() << "SetLayerPerFrameMetadata is not supported";
-        ASSERT_NO_FATAL_FAILURE(mComposerClient->destroyLayer(mPrimaryDisplay, layer));
-        return;
-    }
-
-    ASSERT_NO_FATAL_FAILURE(mComposerClient->destroyLayer(mPrimaryDisplay, layer));
 }
 
 /**
@@ -248,85 +192,10 @@ TEST_F(GraphicsComposerHidlCommandTest, SET_LAYER_PER_FRAME_METADATA) {
 TEST_F(GraphicsComposerHidlTest, GetPerFrameMetadataKeys) {
     mComposerClient->getPerFrameMetadataKeys(mPrimaryDisplay);
 }
-
-/**
- * Test IComposerClient::createVirtualDisplay_2_2 and
- * IComposerClient::destroyVirtualDisplay.
- *
- * Test that virtual displays can be created and has the correct display type.
- */
-TEST_F(GraphicsComposerHidlTest, CreateVirtualDisplay_2_2) {
-    if (mComposerClient->getMaxVirtualDisplayCount() == 0) {
-        GTEST_SUCCEED() << "no virtual display support";
-        return;
-    }
-
-    Display display;
-    PixelFormat format;
-    ASSERT_NO_FATAL_FAILURE(
-        display = mComposerClient->createVirtualDisplay_2_2(
-            64, 64, PixelFormat::IMPLEMENTATION_DEFINED, kBufferSlotCount, &format));
-
-    // test display type
-    IComposerClient::DisplayType type = mComposerClient->getDisplayType(display);
-    EXPECT_EQ(IComposerClient::DisplayType::VIRTUAL, type);
-
-    mComposerClient->destroyVirtualDisplay(display);
-}
-
-/**
- * Test IComposerClient::getClientTargetSupport_2_2.
- *
- * Test that IComposerClient::getClientTargetSupport returns true for the
- * required client targets.
- */
-TEST_F(GraphicsComposerHidlTest, GetClientTargetSupport_2_2) {
-    std::vector<Config> configs = mComposerClient->getDisplayConfigs(mPrimaryDisplay);
-    for (auto config : configs) {
-        int32_t width = mComposerClient->getDisplayAttribute(mPrimaryDisplay, config,
-                                                             IComposerClient::Attribute::WIDTH);
-        int32_t height = mComposerClient->getDisplayAttribute(mPrimaryDisplay, config,
-                                                              IComposerClient::Attribute::HEIGHT);
-        ASSERT_LT(0, width);
-        ASSERT_LT(0, height);
-
-        mComposerClient->setActiveConfig(mPrimaryDisplay, config);
-
-        ASSERT_TRUE(mComposerClient->getClientTargetSupport_2_2(
-            mPrimaryDisplay, width, height, PixelFormat::RGBA_8888, Dataspace::UNKNOWN));
-    }
-}
-
-/**
- * Test IComposerClient::getClientTargetSupport_2_2
- *
- * Test that IComposerClient::getClientTargetSupport_2_2 returns
- * Error::BAD_DISPLAY when passed in an invalid display handle
- */
-
-TEST_F(GraphicsComposerHidlTest, GetClientTargetSupport_2_2BadDisplay) {
-    std::vector<Config> configs = mComposerClient->getDisplayConfigs(mPrimaryDisplay);
-    for (auto config : configs) {
-        int32_t width = mComposerClient->getDisplayAttribute(mPrimaryDisplay, config,
-                                                             IComposerClient::Attribute::WIDTH);
-        int32_t height = mComposerClient->getDisplayAttribute(mPrimaryDisplay, config,
-                                                              IComposerClient::Attribute::HEIGHT);
-        ASSERT_LT(0, width);
-        ASSERT_LT(0, height);
-
-        mComposerClient->setActiveConfig(mPrimaryDisplay, config);
-
-        Error error = mComposerClient->getRaw()->getClientTargetSupport_2_2(
-            mInvalidDisplayId, width, height, PixelFormat::RGBA_8888, Dataspace::UNKNOWN);
-
-        EXPECT_EQ(Error::BAD_DISPLAY, error);
-    }
-}
-
 /**
  * Test IComposerClient::setPowerMode_2_2.
  */
-TEST_F(GraphicsComposerHidlTest, SetPowerMode_2_2) {
+TEST_F(GraphicsComposerHidlTest, setPowerMode_2_2) {
     std::vector<IComposerClient::PowerMode> modes;
     modes.push_back(IComposerClient::PowerMode::OFF);
     modes.push_back(IComposerClient::PowerMode::ON_SUSPEND);
@@ -337,180 +206,19 @@ TEST_F(GraphicsComposerHidlTest, SetPowerMode_2_2) {
     }
 }
 
-/**
- * Test IComposerClient::setPowerMode_2_2
- *
- * Test that IComposerClient::setPowerMode_2_2 succeeds for different varations
- * of PowerMode
- */
-TEST_F(GraphicsComposerHidlTest, SetPowerMode_2_2Variations) {
-    std::vector<IComposerClient::PowerMode> modes;
-
-    modes.push_back(IComposerClient::PowerMode::OFF);
-    modes.push_back(IComposerClient::PowerMode::OFF);
-
-    for (auto mode : modes) {
-        ASSERT_NO_FATAL_FAILURE(mComposerClient->setPowerMode_2_2(mPrimaryDisplay, mode));
-    }
-
-    modes.clear();
-
-    modes.push_back(IComposerClient::PowerMode::ON);
-    modes.push_back(IComposerClient::PowerMode::ON);
-
-    for (auto mode : modes) {
-        ASSERT_NO_FATAL_FAILURE(mComposerClient->setPowerMode_2_2(mPrimaryDisplay, mode));
-    }
-
-    modes.clear();
-
-    modes.push_back(IComposerClient::PowerMode::ON_SUSPEND);
-    modes.push_back(IComposerClient::PowerMode::ON_SUSPEND);
-
-    for (auto mode : modes) {
-        ASSERT_NO_FATAL_FAILURE(mComposerClient->setPowerMode_2_2(mPrimaryDisplay, mode));
-    }
-
-    if (mComposerClient->getDozeSupport(mPrimaryDisplay)) {
-        modes.clear();
-
-        modes.push_back(IComposerClient::PowerMode::DOZE);
-        modes.push_back(IComposerClient::PowerMode::DOZE);
-
-        for (auto mode : modes) {
-            ASSERT_NO_FATAL_FAILURE(mComposerClient->setPowerMode_2_2(mPrimaryDisplay, mode));
-        }
-
-        modes.clear();
-
-        modes.push_back(IComposerClient::PowerMode::DOZE_SUSPEND);
-        modes.push_back(IComposerClient::PowerMode::DOZE_SUSPEND);
-
-        for (auto mode : modes) {
-            ASSERT_NO_FATAL_FAILURE(mComposerClient->setPowerMode_2_2(mPrimaryDisplay, mode));
-        }
-    }
+TEST_F(GraphicsComposerHidlTest, setReadbackBuffer) {
+    mComposerClient->setReadbackBuffer(mPrimaryDisplay, nullptr, -1);
 }
 
-/**
- * Test IComposerClient::setPowerMode_2_2
- *
- * Tests that IComposerClient::setPowerMode_2_2 returns BAD_DISPLAY when passed an
- * invalid display handle
- */
-TEST_F(GraphicsComposerHidlTest, SetPowerMode_2_2BadDisplay) {
-    Error error = mComposerClient->getRaw()->setPowerMode_2_2(mInvalidDisplayId,
-                                                              IComposerClient::PowerMode::ON);
-    ASSERT_EQ(Error::BAD_DISPLAY, error);
+TEST_F(GraphicsComposerHidlTest, getReadbackBufferFence) {
+    int32_t fence;
+    mComposerClient->getReadbackBufferFence(mPrimaryDisplay, &fence);
 }
 
-/**
- * Test IComposerClient::setPowerMode_2_2
- *
- * Test that IComposerClient::setPowerMode_2_2 returns BAD_PARAMETER when passed
- * an invalid PowerMode
- */
-TEST_F(GraphicsComposerHidlTest, SetPowerMode_2_2BadParameter) {
-    Error error = mComposerClient->getRaw()->setPowerMode_2_2(
-        mPrimaryDisplay, static_cast<IComposerClient::PowerMode>(-1));
-    ASSERT_EQ(Error::BAD_PARAMETER, error);
-}
-
-/**
- * Test IComposerClient::setPowerMode_2_2
- *
- * Test that IComposerClient::setPowerMode_2_2 returns UNSUPPORTED when passed
- * DOZE or DOZE_SUPPORT on a device that does not support these modes
- */
-TEST_F(GraphicsComposerHidlTest, SetPowerMode_2_2Unsupported) {
-    if (!mComposerClient->getDozeSupport(mPrimaryDisplay)) {
-        Error error = mComposerClient->getRaw()->setPowerMode_2_2(mPrimaryDisplay,
-                                                                  IComposerClient::PowerMode::DOZE);
-        EXPECT_EQ(Error::UNSUPPORTED, error);
-
-        error = mComposerClient->getRaw()->setPowerMode_2_2(
-            mPrimaryDisplay, IComposerClient::PowerMode::DOZE_SUSPEND);
-        EXPECT_EQ(Error::UNSUPPORTED, error);
-    }
-}
-
-/**
- * Test IComposerClient::setReadbackBuffer
- *
- * Test IComposerClient::setReadbackBuffer
- */
-TEST_F(GraphicsComposerHidlTest, SetReadbackBuffer) {
-    if (!mHasReadbackBuffer) {
-        return;
-    }
-
-    IMapper::BufferDescriptorInfo info{};
-    info.width = mDisplayWidth;
-    info.height = mDisplayHeight;
-    info.layerCount = 1;
-    info.format = static_cast<common::V1_0::PixelFormat>(mReadbackPixelFormat);
-    // BufferUsage::COMPOSER_OUTPUT is missing
-    info.usage = static_cast<uint64_t>(BufferUsage::COMPOSER_OVERLAY | BufferUsage::CPU_READ_OFTEN);
-
-    std::unique_ptr<Gralloc> gralloc;
-    const native_handle_t* buffer;
-    ASSERT_NO_FATAL_FAILURE(gralloc = std::make_unique<Gralloc>());
-    ASSERT_NO_FATAL_FAILURE(buffer = gralloc->allocate(info));
-
-    mComposerClient->setReadbackBuffer(mPrimaryDisplay, buffer, -1);
-}
-
-/**
- * Test IComposerClient::setReadbackBuffer
- *
- * Test that IComposerClient::setReadbackBuffer returns an Error::BAD_DISPLAY
- * when passed an invalid display handle
- */
-TEST_F(GraphicsComposerHidlTest, SetReadbackBufferBadDisplay) {
-    if (!mHasReadbackBuffer) {
-        return;
-    }
-
-    IMapper::BufferDescriptorInfo info{};
-    info.width = mDisplayWidth;
-    info.height = mDisplayHeight;
-    info.layerCount = 1;
-    info.format = static_cast<common::V1_0::PixelFormat>(mReadbackPixelFormat);
-    info.usage = static_cast<uint64_t>(BufferUsage::COMPOSER_OVERLAY | BufferUsage::CPU_READ_OFTEN);
-
-    std::unique_ptr<Gralloc> gralloc;
-    const native_handle_t* buffer;
-    ASSERT_NO_FATAL_FAILURE(gralloc = std::make_unique<Gralloc>());
-    ASSERT_NO_FATAL_FAILURE(buffer = gralloc->allocate(info));
-
-    Error error = mComposerClient->getRaw()->setReadbackBuffer(mInvalidDisplayId, buffer, nullptr);
-    ASSERT_EQ(Error::BAD_DISPLAY, error);
-}
-
-/**
- * Test IComposerClient::setReadbackBuffer
- *
- * Test that IComposerClient::setReadbackBuffer returns Error::BAD_PARAMETER
- * when passed an invalid buffer handle
- */
-TEST_F(GraphicsComposerHidlTest, SetReadbackBufferBadParameter) {
-    if (!mHasReadbackBuffer) {
-        return;
-    }
-
-    Error error = mComposerClient->getRaw()->setReadbackBuffer(mPrimaryDisplay, nullptr, nullptr);
-    ASSERT_EQ(Error::BAD_PARAMETER, error);
-}
-
-TEST_F(GraphicsComposerHidlTest, GetReadbackBufferFenceInactive) {
-    if (!mHasReadbackBuffer) {
-        return;
-    }
-
-    mComposerClient->getRaw()->getReadbackBufferFence(
-        mPrimaryDisplay, [&](const auto& tmpError, const auto&) {
-            ASSERT_EQ(Error::UNSUPPORTED, tmpError) << "readback buffer is active";
-        });
+TEST_F(GraphicsComposerHidlTest, getReadbackBufferAttributes) {
+    PixelFormat pixelFormat;
+    Dataspace dataspace;
+    mComposerClient->getReadbackBufferAttributes(mPrimaryDisplay, &pixelFormat, &dataspace);
 }
 
 /**
@@ -523,178 +231,8 @@ TEST_F(GraphicsComposerHidlCommandTest, SET_LAYER_FLOAT_COLOR) {
 
     mWriter->selectDisplay(mPrimaryDisplay);
     mWriter->selectLayer(layer);
-    mWriter->setLayerCompositionType(IComposerClient::Composition::SOLID_COLOR);
     mWriter->setLayerFloatColor(IComposerClient::FloatColor{1.0, 1.0, 1.0, 1.0});
     mWriter->setLayerFloatColor(IComposerClient::FloatColor{0.0, 0.0, 0.0, 0.0});
-    execute();
-
-    if (mReader->mErrors.size() == 2 &&
-        static_cast<Error>(mReader->mErrors[0].second) == Error::UNSUPPORTED &&
-        static_cast<Error>(mReader->mErrors[1].second) == Error::UNSUPPORTED) {
-        mReader->mErrors.clear();
-        GTEST_SUCCEED() << "SetLayerFloatColor is not supported";
-        return;
-    }
-
-    // ensure setting float color on layer with composition type that is not
-    // SOLID_COLOR does not fail
-    V2_1::Layer clientLayer;
-    ASSERT_NO_FATAL_FAILURE(clientLayer =
-                                mComposerClient->createLayer(mPrimaryDisplay, kBufferSlotCount));
-    mWriter->selectDisplay(mPrimaryDisplay);
-    mWriter->selectLayer(clientLayer);
-    mWriter->setLayerCompositionType(IComposerClient::Composition::CLIENT);
-    mWriter->setLayerFloatColor(IComposerClient::FloatColor{1.0, 1.0, 1.0, 1.0});
-    execute();
-
-    // At this point we know that this function is supported so there should be
-    // no errors (checked upon TearDown)
-}
-
-/**
- * Test IComposerClient::getDataspaceSaturationMatrix.
- */
-TEST_F(GraphicsComposerHidlTest, GetDataspaceSaturationMatrix) {
-    auto matrix = mComposerClient->getDataspaceSaturationMatrix(Dataspace::SRGB_LINEAR);
-    // the last row is known
-    ASSERT_EQ(0.0f, matrix[12]);
-    ASSERT_EQ(0.0f, matrix[13]);
-    ASSERT_EQ(0.0f, matrix[14]);
-    ASSERT_EQ(1.0f, matrix[15]);
-}
-
-/*
- * Test IComposerClient::getDataspaceSaturationMatrix
- *
- * Test that IComposerClient::getDataspaceSaturationMatrix returns
- * Error::BAD_PARAMETER when passed a dataspace other than
- * Dataspace::SRGB_LINEAR
- */
-TEST_F(GraphicsComposerHidlTest, GetDataspaceSaturationMatrixBadParameter) {
-    mComposerClient->getRaw()->getDataspaceSaturationMatrix(
-        Dataspace::UNKNOWN,
-        [&](const auto& tmpError, const auto&) { ASSERT_EQ(Error::BAD_PARAMETER, tmpError); });
-}
-
-/**
- * Test IComposerClient::getColorMode_2_2.
- */
-TEST_F(GraphicsComposerHidlTest, GetColorMode_2_2) {
-    std::vector<ColorMode> modes = mComposerClient->getColorModes(mPrimaryDisplay);
-
-    auto nativeMode = std::find(modes.cbegin(), modes.cend(), ColorMode::NATIVE);
-    EXPECT_NE(modes.cend(), nativeMode);
-}
-
-/*
- * Test IComposerClient::getColorMode_2_2
- *
- * Test that IComposerClient::getColorMode returns Error::BAD_DISPLAY when
- * passed an invalid display handle
- */
-TEST_F(GraphicsComposerHidlTest, GetColorMode_2_2BadDisplay) {
-    mComposerClient->getRaw()->getColorModes_2_2(
-        mInvalidDisplayId,
-        [&](const auto& tmpError, const auto&) { ASSERT_EQ(Error::BAD_DISPLAY, tmpError); });
-}
-
-/**
- * Test IComposerClient::getRenderIntents.
- */
-TEST_F(GraphicsComposerHidlTest, GetRenderIntents) {
-    std::vector<ColorMode> modes = mComposerClient->getColorModes(mPrimaryDisplay);
-    for (auto mode : modes) {
-        std::vector<RenderIntent> intents =
-            mComposerClient->getRenderIntents(mPrimaryDisplay, mode);
-
-        bool isHdr;
-        switch (mode) {
-            case ColorMode::BT2100_PQ:
-            case ColorMode::BT2100_HLG:
-                isHdr = true;
-                break;
-            default:
-                isHdr = false;
-                break;
-        }
-        RenderIntent requiredIntent =
-            isHdr ? RenderIntent::TONE_MAP_COLORIMETRIC : RenderIntent::COLORIMETRIC;
-
-        auto iter = std::find(intents.cbegin(), intents.cend(), requiredIntent);
-        EXPECT_NE(intents.cend(), iter);
-    }
-}
-
-/*
- * Test IComposerClient::getRenderIntents
- *
- * Test that IComposerClient::getRenderIntent returns Error::BAD_DISPLAY when
- * passed an invalid display handle
- */
-TEST_F(GraphicsComposerHidlTest, GetRenderIntentsBadDisplay) {
-    std::vector<ColorMode> modes = mComposerClient->getColorModes(mPrimaryDisplay);
-    for (auto mode : modes) {
-        mComposerClient->getRaw()->getRenderIntents(
-            mInvalidDisplayId, mode,
-            [&](const auto& tmpError, const auto&) { EXPECT_EQ(Error::BAD_DISPLAY, tmpError); });
-    }
-}
-
-/*
- * Test IComposerClient::getRenderIntents
- *
- * Test that IComposerClient::getRenderIntents returns Error::BAD_PARAMETER when
- * pased either an invalid Color mode or an invalid Render Intent
- */
-TEST_F(GraphicsComposerHidlTest, GetRenderIntentsBadParameter) {
-    mComposerClient->getRaw()->getRenderIntents(
-        mPrimaryDisplay, static_cast<ColorMode>(-1),
-        [&](const auto& tmpError, const auto&) { EXPECT_EQ(Error::BAD_PARAMETER, tmpError); });
-}
-
-/**
- * Test IComposerClient::setColorMode_2_2.
- */
-TEST_F(GraphicsComposerHidlTest, SetColorMode_2_2) {
-    std::vector<ColorMode> modes = mComposerClient->getColorModes(mPrimaryDisplay);
-    for (auto mode : modes) {
-        std::vector<RenderIntent> intents =
-            mComposerClient->getRenderIntents(mPrimaryDisplay, mode);
-        for (auto intent : intents) {
-            mComposerClient->setColorMode(mPrimaryDisplay, mode, intent);
-        }
-    }
-
-    mComposerClient->setColorMode(mPrimaryDisplay, ColorMode::NATIVE, RenderIntent::COLORIMETRIC);
-}
-
-/*
- * Test IComposerClient::setColorMode_2_2
- *
- * Test that IComposerClient::setColorMode_2_2 returns an Error::BAD_DISPLAY
- * when passed an invalid display handle
- */
-TEST_F(GraphicsComposerHidlTest, SetColorMode_2_2BadDisplay) {
-    Error error = mComposerClient->getRaw()->setColorMode_2_2(mInvalidDisplayId, ColorMode::NATIVE,
-                                                              RenderIntent::COLORIMETRIC);
-
-    ASSERT_EQ(Error::BAD_DISPLAY, error);
-}
-
-/*
- * Test IComposerClient::setColorMode_2_2
- *
- * Test that IComposerClient::setColorMode_2_2 returns Error::BAD_PARAMETER when
- * passed an invalid Color mode or an invalid render intent
- */
-TEST_F(GraphicsComposerHidlTest, SetColorMode_2_2BadParameter) {
-    Error colorModeError = mComposerClient->getRaw()->setColorMode_2_2(
-        mPrimaryDisplay, static_cast<ColorMode>(-1), RenderIntent::COLORIMETRIC);
-    EXPECT_EQ(Error::BAD_PARAMETER, colorModeError);
-
-    Error renderIntentError = mComposerClient->getRaw()->setColorMode_2_2(
-        mPrimaryDisplay, ColorMode::NATIVE, static_cast<RenderIntent>(-1));
-    EXPECT_EQ(Error::BAD_PARAMETER, renderIntentError);
 }
 
 }  // namespace

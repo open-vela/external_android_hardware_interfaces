@@ -247,8 +247,21 @@ class CommandWriterBase {
 
     void setClientTarget(uint32_t slot, const native_handle_t* target, int acquireFence,
                          Dataspace dataspace, const std::vector<IComposerClient::Rect>& damage) {
-        setClientTargetInternal(slot, target, acquireFence, static_cast<int32_t>(dataspace),
-                                damage);
+        bool doWrite = (damage.size() <= (kMaxLength - 4) / 4);
+        size_t length = 4 + ((doWrite) ? damage.size() * 4 : 0);
+
+        beginCommand(IComposerClient::Command::SET_CLIENT_TARGET, length);
+        write(slot);
+        writeHandle(target, true);
+        writeFence(acquireFence);
+        writeSigned(static_cast<int32_t>(dataspace));
+        // When there are too many rectangles in the damage region and doWrite
+        // is false, we write no rectangle at all which means the entire
+        // client target is damaged.
+        if (doWrite) {
+            writeRegion(damage);
+        }
+        endCommand();
     }
 
     static constexpr uint16_t kSetOutputBufferLength = 3;
@@ -341,7 +354,9 @@ class CommandWriterBase {
 
     static constexpr uint16_t kSetLayerDataspaceLength = 1;
     void setLayerDataspace(Dataspace dataspace) {
-        setLayerDataspaceInternal(static_cast<int32_t>(dataspace));
+        beginCommand(IComposerClient::Command::SET_LAYER_DATASPACE, kSetLayerDataspaceLength);
+        writeSigned(static_cast<int32_t>(dataspace));
+        endCommand();
     }
 
     static constexpr uint16_t kSetLayerDisplayFrameLength = 4;
@@ -403,32 +418,6 @@ class CommandWriterBase {
     }
 
    protected:
-    void setClientTargetInternal(uint32_t slot, const native_handle_t* target, int acquireFence,
-                                 int32_t dataspace,
-                                 const std::vector<IComposerClient::Rect>& damage) {
-        bool doWrite = (damage.size() <= (kMaxLength - 4) / 4);
-        size_t length = 4 + ((doWrite) ? damage.size() * 4 : 0);
-
-        beginCommand(IComposerClient::Command::SET_CLIENT_TARGET, length);
-        write(slot);
-        writeHandle(target, true);
-        writeFence(acquireFence);
-        writeSigned(dataspace);
-        // When there are too many rectangles in the damage region and doWrite
-        // is false, we write no rectangle at all which means the entire
-        // client target is damaged.
-        if (doWrite) {
-            writeRegion(damage);
-        }
-        endCommand();
-    }
-
-    void setLayerDataspaceInternal(int32_t dataspace) {
-        beginCommand(IComposerClient::Command::SET_LAYER_DATASPACE, kSetLayerDataspaceLength);
-        writeSigned(dataspace);
-        endCommand();
-    }
-
     void beginCommand(IComposerClient::Command command, uint16_t length) {
         if (mCommandEnd) {
             LOG_FATAL("endCommand was not called before command 0x%x", command);
@@ -534,9 +523,6 @@ class CommandWriterBase {
 
     static constexpr uint16_t kMaxLength = std::numeric_limits<uint16_t>::max();
 
-    std::unique_ptr<uint32_t[]> mData;
-    uint32_t mDataWritten;
-
    private:
     void growData(uint32_t grow) {
         uint32_t newWritten = mDataWritten + grow;
@@ -561,6 +547,9 @@ class CommandWriterBase {
     }
 
     uint32_t mDataMaxSize;
+    std::unique_ptr<uint32_t[]> mData;
+
+    uint32_t mDataWritten;
     // end offset of the current command
     uint32_t mCommandEnd;
 
@@ -746,14 +735,13 @@ class CommandReaderBase {
         return fd;
     }
 
-    std::unique_ptr<uint32_t[]> mData;
-    uint32_t mDataRead;
-
    private:
     std::unique_ptr<CommandQueueType> mQueue;
     uint32_t mDataMaxSize;
+    std::unique_ptr<uint32_t[]> mData;
 
     uint32_t mDataSize;
+    uint32_t mDataRead;
 
     // begin/end offsets of the current command
     uint32_t mCommandBegin;

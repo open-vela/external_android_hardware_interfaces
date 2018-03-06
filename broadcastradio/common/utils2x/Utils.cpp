@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 #define LOG_TAG "BcRadioDef.utils"
+//#define LOG_NDEBUG 0
 
 #include <broadcastradio-utils-2x/Utils.h>
 
 #include <android-base/logging.h>
+#include <log/log.h>
 
 namespace android {
 namespace hardware {
@@ -79,6 +81,14 @@ bool IdentifierIterator::operator==(const IdentifierIterator& rhs) const {
     return mPos == rhs.mPos;
 }
 
+IdentifierIterator begin(const V2_0::ProgramSelector& sel) {
+    return IdentifierIterator(sel);
+}
+
+IdentifierIterator end(const V2_0::ProgramSelector& sel) {
+    return IdentifierIterator(sel) + 1 /* primary id */ + sel.secondaryIds.size();
+}
+
 FrequencyBand getBand(uint64_t freq) {
     // keep in sync with
     // frameworks/base/services/core/java/com/android/server/broadcastradio/hal2/Utils.java
@@ -128,7 +138,7 @@ bool tunesTo(const ProgramSelector& a, const ProgramSelector& b) {
         case IdentifierType::SXM_SERVICE_ID:
             return haveEqualIds(a, b, IdentifierType::SXM_SERVICE_ID);
         default:  // includes all vendor types
-            LOG(WARNING) << "unsupported program type: " << toString(type);
+            ALOGW("Unsupported program type: %s", toString(type).c_str());
             return false;
     }
 }
@@ -164,7 +174,7 @@ uint64_t getId(const ProgramSelector& sel, const IdentifierType type) {
         return val;
     }
 
-    LOG(WARNING) << "identifier not found: " << toString(type);
+    ALOGW("Identifier %s not found", toString(type).c_str());
     return 0;
 }
 
@@ -203,7 +213,7 @@ bool isValid(const ProgramIdentifier& id) {
     auto expect = [&valid](bool condition, std::string message) {
         if (!condition) {
             valid = false;
-            LOG(ERROR) << "identifier not valid, expected " << message;
+            ALOGE("Identifier not valid, expected %s", message.c_str());
         }
     };
 
@@ -213,7 +223,7 @@ bool isValid(const ProgramIdentifier& id) {
             break;
         case IdentifierType::DAB_FREQUENCY:
             expect(val > 100000u, "f > 100MHz");
-            [[fallthrough]];
+        // fallthrough
         case IdentifierType::AMFM_FREQUENCY:
         case IdentifierType::DRMO_FREQUENCY:
             expect(val > 100u, "f > 100kHz");
@@ -401,18 +411,6 @@ V2_0::ProgramIdentifier make_hdradio_station_name(const std::string& name) {
 }
 
 }  // namespace utils
-
-namespace V2_0 {
-
-utils::IdentifierIterator begin(const ProgramSelector& sel) {
-    return utils::IdentifierIterator(sel);
-}
-
-utils::IdentifierIterator end(const ProgramSelector& sel) {
-    return utils::IdentifierIterator(sel) + 1 /* primary id */ + sel.secondaryIds.size();
-}
-
-}  // namespace V2_0
 }  // namespace broadcastradio
 }  // namespace hardware
 }  // namespace android

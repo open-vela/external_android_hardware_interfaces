@@ -46,16 +46,13 @@ namespace V1_0 {
 
 namespace test {
 namespace {
-const support::auth_token_key_t testKey(static_cast<uint8_t>(TestKeyBits::BYTE));
-
 class HMacImplementation {
    public:
-    static support::NullOr<support::hmac_t> hmac256(
-        const support::auth_token_key_t& key,
-        std::initializer_list<support::ByteBufferProxy> buffers) {
+    static support::NullOr<support::array<uint8_t, 32>> hmac256(
+        const uint8_t key[32], std::initializer_list<support::ByteBufferProxy> buffers) {
         HMAC_CTX hmacCtx;
         HMAC_CTX_init(&hmacCtx);
-        if (!HMAC_Init_ex(&hmacCtx, key.data(), key.size(), EVP_sha256(), nullptr)) {
+        if (!HMAC_Init_ex(&hmacCtx, key, 32, EVP_sha256(), nullptr)) {
             return {};
         }
         for (auto& buffer : buffers) {
@@ -63,7 +60,7 @@ class HMacImplementation {
                 return {};
             }
         }
-        support::hmac_t result;
+        support::array<uint8_t, 32> result;
         if (!HMAC_Final(&hmacCtx, result.data(), nullptr)) {
             return {};
         }
@@ -73,15 +70,23 @@ class HMacImplementation {
 
 using HMacer = support::HMac<HMacImplementation>;
 
+constexpr uint8_t testKeyByte = static_cast<uint8_t>(TestKeyBits::BYTE);
+
 template <typename... Data>
 hidl_vec<uint8_t> testHMAC(const Data&... data) {
+    constexpr uint8_t testKey[32] = {testKeyByte, testKeyByte, testKeyByte, testKeyByte,
+                                     testKeyByte, testKeyByte, testKeyByte, testKeyByte,
+                                     testKeyByte, testKeyByte, testKeyByte, testKeyByte,
+                                     testKeyByte, testKeyByte, testKeyByte, testKeyByte};
+    constexpr uint8_t hmac_size_bytes = sizeof testKey;
+
     auto hmac = HMacer::hmac256(testKey, data...);
     if (!hmac.isOk()) {
         EXPECT_TRUE(false) << "Failed to compute test hmac.  This is a self-test error.";
         return {};
     }
-    hidl_vec<uint8_t> result(hmac.value().size());
-    copy(hmac.value().data(), hmac.value().data() + hmac.value().size(), result.data());
+    hidl_vec<uint8_t> result(hmac_size_bytes);
+    copy(hmac.value().data(), hmac.value().data() + hmac_size_bytes, result.data());
     return result;
 }
 

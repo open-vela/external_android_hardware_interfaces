@@ -5,7 +5,6 @@ cc_binary {
     vendor: true,
     srcs: [
         "Gnss.cpp",
-        "GnssDebug.cpp",
         "GnssConfiguration.cpp",
         "GnssMeasurement.cpp",
         "service.cpp",

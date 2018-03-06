@@ -22,14 +22,14 @@
 #include <condition_variable>
 #include <mutex>
 
+#include <android/hardware/radio/1.1/IRadioIndication.h>
+#include <android/hardware/radio/1.1/IRadioResponse.h>
 #include <android/hardware/radio/1.2/IRadio.h>
-#include <android/hardware/radio/1.2/IRadioIndication.h>
-#include <android/hardware/radio/1.2/IRadioResponse.h>
 #include <android/hardware/radio/1.2/types.h>
 
 #include "vts_test_util.h"
 
-using namespace ::android::hardware::radio::V1_2;
+using namespace ::android::hardware::radio;
 using namespace ::android::hardware::radio::V1_1;
 using namespace ::android::hardware::radio::V1_0;
 
@@ -44,27 +44,21 @@ using ::android::sp;
 #define RADIO_SERVICE_NAME "slot1"
 
 class RadioHidlTest_v1_2;
-extern ::android::hardware::radio::V1_2::CardStatus cardStatus;
+extern CardStatus cardStatus;
 
 /* Callback class for radio response v1_2*/
-class RadioResponse_v1_2 : public ::android::hardware::radio::V1_2::IRadioResponse {
+class RadioResponse_v1_2 : public V1_1::IRadioResponse {
    protected:
     RadioHidlTest_v1_2& parent_v1_2;
 
    public:
-    hidl_vec<RadioBandMode> radioBandModes;
-
     RadioResponseInfo rspInfo;
-
-    // Data
-    ::android::hardware::radio::V1_2::DataRegStateResult dataRegResp;
 
     RadioResponse_v1_2(RadioHidlTest_v1_2& parent_v1_2);
     virtual ~RadioResponse_v1_2() = default;
 
-    Return<void> getIccCardStatusResponse(
-        const RadioResponseInfo& info,
-        const ::android::hardware::radio::V1_0::CardStatus& cardStatus);
+    Return<void> getIccCardStatusResponse(const RadioResponseInfo& info,
+                                          const CardStatus& cardStatus);
 
     Return<void> supplyIccPinForAppResponse(const RadioResponseInfo& info,
                                             int32_t remainingRetries);
@@ -87,9 +81,8 @@ class RadioResponse_v1_2 : public ::android::hardware::radio::V1_2::IRadioRespon
     Return<void> supplyNetworkDepersonalizationResponse(const RadioResponseInfo& info,
                                                         int32_t remainingRetries);
 
-    Return<void> getCurrentCallsResponse(
-        const RadioResponseInfo& info,
-        const ::android::hardware::hidl_vec<::android::hardware::radio::V1_0::Call>& calls);
+    Return<void> getCurrentCallsResponse(const RadioResponseInfo& info,
+                                         const ::android::hardware::hidl_vec<Call>& calls);
 
     Return<void> dialResponse(const RadioResponseInfo& info);
 
@@ -111,17 +104,14 @@ class RadioResponse_v1_2 : public ::android::hardware::radio::V1_2::IRadioRespon
     Return<void> getLastCallFailCauseResponse(const RadioResponseInfo& info,
                                               const LastCallFailCauseInfo& failCauseInfo);
 
-    Return<void> getSignalStrengthResponse(
-        const RadioResponseInfo& info,
-        const ::android::hardware::radio::V1_0::SignalStrength& sigStrength);
+    Return<void> getSignalStrengthResponse(const RadioResponseInfo& info,
+                                           const SignalStrength& sigStrength);
 
-    Return<void> getVoiceRegistrationStateResponse(
-        const RadioResponseInfo& info,
-        const ::android::hardware::radio::V1_0::VoiceRegStateResult& voiceRegResponse);
+    Return<void> getVoiceRegistrationStateResponse(const RadioResponseInfo& info,
+                                                   const VoiceRegStateResult& voiceRegResponse);
 
-    Return<void> getDataRegistrationStateResponse(
-        const RadioResponseInfo& info,
-        const ::android::hardware::radio::V1_0::DataRegStateResult& dataRegResponse);
+    Return<void> getDataRegistrationStateResponse(const RadioResponseInfo& info,
+                                                  const DataRegStateResult& dataRegResponse);
 
     Return<void> getOperatorResponse(const RadioResponseInfo& info,
                                      const ::android::hardware::hidl_string& longName,
@@ -320,9 +310,8 @@ class RadioResponse_v1_2 : public ::android::hardware::radio::V1_2::IRadioRespon
     Return<void> getVoiceRadioTechnologyResponse(const RadioResponseInfo& info,
                                                  RadioTechnology rat);
 
-    Return<void> getCellInfoListResponse(
-        const RadioResponseInfo& info,
-        const ::android::hardware::hidl_vec<::android::hardware::radio::V1_0::CellInfo>& cellInfo);
+    Return<void> getCellInfoListResponse(const RadioResponseInfo& info,
+                                         const ::android::hardware::hidl_vec<CellInfo>& cellInfo);
 
     Return<void> setCellInfoListRateResponse(const RadioResponseInfo& info);
 
@@ -417,33 +406,21 @@ class RadioResponse_v1_2 : public ::android::hardware::radio::V1_2::IRadioRespon
 
     Return<void> setLinkCapacityReportingCriteriaResponse(const RadioResponseInfo& info);
 
-    Return<void> getIccCardStatusResponse_1_2(
-        const RadioResponseInfo& info,
-        const ::android::hardware::radio::V1_2::CardStatus& card_status);
+    Return<void> getIccCardStatusResponse_1_2(const RadioResponseInfo& info,
+                                              const CardStatus& card_status);
 
-    Return<void> getCurrentCallsResponse_1_2(
-        const RadioResponseInfo& info,
-        const ::android::hardware::hidl_vec<::android::hardware::radio::V1_2::Call>& calls);
+    Return<void> getCurrentCallsResponse_1_2(const RadioResponseInfo& info,
+                                             const ::android::hardware::hidl_vec<Call>& calls);
 
-    Return<void> getSignalStrengthResponse_1_2(
-        const RadioResponseInfo& info,
-        const ::android::hardware::radio::V1_2::SignalStrength& sig_strength);
+    Return<void> getSignalStrengthResponse_1_2(const RadioResponseInfo& info,
+                                               const SignalStrength& sig_strength);
 
     Return<void> getCellInfoListResponse_1_2(
-        const RadioResponseInfo& info,
-        const ::android::hardware::hidl_vec<::android::hardware::radio::V1_2::CellInfo>& cellInfo);
-
-    Return<void> getVoiceRegistrationStateResponse_1_2(
-        const RadioResponseInfo& info,
-        const ::android::hardware::radio::V1_2::VoiceRegStateResult& voiceRegResponse);
-
-    Return<void> getDataRegistrationStateResponse_1_2(
-        const RadioResponseInfo& info,
-        const ::android::hardware::radio::V1_2::DataRegStateResult& dataRegResponse);
+        const RadioResponseInfo& info, const ::android::hardware::hidl_vec<CellInfo>& cellInfo);
 };
 
 /* Callback class for radio indication */
-class RadioIndication_v1_2 : public ::android::hardware::radio::V1_2::IRadioIndication {
+class RadioIndication_v1_2 : public V1_1::IRadioIndication {
    protected:
     RadioHidlTest_v1_2& parent_v1_2;
 
@@ -452,33 +429,26 @@ class RadioIndication_v1_2 : public ::android::hardware::radio::V1_2::IRadioIndi
     virtual ~RadioIndication_v1_2() = default;
 
     /* 1.2 Api */
-    Return<void> networkScanResult_1_2(
-        RadioIndicationType type,
-        const ::android::hardware::radio::V1_2::NetworkScanResult& result);
+    Return<void> networkScanResult_1_2(RadioIndicationType type,
+                                       const V1_2::NetworkScanResult& result);
 
-    Return<void> cellInfoList_1_2(
-        RadioIndicationType type,
-        const ::android::hardware::hidl_vec<::android::hardware::radio::V1_2::CellInfo>& records);
+    Return<void> cellInfoList_1_2(RadioIndicationType type,
+                                  const ::android::hardware::hidl_vec<V1_2::CellInfo>& records);
 
-    Return<void> currentLinkCapacityEstimate(
-        RadioIndicationType type,
-        const ::android::hardware::radio::V1_2::LinkCapacityEstimate& lce);
+    Return<void> currentLinkCapacityEstimate(RadioIndicationType type,
+                                             const V1_2::LinkCapacityEstimate& lce);
 
     Return<void> currentPhysicalChannelConfigs(
         RadioIndicationType type,
-        const ::android::hardware::hidl_vec<
-            ::android::hardware::radio::V1_2::PhysicalChannelConfig>& configs);
+        const ::android::hardware::hidl_vec<V1_2::PhysicalChannelConfig>& configs);
 
-    Return<void> currentSignalStrength_1_2(
-        RadioIndicationType type,
-        const ::android::hardware::radio::V1_2::SignalStrength& signalStrength);
+    Return<void> currentSignalStrength_1_2(RadioIndicationType type,
+                                           const V1_2::SignalStrength& signalStrength);
 
     /* 1.1 Api */
     Return<void> carrierInfoForImsiEncryption(RadioIndicationType info);
 
-    Return<void> networkScanResult(
-        RadioIndicationType type,
-        const ::android::hardware::radio::V1_1::NetworkScanResult& result);
+    Return<void> networkScanResult(RadioIndicationType type, const NetworkScanResult& result);
 
     Return<void> keepaliveStatus(RadioIndicationType type, const KeepaliveStatus& status);
 
@@ -504,9 +474,8 @@ class RadioIndication_v1_2 : public ::android::hardware::radio::V1_2::IRadioIndi
                                   const ::android::hardware::hidl_string& nitzTime,
                                   uint64_t receivedTime);
 
-    Return<void> currentSignalStrength(
-        RadioIndicationType type,
-        const ::android::hardware::radio::V1_0::SignalStrength& signalStrength);
+    Return<void> currentSignalStrength(RadioIndicationType type,
+                                       const SignalStrength& signalStrength);
 
     Return<void> dataCallListChanged(
         RadioIndicationType type, const ::android::hardware::hidl_vec<SetupDataCallResult>& dcList);
@@ -564,9 +533,8 @@ class RadioIndication_v1_2 : public ::android::hardware::radio::V1_2::IRadioIndi
 
     Return<void> voiceRadioTechChanged(RadioIndicationType type, RadioTechnology rat);
 
-    Return<void> cellInfoList(
-        RadioIndicationType type,
-        const ::android::hardware::hidl_vec<::android::hardware::radio::V1_0::CellInfo>& records);
+    Return<void> cellInfoList(RadioIndicationType type,
+                              const ::android::hardware::hidl_vec<CellInfo>& records);
 
     Return<void> imsNetworkStateChanged(RadioIndicationType type);
 
@@ -601,9 +569,7 @@ class RadioHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
         static RadioHidlEnvironment* instance = new RadioHidlEnvironment;
         return instance;
     }
-    virtual void registerTestServices() override {
-        registerTestService<::android::hardware::radio::V1_2::IRadio>();
-    }
+    virtual void registerTestServices() override { registerTestService<V1_2::IRadio>(); }
 
    private:
     RadioHidlEnvironment() {}
@@ -616,23 +582,17 @@ class RadioHidlTest_v1_2 : public ::testing::VtsHalHidlTargetTestBase {
     std::condition_variable cv_;
     int count_;
 
-    /* Serial number for radio request */
-    int serial;
-
-    /* Update Sim Card Status */
-    void updateSimCardStatus();
-
    public:
     virtual void SetUp() override;
 
     /* Used as a mechanism to inform the test about data/event callback */
-    void notify(int receivedSerial);
+    void notify();
 
     /* Test code calls this function to wait for response */
     std::cv_status wait();
 
     /* radio service handle */
-    sp<::android::hardware::radio::V1_2::IRadio> radio_v1_2;
+    sp<V1_2::IRadio> radio_v1_2;
 
     /* radio response handle */
     sp<RadioResponse_v1_2> radioRsp_v1_2;
