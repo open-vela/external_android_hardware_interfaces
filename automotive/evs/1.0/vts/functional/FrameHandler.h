@@ -61,7 +61,6 @@ public:
 
     void waitForFrameCount(unsigned frameCount);
     void getFramesCounters(unsigned* received, unsigned* displayed);
-    void getFrameDimension(unsigned* width, unsigned* height);
 
 private:
     // Implementation for ::android::hardware::automotive::evs::V1_0::ICarCameraStream
@@ -86,8 +85,6 @@ private:
     bool                        mRunning = false;
     unsigned                    mFramesReceived = 0;    // Simple counter -- rolls over eventually!
     unsigned                    mFramesDisplayed = 0;   // Simple counter -- rolls over eventually!
-    unsigned                    mFrameWidth = 0;
-    unsigned                    mFrameHeight = 0;
 };
 
 
