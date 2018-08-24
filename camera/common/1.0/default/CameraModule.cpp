@@ -235,7 +235,7 @@ void CameraModule::appendAvailableKeys(CameraMetadata &chars,
     chars.update(keyTag, availableKeys);
 }
 
-CameraModule::CameraModule(camera_module_t *module) : mNumberOfCameras(0) {
+CameraModule::CameraModule(camera_module_t *module) {
     if (module == NULL) {
         ALOGE("%s: camera hardware module must not be null", __FUNCTION__);
         assert(0);
@@ -264,8 +264,7 @@ int CameraModule::init() {
         res = mModule->init();
         ATRACE_END();
     }
-    mNumberOfCameras = getNumberOfCameras();
-    mCameraInfoMap.setCapacity(mNumberOfCameras);
+    mCameraInfoMap.setCapacity(getNumberOfCameras());
     return res;
 }
 
@@ -317,45 +316,6 @@ int CameraModule::getCameraInfo(int cameraId, struct camera_info *info) {
     assert(index != NAME_NOT_FOUND);
     // return the cached camera info
     *info = mCameraInfoMap[index];
-    return OK;
-}
-
-int CameraModule::getPhysicalCameraInfo(int physicalCameraId, camera_metadata_t **physicalInfo) {
-    ATRACE_CALL();
-    Mutex::Autolock lock(mCameraInfoLock);
-    if (physicalCameraId < mNumberOfCameras) {
-        ALOGE("%s: Invalid physical camera ID %d", __FUNCTION__, physicalCameraId);
-        return -EINVAL;
-    }
-
-    // Only query physical camera info for 2.5 version for newer
-    int apiVersion = mModule->common.module_api_version;
-    if (apiVersion < CAMERA_MODULE_API_VERSION_2_5) {
-        ALOGE("%s: Module version must be at least 2.5 to handle getPhysicalCameraInfo",
-                __FUNCTION__);
-        return -ENODEV;
-    }
-    if (mModule->get_physical_camera_info == nullptr) {
-        ALOGE("%s: get_physical_camera is NULL for module version 2.5", __FUNCTION__);
-        return -EINVAL;
-    }
-
-    ssize_t index = mPhysicalCameraInfoMap.indexOfKey(physicalCameraId);
-    if (index == NAME_NOT_FOUND) {
-        // Get physical camera characteristics, and cache it
-        camera_metadata_t *info = nullptr;
-        ATRACE_BEGIN("camera_module->get_physical_camera_info");
-        int ret = mModule->get_physical_camera_info(physicalCameraId, &info);
-        ATRACE_END();
-        if (ret != 0) {
-            return ret;
-        }
-
-        index = mPhysicalCameraInfoMap.add(physicalCameraId, info);
-    }
-
-    assert(index != NAME_NOT_FOUND);
-    *physicalInfo = mPhysicalCameraInfoMap[index];
     return OK;
 }
 
@@ -466,8 +426,8 @@ status_t CameraModule::filterOpenErrorCode(status_t err) {
 }
 
 void CameraModule::removeCamera(int cameraId) {
-    free_camera_metadata(const_cast<camera_metadata_t*>(
-        mCameraInfoMap.valueFor(cameraId).static_camera_characteristics));
+    free_camera_metadata(
+        const_cast<camera_metadata_t*>(mCameraInfoMap[cameraId].static_camera_characteristics));
     mCameraInfoMap.removeItem(cameraId);
     mDeviceVersionMap.removeItem(cameraId);
 }
