@@ -65,7 +65,6 @@ public:
     void *getDso();
     // Only used by CameraProvider
     void removeCamera(int cameraId);
-    int getPhysicalCameraInfo(int physicalCameraId, camera_metadata_t **physicalInfo);
 
 private:
     // Derive camera characteristics keys defined after HAL device version
@@ -77,7 +76,6 @@ private:
     camera_module_t *mModule;
     KeyedVector<int, camera_info> mCameraInfoMap;
     KeyedVector<int, int> mDeviceVersionMap;
-    KeyedVector<int, camera_metadata_t*> mPhysicalCameraInfoMap;
     Mutex mCameraInfoLock;
 };
 
