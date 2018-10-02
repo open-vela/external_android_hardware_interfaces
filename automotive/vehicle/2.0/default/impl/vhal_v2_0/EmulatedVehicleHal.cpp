@@ -92,8 +92,10 @@ EmulatedVehicleHal::EmulatedVehicleHal(VehiclePropertyStore* propStore)
       mHvacPowerProps(std::begin(kHvacPowerProperties), std::end(kHvacPowerProperties)),
       mRecurrentTimer(
           std::bind(&EmulatedVehicleHal::onContinuousPropertyTimer, this, std::placeholders::_1)),
-      mGeneratorHub(
-          std::bind(&EmulatedVehicleHal::onFakeValueGenerated, this, std::placeholders::_1)) {
+      mLinearFakeValueGenerator(std::make_unique<LinearFakeValueGenerator>(
+          std::bind(&EmulatedVehicleHal::onFakeValueGenerated, this, std::placeholders::_1))),
+      mJsonFakeValueGenerator(std::make_unique<JsonFakeValueGenerator>(
+          std::bind(&EmulatedVehicleHal::onFakeValueGenerated, this, std::placeholders::_1))) {
     initStaticConfig();
     for (size_t i = 0; i < arraysize(kVehicleProperties); i++) {
         mPropStore->registerProperty(kVehicleProperties[i].config);
@@ -187,7 +189,6 @@ StatusCode EmulatedVehicleHal::set(const VehiclePropValue& propValue) {
     }
 
     getEmulatorOrDie()->doSetValueFromClient(propValue);
-    doHalEvent(getValuePool()->obtain(propValue));
 
     return StatusCode::OK;
 }
@@ -342,54 +343,19 @@ StatusCode EmulatedVehicleHal::handleGenerateFakeDataRequest(const VehiclePropVa
     switch (command) {
         case FakeDataCommand::StartLinear: {
             ALOGI("%s, FakeDataCommand::StartLinear", __func__);
-            if (v.int32Values.size() < 2) {
-                ALOGE("%s: expected property ID in int32Values", __func__);
-                return StatusCode::INVALID_ARG;
-            }
-            if (!v.int64Values.size()) {
-                ALOGE("%s: interval is not provided in int64Values", __func__);
-                return StatusCode::INVALID_ARG;
-            }
-            if (v.floatValues.size() < 3) {
-                ALOGE("%s: expected at least 3 elements in floatValues, got: %zu", __func__,
-                      v.floatValues.size());
-                return StatusCode::INVALID_ARG;
-            }
-            int32_t cookie = v.int32Values[1];
-            mGeneratorHub.registerGenerator(cookie,
-                                            std::make_unique<LinearFakeValueGenerator>(request));
-            break;
+            return mLinearFakeValueGenerator->start(request);
         }
         case FakeDataCommand::StartJson: {
             ALOGI("%s, FakeDataCommand::StartJson", __func__);
-            if (v.stringValue.empty()) {
-                ALOGE("%s: path to JSON file is missing", __func__);
-                return StatusCode::INVALID_ARG;
-            }
-            int32_t cookie = std::hash<std::string>()(v.stringValue);
-            mGeneratorHub.registerGenerator(cookie,
-                                            std::make_unique<JsonFakeValueGenerator>(request));
-            break;
+            return mJsonFakeValueGenerator->start(request);
         }
         case FakeDataCommand::StopLinear: {
             ALOGI("%s, FakeDataCommand::StopLinear", __func__);
-            if (v.int32Values.size() < 2) {
-                ALOGE("%s: expected property ID in int32Values", __func__);
-                return StatusCode::INVALID_ARG;
-            }
-            int32_t cookie = v.int32Values[1];
-            mGeneratorHub.unregisterGenerator(cookie);
-            break;
+            return mLinearFakeValueGenerator->stop(request);
         }
         case FakeDataCommand::StopJson: {
             ALOGI("%s, FakeDataCommand::StopJson", __func__);
-            if (v.stringValue.empty()) {
-                ALOGE("%s: path to JSON file is missing", __func__);
-                return StatusCode::INVALID_ARG;
-            }
-            int32_t cookie = std::hash<std::string>()(v.stringValue);
-            mGeneratorHub.unregisterGenerator(cookie);
-            break;
+            return mJsonFakeValueGenerator->stop(request);
         }
         case FakeDataCommand::KeyPress: {
             ALOGI("%s, FakeDataCommand::KeyPress", __func__);
@@ -432,7 +398,7 @@ void EmulatedVehicleHal::onFakeValueGenerated(const VehiclePropValue& value) {
         mPropStore->writeValue(*updatedPropValue, shouldUpdateStatus);
         auto changeMode = mPropStore->getConfigOrDie(value.prop)->changeMode;
         if (VehiclePropertyChangeMode::ON_CHANGE == changeMode) {
-            doHalEvent(std::move(updatedPropValue));
+            doHalEvent(move(updatedPropValue));
         }
     }
 }
