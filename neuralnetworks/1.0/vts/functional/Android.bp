@@ -25,6 +25,7 @@ cc_library_static {
     static_libs: [
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
+        "android.hardware.neuralnetworks@1.2",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
         "libhidlmemory",
@@ -49,8 +50,9 @@ cc_test {
     ],
     defaults: ["VtsHalTargetTestDefaults"],
     static_libs: [
-        "android.hardware.neuralnetworks@1.1",
         "android.hardware.neuralnetworks@1.0",
+        "android.hardware.neuralnetworks@1.1",
+        "android.hardware.neuralnetworks@1.2",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
         "libhidlmemory",

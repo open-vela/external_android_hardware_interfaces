@@ -25,21 +25,19 @@ namespace composer {
 namespace V2_1 {
 namespace vts {
 
-Composer::Composer() {
-    mComposer = ::testing::VtsHalHidlTargetTestBase::getService<IComposer>();
-    init();
-}
+Composer::Composer() : Composer(::testing::VtsHalHidlTargetTestBase::getService<IComposer>()) {}
 
-Composer::Composer(const std::string& name) {
-    mComposer = ::testing::VtsHalHidlTargetTestBase::getService<IComposer>(name);
-    init();
-}
+Composer::Composer(const std::string& name)
+    : Composer(::testing::VtsHalHidlTargetTestBase::getService<IComposer>(name)) {}
 
-void Composer::init() {
-    ASSERT_NE(nullptr, mComposer.get()) << "failed to get composer service";
+Composer::Composer(const sp<IComposer>& composer) : mComposer(composer) {
+    // ASSERT_* can only be used in functions returning void.
+    [this] {
+        ASSERT_NE(nullptr, mComposer.get()) << "failed to get composer service";
 
-    std::vector<IComposer::Capability> capabilities = getCapabilities();
-    mCapabilities.insert(capabilities.begin(), capabilities.end());
+        std::vector<IComposer::Capability> capabilities = getCapabilities();
+        mCapabilities.insert(capabilities.begin(), capabilities.end());
+    }();
 }
 
 sp<IComposer> Composer::getRaw() const {
@@ -295,7 +293,6 @@ void ComposerClient::execute(TestCommandReader* reader, CommandWriterBase* write
     if (queueChanged) {
         auto ret = mClient->setInputCommandQueue(*writer->getMQDescriptor());
         ASSERT_EQ(Error::NONE, static_cast<Error>(ret));
-        return;
     }
 
     mClient->executeCommands(commandLength, commandHandles,
@@ -314,6 +311,8 @@ void ComposerClient::execute(TestCommandReader* reader, CommandWriterBase* write
                                  ASSERT_TRUE(reader->readQueue(tmpOutLength, tmpOutHandles));
                                  reader->parse();
                              });
+    reader->reset();
+    writer->reset();
 }
 
 }  // namespace vts

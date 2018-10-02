@@ -61,12 +61,12 @@ using std::list;
 using ::android::sp;
 using ::android::hardware::EventFlag;
 using ::android::hardware::hidl_bitfield;
-using ::android::hardware::hidl_enum_iterator;
+using ::android::hardware::hidl_enum_range;
 using ::android::hardware::hidl_handle;
 using ::android::hardware::hidl_string;
 using ::android::hardware::hidl_vec;
-using ::android::hardware::kSynchronizedReadWrite;
 using ::android::hardware::IPCThreadState;
+using ::android::hardware::kSynchronizedReadWrite;
 using ::android::hardware::MessageQueue;
 using ::android::hardware::MQDescriptorSync;
 using ::android::hardware::Return;
@@ -1174,7 +1174,7 @@ TEST_P(InputStreamTest, getCapturePosition) {
 TEST_P(InputStreamTest, updateSinkMetadata) {
     doc::test("The HAL should not crash on metadata change");
 
-    hidl_enum_iterator<AudioSource> range;
+    hidl_enum_range<AudioSource> range;
     // Test all possible track configuration
     for (AudioSource source : range) {
         for (float volume : {0.0, 0.5, 1.0}) {
@@ -1418,8 +1418,8 @@ TEST_P(OutputStreamTest, SelectPresentation) {
 TEST_P(OutputStreamTest, updateSourceMetadata) {
     doc::test("The HAL should not crash on metadata change");
 
-    hidl_enum_iterator<AudioUsage> usageRange;
-    hidl_enum_iterator<AudioContentType> contentRange;
+    hidl_enum_range<AudioUsage> usageRange;
+    hidl_enum_range<AudioContentType> contentRange;
     // Test all possible track configuration
     for (auto usage : usageRange) {
         for (auto content : contentRange) {
