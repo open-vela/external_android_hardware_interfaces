@@ -50,13 +50,10 @@ interface IPowerStats {
      * asynchronous.
      *
      * @param timeMs Time(in ms) for which energyData should be streamed
-     * @param samplingRate Frequency(in Hz) at which samples should be
-     *     captured. If the requested sampling rate is not supported then
-     *     SUCCESS is returned and numSamples are reported back according
-     *     to the supported sampling rate.
-     * @return mqDesc Blocking Synchronous Fast Message Queue descriptor - One
-     *     writer(power.stats HAL) and one reader are supported. Data is
-     *     present in the following format in the queue:
+     * @return mqDesc Unsynchronous Fast Message Queue descriptor - One
+     *     writer(power.stats HAL) multiple readers are supported. Reader
+     *     should read faster than writer otherwise data might be
+     *     overwritten. Data is present in following format in the queue:
      *     +-----------------------+       <--
      *     | EnergyData for rail 1 |         |
      *     +-----------------------+         |
@@ -90,71 +87,9 @@ interface IPowerStats {
      * @return numSamples Number of samples which will be generated in timeMs.
      * @return railsPerSample Number of rails measured per sample.
      * @return status SUCCESS on success or FILESYSTEM_ERROR on filesystem
-     *     nodes access or NOT_SUPPORTED if feature is not enabled or
-     *     INSUFFICIENT_RESOURCES if there are not enough resources.
+     *     nodes access or NOT_SUPPORTED if feature is not enabled.
      */
-    streamEnergyData(uint32_t timeMs, uint32_t samplingRate)
-        generates(fmq_sync<EnergyData> mqDesc, uint32_t numSamples,
+    streamEnergyData(uint32_t timeMs)
+        generates(fmq_unsync<EnergyData> mqDesc, uint32_t numSamples,
                 uint32_t railsPerSample, Status status);
-
-    /**
-     * PowerEntity information:
-     * Reports information related to all supported PowerEntity(s) for which
-     * data is available. A PowerEntity is defined as a platform subsystem,
-     * peripheral, or power domain that impacts the total device power
-     * consumption.
-     *
-     * @return powerEntityInfos List of information on each PowerEntity
-     * @return status SUCCESS on success, NOT_SUPPORTED if feature is not
-     *     enabled, FILESYSTEM_ERROR if there was an error accessing the
-     *     filesystem.
-     */
-    getPowerEntityInfo()
-        generates(vec<PowerEntityInfo> powerEntityInfos, Status status);
-
-    /**
-     * PowerEntity state information:
-     * Reports the set of power states for which the specified
-     * PowerEntity(s) provide residency data.
-     *
-     * @param powerEntityIds collection of IDs of PowerEntity(s) for which
-     *     state information is requested. PowerEntity name to ID mapping may
-     *     be queried from getPowerEntityInfo(). To get state space
-     *     information for all PowerEntity(s) pass an empty vector.
-     *
-     * @return powerEntityStateSpaces PowerEntity state space information for
-     *     each specified PowerEntity that provides state space information.
-     * @return status SUCCESS on success, NOT_SUPPORTED if feature is not
-     *     enabled, FILESYSTEM_ERROR if there was an error accessing the
-     *     filesystem, INVALID_INPUT if any requested PowerEntity(s) do not
-     *     provide state space information and there was not a filesystem error.
-     */
-    getPowerEntityStateInfo(vec<uint32_t> powerEntityIds)
-        generates(vec<PowerEntityStateSpace> powerEntityStateSpaces,
-                  Status status);
-
-    /**
-     * PowerEntity residencies for low frequency clients:
-     * Reports accumulated residency data for each specified PowerEntity.
-     * Each PowerEntity may reside in one of multiple states. It may also
-     * transition to another state. Residency data is an accumulation of time
-     * that a specified PowerEntity resided in each of its possible states,
-     * the number of times that each state was entered, and a timestamp
-     * corresponding to the last time that state was entered. Data is
-     * accumulated starting from the last time the PowerEntity was reset.
-     *
-     * @param powerEntityId collection of IDs of PowerEntity(s) for which
-     *     residency data is requested. PowerEntity name to ID mapping may
-     *     be queried from getPowerEntityInfo(). To get state residency
-     *     data for all PowerEntity(s) pass an empty vector.
-     * @return stateResidencyResults state residency data for each specified
-     *     PowerEntity that provides state residency data.
-     * @return status SUCCESS on success, NOT_SUPPORTED if feature is not
-     *     enabled, FILESYSTEM_ERROR if there was an error accessing the
-     *     filesystem, INVALID_INPUT if any requested PowerEntity(s) do not
-     *     provide state residency data and there was not a filesystem error.
-     */
-    getPowerEntityStateResidencyData(vec<uint32_t> powerEntityIds)
-        generates(vec<PowerEntityStateResidencyResult> stateResidencyResults,
-                  Status status);
 };
