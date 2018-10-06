@@ -1,0 +1,58 @@
+/*
+ * Copyright (C) 2018 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.1 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.1
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package android.hardware.configstore@1.2;
+
+import android.hardware.graphics.common@1.1::Dataspace;
+import android.hardware.graphics.common@1.1::PixelFormat;
+import @1.1::ISurfaceFlingerConfigs;
+import @1.0::OptionalBool;
+
+/**
+ * New revision of ISurfaceFlingerConfigs
+ */
+interface ISurfaceFlingerConfigs extends @1.1::ISurfaceFlingerConfigs {
+    /**
+     * useColorManagement indicates whether SurfaceFlinger should manage color
+     * by switching to appropriate color mode automatically depending on the
+     * Dataspace of the surfaces on screen.
+     * This function must return true when hasWideColorDisplay or hasHDRDisplay
+     * return true.
+     */
+    useColorManagement() generates (OptionalBool value);
+
+    /**
+     * Returns the default data space and default pixel format that
+     * SurfaceFlinger expects to receive and output.
+     * To determine the default data space and default pixel format,
+     * there are a few things we recommend to consider:
+     *
+     *   1. Hardware composer's capability to composite contents with the
+     *      data space and pixel format efficiently;
+     *   2. Hardware composer's ability to composite contents when sRGB contents
+     *      and the chosen data space contents coexist;
+     *   3. For better blending, consider using pixel format where the alpha
+     *      channel has as many bits as the RGB color channel.
+     *
+     * @return dataSpace is the default data space that SurfaceFlinger expects.
+     *         The data space must not be Dataspace::UNKNOWN, if unspecified,
+     *         the default data space is Dataspace::V0_SRGB;
+     * @return pixelFormat is the default pixel format that SurfaceFlinger
+     *         expects. If unspecified, the default pixel format is
+     *         PixelFormat::RGBA_8888.
+     */
+    getCompositionPreference()
+        generates (Dataspace dataSpace, PixelFormat pixelFormat);
+};
