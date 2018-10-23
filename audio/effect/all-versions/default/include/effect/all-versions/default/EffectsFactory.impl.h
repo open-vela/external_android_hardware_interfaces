@@ -101,6 +101,7 @@ restart:
                 case -ENOENT: {
                     // No more effects available.
                     result.resize(i);
+                    break;
                 }
                 default: {
                     result.resize(0);
@@ -183,8 +184,8 @@ Return<void> EffectsFactory::debug(const hidl_handle& fd,
     return Void();
 }
 
-IEffectsFactory* HIDL_FETCH_IEffectsFactory(const char* /* name */) {
-    return new EffectsFactory();
+IEffectsFactory* HIDL_FETCH_IEffectsFactory(const char* name) {
+    return strcmp(name, "default") == 0 ? new EffectsFactory() : nullptr;
 }
 
 }  // namespace implementation

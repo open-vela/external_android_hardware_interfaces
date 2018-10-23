@@ -31,12 +31,14 @@ LOCAL_SRC_FILES := \
 LOCAL_CFLAGS := -Wall -Werror
 
 LOCAL_SHARED_LIBRARIES := \
+    libcutils \
     libbinder \
     libhidlbase \
     libhidltransport \
     liblog \
     libutils \
     libhardware \
+    libhwbinder \
     android.hardware.audio@2.0 \
     android.hardware.audio@4.0 \
     android.hardware.audio.common@2.0 \
@@ -54,5 +56,8 @@ LOCAL_MULTILIB := 32
 else
 LOCAL_MULTILIB := $(AUDIOSERVER_MULTILIB)
 endif
+
+# b/117506164
+LOCAL_SANITIZE := never
 
 include $(BUILD_EXECUTABLE)
