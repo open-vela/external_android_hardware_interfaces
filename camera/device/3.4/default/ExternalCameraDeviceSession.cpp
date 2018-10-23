@@ -344,31 +344,17 @@ Return<void> ExternalCameraDeviceSession::configureStreams_3_4(
         ICameraDeviceSession::configureStreams_3_4_cb _hidl_cb)  {
     V3_2::StreamConfiguration config_v32;
     V3_3::HalStreamConfiguration outStreams_v33;
-    V3_4::HalStreamConfiguration outStreams;
     Mutex::Autolock _il(mInterfaceLock);
 
     config_v32.operationMode = requestedConfiguration.operationMode;
     config_v32.streams.resize(requestedConfiguration.streams.size());
-    uint32_t blobBufferSize = 0;
-    int numStallStream = 0;
     for (size_t i = 0; i < config_v32.streams.size(); i++) {
         config_v32.streams[i] = requestedConfiguration.streams[i].v3_2;
-        if (config_v32.streams[i].format == PixelFormat::BLOB) {
-            blobBufferSize = requestedConfiguration.streams[i].bufferSize;
-            numStallStream++;
-        }
     }
 
-    // Fail early if there are multiple BLOB streams
-    if (numStallStream > kMaxStallStream) {
-        ALOGE("%s: too many stall streams (expect <= %d, got %d)", __FUNCTION__,
-                kMaxStallStream, numStallStream);
-        _hidl_cb(Status::ILLEGAL_ARGUMENT, outStreams);
-        return Void();
-    }
+    Status status = configureStreams(config_v32, &outStreams_v33);
 
-    Status status = configureStreams(config_v32, &outStreams_v33, blobBufferSize);
-
+    V3_4::HalStreamConfiguration outStreams;
     outStreams.streams.resize(outStreams_v33.streams.size());
     for (size_t i = 0; i < outStreams.streams.size(); i++) {
         outStreams.streams[i].v3_3 = outStreams_v33.streams[i];
@@ -1606,9 +1592,8 @@ int ExternalCameraDeviceSession::OutputThread::createJpegLocked(
      * main image needs to hold APP1, headers, and at most a poorly
      * compressed image */
     const ssize_t maxThumbCodeSize = 64 * 1024;
-    const ssize_t maxJpegCodeSize = mBlobBufferSize == 0 ?
-            parent->getJpegBufferSize(jpegSize.width, jpegSize.height) :
-            mBlobBufferSize;
+    const ssize_t maxJpegCodeSize = parent->getJpegBufferSize(jpegSize.width,
+                                                             jpegSize.height);
 
     /* Check that getJpegBufferSize did not return an error */
     if (maxJpegCodeSize < 0) {
@@ -1752,11 +1737,7 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
     // TODO: see if we can save some computation by converting to YV12 here
     uint8_t* inData;
     size_t inDataSize;
-    if (req->frameIn->map(&inData, &inDataSize) != 0) {
-        lk.unlock();
-        return onDeviceError("%s: V4L2 buffer map failed", __FUNCTION__);
-    }
-
+    req->frameIn->map(&inData, &inDataSize);
     // TODO: in some special case maybe we can decode jpg directly to gralloc output?
     ATRACE_BEGIN("MJPGtoI420");
     int res = libyuv::MJPGToI420(
@@ -1874,8 +1855,7 @@ bool ExternalCameraDeviceSession::OutputThread::threadLoop() {
 
 Status ExternalCameraDeviceSession::OutputThread::allocateIntermediateBuffers(
         const Size& v4lSize, const Size& thumbSize,
-        const hidl_vec<Stream>& streams,
-        uint32_t blobBufferSize) {
+        const hidl_vec<Stream>& streams) {
     std::lock_guard<std::mutex> lk(mBufferLock);
     if (mScaledYu12Frames.size() != 0) {
         ALOGE("%s: intermediate buffer pool has %zu inflight buffers! (expect 0)",
@@ -1944,8 +1924,6 @@ Status ExternalCameraDeviceSession::OutputThread::allocateIntermediateBuffers(
             it = mIntermediateBuffers.erase(it);
         }
     }
-
-    mBlobBufferSize = blobBufferSize;
     return Status::OK;
 }
 
@@ -2092,7 +2070,6 @@ bool ExternalCameraDeviceSession::isSupported(const Stream& stream) {
                 ALOGI("%s: BLOB format does not support dataSpace %x", __FUNCTION__, ds);
                 return false;
             }
-            break;
         case PixelFormat::IMPLEMENTATION_DEFINED:
         case PixelFormat::YCBCR_420_888:
         case PixelFormat::YV12:
@@ -2443,9 +2420,7 @@ void ExternalCameraDeviceSession::enqueueV4l2Frame(const sp<V4L2Frame>& frame) {
 }
 
 Status ExternalCameraDeviceSession::configureStreams(
-        const V3_2::StreamConfiguration& config,
-        V3_3::HalStreamConfiguration* out,
-        uint32_t blobBufferSize) {
+        const V3_2::StreamConfiguration& config, V3_3::HalStreamConfiguration* out) {
     ATRACE_CALL();
     if (config.operationMode != StreamConfigurationMode::NORMAL_MODE) {
         ALOGE("%s: unsupported operation mode: %d", __FUNCTION__, config.operationMode);
@@ -2607,7 +2582,7 @@ Status ExternalCameraDeviceSession::configureStreams(
     }
 
     status = mOutputThread->allocateIntermediateBuffers(v4lSize,
-                mMaxThumbResolution, config.streams, blobBufferSize);
+                mMaxThumbResolution, config.streams);
     if (status != Status::OK) {
         ALOGE("%s: allocating intermediate buffers failed!", __FUNCTION__);
         return status;
@@ -2752,7 +2727,7 @@ status_t ExternalCameraDeviceSession::initDefaultRequests() {
     const uint8_t controlMode = ANDROID_CONTROL_MODE_AUTO;
     UPDATE(md, ANDROID_CONTROL_MODE, &controlMode, 1);
 
-    auto requestTemplates = hidl_enum_range<RequestTemplate>();
+    auto requestTemplates = hidl_enum_iterator<RequestTemplate>();
     for (RequestTemplate type : requestTemplates) {
         ::android::hardware::camera::common::V1_0::helper::CameraMetadata mdCopy = md;
         uint8_t intent = ANDROID_CONTROL_CAPTURE_INTENT_PREVIEW;

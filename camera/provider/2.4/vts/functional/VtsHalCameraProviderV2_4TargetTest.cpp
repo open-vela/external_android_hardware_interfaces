@@ -28,7 +28,6 @@
 
 #include <android/hardware/camera/device/1.0/ICameraDevice.h>
 #include <android/hardware/camera/device/3.2/ICameraDevice.h>
-#include <android/hardware/camera/device/3.5/ICameraDevice.h>
 #include <android/hardware/camera/device/3.3/ICameraDeviceSession.h>
 #include <android/hardware/camera/device/3.4/ICameraDeviceSession.h>
 #include <android/hardware/camera/device/3.4/ICameraDeviceCallback.h>
@@ -145,12 +144,10 @@ struct AvailableZSLInputOutput {
 namespace {
     // "device@<version>/legacy/<id>"
     const char *kDeviceNameRE = "device@([0-9]+\\.[0-9]+)/%s/(.+)";
-    const int CAMERA_DEVICE_API_VERSION_3_5 = 0x305;
     const int CAMERA_DEVICE_API_VERSION_3_4 = 0x304;
     const int CAMERA_DEVICE_API_VERSION_3_3 = 0x303;
     const int CAMERA_DEVICE_API_VERSION_3_2 = 0x302;
     const int CAMERA_DEVICE_API_VERSION_1_0 = 0x100;
-    const char *kHAL3_5 = "3.5";
     const char *kHAL3_4 = "3.4";
     const char *kHAL3_3 = "3.3";
     const char *kHAL3_2 = "3.2";
@@ -185,9 +182,7 @@ namespace {
             return -1;
         }
 
-        if (version.compare(kHAL3_5) == 0) {
-            return CAMERA_DEVICE_API_VERSION_3_5;
-        } else if (version.compare(kHAL3_4) == 0) {
+        if (version.compare(kHAL3_4) == 0) {
             return CAMERA_DEVICE_API_VERSION_3_4;
         } else if (version.compare(kHAL3_3) == 0) {
             return CAMERA_DEVICE_API_VERSION_3_3;
@@ -675,19 +670,12 @@ public:
             HalStreamConfiguration *halStreamConfig /*out*/,
             bool *supportsPartialResults /*out*/,
             uint32_t *partialResultCount /*out*/);
-
-    void verifyLogicalCameraMetadata(const std::string& cameraName,
-            const ::android::sp<::android::hardware::camera::device::V3_2::ICameraDevice>& device,
-            const CameraMetadata& chars, int deviceVersion,
-            const hidl_vec<hidl_string>& deviceNames);
-    void verifyCameraCharacteristics(Status status, const CameraMetadata& chars);
-
     static Status getAvailableOutputStreams(camera_metadata_t *staticMeta,
             std::vector<AvailableStream> &outputStreams,
             const AvailableStream *threshold = nullptr);
     static Status isConstrainedModeAvailable(camera_metadata_t *staticMeta);
-    static Status isLogicalMultiCamera(const camera_metadata_t *staticMeta);
-    static Status getPhysicalCameraIds(const camera_metadata_t *staticMeta,
+    static Status isLogicalMultiCamera(camera_metadata_t *staticMeta);
+    static Status getPhysicalCameraIds(camera_metadata_t *staticMeta,
             std::unordered_set<std::string> *physicalIds/*out*/);
     static Status getSupportedKeys(camera_metadata_t *staticMeta,
             uint32_t tagId, std::unordered_set<int32_t> *requestIDs/*out*/);
@@ -1278,7 +1266,6 @@ TEST_F(CameraHidlTest, getCameraDeviceInterface) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_5:
             case CAMERA_DEVICE_API_VERSION_3_4:
             case CAMERA_DEVICE_API_VERSION_3_3:
             case CAMERA_DEVICE_API_VERSION_3_2: {
@@ -1320,7 +1307,6 @@ TEST_F(CameraHidlTest, getResourceCost) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_5:
             case CAMERA_DEVICE_API_VERSION_3_4:
             case CAMERA_DEVICE_API_VERSION_3_3:
             case CAMERA_DEVICE_API_VERSION_3_2: {
@@ -2061,7 +2047,6 @@ TEST_F(CameraHidlTest, getCameraCharacteristics) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_5:
             case CAMERA_DEVICE_API_VERSION_3_4:
             case CAMERA_DEVICE_API_VERSION_3_3:
             case CAMERA_DEVICE_API_VERSION_3_2: {
@@ -2078,31 +2063,33 @@ TEST_F(CameraHidlTest, getCameraCharacteristics) {
                 ASSERT_TRUE(ret.isOk());
 
                 ret = device3_x->getCameraCharacteristics([&](auto status, const auto& chars) {
-                    verifyCameraCharacteristics(status, chars);
+                    ALOGI("getCameraCharacteristics returns status:%d", (int)status);
+                    ASSERT_EQ(Status::OK, status);
+                    const camera_metadata_t* metadata = (camera_metadata_t*)chars.data();
+                    size_t expectedSize = chars.size();
+                    int result = validate_camera_metadata_structure(metadata, &expectedSize);
+                    ASSERT_TRUE((result == 0) || (result == CAMERA_METADATA_VALIDATION_SHIFTED));
+                    size_t entryCount = get_camera_metadata_entry_count(metadata);
+                    // TODO: we can do better than 0 here. Need to check how many required
+                    // characteristics keys we've defined.
+                    ASSERT_GT(entryCount, 0u);
+                    ALOGI("getCameraCharacteristics metadata entry count is %zu", entryCount);
 
-                    verifyLogicalCameraMetadata(name, device3_x, chars, deviceVersion,
-                            cameraDeviceNames);
+                    camera_metadata_ro_entry entry;
+                    int retcode = find_camera_metadata_ro_entry(metadata,
+                            ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL, &entry);
+                    if ((0 == retcode) && (entry.count > 0)) {
+                        uint8_t hardwareLevel = entry.data.u8[0];
+                        ASSERT_TRUE(
+                                hardwareLevel == ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED ||
+                                hardwareLevel == ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_FULL ||
+                                hardwareLevel == ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_3 ||
+                                hardwareLevel == ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL);
+                    } else {
+                        ADD_FAILURE() << "Get camera hardware level failed!";
+                    }
                 });
                 ASSERT_TRUE(ret.isOk());
-
-                //getPhysicalCameraCharacteristics will fail for publicly
-                //advertised camera IDs.
-                if (deviceVersion >= CAMERA_DEVICE_API_VERSION_3_5) {
-                    auto castResult = device::V3_5::ICameraDevice::castFrom(device3_x);
-                    ASSERT_TRUE(castResult.isOk());
-                    ::android::sp<::android::hardware::camera::device::V3_5::ICameraDevice>
-                            device3_5 = castResult;
-                    ASSERT_NE(device3_5, nullptr);
-
-                    std::string version, cameraId;
-                    ASSERT_TRUE(::matchDeviceName(name, mProviderType, &version, &cameraId));
-                    Return<void> ret = device3_5->getPhysicalCameraCharacteristics(cameraId,
-                            [&](auto status, const auto& chars) {
-                        ASSERT_TRUE(Status::ILLEGAL_ARGUMENT == status);
-                        ASSERT_EQ(0, chars.size());
-                    });
-                    ASSERT_TRUE(ret.isOk());
-                }
             }
             break;
             case CAMERA_DEVICE_API_VERSION_1_0: {
@@ -2139,7 +2126,6 @@ TEST_F(CameraHidlTest, setTorchMode) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_5:
             case CAMERA_DEVICE_API_VERSION_3_4:
             case CAMERA_DEVICE_API_VERSION_3_3:
             case CAMERA_DEVICE_API_VERSION_3_2: {
@@ -2265,7 +2251,6 @@ TEST_F(CameraHidlTest, dumpState) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_5:
             case CAMERA_DEVICE_API_VERSION_3_4:
             case CAMERA_DEVICE_API_VERSION_3_3:
             case CAMERA_DEVICE_API_VERSION_3_2: {
@@ -2330,7 +2315,6 @@ TEST_F(CameraHidlTest, openClose) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_5:
             case CAMERA_DEVICE_API_VERSION_3_4:
             case CAMERA_DEVICE_API_VERSION_3_3:
             case CAMERA_DEVICE_API_VERSION_3_2: {
@@ -2359,8 +2343,7 @@ TEST_F(CameraHidlTest, openClose) {
                 sp<device::V3_3::ICameraDeviceSession> sessionV3_3;
                 sp<device::V3_4::ICameraDeviceSession> sessionV3_4;
                 castSession(session, deviceVersion, &sessionV3_3, &sessionV3_4);
-                if (deviceVersion == CAMERA_DEVICE_API_VERSION_3_4 ||
-                        deviceVersion == CAMERA_DEVICE_API_VERSION_3_5) {
+                if (deviceVersion == CAMERA_DEVICE_API_VERSION_3_4) {
                     ASSERT_TRUE(sessionV3_4.get() != nullptr);
                 } else if (deviceVersion == CAMERA_DEVICE_API_VERSION_3_3) {
                     ASSERT_TRUE(sessionV3_3.get() != nullptr);
@@ -2418,7 +2401,6 @@ TEST_F(CameraHidlTest, constructDefaultRequestSettings) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_5:
             case CAMERA_DEVICE_API_VERSION_3_4:
             case CAMERA_DEVICE_API_VERSION_3_3:
             case CAMERA_DEVICE_API_VERSION_3_2: {
@@ -4162,7 +4144,7 @@ Status CameraHidlTest::getAvailableOutputStreams(camera_metadata_t *staticMeta,
 }
 
 // Check if the camera device has logical multi-camera capability.
-Status CameraHidlTest::isLogicalMultiCamera(const camera_metadata_t *staticMeta) {
+Status CameraHidlTest::isLogicalMultiCamera(camera_metadata_t *staticMeta) {
     Status ret = Status::METHOD_NOT_SUPPORTED;
     if (nullptr == staticMeta) {
         return Status::ILLEGAL_ARGUMENT;
@@ -4186,7 +4168,7 @@ Status CameraHidlTest::isLogicalMultiCamera(const camera_metadata_t *staticMeta)
 }
 
 // Generate a list of physical camera ids backing a logical multi-camera.
-Status CameraHidlTest::getPhysicalCameraIds(const camera_metadata_t *staticMeta,
+Status CameraHidlTest::getPhysicalCameraIds(camera_metadata_t *staticMeta,
         std::unordered_set<std::string> *physicalIds) {
     if ((nullptr == staticMeta) || (nullptr == physicalIds)) {
         return Status::ILLEGAL_ARGUMENT;
@@ -4659,7 +4641,6 @@ void CameraHidlTest::castSession(const sp<ICameraDeviceSession> &session, int32_
     ASSERT_NE(nullptr, session3_4);
 
     switch (deviceVersion) {
-        case CAMERA_DEVICE_API_VERSION_3_5:
         case CAMERA_DEVICE_API_VERSION_3_4: {
             auto castResult = device::V3_4::ICameraDeviceSession::castFrom(session);
             ASSERT_TRUE(castResult.isOk());
@@ -4675,101 +4656,6 @@ void CameraHidlTest::castSession(const sp<ICameraDeviceSession> &session, int32_
         default:
             //no-op
             return;
-    }
-}
-
-// Verify logical camera static metadata
-void CameraHidlTest::verifyLogicalCameraMetadata(const std::string& cameraName,
-        const ::android::sp<::android::hardware::camera::device::V3_2::ICameraDevice>& device,
-        const CameraMetadata &chars, int deviceVersion,
-        const hidl_vec<hidl_string>& deviceNames) {
-    const camera_metadata_t* metadata = (camera_metadata_t*)chars.data();
-    ASSERT_NE(nullptr, metadata);
-
-    Status rc = isLogicalMultiCamera(metadata);
-    ASSERT_TRUE(Status::OK == rc || Status::METHOD_NOT_SUPPORTED == rc);
-    if (Status::METHOD_NOT_SUPPORTED == rc) {
-        return;
-    }
-
-    std::string version, cameraId;
-    ASSERT_TRUE(::matchDeviceName(cameraName, mProviderType, &version, &cameraId));
-    std::unordered_set<std::string> physicalIds;
-    ASSERT_TRUE(Status::OK == getPhysicalCameraIds(metadata, &physicalIds));
-    for (auto physicalId : physicalIds) {
-        ASSERT_NE(physicalId, cameraId);
-        bool isPublicId = false;
-        for (auto& deviceName : deviceNames) {
-            std::string publicVersion, publicId;
-            ASSERT_TRUE(::matchDeviceName(deviceName, mProviderType, &publicVersion, &publicId));
-            if (physicalId == publicId) {
-                isPublicId = true;
-                break;
-            }
-        }
-        if (isPublicId) {
-            continue;
-        }
-
-        ASSERT_TRUE(deviceVersion >= CAMERA_DEVICE_API_VERSION_3_5);
-        auto castResult = device::V3_5::ICameraDevice::castFrom(device);
-        ASSERT_TRUE(castResult.isOk());
-        ::android::sp<::android::hardware::camera::device::V3_5::ICameraDevice> device3_5 =
-                castResult;
-        ASSERT_NE(device3_5, nullptr);
-
-        // Check camera characteristics for hidden camera id
-        Return<void> ret = device3_5->getPhysicalCameraCharacteristics(physicalId,
-                [&](auto status, const auto& chars) {
-            verifyCameraCharacteristics(status, chars);
-        });
-        ASSERT_TRUE(ret.isOk());
-
-        // Check calling getCameraDeviceInterface_V3_x() on hidden camera id returns
-        // ILLEGAL_ARGUMENT.
-        std::stringstream s;
-        s << "device@" << version << "/" << mProviderType << "/" << physicalId;
-        hidl_string fullPhysicalId(s.str());
-        ret = mProvider->getCameraDeviceInterface_V3_x(fullPhysicalId,
-                [&](auto status, const auto& device3_x) {
-            ASSERT_EQ(Status::ILLEGAL_ARGUMENT, status);
-            ASSERT_EQ(device3_x, nullptr);
-        });
-        ASSERT_TRUE(ret.isOk());
-    }
-}
-
-void CameraHidlTest::verifyCameraCharacteristics(Status status, const CameraMetadata& chars) {
-    ASSERT_EQ(Status::OK, status);
-    const camera_metadata_t* metadata = (camera_metadata_t*)chars.data();
-    size_t expectedSize = chars.size();
-    int result = validate_camera_metadata_structure(metadata, &expectedSize);
-    ASSERT_TRUE((result == 0) || (result == CAMERA_METADATA_VALIDATION_SHIFTED));
-    size_t entryCount = get_camera_metadata_entry_count(metadata);
-    // TODO: we can do better than 0 here. Need to check how many required
-    // characteristics keys we've defined.
-    ASSERT_GT(entryCount, 0u);
-
-    camera_metadata_ro_entry entry;
-    int retcode = find_camera_metadata_ro_entry(metadata,
-            ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL, &entry);
-    if ((0 == retcode) && (entry.count > 0)) {
-        uint8_t hardwareLevel = entry.data.u8[0];
-        ASSERT_TRUE(
-                hardwareLevel == ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED ||
-                hardwareLevel == ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_FULL ||
-                hardwareLevel == ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_3 ||
-                hardwareLevel == ANDROID_INFO_SUPPORTED_HARDWARE_LEVEL_EXTERNAL);
-    } else {
-        ADD_FAILURE() << "Get camera hardware level failed!";
-    }
-
-    entry.count = 0;
-    retcode = find_camera_metadata_ro_entry(metadata,
-            ANDROID_REQUEST_CHARACTERISTIC_KEYS_NEEDING_PERMISSION, &entry);
-    if ((0 == retcode) || (entry.count > 0)) {
-        ADD_FAILURE() << "ANDROID_REQUEST_CHARACTERISTIC_KEYS_NEEDING_PERMISSION "
-            << " per API contract should never be set by Hal!";
     }
 }
 

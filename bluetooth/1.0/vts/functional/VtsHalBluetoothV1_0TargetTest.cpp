@@ -170,9 +170,8 @@ class BluetoothHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     acl_cb_count = 0;
     sco_cb_count = 0;
 
-    ASSERT_FALSE(initialized);
-    // Should not be checked in production code
-    ASSERT_TRUE(bluetooth->initialize(bluetooth_cb).isOk());
+    ASSERT_EQ(initialized, false);
+    bluetooth->initialize(bluetooth_cb);
 
     bluetooth_cb->SetWaitTimeout(kCallbackNameInitializationComplete,
                                  WAIT_FOR_INIT_TIMEOUT);
@@ -187,16 +186,15 @@ class BluetoothHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         bluetooth_cb->WaitForCallback(kCallbackNameInitializationComplete)
             .no_timeout);
 
-    ASSERT_TRUE(initialized);
+    ASSERT_EQ(initialized, true);
   }
 
   virtual void TearDown() override {
-      // Should not be checked in production code
-      ASSERT_TRUE(bluetooth->close().isOk());
-      handle_no_ops();
-      EXPECT_EQ(static_cast<size_t>(0), event_queue.size());
-      EXPECT_EQ(static_cast<size_t>(0), sco_queue.size());
-      EXPECT_EQ(static_cast<size_t>(0), acl_queue.size());
+    bluetooth->close();
+    handle_no_ops();
+    EXPECT_EQ(static_cast<size_t>(0), event_queue.size());
+    EXPECT_EQ(static_cast<size_t>(0), sco_queue.size());
+    EXPECT_EQ(static_cast<size_t>(0), acl_queue.size());
   }
 
   void setBufferSizes();
