@@ -23,6 +23,6 @@ hidl_interface {
         "DisplayState",
         "EvsResult",
     ],
-    gen_java: true,
+    gen_java: false,
 }
 
