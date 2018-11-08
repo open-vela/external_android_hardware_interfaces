@@ -19,7 +19,7 @@
 
 #include <mutex>
 #include <vector>
-#include "CommConn.h"
+#include "CommBase.h"
 
 namespace android {
 namespace hardware {
@@ -30,25 +30,38 @@ namespace V2_0 {
 namespace impl {
 
 /**
- * PipeComm opens a qemu pipe to connect to the emulator, allowing the emulator UI to access the
- * Vehicle HAL and simulate changing properties.
- *
- * Since the pipe is a client, it directly implements CommConn, and only one PipeComm can be open
- * at a time.
+ * PipeComm uses a qemu pipe interface to connect to the Goldfish Emulator.
  */
-class PipeComm : public CommConn {
-   public:
-    PipeComm(MessageProcessor* messageProcessor);
+class PipeComm : public CommBase {
+public:
+    PipeComm();
 
-    void start() override;
-    void stop() override;
+    /**
+     * Opens a pipe and begins listening.
+     *
+     * @return int Returns 0 on success.
+     */
+    int open() override;
 
+    /**
+     * Blocking call to read data from the connection.
+     *
+     * @return std::vector<uint8_t> Serialized protobuf data received from emulator.  This will be
+     *              an empty vector if the connection was closed or some other error occurred.
+     */
     std::vector<uint8_t> read() override;
+
+    /**
+     * Transmits a string of data to the emulator.
+     *
+     * @param data Serialized protobuf data to transmit.
+     *
+     * @return int Number of bytes transmitted, or -1 if failed.
+     */
     int write(const std::vector<uint8_t>& data) override;
 
-    inline bool isOpen() override { return mPipeFd > 0; }
-
-   private:
+private:
+    std::mutex mMutex;
     int mPipeFd;
 };
 
