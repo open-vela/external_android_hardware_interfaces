@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-package android.hardware.input.classifier@1.0;
+#include <VtsHalHidlTargetTestBase.h>
+#include <android-base/logging.h>
 
-interface IInputClassifier {
+#include "hostapd_hidl_test_utils.h"
+#include "hostapd_hidl_test_utils_1_1.h"
 
-  /**
-   * Returns the classification for the current sequence of input events.
-   */
-  classify(MotionEvent event) generates (Classification classification);
+using ::android::sp;
+using ::android::hardware::wifi::hostapd::V1_1::IHostapd;
 
-};
+sp<IHostapd> getHostapd_1_1() { return IHostapd::castFrom(getHostapd()); }
