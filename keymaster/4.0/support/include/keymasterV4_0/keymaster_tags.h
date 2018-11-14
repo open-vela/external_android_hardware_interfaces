@@ -282,10 +282,7 @@ template <typename ValueT>
 class NullOr {
     template <typename T>
     struct reference_initializer {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wnull-dereference"
         static T&& init() { return *static_cast<std::remove_reference_t<T>*>(nullptr); }
-#pragma GCC diagnostic pop
     };
     template <typename T>
     struct pointer_initializer {
