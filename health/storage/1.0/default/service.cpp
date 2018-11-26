@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <hidl/HidlLazyUtils.h>
 #include <hidl/HidlTransportSupport.h>
 #include "Storage.h"
 
@@ -24,7 +23,6 @@ using android::status_t;
 using android::UNKNOWN_ERROR;
 using android::hardware::configureRpcThreadpool;
 using android::hardware::joinRpcThreadpool;
-using android::hardware::LazyServiceRegistrar;
 using android::hardware::health::storage::V1_0::IStorage;
 using android::hardware::health::storage::V1_0::implementation::Storage;
 
@@ -32,8 +30,7 @@ int main() {
     configureRpcThreadpool(1, true);
 
     sp<IStorage> service = new Storage();
-    LazyServiceRegistrar registrar;
-    status_t result = registrar.registerService(service);
+    status_t result = service->registerAsService();
 
     if (result != OK) {
         return result;
