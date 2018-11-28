@@ -16,8 +16,6 @@
 
 package android.hardware.audio.common@5.0;
 
-import android.hidl.safe_union@1.0;
-
 /*
  *
  *  IDs and Handles
@@ -378,16 +376,6 @@ enum AudioChannelMask : uint32_t {
     OUT_TOP_SIDE_LEFT         = 0x40000,
     OUT_TOP_SIDE_RIGHT        = 0x80000,
 
-    /**
-     * Haptic channel characteristics are specific to a device and
-     * only used to play device specific resources (eg: ringtones).
-     * The HAL can freely map A and B to haptic controllers, the
-     * framework shall not interpret those values and forward them
-     * from the device audio assets.
-     */
-    OUT_HAPTIC_A              = 0x20000000,
-    OUT_HAPTIC_B              = 0x10000000,
-
     OUT_MONO     = OUT_FRONT_LEFT,
     OUT_STEREO   = (OUT_FRONT_LEFT | OUT_FRONT_RIGHT),
     OUT_2POINT1  = (OUT_FRONT_LEFT | OUT_FRONT_RIGHT | OUT_LOW_FREQUENCY),
@@ -435,12 +423,6 @@ enum AudioChannelMask : uint32_t {
     OUT_7POINT1POINT4  = (OUT_7POINT1 |
             OUT_TOP_FRONT_LEFT | OUT_TOP_FRONT_RIGHT |
             OUT_TOP_BACK_LEFT | OUT_TOP_BACK_RIGHT),
-    OUT_MONO_HAPTIC_A = (OUT_FRONT_LEFT | OUT_HAPTIC_A),
-    OUT_STEREO_HAPTIC_A = (OUT_FRONT_LEFT | OUT_FRONT_RIGHT | OUT_HAPTIC_A),
-    OUT_HAPTIC_AB = (OUT_HAPTIC_A | OUT_HAPTIC_B),
-    OUT_MONO_HAPTIC_AB = (OUT_FRONT_LEFT | OUT_HAPTIC_A | OUT_HAPTIC_B),
-    OUT_STEREO_HAPTIC_AB = (OUT_FRONT_LEFT | OUT_FRONT_RIGHT |
-            OUT_HAPTIC_A | OUT_HAPTIC_B),
     // Note that the 2.0 OUT_ALL* have been moved to helper functions
 
     /* These are bits only, not complete values */
@@ -604,29 +586,6 @@ enum AudioDevice : uint32_t {
 };
 
 /**
- * IEEE 802 MAC address.
- */
-typedef uint8_t[6] MacAddress;
-
-/**
- * Specifies a device address in case when several devices of the same type
- * can be connected (e.g. BT A2DP, USB).
- */
-struct DeviceAddress {
-    AudioDevice device;  // discriminator
-    union Address {
-        MacAddress mac;     // used for BLUETOOTH_A2DP_*
-        uint8_t[4] ipv4;    // used for IP
-        struct Alsa {
-            int32_t card;
-            int32_t device;
-        } alsa;             // used for USB_*
-    } address;
-    string busAddress;      // used for BUS
-    string rSubmixAddress;  // used for REMOTE_SUBMIX
-};
-
-/**
  * The audio output flags serve two purposes:
  *
  *  - when an AudioTrack is created they indicate a "wish" to be connected to an
@@ -773,17 +732,9 @@ struct RecordTrackMetadata {
      * Must not be negative.
      */
     float gain;
-    /**
-     * Indicates the destination of an input stream, can be left unspecified.
-     */
-    safe_union Destination {
-        Monostate unspecified;
-        DeviceAddress device;
-    };
-    Destination destination;
 };
 
-/** Metadatas of the sink of a StreamIn. */
+/** Metadatas of the source of a StreamIn. */
 struct SinkMetadata {
     vec<RecordTrackMetadata> tracks;
 };
