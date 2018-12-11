@@ -13,6 +13,12 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
+    types: [
+        "WeaverConfig",
+        "WeaverReadResponse",
+        "WeaverReadStatus",
+        "WeaverStatus",
+    ],
     gen_java: true,
 }
 
