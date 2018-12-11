@@ -21,6 +21,13 @@ hidl_interface {
         "android.hardware.media@1.0",
         "android.hidl.base@1.0",
     ],
+    types: [
+        "CodecBuffer",
+        "ColorAspects",
+        "Message",
+        "PortMode",
+        "Status",
+    ],
     gen_java: false,
 }
 

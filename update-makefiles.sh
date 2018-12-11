@@ -13,3 +13,9 @@ source $ANDROID_BUILD_TOP/system/tools/hidl/update-makefiles-helper.sh
 do_makefiles_update \
   "android.hardware:hardware/interfaces" \
   "android.hidl:system/libhidl/transport"
+
+echo "Updating files at $ANDROID_BUILD_TOP/test/vts-testcase/hal"
+pushd $ANDROID_BUILD_TOP/test/vts-testcase/hal
+./script/update_makefiles.py
+popd
+
