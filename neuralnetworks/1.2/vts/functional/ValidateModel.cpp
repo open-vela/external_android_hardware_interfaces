@@ -162,7 +162,6 @@ static uint32_t getInvalidRank(OperandType type) {
         case OperandType::TENSOR_INT32:
         case OperandType::TENSOR_QUANT8_ASYMM:
         case OperandType::TENSOR_QUANT16_SYMM:
-        case OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL:
             return 0;
         default:
             return 0;
@@ -191,7 +190,6 @@ static float getInvalidScale(OperandType type) {
         case OperandType::BOOL:
         case OperandType::TENSOR_FLOAT16:
         case OperandType::TENSOR_FLOAT32:
-        case OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL:
             return 1.0f;
         case OperandType::TENSOR_INT32:
             return -1.0f;
@@ -226,7 +224,6 @@ static std::vector<int32_t> getInvalidZeroPoints(OperandType type) {
         case OperandType::TENSOR_FLOAT16:
         case OperandType::TENSOR_FLOAT32:
         case OperandType::TENSOR_INT32:
-        case OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL:
             return {1};
         case OperandType::TENSOR_QUANT8_ASYMM:
             return {-1, 256};
@@ -290,21 +287,6 @@ static void mutateOperand(Operand* operand, OperandType type) {
                 operand->dimensions.size() > 0 ? operand->dimensions : hidl_vec<uint32_t>({1});
             newOperand.scale = operand->scale != 0.0f ? operand->scale : 1.0f;
             break;
-        case OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL: {
-            newOperand.dimensions =
-                operand->dimensions.size() > 0 ? operand->dimensions : hidl_vec<uint32_t>({1});
-            newOperand.scale = 0.0f;
-            newOperand.zeroPoint = 0;
-
-            SymmPerChannelQuantParams channelQuant;
-            channelQuant.channelDim = 0;
-            channelQuant.scales = hidl_vec<float>(
-                operand->dimensions.size() > 0 ? static_cast<size_t>(operand->dimensions[0]) : 0);
-            for (size_t i = 0; i < channelQuant.scales.size(); ++i) {
-                channelQuant.scales[i] = 1.0f;
-            }
-            newOperand.extraParams.channelQuant(std::move(channelQuant));
-        } break;
         case OperandType::OEM:
         case OperandType::TENSOR_OEM_BYTE:
         default:
@@ -325,9 +307,6 @@ static bool mutateOperationOperandTypeSkip(size_t operand, OperandType type, con
         // - ARGMIN and ARGMAX's first argument can be any of
         // TENSOR_(FLOAT16|FLOAT32|INT32|QUANT8_ASYMM).
         // - CAST's argument can be any of TENSOR_(FLOAT16|FLOAT32|INT32|QUANT8_ASYMM).
-        // - RANDOM_MULTINOMIAL's argument can be either TENSOR_FLOAT16 or TENSOR_FLOAT32.
-        // - CONV_2D filter type (arg 1) can be QUANT8_ASYMM or QUANT8_SYMM_PER_CHANNEL
-        // - DEPTHWISE_CONV_2D filter type (arg 1) can be QUANT8_ASYMM or QUANT8_SYMM_PER_CHANNEL
         switch (operation.type) {
             case OperationType::LSH_PROJECTION: {
                 if (operand == operation.inputs[1]) {
@@ -339,18 +318,6 @@ static bool mutateOperationOperandTypeSkip(size_t operand, OperandType type, con
             case OperationType::ARGMIN: {
                 if (type == OperandType::TENSOR_FLOAT16 || type == OperandType::TENSOR_FLOAT32 ||
                     type == OperandType::TENSOR_INT32 || type == OperandType::TENSOR_QUANT8_ASYMM) {
-                    return true;
-                }
-            } break;
-            case OperationType::RANDOM_MULTINOMIAL: {
-                if (type == OperandType::TENSOR_FLOAT16 || type == OperandType::TENSOR_FLOAT32) {
-                    return true;
-                }
-            } break;
-            case OperationType::DEPTHWISE_CONV_2D:
-            case OperationType::CONV_2D: {
-                if (operand == 1 && (type == OperandType::TENSOR_QUANT8_ASYMM ||
-                                     type == OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL)) {
                     return true;
                 }
             } break;
