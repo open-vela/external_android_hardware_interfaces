@@ -72,8 +72,7 @@ void copy_back(MixedTyped* dst, const std::vector<RequestArgument>& ra, char* sr
     copy_back_<int16_t>(dst, ra, src);
     copy_back_<_Float16>(dst, ra, src);
     copy_back_<bool8>(dst, ra, src);
-    copy_back_<int8_t>(dst, ra, src);
-    static_assert(7 == std::tuple_size<MixedTyped>::value,
+    static_assert(6 == std::tuple_size<MixedTyped>::value,
                   "Number of types in MixedTyped changed, but copy_back function wasn't updated");
 }
 
@@ -89,22 +88,11 @@ static Return<ErrorStatus> ExecutePreparedModel(sp<V1_2::IPreparedModel>& prepar
                                                 sp<ExecutionCallback>& callback) {
     return preparedModel->execute_1_2(request, callback);
 }
-static Return<ErrorStatus> ExecutePreparedModel(sp<V1_0::IPreparedModel>&, const Request&) {
-    ADD_FAILURE() << "asking for synchronous execution at V1_0";
-    return ErrorStatus::GENERAL_FAILURE;
-}
-static Return<ErrorStatus> ExecutePreparedModel(sp<V1_2::IPreparedModel>& preparedModel,
-                                                const Request& request) {
-    return preparedModel->executeSynchronously(request);
-}
-enum class Synchronously { NO, YES };
-const float kDefaultAtol = 1e-5f;
-const float kDefaultRtol = 1e-5f;
 template <typename T_IPreparedModel>
 void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bool(int)> is_ignored,
                            const std::vector<MixedTypedExample>& examples,
-                           bool hasRelaxedFloat32Model = false, float fpAtol = kDefaultAtol,
-                           float fpRtol = kDefaultRtol, Synchronously sync = Synchronously::NO) {
+                           bool hasRelaxedFloat32Model = false, float fpAtol = 1e-5f,
+                           float fpRtol = 1e-5f) {
     const uint32_t INPUT = 0;
     const uint32_t OUTPUT = 1;
 
@@ -197,31 +185,19 @@ void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bo
         inputMemory->commit();
         outputMemory->commit();
 
-        if (sync == Synchronously::NO) {
-            SCOPED_TRACE("asynchronous");
+        // launch execution
+        sp<ExecutionCallback> executionCallback = new ExecutionCallback();
+        ASSERT_NE(nullptr, executionCallback.get());
+        Return<ErrorStatus> executionLaunchStatus = ExecutePreparedModel(
+            preparedModel, {.inputs = inputs_info, .outputs = outputs_info, .pools = pools},
+            executionCallback);
+        ASSERT_TRUE(executionLaunchStatus.isOk());
+        EXPECT_EQ(ErrorStatus::NONE, static_cast<ErrorStatus>(executionLaunchStatus));
 
-            // launch execution
-            sp<ExecutionCallback> executionCallback = new ExecutionCallback();
-            ASSERT_NE(nullptr, executionCallback.get());
-            Return<ErrorStatus> executionLaunchStatus = ExecutePreparedModel(
-                preparedModel, {.inputs = inputs_info, .outputs = outputs_info, .pools = pools},
-                executionCallback);
-            ASSERT_TRUE(executionLaunchStatus.isOk());
-            EXPECT_EQ(ErrorStatus::NONE, static_cast<ErrorStatus>(executionLaunchStatus));
-
-            // retrieve execution status
-            executionCallback->wait();
-            ErrorStatus executionReturnStatus = executionCallback->getStatus();
-            EXPECT_EQ(ErrorStatus::NONE, executionReturnStatus);
-        } else {
-            SCOPED_TRACE("synchronous");
-
-            // execute
-            Return<ErrorStatus> executionStatus = ExecutePreparedModel(
-                preparedModel, {.inputs = inputs_info, .outputs = outputs_info, .pools = pools});
-            ASSERT_TRUE(executionStatus.isOk());
-            EXPECT_EQ(ErrorStatus::NONE, static_cast<ErrorStatus>(executionStatus));
-        }
+        // retrieve execution status
+        executionCallback->wait();
+        ErrorStatus executionReturnStatus = executionCallback->getStatus();
+        EXPECT_EQ(ErrorStatus::NONE, executionReturnStatus);
 
         // validate results
         outputMemory->read();
@@ -238,13 +214,6 @@ void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bo
             expectMultinomialDistributionWithinTolerance(test, example);
         }
     }
-}
-template <typename T_IPreparedModel>
-void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bool(int)> is_ignored,
-                           const std::vector<MixedTypedExample>& examples,
-                           bool hasRelaxedFloat32Model, Synchronously sync) {
-    EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model, kDefaultAtol,
-                          kDefaultRtol, sync);
 }
 
 static void getPreparedModel(sp<PreparedModelCallback> callback,
@@ -393,9 +362,7 @@ void Execute(const sp<V1_2::IDevice>& device, std::function<V1_2::Model(void)> c
     ASSERT_NE(nullptr, preparedModel.get());
 
     EvaluatePreparedModel(preparedModel, is_ignored, examples,
-                          model.relaxComputationFloat32toFloat16, Synchronously::NO);
-    EvaluatePreparedModel(preparedModel, is_ignored, examples,
-                          model.relaxComputationFloat32toFloat16, Synchronously::YES);
+                          model.relaxComputationFloat32toFloat16);
 }
 
 }  // namespace generated_tests
