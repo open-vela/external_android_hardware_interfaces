@@ -131,9 +131,6 @@ enum VehiclePropertyGroup : int32_t {
  * When a property's status field is not set to AVAILABLE:
  *  - IVehicle#set may return StatusCode::NOT_AVAILABLE.
  *  - IVehicle#get is not guaranteed to work.
- *
- * Properties set to values out of range must be ignored and no action taken
- * in response to such ill formed requests.
  */
 enum VehicleProperty : int32_t {
 
@@ -246,7 +243,7 @@ enum VehicleProperty : int32_t {
      * Fuel door location
      *
      * @change_mode VehiclePropertyChangeMode:STATIC
-     * @data_enum PortLocationType
+     * @data_enum FuelDoorLocationType
      * @access VehiclePropertyAccess:READ
      */
     INFO_FUEL_DOOR_LOCATION = (
@@ -270,7 +267,6 @@ enum VehicleProperty : int32_t {
 
     /**
      * Driver's seat location
-     * VHAL implementations must ignore the areaId. Use VehicleArea:GLOBAL.
      *
      * @change_mode VehiclePropertyChangeMode:STATIC
      * @data_enum VehicleAreaSeat
