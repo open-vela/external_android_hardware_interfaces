@@ -28,7 +28,6 @@ cc_test {
         "android.hardware.wifi@1.1",
         "android.hardware.wifi@1.2",
     ],
-    test_suites: ["general-tests"],
 }
 
 cc_test {
@@ -44,5 +43,4 @@ cc_test {
         "android.hardware.wifi@1.1",
         "android.hardware.wifi@1.2",
     ],
-    test_suites: ["general-tests"],
 }

@@ -29,5 +29,4 @@ cc_test {
         "libkeymaster4support",
         "libsoftkeymasterdevice",
     ],
-    test_suites: ["general-tests"],
 }

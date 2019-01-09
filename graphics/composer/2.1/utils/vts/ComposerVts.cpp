@@ -78,9 +78,9 @@ std::unique_ptr<ComposerClient> Composer::createClient() {
 ComposerClient::ComposerClient(const sp<IComposerClient>& client) : mClient(client) {}
 
 ComposerClient::~ComposerClient() {
-    for (const auto& it : mDisplayResources) {
+    for (auto it : mDisplayResources) {
         Display display = it.first;
-        const DisplayResource& resource = it.second;
+        DisplayResource& resource = it.second;
 
         for (auto layer : resource.layers) {
             EXPECT_EQ(Error::NONE, mClient->destroyLayer(display, layer))
