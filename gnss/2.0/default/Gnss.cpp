@@ -20,7 +20,6 @@
 #include <log/log.h>
 #include "AGnss.h"
 #include "AGnssRil.h"
-#include "GnssConfiguration.h"
 #include "GnssMeasurement.h"
 
 using ::android::hardware::Status;
@@ -182,10 +181,6 @@ Return<bool> Gnss::injectBestLocation(const V1_0::GnssLocation&) {
 }
 
 // Methods from V2_0::IGnss follow.
-Return<sp<V2_0::IGnssConfiguration>> Gnss::getExtensionGnssConfiguration_2_0() {
-    return new GnssConfiguration{};
-}
-
 Return<sp<V2_0::IAGnss>> Gnss::getExtensionAGnss_2_0() {
     return new AGnss{};
 }
