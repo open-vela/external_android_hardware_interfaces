@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-#include "GeneratedTestHarness.h"
 #include "Callbacks.h"
-#include "ExecutionBurstController.h"
 #include "TestHarness.h"
 #include "Utils.h"
 
@@ -111,24 +109,14 @@ static Return<ErrorStatus> ExecutePreparedModel(sp<V1_2::IPreparedModel>& prepar
     }
     return result;
 }
-static std::unique_ptr<::android::nn::ExecutionBurstController> CreateBurst(
-        const sp<V1_0::IPreparedModel>&) {
-    ADD_FAILURE() << "asking for burst execution at V1_0";
-    return nullptr;
-}
-static std::unique_ptr<::android::nn::ExecutionBurstController> CreateBurst(
-        const sp<V1_2::IPreparedModel>& preparedModel) {
-    return ::android::nn::createExecutionBurstController(preparedModel, /*blocking=*/true);
-}
-enum class Executor { ASYNC, SYNC, BURST };
-enum class OutputType { FULLY_SPECIFIED, UNSPECIFIED, INSUFFICIENT };
+enum class Synchronously { NO, YES };
 const float kDefaultAtol = 1e-5f;
 const float kDefaultRtol = 1e-5f;
 template <typename T_IPreparedModel>
 void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bool(int)> is_ignored,
                            const std::vector<MixedTypedExample>& examples,
                            bool hasRelaxedFloat32Model, float fpAtol, float fpRtol,
-                           Executor executor, MeasureTiming measure, OutputType outputType) {
+                           Synchronously sync, MeasureTiming measure, bool testDynamicOutputShape) {
     const uint32_t INPUT = 0;
     const uint32_t OUTPUT = 1;
 
@@ -176,20 +164,8 @@ void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bo
 
         // Go through all outputs, initialize RequestArgument descriptors
         resize_accordingly(golden, test);
-        bool sizeLargerThanOne = true;
-        for_all(golden, [&outputs_info, &outputSize, &outputType, &sizeLargerThanOne](
-                                int index, auto, auto s) {
+        for_all(golden, [&outputs_info, &outputSize](int index, auto, auto s) {
             if (outputs_info.size() <= static_cast<size_t>(index)) outputs_info.resize(index + 1);
-            if (index == 0) {
-                // On OutputType::INSUFFICIENT, set the output operand with index 0 with
-                // buffer size one byte less than needed.
-                if (outputType == OutputType::INSUFFICIENT) {
-                    if (s > 1)
-                        s -= 1;
-                    else
-                        sizeLargerThanOne = false;
-                }
-            }
             RequestArgument arg = {
                 .location = {.poolIndex = OUTPUT, .offset = 0, .length = static_cast<uint32_t>(s)},
                 .dimensions = {},
@@ -197,9 +173,6 @@ void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bo
             outputs_info[index] = arg;
             outputSize += s;
         });
-        // If output0 does not have size larger than one byte,
-        // we can not provide an insufficient buffer
-        if (!sizeLargerThanOne && outputType == OutputType::INSUFFICIENT) return;
         // Compute offset for outputs 1 and so on
         {
             size_t offset = 0;
@@ -236,73 +209,46 @@ void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bo
         inputMemory->commit();
         outputMemory->commit();
 
-        const Request request = {.inputs = inputs_info, .outputs = outputs_info, .pools = pools};
-
         ErrorStatus executionStatus;
         hidl_vec<OutputShape> outputShapes;
         Timing timing;
-        switch (executor) {
-            case Executor::ASYNC: {
-                SCOPED_TRACE("asynchronous");
+        if (sync == Synchronously::NO) {
+            SCOPED_TRACE("asynchronous");
 
-                // launch execution
-                sp<ExecutionCallback> executionCallback = new ExecutionCallback();
-                ASSERT_NE(nullptr, executionCallback.get());
-                Return<ErrorStatus> executionLaunchStatus =
-                        ExecutePreparedModel(preparedModel, request, measure, executionCallback);
-                ASSERT_TRUE(executionLaunchStatus.isOk());
-                EXPECT_EQ(ErrorStatus::NONE, static_cast<ErrorStatus>(executionLaunchStatus));
+            // launch execution
+            sp<ExecutionCallback> executionCallback = new ExecutionCallback();
+            ASSERT_NE(nullptr, executionCallback.get());
+            Return<ErrorStatus> executionLaunchStatus = ExecutePreparedModel(
+                    preparedModel, {.inputs = inputs_info, .outputs = outputs_info, .pools = pools},
+                    measure, executionCallback);
+            ASSERT_TRUE(executionLaunchStatus.isOk());
+            EXPECT_EQ(ErrorStatus::NONE, static_cast<ErrorStatus>(executionLaunchStatus));
 
-                // retrieve execution status
-                executionCallback->wait();
-                executionStatus = executionCallback->getStatus();
-                outputShapes = executionCallback->getOutputShapes();
-                timing = executionCallback->getTiming();
+            // retrieve execution status
+            executionCallback->wait();
+            executionStatus = executionCallback->getStatus();
+            outputShapes = executionCallback->getOutputShapes();
+            timing = executionCallback->getTiming();
+        } else {
+            SCOPED_TRACE("synchronous");
 
-                break;
-            }
-            case Executor::SYNC: {
-                SCOPED_TRACE("synchronous");
-
-                // execute
-                Return<ErrorStatus> executionReturnStatus = ExecutePreparedModel(
-                        preparedModel, request, measure, &outputShapes, &timing);
-                ASSERT_TRUE(executionReturnStatus.isOk());
-                executionStatus = static_cast<ErrorStatus>(executionReturnStatus);
-
-                break;
-            }
-            case Executor::BURST: {
-                SCOPED_TRACE("burst");
-
-                // create burst
-                const std::unique_ptr<::android::nn::ExecutionBurstController> controller =
-                        CreateBurst(preparedModel);
-                ASSERT_NE(nullptr, controller.get());
-
-                // create memory keys
-                std::vector<intptr_t> keys(request.pools.size());
-                for (size_t i = 0; i < keys.size(); ++i) {
-                    keys[i] = reinterpret_cast<intptr_t>(&request.pools[i]);
-                }
-
-                // execute burst
-                std::tie(executionStatus, outputShapes, timing) =
-                        controller->compute(request, measure, keys);
-
-                break;
-            }
+            // execute
+            Return<ErrorStatus> executionReturnStatus = ExecutePreparedModel(
+                    preparedModel, {.inputs = inputs_info, .outputs = outputs_info, .pools = pools},
+                    measure, &outputShapes, &timing);
+            ASSERT_TRUE(executionReturnStatus.isOk());
+            executionStatus = static_cast<ErrorStatus>(executionReturnStatus);
         }
 
-        if (outputType != OutputType::FULLY_SPECIFIED &&
-            executionStatus == ErrorStatus::GENERAL_FAILURE) {
+        if (testDynamicOutputShape && executionStatus != ErrorStatus::NONE) {
             LOG(INFO) << "NN VTS: Early termination of test because vendor service cannot "
                          "execute model that it does not support.";
             std::cout << "[          ]   Early termination of test because vendor service cannot "
                          "execute model that it does not support."
                       << std::endl;
-            GTEST_SKIP();
+            return;
         }
+        ASSERT_EQ(ErrorStatus::NONE, executionStatus);
         if (measure == MeasureTiming::NO) {
             EXPECT_EQ(UINT64_MAX, timing.timeOnDevice);
             EXPECT_EQ(UINT64_MAX, timing.timeInDriver);
@@ -312,28 +258,9 @@ void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bo
             }
         }
 
-        switch (outputType) {
-            case OutputType::FULLY_SPECIFIED:
-                // If the model output operands are fully specified, outputShapes must be either
-                // either empty, or have the same number of elements as the number of outputs.
-                ASSERT_EQ(ErrorStatus::NONE, executionStatus);
-                ASSERT_TRUE(outputShapes.size() == 0 ||
-                            outputShapes.size() == test.operandDimensions.size());
-                break;
-            case OutputType::UNSPECIFIED:
-                // If the model output operands are not fully specified, outputShapes must have
-                // the same number of elements as the number of outputs.
-                ASSERT_EQ(ErrorStatus::NONE, executionStatus);
-                ASSERT_EQ(outputShapes.size(), test.operandDimensions.size());
-                break;
-            case OutputType::INSUFFICIENT:
-                ASSERT_EQ(ErrorStatus::OUTPUT_INSUFFICIENT_SIZE, executionStatus);
-                ASSERT_EQ(outputShapes.size(), test.operandDimensions.size());
-                ASSERT_FALSE(outputShapes[0].isSufficient);
-                return;
-        }
         // Go through all outputs, overwrite output dimensions with returned output shapes
-        if (outputShapes.size() > 0) {
+        if (testDynamicOutputShape) {
+            ASSERT_NE(outputShapes.size(), 0);
             for_each<uint32_t>(test.operandDimensions,
                                [&outputShapes](int idx, std::vector<uint32_t>& dim) {
                                    dim = outputShapes[idx].dimensions;
@@ -359,55 +286,10 @@ void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bo
 template <typename T_IPreparedModel>
 void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bool(int)> is_ignored,
                            const std::vector<MixedTypedExample>& examples,
-                           bool hasRelaxedFloat32Model, Executor executor, MeasureTiming measure,
-                           OutputType outputType) {
+                           bool hasRelaxedFloat32Model, Synchronously sync, MeasureTiming measure,
+                           bool testDynamicOutputShape) {
     EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model, kDefaultAtol,
-                          kDefaultRtol, executor, measure, outputType);
-}
-
-void EvaluatePreparedModel(sp<V1_2::IPreparedModel>& preparedModel,
-                           std::function<bool(int)> is_ignored,
-                           const std::vector<MixedTypedExample>& examples,
-                           bool hasRelaxedFloat32Model, bool testDynamicOutputShape) {
-    if (testDynamicOutputShape) {
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::ASYNC, MeasureTiming::NO, OutputType::UNSPECIFIED);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::SYNC, MeasureTiming::NO, OutputType::UNSPECIFIED);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::BURST, MeasureTiming::NO, OutputType::UNSPECIFIED);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::ASYNC, MeasureTiming::YES, OutputType::UNSPECIFIED);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::SYNC, MeasureTiming::YES, OutputType::UNSPECIFIED);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::BURST, MeasureTiming::YES, OutputType::UNSPECIFIED);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::ASYNC, MeasureTiming::NO, OutputType::INSUFFICIENT);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::SYNC, MeasureTiming::NO, OutputType::INSUFFICIENT);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::BURST, MeasureTiming::NO, OutputType::INSUFFICIENT);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::ASYNC, MeasureTiming::YES, OutputType::INSUFFICIENT);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::SYNC, MeasureTiming::YES, OutputType::INSUFFICIENT);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::BURST, MeasureTiming::YES, OutputType::INSUFFICIENT);
-    } else {
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::ASYNC, MeasureTiming::NO, OutputType::FULLY_SPECIFIED);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::SYNC, MeasureTiming::NO, OutputType::FULLY_SPECIFIED);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::BURST, MeasureTiming::NO, OutputType::FULLY_SPECIFIED);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::ASYNC, MeasureTiming::YES, OutputType::FULLY_SPECIFIED);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::SYNC, MeasureTiming::YES, OutputType::FULLY_SPECIFIED);
-        EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model,
-                              Executor::BURST, MeasureTiming::YES, OutputType::FULLY_SPECIFIED);
-    }
+                          kDefaultRtol, sync, measure, testDynamicOutputShape);
 }
 
 static void getPreparedModel(sp<PreparedModelCallback> callback,
@@ -456,15 +338,15 @@ void Execute(const sp<V1_0::IDevice>& device, std::function<V1_0::Model(void)> c
         std::cout << "[          ]   Early termination of test because vendor service cannot "
                      "prepare model that it does not support."
                   << std::endl;
-        GTEST_SKIP();
+        return;
     }
     EXPECT_EQ(ErrorStatus::NONE, prepareReturnStatus);
     ASSERT_NE(nullptr, preparedModel.get());
 
     float fpAtol = 1e-5f, fpRtol = 5.0f * 1.1920928955078125e-7f;
     EvaluatePreparedModel(preparedModel, is_ignored, examples,
-                          /*hasRelaxedFloat32Model=*/false, fpAtol, fpRtol, Executor::ASYNC,
-                          MeasureTiming::NO, OutputType::FULLY_SPECIFIED);
+                          /*hasRelaxedFloat32Model=*/false, fpAtol, fpRtol, Synchronously::NO,
+                          MeasureTiming::NO, /*testDynamicOutputShape=*/false);
 }
 
 void Execute(const sp<V1_1::IDevice>& device, std::function<V1_1::Model(void)> create_model,
@@ -504,18 +386,22 @@ void Execute(const sp<V1_1::IDevice>& device, std::function<V1_1::Model(void)> c
         std::cout << "[          ]   Early termination of test because vendor service cannot "
                      "prepare model that it does not support."
                   << std::endl;
-        GTEST_SKIP();
+        return;
     }
     EXPECT_EQ(ErrorStatus::NONE, prepareReturnStatus);
     ASSERT_NE(nullptr, preparedModel.get());
 
     EvaluatePreparedModel(preparedModel, is_ignored, examples,
-                          model.relaxComputationFloat32toFloat16, 1e-5f, 1e-5f, Executor::ASYNC,
-                          MeasureTiming::NO, OutputType::FULLY_SPECIFIED);
+                          model.relaxComputationFloat32toFloat16, 1e-5f, 1e-5f, Synchronously::NO,
+                          MeasureTiming::NO, /*testDynamicOutputShape=*/false);
 }
 
-void PrepareModel(const sp<V1_2::IDevice>& device, const V1_2::Model& model,
-                  sp<V1_2::IPreparedModel>* preparedModel) {
+// TODO: Reduce code duplication.
+void Execute(const sp<V1_2::IDevice>& device, std::function<V1_2::Model(void)> create_model,
+             std::function<bool(int)> is_ignored, const std::vector<MixedTypedExample>& examples,
+             bool testDynamicOutputShape) {
+    V1_2::Model model = create_model();
+
     // see if service can handle model
     bool fullySupportsModel = false;
     Return<void> supportedCall = device->getSupportedOperations_1_2(
@@ -538,31 +424,34 @@ void PrepareModel(const sp<V1_2::IDevice>& device, const V1_2::Model& model,
     // retrieve prepared model
     preparedModelCallback->wait();
     ErrorStatus prepareReturnStatus = preparedModelCallback->getStatus();
-    getPreparedModel(preparedModelCallback, preparedModel);
+    sp<V1_2::IPreparedModel> preparedModel;
+    getPreparedModel(preparedModelCallback, &preparedModel);
 
     // early termination if vendor service cannot fully prepare model
     if (!fullySupportsModel && prepareReturnStatus != ErrorStatus::NONE) {
-        ASSERT_EQ(nullptr, preparedModel->get());
+        ASSERT_EQ(nullptr, preparedModel.get());
         LOG(INFO) << "NN VTS: Early termination of test because vendor service cannot "
                      "prepare model that it does not support.";
         std::cout << "[          ]   Early termination of test because vendor service cannot "
                      "prepare model that it does not support."
                   << std::endl;
-        GTEST_SKIP();
+        return;
     }
     EXPECT_EQ(ErrorStatus::NONE, prepareReturnStatus);
-    ASSERT_NE(nullptr, preparedModel->get());
-}
+    ASSERT_NE(nullptr, preparedModel.get());
 
-// TODO: Reduce code duplication.
-void Execute(const sp<V1_2::IDevice>& device, std::function<V1_2::Model(void)> create_model,
-             std::function<bool(int)> is_ignored, const std::vector<MixedTypedExample>& examples,
-             bool testDynamicOutputShape) {
-    V1_2::Model model = create_model();
-    sp<V1_2::IPreparedModel> preparedModel = nullptr;
-    PrepareModel(device, model, &preparedModel);
     EvaluatePreparedModel(preparedModel, is_ignored, examples,
-                          model.relaxComputationFloat32toFloat16, testDynamicOutputShape);
+                          model.relaxComputationFloat32toFloat16, Synchronously::NO,
+                          MeasureTiming::NO, testDynamicOutputShape);
+    EvaluatePreparedModel(preparedModel, is_ignored, examples,
+                          model.relaxComputationFloat32toFloat16, Synchronously::YES,
+                          MeasureTiming::NO, testDynamicOutputShape);
+    EvaluatePreparedModel(preparedModel, is_ignored, examples,
+                          model.relaxComputationFloat32toFloat16, Synchronously::NO,
+                          MeasureTiming::YES, testDynamicOutputShape);
+    EvaluatePreparedModel(preparedModel, is_ignored, examples,
+                          model.relaxComputationFloat32toFloat16, Synchronously::YES,
+                          MeasureTiming::YES, testDynamicOutputShape);
 }
 
 }  // namespace generated_tests
