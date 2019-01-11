@@ -56,14 +56,6 @@
         </interface>
     </hal>
     <hal format="hidl" optional="true">
-        <name>android.hardware.biometrics.face</name>
-        <version>1.0</version>
-        <interface>
-            <name>IBiometricsFace</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="hidl" optional="true">
         <name>android.hardware.biometrics.fingerprint</name>
         <version>2.1</version>
         <interface>
@@ -121,7 +113,7 @@
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.configstore</name>
-        <version>1.2</version>
+        <version>1.1</version>
         <interface>
             <name>ISurfaceFlingerConfigs</name>
             <instance>default</instance>
@@ -145,7 +137,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.drm</name>
-        <version>1.0-1</version>
+        <version>1.0</version>
         <interface>
             <name>ICryptoFactory</name>
             <regex-instance>.*</regex-instance>
@@ -157,7 +149,7 @@
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.drm</name>
-        <version>1.2</version>
+        <version>1.1</version>
         <interface>
             <name>ICryptoFactory</name>
             <regex-instance>.*</regex-instance>
@@ -186,7 +178,6 @@
     <hal format="hidl" optional="true">
         <name>android.hardware.gnss</name>
         <version>1.0-1</version>
-        <version>2.0</version>
         <interface>
             <name>IGnss</name>
             <instance>default</instance>
@@ -202,7 +193,7 @@
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.graphics.composer</name>
-        <version>2.1-3</version>
+        <version>2.1</version>
         <interface>
             <name>IComposer</name>
             <instance>default</instance>
@@ -225,28 +216,16 @@
         </interface>
     </hal>
     <hal format="hidl" optional="true">
-        <name>android.hardware.health.storage</name>
+        <name>android.hardware.health.filesystem</name>
         <version>1.0</version>
         <interface>
-            <name>IStorage</name>
+            <name>IFileSystem</name>
             <instance>default</instance>
         </interface>
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.ir</name>
         <version>1.0</version>
-        <interface>
-            <name>IConsumerIr</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="hidl" optional="true">
-        <name>android.hardware.input.classifier</name>
-        <version>1.0</version>
-        <interface>
-            <name>IInputClassifier</name>
-            <instance>default</instance>
-        </interface>
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.keymaster</name>
@@ -335,7 +314,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.radio</name>
-        <version>1.0-2</version>
+        <version>1.4</version>
         <interface>
             <name>IRadio</name>
             <instance>slot1</instance>
@@ -349,7 +328,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.radio.config</name>
-        <version>1.0</version>
+        <version>1.2</version>
         <interface>
             <name>IRadioConfig</name>
             <instance>default</instance>
@@ -375,7 +354,6 @@
     <hal format="hidl" optional="true">
         <name>android.hardware.sensors</name>
         <version>1.0</version>
-        <version>2.0</version>
         <interface>
             <name>ISensors</name>
             <instance>default</instance>
@@ -408,7 +386,6 @@
     <hal format="hidl" optional="true">
         <name>android.hardware.thermal</name>
         <version>1.0-1</version>
-        <version>2.0</version>
         <interface>
             <name>IThermal</name>
             <instance>default</instance>
@@ -448,7 +425,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.vibrator</name>
-        <version>1.0-3</version>
+        <version>1.0-2</version>
         <interface>
             <name>IVibrator</name>
             <instance>default</instance>
@@ -472,7 +449,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.wifi</name>
-        <version>1.0-3</version>
+        <version>1.0-2</version>
         <interface>
             <name>IWifi</name>
             <instance>default</instance>
@@ -480,7 +457,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.wifi.hostapd</name>
-        <version>1.0-1</version>
+        <version>1.0</version>
         <interface>
             <name>IHostapd</name>
             <instance>default</instance>
