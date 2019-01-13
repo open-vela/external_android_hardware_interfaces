@@ -30,9 +30,11 @@ cc_test {
         "libeffectsconfig",
         "libicuuc",
         "libicuuc_stubdata",
+        "libandroidicu",
         "libxml2",
     ],
     header_libs: [
         "android.hardware.audio.common.util@all-versions",
     ],
+    test_suites: ["general-tests"],
 }

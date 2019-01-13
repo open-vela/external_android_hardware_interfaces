@@ -32,7 +32,7 @@
 #       assemble_vintf invocation. Format is "VINTF_ENFORCE_NO_UNUSED_HALS=true".
 # LOCAL_ASSEMBLE_VINTF_FLAGS: Add additional command line arguments to assemble_vintf invocation.
 # LOCAL_KERNEL_CONFIG_DATA_PATHS: Paths to search for kernel config requirements. Format for each is
-#       <kernel version x.y.z>:<path that contains android-base*.cfg>.
+#       <kernel version x.y.z>:<path that contains android-base*.config>.
 # LOCAL_GEN_FILE_DEPENDENCIES: A list of additional dependencies for the generated file.
 
 ifndef LOCAL_MODULE
@@ -77,13 +77,20 @@ endif # BOARD_AVB_ENABLE
 $(GEN): PRIVATE_ENV_VARS += FRAMEWORK_VBMETA_VERSION
 endif # LOCAL_ADD_VBMETA_VERSION
 
+ifeq (true,$(strip $(LOCAL_ADD_VBMETA_VERSION_OVERRIDE)))
+ifneq ($(BOARD_OTA_FRAMEWORK_VBMETA_VERSION_OVERRIDE),)
+$(GEN): FRAMEWORK_VBMETA_VERSION_OVERRIDE := $(BOARD_OTA_FRAMEWORK_VBMETA_VERSION_OVERRIDE)
+$(GEN): PRIVATE_ENV_VARS += FRAMEWORK_VBMETA_VERSION_OVERRIDE
+endif
+endif
+
 ifneq (,$(strip $(LOCAL_KERNEL_CONFIG_DATA_PATHS)))
 $(GEN): PRIVATE_KERNEL_CONFIG_DATA_PATHS := $(LOCAL_KERNEL_CONFIG_DATA_PATHS)
-$(GEN): $(foreach pair,$(PRIVATE_KERNEL_CONFIG_DATA_PATHS),\
-    $(wildcard $(call word-colon,2,$(pair))/android-base*.cfg))
+$(GEN): $(foreach pair,$(LOCAL_KERNEL_CONFIG_DATA_PATHS),\
+    $(wildcard $(call word-colon,2,$(pair))/android-base*.config))
 $(GEN): PRIVATE_FLAGS += $(foreach pair,$(PRIVATE_KERNEL_CONFIG_DATA_PATHS),\
 	--kernel=$(call word-colon,1,$(pair)):$(call normalize-path-list,\
-		$(wildcard $(call word-colon,2,$(pair))/android-base*.cfg)))
+		$(wildcard $(call word-colon,2,$(pair))/android-base*.config)))
 endif
 
 my_matrix_src_files := \
