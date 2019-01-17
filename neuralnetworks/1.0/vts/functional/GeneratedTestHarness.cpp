@@ -51,13 +51,14 @@ using ::test_helper::for_each;
 using ::test_helper::Int32Operands;
 using ::test_helper::MixedTyped;
 using ::test_helper::MixedTypedExample;
+using ::test_helper::MixedTypedIndex;
 using ::test_helper::Quant8Operands;
 using ::test_helper::resize_accordingly;
 
 template <typename T>
-void copy_back_(std::map<int, std::vector<T>>* dst, const std::vector<RequestArgument>& ra,
-                char* src) {
-    for_each<T>(*dst, [&ra, src](int index, std::vector<T>& m) {
+void copy_back_(MixedTyped* dst, const std::vector<RequestArgument>& ra, char* src) {
+    MixedTyped& test = *dst;
+    for_each<T>(test, [&ra, src](int index, std::vector<T>& m) {
         ASSERT_EQ(m.size(), ra[index].location.length / sizeof(T));
         char* begin = src + ra[index].location.offset;
         memcpy(m.data(), begin, ra[index].location.length);
@@ -65,14 +66,14 @@ void copy_back_(std::map<int, std::vector<T>>* dst, const std::vector<RequestArg
 }
 
 void copy_back(MixedTyped* dst, const std::vector<RequestArgument>& ra, char* src) {
-    copy_back_(&dst->float32Operands, ra, src);
-    copy_back_(&dst->int32Operands, ra, src);
-    copy_back_(&dst->quant8Operands, ra, src);
-    copy_back_(&dst->quant16Operands, ra, src);
-    copy_back_(&dst->float16Operands, ra, src);
-    copy_back_(&dst->bool8Operands, ra, src);
-    copy_back_(&dst->quant8ChannelOperands, ra, src);
-    static_assert(7 == MixedTyped::kNumTypes,
+    copy_back_<float>(dst, ra, src);
+    copy_back_<int32_t>(dst, ra, src);
+    copy_back_<uint8_t>(dst, ra, src);
+    copy_back_<int16_t>(dst, ra, src);
+    copy_back_<_Float16>(dst, ra, src);
+    copy_back_<bool8>(dst, ra, src);
+    copy_back_<int8_t>(dst, ra, src);
+    static_assert(7 == std::tuple_size<MixedTyped>::value,
                   "Number of types in MixedTyped changed, but copy_back function wasn't updated");
 }
 
@@ -114,8 +115,7 @@ template <typename T_IPreparedModel>
 void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bool(int)> is_ignored,
                            const std::vector<MixedTypedExample>& examples,
                            bool hasRelaxedFloat32Model = false, float fpAtol = kDefaultAtol,
-                           float fpRtol = kDefaultRtol, Synchronously sync = Synchronously::NO,
-                           bool testDynamicOutputShape = false) {
+                           float fpRtol = kDefaultRtol, Synchronously sync = Synchronously::NO) {
     const uint32_t INPUT = 0;
     const uint32_t OUTPUT = 1;
 
@@ -125,7 +125,7 @@ void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bo
         const MixedTyped& inputs = example.operands.first;
         const MixedTyped& golden = example.operands.second;
 
-        const bool hasFloat16Inputs = !inputs.float16Operands.empty();
+        const bool hasFloat16Inputs = !std::get<MixedTypedIndex<_Float16>::index>(inputs).empty();
         if (hasRelaxedFloat32Model || hasFloat16Inputs) {
             // TODO: Adjust the error limit based on testing.
             // If in relaxed mode, set the absolute tolerance to be 5ULP of FP16.
@@ -237,24 +237,10 @@ void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bo
             executionStatus = static_cast<ErrorStatus>(executionReturnStatus);
         }
 
-        if (testDynamicOutputShape && executionStatus != ErrorStatus::NONE) {
-            LOG(INFO) << "NN VTS: Early termination of test because vendor service cannot "
-                         "execute model that it does not support.";
-            std::cout << "[          ]   Early termination of test because vendor service cannot "
-                         "execute model that it does not support."
-                      << std::endl;
-            return;
-        }
         ASSERT_EQ(ErrorStatus::NONE, executionStatus);
-
-        // Go through all outputs, overwrite output dimensions with returned output shapes
-        if (testDynamicOutputShape) {
-            ASSERT_NE(outputShapes.size(), 0);
-            for_each<uint32_t>(test.operandDimensions,
-                               [&outputShapes](int idx, std::vector<uint32_t>& dim) {
-                                   dim = outputShapes[idx].dimensions;
-                               });
-        }
+        // TODO(xusongw): Check if the returned output shapes match with expectation once the
+        //                sample driver implementation of dynamic output shape is finished.
+        ASSERT_EQ(outputShapes.size(), 0);
 
         // validate results
         outputMemory->read();
@@ -275,10 +261,9 @@ void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bo
 template <typename T_IPreparedModel>
 void EvaluatePreparedModel(sp<T_IPreparedModel>& preparedModel, std::function<bool(int)> is_ignored,
                            const std::vector<MixedTypedExample>& examples,
-                           bool hasRelaxedFloat32Model, Synchronously sync,
-                           bool testDynamicOutputShape) {
+                           bool hasRelaxedFloat32Model, Synchronously sync) {
     EvaluatePreparedModel(preparedModel, is_ignored, examples, hasRelaxedFloat32Model, kDefaultAtol,
-                          kDefaultRtol, sync, testDynamicOutputShape);
+                          kDefaultRtol, sync);
 }
 
 static void getPreparedModel(sp<PreparedModelCallback> callback,
@@ -334,8 +319,7 @@ void Execute(const sp<V1_0::IDevice>& device, std::function<V1_0::Model(void)> c
 
     float fpAtol = 1e-5f, fpRtol = 5.0f * 1.1920928955078125e-7f;
     EvaluatePreparedModel(preparedModel, is_ignored, examples,
-                          /*hasRelaxedFloat32Model=*/false, fpAtol, fpRtol, Synchronously::NO,
-                          /*testDynamicOutputShape=*/false);
+                          /*hasRelaxedFloat32Model=*/false, fpAtol, fpRtol);
 }
 
 void Execute(const sp<V1_1::IDevice>& device, std::function<V1_1::Model(void)> create_model,
@@ -381,14 +365,12 @@ void Execute(const sp<V1_1::IDevice>& device, std::function<V1_1::Model(void)> c
     ASSERT_NE(nullptr, preparedModel.get());
 
     EvaluatePreparedModel(preparedModel, is_ignored, examples,
-                          model.relaxComputationFloat32toFloat16, 1e-5f, 1e-5f, Synchronously::NO,
-                          /*testDynamicOutputShape=*/false);
+                          model.relaxComputationFloat32toFloat16);
 }
 
 // TODO: Reduce code duplication.
 void Execute(const sp<V1_2::IDevice>& device, std::function<V1_2::Model(void)> create_model,
-             std::function<bool(int)> is_ignored, const std::vector<MixedTypedExample>& examples,
-             bool testDynamicOutputShape) {
+             std::function<bool(int)> is_ignored, const std::vector<MixedTypedExample>& examples) {
     V1_2::Model model = create_model();
 
     // see if service can handle model
@@ -430,11 +412,9 @@ void Execute(const sp<V1_2::IDevice>& device, std::function<V1_2::Model(void)> c
     ASSERT_NE(nullptr, preparedModel.get());
 
     EvaluatePreparedModel(preparedModel, is_ignored, examples,
-                          model.relaxComputationFloat32toFloat16, Synchronously::NO,
-                          testDynamicOutputShape);
+                          model.relaxComputationFloat32toFloat16, Synchronously::NO);
     EvaluatePreparedModel(preparedModel, is_ignored, examples,
-                          model.relaxComputationFloat32toFloat16, Synchronously::YES,
-                          testDynamicOutputShape);
+                          model.relaxComputationFloat32toFloat16, Synchronously::YES);
 }
 
 }  // namespace generated_tests
