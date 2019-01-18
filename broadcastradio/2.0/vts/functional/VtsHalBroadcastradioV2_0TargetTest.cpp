@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "BcRadio.vts"
+#define LOG_NDEBUG 0
 #define EGMOCK_VERBOSE 1
 
 #include <VtsHalHidlTargetTestBase.h>
@@ -444,7 +446,7 @@ TEST_F(BroadcastRadioHalTest, FmTune) {
     EXPECT_EQ(Result::OK, result);
     EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onCurrentProgramInfoChanged_, timeout::tune);
 
-    LOG(DEBUG) << "current program info: " << toString(infoCb);
+    ALOGD("current program info: %s", toString(infoCb).c_str());
 
     // it should tune exactly to what was requested
     auto freqs = utils::getAllIds(infoCb.selector, IdentifierType::AMFM_FREQUENCY);
@@ -512,12 +514,12 @@ TEST_F(BroadcastRadioHalTest, Seek) {
     // TODO(b/69958777): see FmTune workaround
     std::this_thread::sleep_for(gTuneWorkaround);
 
-    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_, _).Times(AnyNumber());
+    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_, _);
     auto result = mSession->scan(true /* up */, true /* skip subchannel */);
     EXPECT_EQ(Result::OK, result);
     EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onCurrentProgramInfoChanged_, timeout::tune);
 
-    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_, _).Times(AnyNumber());
+    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_, _);
     result = mSession->scan(false /* down */, false /* don't skip subchannel */);
     EXPECT_EQ(Result::OK, result);
     EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onCurrentProgramInfoChanged_, timeout::tune);
@@ -546,7 +548,7 @@ TEST_F(BroadcastRadioHalTest, Step) {
     EXPECT_EQ(Result::OK, result);
     EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onCurrentProgramInfoChanged_, timeout::tune);
 
-    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_, _).Times(AnyNumber());
+    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_, _);
     result = mSession->step(false /* down */);
     EXPECT_EQ(Result::OK, result);
     EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onCurrentProgramInfoChanged_, timeout::tune);
@@ -821,11 +823,11 @@ int main(int argc, char** argv) {
     using android::hardware::broadcastradio::V2_0::vts::gEnv;
     using android::hardware::broadcastradio::V2_0::IBroadcastRadio;
     using android::hardware::broadcastradio::vts::BroadcastRadioHidlEnvironment;
-    android::base::SetDefaultTag("BcRadio.vts");
-    android::base::SetMinimumLogSeverity(android::base::VERBOSE);
     gEnv = new BroadcastRadioHidlEnvironment<IBroadcastRadio>;
     ::testing::AddGlobalTestEnvironment(gEnv);
     ::testing::InitGoogleTest(&argc, argv);
     gEnv->init(&argc, argv);
-    return RUN_ALL_TESTS();
+    int status = RUN_ALL_TESTS();
+    ALOGI("Test result = %d", status);
+    return status;
 }
