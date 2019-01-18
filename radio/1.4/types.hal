@@ -18,7 +18,6 @@ package android.hardware.radio@1.4;
 
 import @1.0::ApnAuthType;
 import @1.0::ApnTypes;
-import @1.0::Carrier;
 import @1.0::CellInfoType;
 import @1.0::DataCallFailCause;
 import @1.0::DataProfileId;
@@ -54,27 +53,20 @@ enum AccessNetwork : @1.2::AccessNetwork {
 };
 
 /**
- * Emergency number contains information of number, one or more service category(s), zero or more
- * emergency uniform resource names, mobile country code (mcc), mobile network country (mnc) and
- * source(s) that indicate where it comes from.
+ * Emergency number contains information of number, one or more service category(s), mobile country
+ * code (mcc), mobile network country (mnc) and source(s) that indicate where it comes from.
  *
- * If the emergency number is associated with country, field ‘mcc’ must be provided, otherwise
- * field ‘mcc’ must be an empty string. If the emergency number is associated with network
- * operator, field ‘mcc’ and 'mnc' must be provided, otherwise field ‘mnc’ must be an empty
- * string. If the emergency number is specified with emergency service category(s), field
- * 'categories' must be provided, otherwise field 'categories' must be
- * @1.4::EmergencyServiceCategories::UNSPECIFIED. If the emergency number is specified with
- * emergency uniform resource names (URN), field 'urns' must be provided, otherwise field 'urns'
- * must be an empty list.
+ * If the source of the emergency number is associated with country, field ‘mcc’ must be provided;
+ * otherwise the field ‘mcc’ must be an empty string.
  *
- * A unique EmergencyNumber has a unique combination of ‘number’, ‘mcc’, 'mnc', 'categories' and
- * 'urns' fields. Multiple @1.4::EmergencyNumberSource should be merged into one 'sources' field
- * via bitwise-OR combination for the same EmergencyNumber.
+ * If the source of the emergency number is associated with network operator, field ‘mcc’ and
+ * 'mnc' must be provided; otherwise the field ‘mnc’ must be an empty string.
  *
- * Reference: 3gpp 22.101, Section 10 - Emergency Calls;
- *            3gpp 23.167, Section 6 - Functional description;
- *            3gpp 24.503, Section 5.1.6.8.1 - General;
- *            RFC 5031
+ * A unique EmergencyNumber has a unique combination of ‘number’, ‘mcc’, 'mnc' and 'categories'
+ * fields. Multiple @1.4::EmergencyNumberSource should be merged into the bitfield for the same
+ * EmergencyNumber.
+ *
+ * Reference: 3GPP TS 22.101 version 9.1.0 Release 9
  */
 struct EmergencyNumber{
     /**
@@ -95,10 +87,6 @@ struct EmergencyNumber{
      * the value of each bit.
      */
     bitfield<EmergencyServiceCategory> categories;
-    /**
-     * The list of emergency Uniform Resource Names (URN).
-     */
-    vec<string> urns;
     /**
      * The bitfield of @1.4::EmergencyNumberSource(s). See @1.4::EmergencyNumberSource for the
      * value of each bit.
@@ -1731,39 +1719,4 @@ struct SetupDataCallResult {
      * invalid value.
      */
     int32_t mtu;
-};
-
-enum SimLockMultiSimPolicy : int32_t {
-    /**
-     * Indicates that configuration applies to each slot independently.
-     */
-    NO_MULTISIM_POLICY = 0,
-    /**
-     * Indicates that any SIM card can be used as far as one valid card is present in the device.
-     * For the modem, a SIM card is valid when its content (i.e. MCC, MNC, GID, SPN) matches the
-     * carrier restriction configuration.
-     */
-    ONE_VALID_SIM_MUST_BE_PRESENT = 1,
-};
-
-struct CarrierRestrictionsWithPriority {
-    /**
-     * List of allowed carriers.
-     * The character '?' is used as wildcard character to match any value.
-     */
-    vec<Carrier> allowedCarriers;
-    /**
-     * List of excluded carriers.
-     * The character '?' is used as wildcard character to match any value.
-     */
-    vec<Carrier> excludedCarriers;
-    /**
-     * True means that only carriers included in the allowed list and not in the excluded list
-     * are permitted. Eg. allowedCarriers match mcc/mnc, excludedCarriers has same mcc/mnc and
-     * gid1 is ABCD. It means except the carrier whose gid1 is ABCD, all carriers with the
-     * same mcc/mnc are allowed.
-     * False means that all carriers are allowed except those included in the excluded list
-     * and not in the allowed list.
-     */
-    bool allowedCarriersPrioritized;
 };
