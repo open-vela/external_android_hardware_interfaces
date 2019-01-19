@@ -1,4 +1,3 @@
-// Signature format: 2.0
 package audio.effects.V5_0 {
 
   public class Audioeffectsconf {
@@ -27,10 +26,10 @@ package audio.effects.V5_0 {
 
   public class EffectImplType {
     ctor public EffectImplType();
-    method public String getLibrary();
-    method public String getUuid();
-    method public void setLibrary(String);
-    method public void setUuid(String);
+    method public java.lang.String getLibrary();
+    method public java.lang.String getUuid();
+    method public void setLibrary(java.lang.String);
+    method public void setUuid(java.lang.String);
   }
 
   public class EffectProxyType extends audio.effects.V5_0.EffectType {
@@ -43,8 +42,8 @@ package audio.effects.V5_0 {
 
   public class EffectType extends audio.effects.V5_0.EffectImplType {
     ctor public EffectType();
-    method public String getName();
-    method public void setName(String);
+    method public java.lang.String getName();
+    method public void setName(java.lang.String);
   }
 
   public class EffectsType {
@@ -60,14 +59,16 @@ package audio.effects.V5_0 {
 
   public static class LibrariesType.Library {
     ctor public LibrariesType.Library();
-    method public String getName();
-    method public String getPath();
-    method public void setName(String);
-    method public void setPath(String);
+    method public java.lang.String getName();
+    method public java.lang.String getPath();
+    method public void setName(java.lang.String);
+    method public void setPath(java.lang.String);
   }
 
-  public enum StreamInputType {
-    method public String getRawName();
+  public final class StreamInputType extends java.lang.Enum {
+    method public java.lang.String getRawName();
+    method public static audio.effects.V5_0.StreamInputType valueOf(java.lang.String);
+    method public static final audio.effects.V5_0.StreamInputType[] values();
     enum_constant public static final audio.effects.V5_0.StreamInputType camcorder;
     enum_constant public static final audio.effects.V5_0.StreamInputType mic;
     enum_constant public static final audio.effects.V5_0.StreamInputType unprocessed;
@@ -78,8 +79,10 @@ package audio.effects.V5_0 {
     enum_constant public static final audio.effects.V5_0.StreamInputType voice_uplink;
   }
 
-  public enum StreamOutputType {
-    method public String getRawName();
+  public final class StreamOutputType extends java.lang.Enum {
+    method public java.lang.String getRawName();
+    method public static audio.effects.V5_0.StreamOutputType valueOf(java.lang.String);
+    method public static final audio.effects.V5_0.StreamOutputType[] values();
     enum_constant public static final audio.effects.V5_0.StreamOutputType alarm;
     enum_constant public static final audio.effects.V5_0.StreamOutputType bluetooth_sco;
     enum_constant public static final audio.effects.V5_0.StreamOutputType dtmf;
@@ -111,19 +114,21 @@ package audio.effects.V5_0 {
 
   public static class StreamProcessingType.Apply {
     ctor public StreamProcessingType.Apply();
-    method public String getEffect();
-    method public void setEffect(String);
+    method public java.lang.String getEffect();
+    method public void setEffect(java.lang.String);
   }
 
-  public enum VersionType {
-    method public String getRawName();
+  public final class VersionType extends java.lang.Enum {
+    method public java.lang.String getRawName();
+    method public static audio.effects.V5_0.VersionType valueOf(java.lang.String);
+    method public static final audio.effects.V5_0.VersionType[] values();
     enum_constant public static final audio.effects.V5_0.VersionType _2_0;
   }
 
   public class XmlParser {
     ctor public XmlParser();
     method public static audio.effects.V5_0.Audioeffectsconf read(java.io.InputStream) throws javax.xml.datatype.DatatypeConfigurationException, java.io.IOException, org.xmlpull.v1.XmlPullParserException;
-    method public static String readText(org.xmlpull.v1.XmlPullParser) throws java.io.IOException, org.xmlpull.v1.XmlPullParserException;
+    method public static java.lang.String readText(org.xmlpull.v1.XmlPullParser) throws java.io.IOException, org.xmlpull.v1.XmlPullParserException;
     method public static void skip(org.xmlpull.v1.XmlPullParser) throws java.io.IOException, org.xmlpull.v1.XmlPullParserException;
   }
 

@@ -428,8 +428,7 @@ class AudioConfigPrimaryTest : public AudioPatchPrimaryHidlTest {
         if (policyConfig.getStatus() != OK || policyConfig.getPrimaryModule() == nullptr) {
             return true;  // Could not get the information, run all tests
         }
-        auto getMic = [](auto& devs) { return devs.getDevice(
-                AUDIO_DEVICE_IN_BUILTIN_MIC, {}, AUDIO_FORMAT_DEFAULT); };
+        auto getMic = [](auto& devs) { return devs.getDevice(AUDIO_DEVICE_IN_BUILTIN_MIC, {}); };
         auto primaryMic = getMic(policyConfig.getPrimaryModule()->getDeclaredDevices());
         auto availableMic = getMic(policyConfig.getAvailableInputDevices());
 
