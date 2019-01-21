@@ -1,0 +1,399 @@
+/*
+ * Copyright (C) 2018 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package android.hardware.neuralnetworks@1.2;
+
+import @1.0::DataLocation;
+import @1.0::OperandLifeTime;
+import @1.0::OperandType;
+import @1.0::PerformanceInfo;
+import @1.1::OperationType;
+
+import android.hidl.safe_union@1.0::Monostate;
+
+enum OperandType : @1.0::OperandType {
+    /**
+     * An 8 bit boolean scalar value.
+     *
+     * Values of this operand type are either true or false. A zero value
+     * represents false; any other value represents true.
+     */
+    BOOL = 6,
+    /**
+     * A tensor of 16 bit signed integers that represent real numbers.
+     *
+     * Attached to this tensor is a number representing real value scale that is
+     * used to convert the 16 bit number to a real value in the following way:
+     * realValue = integerValue * scale.
+     *
+     * scale is a 32 bit floating point with value greater then zero.
+     */
+    TENSOR_QUANT16_SYMM = 7,
+    /** A tensor of IEEE 754 16 bit floating point values. */
+    TENSOR_FLOAT16 = 8,
+    /**
+     * A tensor of 8 bit boolean values.
+     *
+     * Values of this operand type are either true or false. A zero value
+     * represents false; any other value represents true.
+     */
+    TENSOR_BOOL8 = 9,
+    /** An IEEE 754 16 bit floating point scalar value. */
+    FLOAT16 = 10,
+    /**
+     * A tensor of 8 bit signed integers that represent real numbers.
+     *
+     * This tensor is associated with additional fields that are
+     * used to convert the 8 bit signed integer to the real value and vice versa.
+     * These fields are:
+     * - channelDim: a 32 bit unsigned integer indicating channel dimension.
+     * - scales: an array of positive 32 bit floating point values.
+     * The size of the scales array must be equal to dimensions[channelDim].
+     * These fields are located inside Operand's extraParams union, inside the
+     * SymmPerChannelQuantParams struct.
+     *
+     * An Operand of this type must use 'channelQuant' field of its extraParams
+     * union.
+     *
+     * The channel dimension of this tensor must not be unknown (dimensions[channelDim] != 0).
+     *
+     * The formula for real values:
+     * realValue[..., C, ...] =
+     *     integerValue[..., C, ...] * scales[C]
+     * where C is an index in the Channel dimension.
+     */
+    TENSOR_QUANT8_SYMM_PER_CHANNEL = 11,
+    /* ADDING A NEW FUNDAMENTAL TYPE REQUIRES UPDATING THE VALUE OF
+     * OperandTypeRange::OPERAND_FUNDAMENTAL_MAX.
+     */
+    /* ADDING A NEW OEM TYPE REQUIRES UPDATING THE VALUE OF
+     * OperandTypeRange::OPERAND_OEM_MAX.
+     */
+};
+
+/**
+ * The range of operand values in the OperandType enum.
+ */
+enum OperandTypeRange : uint32_t {
+    OPERAND_FUNDAMENTAL_MIN = 0,
+    OPERAND_FUNDAMENTAL_MAX = 11,
+    OPERAND_OEM_MIN     = 10000,
+    OPERAND_OEM_MAX     = 10001,
+};
+
+/**
+ * Operation types.
+ *
+ * The type of an operation in a model.
+ */
+enum OperationType : @1.1::OperationType {
+    // TODO(b/116445845): Sync docs when all ops are implemented.
+    ARGMAX = 38,
+    ARGMIN = 39,
+    PAD_V2 = 40,
+    AXIS_ALIGNED_BBOX_TRANSFORM = 41,
+    BIDIRECTIONAL_SEQUENCE_LSTM = 42,
+    BIDIRECTIONAL_SEQUENCE_RNN = 43,
+    BOX_WITH_NMS_LIMIT = 44,
+    CAST = 45,
+    CHANNEL_SHUFFLE = 46,
+    DETECTION_OUTPUT = 47,
+    EMBEDDING_LOOKUP_SPARSE = 48,
+    EXP = 49,
+    EXPAND_DIMS = 50,
+    GATHER = 51,
+    GENERATE_PROPOSALS = 52,
+    GREATER = 53,
+    GREATER_EQUAL = 54,
+    GROUPED_CONV_2D = 55,
+    HEATMAP_MAX_KEYPOINT = 56,
+    LESS = 57,
+    LESS_EQUAL = 58,
+    LOG = 59,
+    LOGICAL_AND = 60,
+    LOGICAL_NOT = 61,
+    LOGICAL_OR = 62,
+    LOG_SOFTMAX = 63,
+    MAXIMUM = 64,
+    MINIMUM = 65,
+    NEG = 66,
+    POW = 67,
+    PRELU = 68,
+    PRIOR_BOX = 69,
+    QUANTIZE = 70,
+    QUANTIZED_16BIT_LSTM = 71,
+    RANDOM_MULTINOMIAL = 72,
+    REDUCE_PROD = 73,
+    ROI_ALIGN = 74,
+    RSQRT = 75,
+    SELECT = 76,
+    SIN = 77,
+    SLICE = 78,
+    SPARSE_TO_DENSE = 79,
+    SPLIT = 80,
+    SQRT = 81,
+    TILE = 82,
+    TOPK_V2 = 83,
+    TRANSPOSE_CONV_2D = 84,
+    UNIDIRECTIONAL_SEQUENCE_LSTM = 85,
+    UNIDIRECTIONAL_SEQUENCE_RNN = 86,
+    ROTATED_BBOX_TRANSFORM = 87,
+    ABS = 88,
+    ROI_POOLING = 89,
+    EQUAL = 90,
+    NOT_EQUAL = 91,
+    REDUCE_SUM = 92,
+    REDUCE_MAX = 93,
+    REDUCE_MIN = 94,
+    REDUCE_ANY = 95,
+    REDUCE_ALL = 96,
+    INSTANCE_NORMALIZATION = 97,
+    /* ADDING A NEW FUNDAMENTAL OPERATION REQUIRES UPDATING THE VALUE OF
+     * OperationTypeRange::OPERATION_FUNDAMENTAL_MAX.
+     */
+    /* ADDING A NEW OEM OPERATION REQUIRES UPDATING THE VALUE OF
+     * OperationTypeRange::OPERATION_OEM_MAX.
+     */
+};
+
+/**
+ * The range of values in the OperationType enum.
+ */
+enum OperationTypeRange : uint32_t {
+    OPERATION_FUNDAMENTAL_MIN = 0,
+    OPERATION_FUNDAMENTAL_MAX = 97,
+    OPERATION_OEM_MIN = 10000,
+    OPERATION_OEM_MAX = 10000,
+};
+
+/**
+ * Describes one operation of the model's graph.
+ */
+struct Operation {
+    /**
+     * The operation type.
+     */
+    OperationType type;
+
+    /**
+     * Describes the table that contains the indexes of the inputs of the
+     * operation. The offset is the index in the operandIndexes table.
+     */
+    vec<uint32_t> inputs;
+
+    /**
+     * Describes the table that contains the indexes of the outputs of the
+     * operation. The offset is the index in the operandIndexes table.
+     */
+    vec<uint32_t> outputs;
+};
+
+/**
+ * Parameters for TENSOR_QUANT8_SYMM_PER_CHANNEL operand.
+ */
+struct SymmPerChannelQuantParams {
+    /** Array of scaling values for each channel. Each value must be greater than zero. */
+    vec<float> scales;
+    /** Index of the channel dimension */
+    uint32_t channelDim;
+};
+
+// TODO(slavash): Operand Extension support
+// /**
+//  * Parameters for an unknown (as of 1.2) operand extension. This is
+//  * a vendor-specific extension or a platform extension (backport of
+//  * functionality from newer NNAPI interface).
+//  */
+// struct OperandParamsUnknown {
+// };
+
+/**
+ * Describes one operand of the model's graph.
+ */
+struct Operand {
+    /**
+     * Data type of the operand.
+     */
+    OperandType type;
+
+    /**
+     * Dimensions of the operand.
+     *
+     * For a scalar operand, dimensions.size() must be 0.
+     *
+     * For a tensor operand, dimensions.size() must be at least 1;
+     * however, any of the dimensions may be unspecified.
+     *
+     * A tensor operand with all dimensions specified has "fully
+     * specified" dimensions. Whenever possible (i.e., whenever the
+     * dimensions are known at model construction time), a tensor
+     * operand should have (but is not required to have) fully
+     * specified dimensions, in order to enable the best possible
+     * performance.
+     *
+     * If a tensor operand's dimensions are not fully specified, the
+     * dimensions of the operand are deduced from the operand
+     * dimensions and values of the operation for which that operand
+     * is an output.
+     *
+     * In the following situations, a tensor operand's dimensions must
+     * be fully specified:
+     *
+     *     . The operand has lifetime CONSTANT_COPY or
+     *       CONSTANT_REFERENCE.
+     *
+     *     . The operand has lifetime MODEL_INPUT or MODEL_OUTPUT. Fully
+     *       specified dimensions must either be present in the
+     *       Operand or they must be provided in the corresponding
+     *       RequestArgument.
+     *       EXCEPTION: If the input or output is optional and omitted
+     *       (by setting the hasNoValue field of the corresponding
+     *       RequestArgument to true) then it need not have fully
+     *       specified dimensions.
+     *
+     * A tensor operand with some number of unspecified dimensions is
+     * represented by setting each unspecified dimension to 0.
+     */
+    vec<uint32_t> dimensions;
+
+    /**
+     * The number of times this operand appears as an operation input.
+     *
+     * (For example, if this operand appears once in one operation's
+     * input list, and three times in another operation's input list,
+     * then numberOfConsumers = 4.)
+     */
+    uint32_t numberOfConsumers;
+
+    /**
+     * Quantized scale of the operand.
+     *
+     * Only applicable if the operand is of type TENSOR_QUANT8_ASYMM or
+     * TENSOR_INT32.
+     */
+    float scale;
+
+    /**
+     * Quantized zero-point offset of the operand.
+     *
+     * Only applicable if the operand is of type TENSOR_QUANT8_ASYMM.
+     */
+    int32_t zeroPoint;
+
+    /**
+     * How the operand is used.
+     */
+    OperandLifeTime lifetime;
+
+    /**
+     * Where to find the data for this operand.
+     * If the lifetime is TEMPORARY_VARIABLE, MODEL_INPUT, MODEL_OUTPUT, or
+     * NO_VALUE:
+     * - All the fields must be 0.
+     * If the lifetime is CONSTANT_COPY:
+     * - location.poolIndex is 0.
+     * - location.offset is the offset in bytes into Model.operandValues.
+     * - location.length is set.
+     * If the lifetime is CONSTANT_REFERENCE:
+     * - location.poolIndex is set.
+     * - location.offset is the offset in bytes into the specified pool.
+     * - location.length is set.
+     */
+    DataLocation location;
+
+    /**
+     * Union of extra parameters, used by some types of Operands that need additional
+     * information for the complete definition of an Operand.
+     */
+    safe_union ExtraParams {
+       /**
+        * Placeholder for operand with no extra parameters.
+        */
+       Monostate none;
+
+       /**
+        * Used with TENSOR_QUANT8_SYMM_PER_CHANNEL operand type.
+        */
+       SymmPerChannelQuantParams channelQuant;
+
+       // TODO(slavash): Operand Extension support
+       // /**
+       //  * Used with Extension operand type.
+       //  */
+       // OperandParamsUnknown unknown;
+    } extraParams;
+};
+
+/**
+ * A Neural Network Model.
+ *
+ * This includes not only the execution graph, but also constant data such as
+ * weights or scalars added at construction time. The only information that
+ * may not be known is the shape of the input tensors.
+ */
+struct Model {
+    /**
+     * All operands included in the model.
+     */
+    vec<Operand> operands;
+
+    /**
+     * All operations included in the model.
+     *
+     * The operations are sorted into execution order. Every operand
+     * with lifetime MODEL_OUTPUT or TEMPORARY_VARIABLE must be
+     * written before it is read.
+     */
+    vec<Operation> operations;
+
+    /**
+     * Input indexes of the model. There must be at least one.
+     *
+     * Each value corresponds to the index of the operand in "operands".
+     */
+    vec<uint32_t> inputIndexes;
+
+    /**
+     * Output indexes of the model. There must be at least one.
+     *
+     * Each value corresponds to the index of the operand in "operands".
+     */
+    vec<uint32_t> outputIndexes;
+
+    /**
+     * A byte buffer containing operand data that were copied into the model.
+     *
+     * An operand's value must be located here if and only if Operand::lifetime
+     * equals OperandLifeTime::CONSTANT_COPY.
+     */
+    vec<uint8_t> operandValues;
+
+    /**
+     * A collection of shared memory pools containing operand values.
+     *
+     * An operand's value must be located here if and only if Operand::lifetime
+     * equals OperandLifeTime::CONSTANT_REFERENCE.
+     */
+    vec<memory> pools;
+
+    /**
+     * 'true' indicates TENSOR_FLOAT32 may be calculated with range and/or
+     * precision as low as that of the IEEE 754 16-bit floating-point format.
+     * 'false' indicates TENSOR_FLOAT32 must be calculated using at least the
+     * range and precision of the IEEE 754 32-bit floating-point format.
+     */
+    bool relaxComputationFloat32toFloat16;
+};
