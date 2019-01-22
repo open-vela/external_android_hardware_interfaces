@@ -17,8 +17,6 @@
 #define LOG_TAG "JsonFakeValueGenerator"
 
 #include <fstream>
-#include <type_traits>
-#include <typeinfo>
 
 #include <log/log.h>
 #include <vhal_v2_0/VehicleUtils.h>
@@ -33,48 +31,57 @@ namespace V2_0 {
 
 namespace impl {
 
-JsonFakeValueGenerator::JsonFakeValueGenerator(const VehiclePropValue& request) {
+JsonFakeValueGenerator::JsonFakeValueGenerator(const OnHalEvent& onHalEvent)
+    : mOnHalEvent(onHalEvent), mThread(&JsonFakeValueGenerator::loop, this) {}
+
+JsonFakeValueGenerator::~JsonFakeValueGenerator() {
+    mStopRequested = true;
+    {
+        MuxGuard g(mLock);
+        mGenCfg.index = 0;
+        mGenCfg.events.clear();
+    }
+    mCond.notify_one();
+    if (mThread.joinable()) {
+        mThread.join();
+    }
+}
+
+StatusCode JsonFakeValueGenerator::start(const VehiclePropValue& request) {
     const auto& v = request.value;
+    if (v.stringValue.empty()) {
+        ALOGE("%s: path to JSON file is missing", __func__);
+        return StatusCode::INVALID_ARG;
+    }
     const char* file = v.stringValue.c_str();
     std::ifstream ifs(file);
     if (!ifs) {
         ALOGE("%s: couldn't open %s for parsing.", __func__, file);
+        return StatusCode::INTERNAL_ERROR;
     }
-    mGenCfg = {
-        .index = 0,
-        .events = parseFakeValueJson(ifs),
-    };
-    // Iterate infinitely if repetition number is not provided
-    mNumOfIterations = v.int32Values.size() < 2 ? -1 : v.int32Values[1];
+    std::vector<VehiclePropValue> fakeVhalEvents = parseFakeValueJson(ifs);
+
+    {
+        MuxGuard g(mLock);
+        mGenCfg = {0, fakeVhalEvents};
+    }
+    mCond.notify_one();
+    return StatusCode::OK;
 }
 
-VehiclePropValue JsonFakeValueGenerator::nextEvent() {
-    VehiclePropValue generatedValue;
-    if (!hasNext()) {
-        return generatedValue;
+StatusCode JsonFakeValueGenerator::stop(const VehiclePropValue& request) {
+    const auto& v = request.value;
+    if (!v.stringValue.empty()) {
+        ALOGI("%s: %s", __func__, v.stringValue.c_str());
     }
-    TimePoint eventTime = Clock::now();
-    if (mGenCfg.index != 0) {
-        // All events (start from 2nd one) are supposed to happen in the future with a delay
-        // equals to the duration between previous and current event.
-        eventTime += Nanos(mGenCfg.events[mGenCfg.index].timestamp -
-                           mGenCfg.events[mGenCfg.index - 1].timestamp);
-    }
-    generatedValue = mGenCfg.events[mGenCfg.index];
-    generatedValue.timestamp = eventTime.time_since_epoch().count();
 
-    mGenCfg.index++;
-    if (mGenCfg.index == mGenCfg.events.size()) {
+    {
+        MuxGuard g(mLock);
         mGenCfg.index = 0;
-        if (mNumOfIterations > 0) {
-            mNumOfIterations--;
-        }
+        mGenCfg.events.clear();
     }
-    return generatedValue;
-}
-
-bool JsonFakeValueGenerator::hasNext() {
-    return mNumOfIterations != 0 && mGenCfg.events.size() > 0;
+    mCond.notify_one();
+    return StatusCode::OK;
 }
 
 std::vector<VehiclePropValue> JsonFakeValueGenerator::parseFakeValueJson(std::istream& is) {
@@ -124,14 +131,9 @@ std::vector<VehiclePropValue> JsonFakeValueGenerator::parseFakeValueJson(std::is
             case VehiclePropertyType::STRING:
                 value.stringValue = rawEventValue.asString();
                 break;
-            case VehiclePropertyType::MIXED:
-                copyMixedValueJson(value, rawEventValue);
-                if (isDiagnosticProperty(event.prop)) {
-                    value.bytes = generateDiagnosticBytes(value);
-                }
-                break;
             default:
-                ALOGE("%s: unsupported type for property: 0x%x", __func__, event.prop);
+                ALOGE("%s: unsupported type for property: 0x%x with value: %s", __func__,
+                      event.prop, rawEventValue.asString().c_str());
                 continue;
         }
         fakeVhalEvents.push_back(event);
@@ -139,58 +141,28 @@ std::vector<VehiclePropValue> JsonFakeValueGenerator::parseFakeValueJson(std::is
     return fakeVhalEvents;
 }
 
-void JsonFakeValueGenerator::copyMixedValueJson(VehiclePropValue::RawValue& dest,
-                                                const Json::Value& jsonValue) {
-    copyJsonArray(dest.int32Values, jsonValue["int32Values"]);
-    copyJsonArray(dest.int64Values, jsonValue["int64Values"]);
-    copyJsonArray(dest.floatValues, jsonValue["floatValues"]);
-    dest.stringValue = jsonValue["stringValue"].asString();
-}
+void JsonFakeValueGenerator::loop() {
+    static constexpr auto kInvalidTime = TimePoint(Nanos::max());
 
-template <typename T>
-void JsonFakeValueGenerator::copyJsonArray(hidl_vec<T>& dest, const Json::Value& jsonArray) {
-    dest.resize(jsonArray.size());
-    for (Json::Value::ArrayIndex i = 0; i < jsonArray.size(); i++) {
-        if (std::is_same<T, int32_t>::value) {
-            dest[i] = jsonArray[i].asInt();
-        } else if (std::is_same<T, int64_t>::value) {
-            dest[i] = jsonArray[i].asInt64();
-        } else if (std::is_same<T, float>::value) {
-            dest[i] = jsonArray[i].asFloat();
+    while (!mStopRequested) {
+        auto nextEventTime = kInvalidTime;
+        {
+            MuxGuard g(mLock);
+            if (mGenCfg.index < mGenCfg.events.size()) {
+                mOnHalEvent(mGenCfg.events[mGenCfg.index]);
+            }
+            if (!mGenCfg.events.empty() && mGenCfg.index < mGenCfg.events.size() - 1) {
+                Nanos intervalNano =
+                    static_cast<Nanos>(mGenCfg.events[mGenCfg.index + 1].timestamp -
+                                       mGenCfg.events[mGenCfg.index].timestamp);
+                nextEventTime = Clock::now() + intervalNano;
+            }
+            mGenCfg.index++;
         }
+
+        std::unique_lock<std::mutex> g(mLock);
+        mCond.wait_until(g, nextEventTime);
     }
-}
-
-bool JsonFakeValueGenerator::isDiagnosticProperty(int32_t prop) {
-    return prop == (int32_t)VehicleProperty::OBD2_LIVE_FRAME ||
-           prop == (int32_t)VehicleProperty::OBD2_FREEZE_FRAME;
-}
-
-hidl_vec<uint8_t> JsonFakeValueGenerator::generateDiagnosticBytes(
-    const VehiclePropValue::RawValue& diagnosticValue) {
-    size_t byteSize = ((size_t)DiagnosticIntegerSensorIndex::LAST_SYSTEM_INDEX +
-                       (size_t)DiagnosticFloatSensorIndex::LAST_SYSTEM_INDEX + 2);
-    hidl_vec<uint8_t> bytes(byteSize % 8 == 0 ? byteSize / 8 : byteSize / 8 + 1);
-
-    auto& int32Values = diagnosticValue.int32Values;
-    for (size_t i = 0; i < int32Values.size(); i++) {
-        if (int32Values[i] != 0) {
-            setBit(bytes, i);
-        }
-    }
-
-    auto& floatValues = diagnosticValue.floatValues;
-    for (size_t i = 0; i < floatValues.size(); i++) {
-        if (floatValues[i] != 0.0) {
-            setBit(bytes, i + (size_t)DiagnosticIntegerSensorIndex::LAST_SYSTEM_INDEX + 1);
-        }
-    }
-    return bytes;
-}
-
-void JsonFakeValueGenerator::setBit(hidl_vec<uint8_t>& bytes, size_t idx) {
-    uint8_t mask = 1 << (idx % 8);
-    bytes[idx / 8] |= mask;
 }
 
 }  // namespace impl
