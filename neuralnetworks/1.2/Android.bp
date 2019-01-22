@@ -27,7 +27,6 @@ hidl_interface {
         "Operation",
         "OperationType",
         "OperationTypeRange",
-        "OutputShape",
     ],
     gen_java: false,
 }
