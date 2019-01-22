@@ -187,6 +187,7 @@ package audio.policy.configuration.V5_0 {
   public static class DevicePorts.DevicePort {
     ctor public DevicePorts.DevicePort();
     method public String getAddress();
+    method public java.util.List<audio.policy.configuration.V5_0.AudioFormat> getEncodedFormats();
     method public audio.policy.configuration.V5_0.Gains getGains();
     method public java.util.List<audio.policy.configuration.V5_0.Profile> getProfile();
     method public audio.policy.configuration.V5_0.Role getRole();
@@ -194,6 +195,7 @@ package audio.policy.configuration.V5_0 {
     method public String getType();
     method public boolean get_default();
     method public void setAddress(String);
+    method public void setEncodedFormats(java.util.List<audio.policy.configuration.V5_0.AudioFormat>);
     method public void setGains(audio.policy.configuration.V5_0.Gains);
     method public void setRole(audio.policy.configuration.V5_0.Role);
     method public void setTagName(String);
