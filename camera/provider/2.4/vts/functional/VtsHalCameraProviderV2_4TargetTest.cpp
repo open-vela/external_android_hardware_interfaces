@@ -114,8 +114,6 @@ using ::android::hardware::camera::device::V1_0::ICameraDevicePreviewCallback;
 using ::android::hardware::camera::device::V1_0::FrameCallbackFlag;
 using ::android::hardware::camera::device::V1_0::HandleTimestampMessage;
 using ::android::hardware::camera::metadata::V3_4::CameraMetadataEnumAndroidSensorInfoColorFilterArrangement;
-using ::android::hardware::camera::metadata::V3_4::CameraMetadataTag;
-using ::android::hardware::camera::device::V3_4::PhysicalCameraMetadata;
 using ::android::hardware::MessageQueue;
 using ::android::hardware::kSynchronizedReadWrite;
 using ::android::hidl::allocator::V1_0::IAllocator;
@@ -589,8 +587,8 @@ public:
     };
 
     struct DeviceCb : public V3_5::ICameraDeviceCallback {
-        DeviceCb(CameraHidlTest *parent, int deviceVersion, const camera_metadata_t *staticMeta) :
-                mParent(parent), mDeviceVersion(deviceVersion), mStaticMetadata(staticMeta) {}
+        DeviceCb(CameraHidlTest *parent, bool checkMonochromeResult) : mParent(parent),
+                mCheckMonochromeResult(checkMonochromeResult) {}
 
         Return<void> processCaptureResult_3_4(
                 const hidl_vec<V3_4::CaptureResult>& results) override;
@@ -609,12 +607,10 @@ public:
         void waitForBuffersReturned();
 
      private:
-        bool processCaptureResultLocked(const CaptureResult& results,
-                hidl_vec<PhysicalCameraMetadata> physicalCameraMetadata);
+        bool processCaptureResultLocked(const CaptureResult& results);
 
         CameraHidlTest *mParent; // Parent object
-        int mDeviceVersion;
-        const camera_metadata_t *mStaticMetadata;
+        bool mCheckMonochromeResult;
         bool hasOutstandingBuffersLocked();
 
         /* members for requestStreamBuffers() and returnStreamBuffers()*/
@@ -759,8 +755,6 @@ public:
     void verifyStreamCombination(sp<device::V3_5::ICameraDevice> cameraDevice3_5,
             const ::android::hardware::camera::device::V3_4::StreamConfiguration &config3_4,
             bool expectedStatus);
-    void verifyLogicalCameraResult(const camera_metadata_t* staticMetadata,
-            const ::android::hardware::camera::common::V1_0::helper::CameraMetadata& resultMetadata);
 
     void verifyBuffersReturned(sp<device::V3_2::ICameraDeviceSession> session,
             int deviceVerison, int32_t streamId, sp<DeviceCb> cb,
@@ -1014,7 +1008,7 @@ Return<void> CameraHidlTest::DeviceCb::processCaptureResult_3_4(
     bool notify = false;
     std::unique_lock<std::mutex> l(mParent->mLock);
     for (size_t i = 0 ; i < results.size(); i++) {
-        notify = processCaptureResultLocked(results[i].v3_2, results[i].physicalCameraMetadata);
+        notify = processCaptureResultLocked(results[i].v3_2);
     }
 
     l.unlock();
@@ -1033,9 +1027,8 @@ Return<void> CameraHidlTest::DeviceCb::processCaptureResult(
 
     bool notify = false;
     std::unique_lock<std::mutex> l(mParent->mLock);
-    ::android::hardware::hidl_vec<PhysicalCameraMetadata> noPhysMetadata;
     for (size_t i = 0 ; i < results.size(); i++) {
-        notify = processCaptureResultLocked(results[i], noPhysMetadata);
+        notify = processCaptureResultLocked(results[i]);
     }
 
     l.unlock();
@@ -1046,8 +1039,7 @@ Return<void> CameraHidlTest::DeviceCb::processCaptureResult(
     return Void();
 }
 
-bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& results,
-        hidl_vec<PhysicalCameraMetadata> physicalCameraMetadata) {
+bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& results) {
     bool notify = false;
     uint32_t frameNumber = results.frameNumber;
 
@@ -1087,20 +1079,6 @@ bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& r
                     results.fmqResultSize);
             ADD_FAILURE();
             return notify;
-        }
-
-        std::vector<::android::hardware::camera::device::V3_2::CameraMetadata> physResultMetadata;
-        physResultMetadata.resize(physicalCameraMetadata.size());
-        for (size_t i = 0; i < physicalCameraMetadata.size(); i++) {
-            physResultMetadata[i].resize(physicalCameraMetadata[i].fmqMetadataSize);
-            if (!request->resultQueue->read(physResultMetadata[i].data(),
-                    physicalCameraMetadata[i].fmqMetadataSize)) {
-                ALOGE("%s: Frame %d: Cannot read physical camera metadata from fmq,"
-                        "size = %" PRIu64, __func__, frameNumber,
-                        physicalCameraMetadata[i].fmqMetadataSize);
-                ADD_FAILURE();
-                return notify;
-            }
         }
         resultSize = resultMetadata.size();
     } else if (results.result.size() > 0) {
@@ -1159,20 +1137,8 @@ bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& r
         request->collectedResult.sort();
 
         // Verify final result metadata
-        bool isAtLeast_3_5 = mDeviceVersion >= CAMERA_DEVICE_API_VERSION_3_5;
-        if (isAtLeast_3_5) {
-            bool isMonochrome = Status::OK ==
-                    CameraHidlTest::isMonochromeCamera(mStaticMetadata);
-            if (isMonochrome) {
-                mParent->verifyMonochromeCameraResult(request->collectedResult);
-            }
-
-            // Verify logical camera result metadata
-            bool isLogicalCamera =
-                    Status::OK == CameraHidlTest::isLogicalMultiCamera(mStaticMetadata);
-            if (isLogicalCamera) {
-                mParent->verifyLogicalCameraResult(mStaticMetadata, request->collectedResult);
-            }
+        if (mCheckMonochromeResult) {
+            mParent->verifyMonochromeCameraResult(request->collectedResult);
         }
     }
 
@@ -5092,7 +5058,7 @@ void CameraHidlTest::configurePreviewStreams3_4(const std::string &name, int32_t
         ASSERT_EQ(Status::OK, s);
         staticMeta = clone_camera_metadata(
                 reinterpret_cast<const camera_metadata_t*>(metadata.data()));
-        ASSERT_NE(nullptr, staticMeta);
+         ASSERT_NE(nullptr, staticMeta);
     });
     ASSERT_TRUE(ret.isOk());
 
@@ -5104,7 +5070,9 @@ void CameraHidlTest::configurePreviewStreams3_4(const std::string &name, int32_t
         *supportsPartialResults = (*partialResultCount > 1);
     }
 
-    sp<DeviceCb> cb = new DeviceCb(this, deviceVersion, staticMeta);
+    bool checkMonochromeResultTags = Status::OK == isMonochromeCamera(staticMeta) &&
+            deviceVersion >= CAMERA_DEVICE_API_VERSION_3_5;
+    sp<DeviceCb> cb = new DeviceCb(this, checkMonochromeResultTags);
     sp<ICameraDeviceSession> session;
     ret = device3_x->open(
         cb,
@@ -5242,7 +5210,9 @@ void CameraHidlTest::configurePreviewStream(const std::string &name, int32_t dev
         *supportsPartialResults = (*partialResultCount > 1);
     }
 
-    sp<DeviceCb> cb = new DeviceCb(this, deviceVersion, staticMeta);
+    bool checkMonochromeResultTags = Status::OK == isMonochromeCamera(staticMeta) &&
+            deviceVersion >= CAMERA_DEVICE_API_VERSION_3_5;
+    sp<DeviceCb> cb = new DeviceCb(this, checkMonochromeResultTags);
     ret = device3_x->open(
         cb,
         [&](auto status, const auto& newSession) {
@@ -5471,22 +5441,6 @@ void CameraHidlTest::verifyLogicalCameraMetadata(const std::string& cameraName,
         });
         ASSERT_TRUE(ret.isOk());
     }
-
-    // Make sure ANDROID_LOGICAL_MULTI_CAMERA_ACTIVE_PHYSICAL_ID is available in
-    // result keys.
-    if (deviceVersion >= CAMERA_DEVICE_API_VERSION_3_5) {
-        camera_metadata_ro_entry entry;
-        int retcode = find_camera_metadata_ro_entry(metadata,
-                ANDROID_REQUEST_AVAILABLE_RESULT_KEYS, &entry);
-        if ((0 == retcode) && (entry.count > 0)) {
-                ASSERT_NE(std::find(entry.data.i32, entry.data.i32 + entry.count,
-                    static_cast<int32_t>(
-                            CameraMetadataTag::ANDROID_LOGICAL_MULTI_CAMERA_ACTIVE_PHYSICAL_ID)),
-                    entry.data.i32 + entry.count);
-        } else {
-            ADD_FAILURE() << "Get camera availableResultKeys failed!";
-        }
-    }
 }
 
 void CameraHidlTest::verifyCameraCharacteristics(Status status, const CameraMetadata& chars) {
@@ -5693,24 +5647,6 @@ void CameraHidlTest::verifyBuffersReturned(
 
     session3_5->signalStreamFlush(streamIds, /*streamConfigCounter*/streamConfigCounter);
     cb->waitForBuffersReturned();
-}
-
-void CameraHidlTest::verifyLogicalCameraResult(const camera_metadata_t* staticMetadata,
-        const ::android::hardware::camera::common::V1_0::helper::CameraMetadata& resultMetadata) {
-    std::unordered_set<std::string> physicalIds;
-    Status rc = getPhysicalCameraIds(staticMetadata, &physicalIds);
-    ASSERT_TRUE(Status::OK == rc);
-    ASSERT_TRUE(physicalIds.size() > 1);
-
-    camera_metadata_ro_entry entry;
-    // Check mainPhysicalId
-    entry = resultMetadata.find(ANDROID_LOGICAL_MULTI_CAMERA_ACTIVE_PHYSICAL_ID);
-    if (entry.count > 0) {
-        std::string mainPhysicalId(reinterpret_cast<const char *>(entry.data.u8));
-        ASSERT_NE(physicalIds.find(mainPhysicalId), physicalIds.end());
-    } else {
-        ADD_FAILURE() << "Get LOGICAL_MULTI_CAMERA_ACTIVE_PHYSICAL_ID failed!";
-    }
 }
 
 // Open a device session with empty callbacks and return static metadata.
