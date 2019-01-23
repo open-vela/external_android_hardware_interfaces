@@ -18,6 +18,60 @@ LOCAL_PATH := $(call my-dir)
 
 BUILD_FRAMEWORK_COMPATIBILITY_MATRIX := $(LOCAL_PATH)/compatibility_matrix.mk
 
+my_kernel_config_data := kernel/configs
+
+# Install all compatibility_matrix.*.xml to /system/etc/vintf
+
+include $(CLEAR_VARS)
+include $(LOCAL_PATH)/clear_vars.mk
+LOCAL_MODULE := framework_compatibility_matrix.legacy.xml
+LOCAL_MODULE_STEM := compatibility_matrix.legacy.xml
+LOCAL_SRC_FILES := $(LOCAL_MODULE_STEM)
+LOCAL_KERNEL_CONFIG_DATA_PATHS := \
+    3.18.0:$(my_kernel_config_data)/o/android-3.18 \
+    4.4.0:$(my_kernel_config_data)/o/android-4.4 \
+    4.9.0:$(my_kernel_config_data)/o/android-4.9 \
+
+include $(BUILD_FRAMEWORK_COMPATIBILITY_MATRIX)
+
+include $(CLEAR_VARS)
+include $(LOCAL_PATH)/clear_vars.mk
+LOCAL_MODULE := framework_compatibility_matrix.1.xml
+LOCAL_MODULE_STEM := compatibility_matrix.1.xml
+LOCAL_SRC_FILES := $(LOCAL_MODULE_STEM)
+LOCAL_KERNEL_CONFIG_DATA_PATHS := \
+    3.18.0:$(my_kernel_config_data)/o/android-3.18 \
+    4.4.0:$(my_kernel_config_data)/o/android-4.4 \
+    4.9.0:$(my_kernel_config_data)/o/android-4.9 \
+
+include $(BUILD_FRAMEWORK_COMPATIBILITY_MATRIX)
+
+include $(CLEAR_VARS)
+include $(LOCAL_PATH)/clear_vars.mk
+LOCAL_MODULE := framework_compatibility_matrix.2.xml
+LOCAL_MODULE_STEM := compatibility_matrix.2.xml
+LOCAL_SRC_FILES := $(LOCAL_MODULE_STEM)
+LOCAL_KERNEL_CONFIG_DATA_PATHS := \
+    3.18.0:$(my_kernel_config_data)/o-mr1/android-3.18 \
+    4.4.0:$(my_kernel_config_data)/o-mr1/android-4.4 \
+    4.9.0:$(my_kernel_config_data)/o-mr1/android-4.9 \
+
+include $(BUILD_FRAMEWORK_COMPATIBILITY_MATRIX)
+
+include $(CLEAR_VARS)
+include $(LOCAL_PATH)/clear_vars.mk
+LOCAL_MODULE := framework_compatibility_matrix.3.xml
+LOCAL_MODULE_STEM := compatibility_matrix.3.xml
+LOCAL_SRC_FILES := $(LOCAL_MODULE_STEM)
+LOCAL_KERNEL_CONFIG_DATA_PATHS := \
+    4.4.107:$(my_kernel_config_data)/p/android-4.4 \
+    4.9.84:$(my_kernel_config_data)/p/android-4.9 \
+    4.14.42:$(my_kernel_config_data)/p/android-4.14 \
+
+include $(BUILD_FRAMEWORK_COMPATIBILITY_MATRIX)
+
+my_kernel_config_data :=
+
 # Framework Compatibility Matrix (common to all FCM versions)
 
 include $(CLEAR_VARS)
@@ -59,42 +113,43 @@ LOCAL_ASSEMBLE_VINTF_ENV_VARS := \
     PLATFORM_SEPOLICY_VERSION \
     PLATFORM_SEPOLICY_COMPAT_VERSIONS
 
+LOCAL_ASSEMBLE_VINTF_ENV_VARS_OVERRIDE := PRODUCT_ENFORCE_VINTF_MANIFEST=true
+LOCAL_ASSEMBLE_VINTF_ERROR_MESSAGE := \
+    "Error: DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX cannot contain required HALs."
+
 include $(BUILD_FRAMEWORK_COMPATIBILITY_MATRIX)
 
-my_system_matrix_deps := \
+# Framework Compatibility Matrix
+
+include $(CLEAR_VARS)
+include $(LOCAL_PATH)/clear_vars.mk
+LOCAL_MODULE := framework_compatibility_matrix.xml
+LOCAL_MODULE_STEM := compatibility_matrix.xml
+LOCAL_MODULE_PATH := $(TARGET_OUT)
+LOCAL_REQUIRED_MODULES := \
     framework_compatibility_matrix.legacy.xml \
     framework_compatibility_matrix.1.xml \
     framework_compatibility_matrix.2.xml \
     framework_compatibility_matrix.3.xml \
-    framework_compatibility_matrix.current.xml \
     framework_compatibility_matrix.device.xml
-
-# Phony target that installs all framework compatibility matrix files
-include $(CLEAR_VARS)
-LOCAL_MODULE := framework_compatibility_matrix.xml
-LOCAL_REQUIRED_MODULES := $(my_system_matrix_deps)
-include $(BUILD_PHONY_PACKAGE)
-
-# Final Framework Compatibility Matrix for OTA
-include $(CLEAR_VARS)
-include $(LOCAL_PATH)/clear_vars.mk
-LOCAL_MODULE := verified_assembled_system_matrix.xml
-LOCAL_MODULE_PATH := $(PRODUCT_OUT)
-LOCAL_REQUIRED_MODULES := $(my_system_matrix_deps)
 LOCAL_GENERATED_SOURCES := $(call module-installed-files,$(LOCAL_REQUIRED_MODULES))
-LOCAL_ADD_VBMETA_VERSION_OVERRIDE := true
 
 ifdef BUILT_VENDOR_MANIFEST
 LOCAL_GEN_FILE_DEPENDENCIES += $(BUILT_VENDOR_MANIFEST)
 LOCAL_ASSEMBLE_VINTF_FLAGS += -c "$(BUILT_VENDOR_MANIFEST)"
 endif
 
-ifneq ($(PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS),true)
-LOCAL_ASSEMBLE_VINTF_FLAGS += --no-kernel-requirements
+LOCAL_ASSEMBLE_VINTF_ENV_VARS := PRODUCT_ENFORCE_VINTF_MANIFEST
+
+# TODO(b/65028233): Enforce no "unused HALs" for devices that does not define
+# DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE as well
+ifeq (true,$(strip $(PRODUCT_ENFORCE_VINTF_MANIFEST)))
+ifdef DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE
+LOCAL_ASSEMBLE_VINTF_ENV_VARS_OVERRIDE := VINTF_ENFORCE_NO_UNUSED_HALS=true
+endif
 endif
 
 include $(BUILD_FRAMEWORK_COMPATIBILITY_MATRIX)
-BUILT_SYSTEM_MATRIX := $(LOCAL_BUILT_MODULE)
+BUILT_SYSTEM_COMPATIBILITY_MATRIX := $(LOCAL_BUILT_MODULE)
 
-my_system_matrix_deps :=
 BUILD_FRAMEWORK_COMPATIBILITY_MATRIX :=
