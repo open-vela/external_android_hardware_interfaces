@@ -8,8 +8,6 @@ hidl_interface {
     },
     srcs: [
         "types.hal",
-        "IBurstCallback.hal",
-        "IBurstContext.hal",
         "IDevice.hal",
         "IExecutionCallback.hal",
         "IPreparedModel.hal",
@@ -22,9 +20,6 @@ hidl_interface {
         "android.hidl.safe_union@1.0",
     ],
     types: [
-        "DeviceType",
-        "FmqRequestDatum",
-        "FmqResultDatum",
         "Model",
         "Operand",
         "OperandType",
@@ -32,8 +27,6 @@ hidl_interface {
         "Operation",
         "OperationType",
         "OperationTypeRange",
-        "OutputShape",
-        "SymmPerChannelQuantParams",
     ],
     gen_java: false,
 }
