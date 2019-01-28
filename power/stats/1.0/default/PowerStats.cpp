@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "android.hardware.power.stats@1.0-service-mock"
-
 #include "PowerStats.h"
 #include <android-base/file.h>
 #include <android-base/logging.h>
