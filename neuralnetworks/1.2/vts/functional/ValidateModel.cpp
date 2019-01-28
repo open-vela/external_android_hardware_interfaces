@@ -172,9 +172,6 @@ static uint32_t getInvalidRank(OperandType type) {
 static void mutateOperandRankTest(const sp<IDevice>& device, const Model& model) {
     for (size_t operand = 0; operand < model.operands.size(); ++operand) {
         const uint32_t invalidRank = getInvalidRank(model.operands[operand].type);
-        if (invalidRank == 0) {
-            continue;
-        }
         const std::string message = "mutateOperandRankTest: operand " + std::to_string(operand) +
                                     " has rank of " + std::to_string(invalidRank);
         validate(device, message, model, [operand, invalidRank](Model* model) {
@@ -332,7 +329,6 @@ static bool mutateOperationOperandTypeSkip(size_t operand, OperandType type, con
         // - CONV_2D filter type (arg 1) can be QUANT8_ASYMM or QUANT8_SYMM_PER_CHANNEL
         // - DEPTHWISE_CONV_2D filter type (arg 1) can be QUANT8_ASYMM or QUANT8_SYMM_PER_CHANNEL
         // - GROUPED_CONV_2D filter type (arg 1) can be QUANT8_ASYMM or QUANT8_SYMM_PER_CHANNEL
-        // - TRANSPOSE_CONV_2D filter type (arg 1) can be QUANT8_ASYMM or QUANT8_SYMM_PER_CHANNEL
         switch (operation.type) {
             case OperationType::LSH_PROJECTION: {
                 if (operand == operation.inputs[1]) {
@@ -352,7 +348,6 @@ static bool mutateOperationOperandTypeSkip(size_t operand, OperandType type, con
                     return true;
                 }
             } break;
-            case OperationType::TRANSPOSE_CONV_2D:
             case OperationType::GROUPED_CONV_2D:
             case OperationType::DEPTHWISE_CONV_2D:
             case OperationType::CONV_2D: {
