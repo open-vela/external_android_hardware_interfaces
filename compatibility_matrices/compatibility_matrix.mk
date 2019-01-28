@@ -17,8 +17,7 @@
 ##### Input Variables:
 # LOCAL_MODULE: required. Module name for the build system.
 # LOCAL_MODULE_CLASS: optional. Default is ETC.
-# LOCAL_MODULE_PATH / LOCAL_MODULE_RELATIVE_PATH: required. (Relative) path of output file.
-#       If not defined, LOCAL_MODULE_RELATIVE_PATH will be "vintf".
+# LOCAL_MODULE_PATH: optional. Path of output file. Default is $(TARGET_OUT)/etc/vintf.
 # LOCAL_MODULE_STEM: optional. Name of output file. Default is $(LOCAL_MODULE).
 # LOCAL_SRC_FILES: required. Local source files provided to assemble_vintf
 #       (command line argument -i).
@@ -49,9 +48,7 @@ LOCAL_MODULE_CLASS := ETC
 endif
 
 ifndef LOCAL_MODULE_PATH
-ifndef LOCAL_MODULE_RELATIVE_PATH
-$(error Either LOCAL_MODULE_PATH or LOCAL_MODULE_RELATIVE_PATH must be defined.)
-endif
+LOCAL_MODULE_PATH := $(TARGET_OUT)/etc/vintf
 endif
 
 GEN := $(local-generated-sources-dir)/$(LOCAL_MODULE_STEM)
