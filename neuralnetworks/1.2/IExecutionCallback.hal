@@ -39,10 +39,21 @@ interface IExecutionCallback extends @1.0::IExecutionCallback {
      *               - DEVICE_UNAVAILABLE if driver is offline or busy
      *               - GENERAL_FAILURE if the asynchronous task resulted in an
      *                 unspecified error
-     *               - OUTPUT_INSUFFICIENT_SIZE if provided output buffer is
-     *                 not large enough to store the resultant values
+     *               - OUTPUT_INSUFFICIENT_SIZE if at least one output
+     *                 operand buffer is not large enough to store the
+     *                 corresponding output
      *               - INVALID_ARGUMENT if one of the input arguments to
      *                 prepareModel is invalid
+     * @param outputShapes A list of shape information of model output operands.
+     *                     The index into "outputShapes" corresponds with to index
+     *                     of the output operand in the Request outputs vector.
+     *                     outputShapes must be empty unless the status is either
+     *                     NONE or OUTPUT_INSUFFICIENT_SIZE.
+     * @return Timing Duration of execution. Unless MeasureTiming::YES was passed when
+     *                launching the execution and status is NONE, all times must
+     *                be reported as UINT64_MAX. A driver may choose to report
+     *                any time as UINT64_MAX, indicating that particular measurement is
+     *                not available.
      */
-    oneway notify_1_2(ErrorStatus status);
+  oneway notify_1_2(ErrorStatus status, vec<OutputShape> outputShapes, Timing timing);
 };

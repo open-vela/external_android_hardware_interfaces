@@ -275,8 +275,9 @@ class ExecutionCallback : public CallbackBase,  public IExecutionCallback {
      * Either IExecutionCallback::notify or IExecutionCallback::notify_1_2 must
      * be called exactly once on a given ExecutionCallback object.
      *
-     * @param status Error status returned from asynchronously preparing the
-     *               model; will be:
+     * @param status Error status returned from launching the asynchronous task
+     *               (if the launch fails) or from the asynchronous task itself
+     *               (if the launch succeeds). Must be:
      *               - NONE if the asynchronous execution was successful
      *               - DEVICE_UNAVAILABLE if driver is offline or busy
      *               - GENERAL_FAILURE if there is an unspecified error
@@ -285,27 +286,100 @@ class ExecutionCallback : public CallbackBase,  public IExecutionCallback {
      *               - INVALID_ARGUMENT if the input request is invalid
      */
     Return<void> notify(ErrorStatus status) override;
-    Return<void> notify_1_2(ErrorStatus status) override;
+
+    /**
+     * Similar to IExecutionCallback::notify, but for V1_2::IPreparedModel to
+     * also notify output shapes along with error status.
+     *
+     * @param status Error status returned from launching the asynchronous task
+     *               (if the launch fails) or from the asynchronous task itself
+     *               (if the launch succeeds). Must be:
+     *               - NONE if the asynchronous execution was successful
+     *               - DEVICE_UNAVAILABLE if driver is offline or busy
+     *               - GENERAL_FAILURE if the asynchronous task resulted in an
+     *                 unspecified error
+     *               - OUTPUT_INSUFFICIENT_SIZE if at least one output
+     *                 operand buffer is not large enough to store the
+     *                 corresponding output
+     *               - INVALID_ARGUMENT if one of the input arguments to
+     *                 prepareModel is invalid
+     * @param outputShapes A list of shape information of model output operands.
+     *                     The index into "outputShapes" corresponds to the index
+     *                     of the output operand in the Request outputs vector.
+     *                     outputShapes must be empty unless the status is either
+     *                     NONE or OUTPUT_INSUFFICIENT_SIZE.
+     * @return Timing Duration of execution. Unless MeasureTiming::YES was passed when
+     *                launching the execution and status is NONE, all times must
+     *                be reported as UINT64_MAX. A driver may choose to report
+     *                any time as UINT64_MAX, indicating that particular measurement is
+     *                not available.
+     */
+    Return<void> notify_1_2(ErrorStatus status, const hidl_vec<OutputShape>& outputShapes,
+                            const Timing& timing) override;
+
+    // An overload of the latest notify interface to hide the version from ExecutionBuilder.
+    Return<void> notify(ErrorStatus status, const hidl_vec<OutputShape>& outputShapes,
+                        const Timing& timing) {
+        return notify_1_2(status, outputShapes, timing);
+    }
 
     /**
      * Retrieves the error status returned from the asynchronous task launched
-     * by IPreparedModel::execute. If IPreparedModel::execute has not finished
+     * by either IPreparedModel::execute or IPreparedModel::execute_1_2. If
+     * IPreparedModel::execute or IPreparedModel::execute_1_2 has not finished
      * asynchronously executing, this call will block until the asynchronous task
      * notifies the object.
      *
-     * @return status Error status returned from asynchronously preparing the
-     *                model; will be:
+     * @return status Error status returned from launching the asynchronous task
+     *                (if the launch fails) or from the asynchronous task itself
+     *                (if the launch succeeds). Must be:
      *                - NONE if the asynchronous execution was successful
      *                - DEVICE_UNAVAILABLE if driver is offline or busy
-     *                - GENERAL_FAILURE if there is an unspecified error
-     *                - OUTPUT_INSUFFICIENT_SIZE if provided output buffer is
-     *                  not large enough to store the resultant values
-     *                - INVALID_ARGUMENT if the input request is invalid
+     *                - GENERAL_FAILURE if the asynchronous task resulted in an
+     *                  unspecified error
+     *                - OUTPUT_INSUFFICIENT_SIZE if at least one output
+     *                  operand buffer is not large enough to store the
+     *                  corresponding output
+     *                - INVALID_ARGUMENT if one of the input arguments to
+     *                  prepareModel is invalid
      */
     ErrorStatus getStatus();
 
- private:
-    ErrorStatus mErrorStatus;
+    /**
+     * Retrieves the output shapes returned from the asynchronous task launched
+     * by IPreparedModel::execute_1_2. If IPreparedModel::execute_1_2 has not finished
+     * asynchronously executing, this call will block until the asynchronous task
+     * notifies the object.
+     *
+     * If the asynchronous task was launched by IPreparedModel::execute, an empty vector
+     * will be returned.
+     *
+     * @return outputShapes A list of shape information of model output operands.
+     *                      The index into "outputShapes" corresponds to the index
+     *                      of the output operand in the Request outputs vector.
+     *                      outputShapes must be empty unless the status is either
+     *                      NONE or OUTPUT_INSUFFICIENT_SIZE.
+     */
+    const std::vector<OutputShape>& getOutputShapes();
+
+    /**
+     * Retrieves the duration of execution ofthe asynchronous task launched
+     * by IPreparedModel::execute_1_2. If IPreparedModel::execute_1_2 has not finished
+     * asynchronously executing, this call will block until the asynchronous task
+     * notifies the object.
+     *
+     * If the asynchronous task was launched by IPreparedModel::execute, every time
+     * must be UINT64_MAX.
+     *
+     * @return timing Duration of the execution. Every time must be UINT64_MAX unless
+     *                the status is NONE.
+     */
+    Timing getTiming();
+
+   private:
+    ErrorStatus mErrorStatus = ErrorStatus::GENERAL_FAILURE;
+    std::vector<OutputShape> mOutputShapes = {};
+    Timing mTiming = {};
 };
 
 
