@@ -23,7 +23,6 @@
 #include "CameraDevice_1_0.h"
 #include "CameraDevice_3_3.h"
 #include "CameraDevice_3_4.h"
-#include "CameraDevice_3_5.h"
 #include <cutils/properties.h>
 #include <string.h>
 #include <utils/Trace.h>
@@ -44,7 +43,6 @@ const std::regex kDeviceNameRE("device@([0-9]+\\.[0-9]+)/legacy/(.+)");
 const char *kHAL3_2 = "3.2";
 const char *kHAL3_3 = "3.3";
 const char *kHAL3_4 = "3.4";
-const char *kHAL3_5 = "3.5";
 const char *kHAL1_0 = "1.0";
 const int kMaxCameraDeviceNameLen = 128;
 const int kMaxCameraIdLen = 16;
@@ -143,6 +141,7 @@ void CameraProvider::sCameraDeviceStatusChange(
         int new_status) {
     CameraProvider* cp = const_cast<CameraProvider*>(
             static_cast<const CameraProvider*>(callbacks));
+    bool found = false;
 
     if (cp == nullptr) {
         ALOGE("%s: callback ops is null", __FUNCTION__);
@@ -154,23 +153,17 @@ void CameraProvider::sCameraDeviceStatusChange(
     snprintf(cameraId, sizeof(cameraId), "%d", camera_id);
     std::string cameraIdStr(cameraId);
     cp->mCameraStatusMap[cameraIdStr] = (camera_device_status_t) new_status;
-
-    if (cp->mCallbacks == nullptr) {
-        // For camera connected before mCallbacks is set, the corresponding
-        // addDeviceNames() would be called later in setCallbacks().
-        return;
-    }
-
-    bool found = false;
-    CameraDeviceStatus status = (CameraDeviceStatus)new_status;
-    for (auto const& deviceNamePair : cp->mCameraDeviceNames) {
-        if (cameraIdStr.compare(deviceNamePair.first) == 0) {
-            cp->mCallbacks->cameraDeviceStatusChange(deviceNamePair.second, status);
-            found = true;
+    if (cp->mCallbacks != nullptr) {
+        CameraDeviceStatus status = (CameraDeviceStatus) new_status;
+        for (auto const& deviceNamePair : cp->mCameraDeviceNames) {
+            if (cameraIdStr.compare(deviceNamePair.first) == 0) {
+                cp->mCallbacks->cameraDeviceStatusChange(
+                        deviceNamePair.second, status);
+                found = true;
+            }
         }
-    }
 
-    switch (status) {
+        switch (status) {
         case CameraDeviceStatus::PRESENT:
         case CameraDeviceStatus::ENUMERATING:
             if (!found) {
@@ -181,6 +174,7 @@ void CameraProvider::sCameraDeviceStatusChange(
             if (found) {
                 cp->removeDeviceNames(camera_id);
             }
+        }
     }
 }
 
@@ -256,11 +250,7 @@ std::string CameraProvider::getHidlDeviceName(
     int versionMajor = isV1 ? 1 : 3;
     int versionMinor = isV1 ? 0 : mPreferredHal3MinorVersion;
     if (deviceVersion == CAMERA_DEVICE_API_VERSION_3_5) {
-        if (mModule->getModuleApiVersion() == CAMERA_MODULE_API_VERSION_2_5) {
-            versionMinor = 5;
-        } else {
-            versionMinor = 4;
-        }
+        versionMinor = 4;
     }
     char deviceName[kMaxCameraDeviceNameLen];
     snprintf(deviceName, sizeof(deviceName), "device@%d.%d/legacy/%s",
@@ -443,22 +433,8 @@ bool CameraProvider::setUpVendorTags() {
 
 // Methods from ::android::hardware::camera::provider::V2_4::ICameraProvider follow.
 Return<Status> CameraProvider::setCallback(const sp<ICameraProviderCallback>& callback)  {
-    if (callback == nullptr) {
-        return Status::ILLEGAL_ARGUMENT;
-    }
-
     Mutex::Autolock _l(mCbLock);
     mCallbacks = callback;
-
-    // Add and report all presenting external cameras.
-    for (auto const& statusPair : mCameraStatusMap) {
-        int id = std::stoi(statusPair.first);
-        auto status = static_cast<CameraDeviceStatus>(statusPair.second);
-        if (id >= mNumberOfLegacyCameras && status != CameraDeviceStatus::NOT_PRESENT) {
-            addDeviceNames(id, status, true);
-        }
-    }
-
     return Status::OK;
 }
 
@@ -470,11 +446,6 @@ Return<void> CameraProvider::getVendorTags(getVendorTags_cb _hidl_cb)  {
 Return<void> CameraProvider::getCameraIdList(getCameraIdList_cb _hidl_cb)  {
     std::vector<hidl_string> deviceNameList;
     for (auto const& deviceNamePair : mCameraDeviceNames) {
-        if (std::stoi(deviceNamePair.first) >= mNumberOfLegacyCameras) {
-            // External camera devices must be reported through the device status change callback,
-            // not in this list.
-            continue;
-        }
         if (mCameraStatusMap[deviceNamePair.first] == CAMERA_DEVICE_STATUS_PRESENT) {
             deviceNameList.push_back(deviceNamePair.second);
         }
@@ -575,69 +546,63 @@ Return<void> CameraProvider::getCameraDeviceInterface_V3_x(
         return Void();
     }
 
-    // ICameraDevice 3.4 or upper
-    sp<android::hardware::camera::device::V3_2::implementation::CameraDevice> deviceImpl;
-    if (deviceVersion >= kHAL3_4) {
+    sp<android::hardware::camera::device::V3_2::ICameraDevice> device;
+    if (deviceVersion == kHAL3_4) {
         ALOGV("Constructing v3.4 camera device");
-        if (deviceVersion == kHAL3_4) {
-            deviceImpl = new android::hardware::camera::device::V3_4::implementation::CameraDevice(
+        sp<android::hardware::camera::device::V3_2::implementation::CameraDevice> deviceImpl =
+            new android::hardware::camera::device::V3_4::implementation::CameraDevice(
                     mModule, cameraId, mCameraDeviceNames);
-        } else if (deviceVersion == kHAL3_5) {
-            deviceImpl = new android::hardware::camera::device::V3_5::implementation::CameraDevice(
-                    mModule, cameraId, mCameraDeviceNames);
-        }
         if (deviceImpl == nullptr || deviceImpl->isInitFailed()) {
             ALOGE("%s: camera device %s init failed!", __FUNCTION__, cameraId.c_str());
+            device = nullptr;
             _hidl_cb(Status::INTERNAL_ERROR, nullptr);
             return Void();
         }
-        IF_ALOGV() {
-            deviceImpl->getInterface()->interfaceChain([](
-                ::android::hardware::hidl_vec<::android::hardware::hidl_string> interfaceChain) {
-                    ALOGV("Device interface chain:");
-                    for (auto iface : interfaceChain) {
-                        ALOGV("  %s", iface.c_str());
-                    }
-                });
-        }
-        _hidl_cb (Status::OK, deviceImpl->getInterface());
+
+        device = deviceImpl;
+        _hidl_cb (Status::OK, device);
         return Void();
     }
 
-    // ICameraDevice 3.2 and 3.3
     // Since some Treble HAL revisions can map to the same legacy HAL version(s), we default
     // to the newest possible Treble HAL revision, but allow for override if needed via
     // system property.
     switch (mPreferredHal3MinorVersion) {
         case 2: { // Map legacy camera device v3 HAL to Treble camera device HAL v3.2
             ALOGV("Constructing v3.2 camera device");
-            deviceImpl = new android::hardware::camera::device::V3_2::implementation::CameraDevice(
+            sp<android::hardware::camera::device::V3_2::implementation::CameraDevice> deviceImpl =
+                    new android::hardware::camera::device::V3_2::implementation::CameraDevice(
                     mModule, cameraId, mCameraDeviceNames);
             if (deviceImpl == nullptr || deviceImpl->isInitFailed()) {
                 ALOGE("%s: camera device %s init failed!", __FUNCTION__, cameraId.c_str());
+                device = nullptr;
                 _hidl_cb(Status::INTERNAL_ERROR, nullptr);
                 return Void();
             }
+            device = deviceImpl;
             break;
         }
         case 3: { // Map legacy camera device v3 HAL to Treble camera device HAL v3.3
             ALOGV("Constructing v3.3 camera device");
-            deviceImpl = new android::hardware::camera::device::V3_3::implementation::CameraDevice(
+            sp<android::hardware::camera::device::V3_2::implementation::CameraDevice> deviceImpl =
+                    new android::hardware::camera::device::V3_3::implementation::CameraDevice(
                     mModule, cameraId, mCameraDeviceNames);
             if (deviceImpl == nullptr || deviceImpl->isInitFailed()) {
                 ALOGE("%s: camera device %s init failed!", __FUNCTION__, cameraId.c_str());
+                device = nullptr;
                 _hidl_cb(Status::INTERNAL_ERROR, nullptr);
                 return Void();
             }
+            device = deviceImpl;
             break;
         }
         default:
             ALOGE("%s: Unknown HAL minor version %d!", __FUNCTION__, mPreferredHal3MinorVersion);
+            device = nullptr;
             _hidl_cb(Status::INTERNAL_ERROR, nullptr);
             return Void();
     }
-
-    _hidl_cb (Status::OK, deviceImpl->getInterface());
+    _hidl_cb (Status::OK, device);
     return Void();
 }
 
