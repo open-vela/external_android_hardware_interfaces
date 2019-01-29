@@ -20,9 +20,6 @@
 
 #include <android/hardware/keymaster/4.0/IKeymasterDevice.h>
 
-#include <memory>
-#include <vector>
-
 namespace android {
 namespace hardware {
 namespace keymaster {
