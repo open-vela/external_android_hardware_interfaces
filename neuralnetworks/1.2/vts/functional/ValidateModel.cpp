@@ -128,10 +128,10 @@ static uint32_t addOperand(Model* model, OperandLifeTime lifetime) {
 ///////////////////////// VALIDATE MODEL OPERAND TYPE /////////////////////////
 
 static const uint32_t invalidOperandTypes[] = {
-        static_cast<uint32_t>(OperandTypeRange::FUNDAMENTAL_MIN) - 1,
-        static_cast<uint32_t>(OperandTypeRange::FUNDAMENTAL_MAX) + 1,
-        static_cast<uint32_t>(OperandTypeRange::OEM_MIN) - 1,
-        static_cast<uint32_t>(OperandTypeRange::OEM_MAX) + 1,
+    static_cast<uint32_t>(OperandTypeRange::OPERAND_FUNDAMENTAL_MIN) - 1,
+    static_cast<uint32_t>(OperandTypeRange::OPERAND_FUNDAMENTAL_MAX) + 1,
+    static_cast<uint32_t>(OperandTypeRange::OPERAND_OEM_MIN) - 1,
+    static_cast<uint32_t>(OperandTypeRange::OPERAND_OEM_MAX) + 1,
 };
 
 static void mutateOperandTypeTest(const sp<IDevice>& device, const Model& model) {
@@ -161,8 +161,6 @@ static uint32_t getInvalidRank(OperandType type) {
         case OperandType::TENSOR_FLOAT32:
         case OperandType::TENSOR_INT32:
         case OperandType::TENSOR_QUANT8_ASYMM:
-        case OperandType::TENSOR_QUANT8_SYMM:
-        case OperandType::TENSOR_QUANT16_ASYMM:
         case OperandType::TENSOR_QUANT16_SYMM:
         case OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL:
             return 0;
@@ -200,9 +198,7 @@ static float getInvalidScale(OperandType type) {
             return 1.0f;
         case OperandType::TENSOR_INT32:
             return -1.0f;
-        case OperandType::TENSOR_QUANT8_SYMM:
         case OperandType::TENSOR_QUANT8_ASYMM:
-        case OperandType::TENSOR_QUANT16_ASYMM:
         case OperandType::TENSOR_QUANT16_SYMM:
             return 0.0f;
         default:
@@ -237,10 +233,6 @@ static std::vector<int32_t> getInvalidZeroPoints(OperandType type) {
             return {1};
         case OperandType::TENSOR_QUANT8_ASYMM:
             return {-1, 256};
-        case OperandType::TENSOR_QUANT8_SYMM:
-          return {-129, -1, 1, 128};
-        case OperandType::TENSOR_QUANT16_ASYMM:
-            return {-1, 65536};
         case OperandType::TENSOR_QUANT16_SYMM:
             return {-32769, -1, 1, 32768};
         default:
@@ -296,8 +288,6 @@ static void mutateOperand(Operand* operand, OperandType type) {
             newOperand.zeroPoint = 0;
             break;
         case OperandType::TENSOR_QUANT8_ASYMM:
-        case OperandType::TENSOR_QUANT8_SYMM:
-        case OperandType::TENSOR_QUANT16_ASYMM:
         case OperandType::TENSOR_QUANT16_SYMM:
             newOperand.dimensions =
                 operand->dimensions.size() > 0 ? operand->dimensions : hidl_vec<uint32_t>({1});
@@ -397,10 +387,10 @@ static void mutateOperationOperandTypeTest(const sp<IDevice>& device, const Mode
 ///////////////////////// VALIDATE MODEL OPERATION TYPE /////////////////////////
 
 static const uint32_t invalidOperationTypes[] = {
-        static_cast<uint32_t>(OperationTypeRange::FUNDAMENTAL_MIN) - 1,
-        static_cast<uint32_t>(OperationTypeRange::FUNDAMENTAL_MAX) + 1,
-        static_cast<uint32_t>(OperationTypeRange::OEM_MIN) - 1,
-        static_cast<uint32_t>(OperationTypeRange::OEM_MAX) + 1,
+    static_cast<uint32_t>(OperationTypeRange::OPERATION_FUNDAMENTAL_MIN) - 1,
+    static_cast<uint32_t>(OperationTypeRange::OPERATION_FUNDAMENTAL_MAX) + 1,
+    static_cast<uint32_t>(OperationTypeRange::OPERATION_OEM_MIN) - 1,
+    static_cast<uint32_t>(OperationTypeRange::OPERATION_OEM_MAX) + 1,
 };
 
 static void mutateOperationTypeTest(const sp<IDevice>& device, const Model& model) {
