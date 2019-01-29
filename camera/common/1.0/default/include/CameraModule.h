@@ -65,9 +65,6 @@ public:
     void *getDso();
     // Only used by CameraProvider
     void removeCamera(int cameraId);
-    int getPhysicalCameraInfo(int physicalCameraId, camera_metadata_t **physicalInfo);
-    int isStreamCombinationSupported(int cameraId, camera_stream_combination_t *streams);
-    void notifyDeviceStateChange(uint64_t deviceState);
 
 private:
     // Derive camera characteristics keys defined after HAL device version
@@ -77,10 +74,8 @@ private:
             int32_t keyTag, const Vector<int32_t>& appendKeys);
     status_t filterOpenErrorCode(status_t err);
     camera_module_t *mModule;
-    int mNumberOfCameras;
     KeyedVector<int, camera_info> mCameraInfoMap;
     KeyedVector<int, int> mDeviceVersionMap;
-    KeyedVector<int, camera_metadata_t*> mPhysicalCameraInfoMap;
     Mutex mCameraInfoLock;
 };
 
