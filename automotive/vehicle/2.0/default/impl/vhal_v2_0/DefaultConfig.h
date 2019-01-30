@@ -198,15 +198,6 @@ const ConfigDeclaration kVehicleProperties[]{
 
     {.config =
          {
-             .prop = toInt(VehicleProperty::INFO_DRIVER_SEAT),
-             .access = VehiclePropertyAccess::READ,
-             .changeMode = VehiclePropertyChangeMode::STATIC,
-             .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
-         },
-     .initialValue = {.int32Values = {SEAT_1_LEFT}}},
-
-    {.config =
-         {
              .prop = toInt(VehicleProperty::INFO_FUEL_DOOR_LOCATION),
              .access = VehiclePropertyAccess::READ,
              .changeMode = VehiclePropertyChangeMode::STATIC,
@@ -330,8 +321,6 @@ const ConfigDeclaration kVehicleProperties[]{
              .access = VehiclePropertyAccess::READ,
              .changeMode = VehiclePropertyChangeMode::CONTINUOUS,
              .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
-             .minSampleRate = 1.0f,
-             .maxSampleRate = 2.0f,
          },
      .initialValue = {.floatValues = {100.0f}}},  // units in meters
 
@@ -339,8 +328,6 @@ const ConfigDeclaration kVehicleProperties[]{
          {.prop = toInt(VehicleProperty::TIRE_PRESSURE),
           .access = VehiclePropertyAccess::READ,
           .changeMode = VehiclePropertyChangeMode::CONTINUOUS,
-          .minSampleRate = 1.0f,
-          .maxSampleRate = 2.0f,
           .areaConfigs =
               {VehicleAreaConfig{
                    .areaId = WHEEL_FRONT_LEFT, .minFloatValue = 100.0f, .maxFloatValue = 300.0f,
