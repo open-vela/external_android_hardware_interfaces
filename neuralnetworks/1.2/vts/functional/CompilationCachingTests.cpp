@@ -86,7 +86,6 @@ class CompilationCachingTest : public NeuralnetworksHidlTest {
   protected:
     void SetUp() override {
         NeuralnetworksHidlTest::SetUp();
-        ASSERT_NE(device.get(), nullptr);
 
         // Create cache directory.
         char cacheDirTemp[] = "/data/local/tmp/TestCompilationCachingXXXXXX";
