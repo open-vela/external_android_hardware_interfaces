@@ -80,8 +80,7 @@ class ComposerImpl : public Interface {
 
     Return<void> createClient(IComposer::createClient_cb hidl_cb) override {
         std::unique_lock<std::mutex> lock(mClientMutex);
-        bool destroyed = waitForClientDestroyedLocked(lock);
-        if (!destroyed) {
+        if (!waitForClientDestroyedLocked(lock)) {
             hidl_cb(Error::NO_RESOURCES, nullptr);
             return Void();
         }
@@ -109,10 +108,12 @@ class ComposerImpl : public Interface {
             // inverted (create and then destroy). Wait for a brief period to
             // see if the existing client is destroyed.
             ALOGD("waiting for previous client to be destroyed");
-            mClientDestroyedCondition.wait_for(lock, 1s,
-                                               [this]() -> bool { return mClient == nullptr; });
-            if (mClient != nullptr) {
+            mClientDestroyedCondition.wait_for(
+                lock, 1s, [this]() -> bool { return mClient.promote() == nullptr; });
+            if (mClient.promote() != nullptr) {
                 ALOGD("previous client was not destroyed");
+            } else {
+                mClient.clear();
             }
         }
 
