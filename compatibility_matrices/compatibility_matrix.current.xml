@@ -1,5 +1,5 @@
 <compatibility-matrix version="1.0" type="framework" level="4">
-    <hal format="hidl" optional="true">
+    <hal format="hidl" optional="false">
         <name>android.hardware.atrace</name>
         <version>1.0</version>
         <interface>
