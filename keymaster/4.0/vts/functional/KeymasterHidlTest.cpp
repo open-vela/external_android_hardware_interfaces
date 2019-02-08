@@ -651,8 +651,6 @@ std::vector<uint32_t> KeymasterHidlTest::InvalidKeySizes(Algorithm algorithm) {
             return {3072, 4096};
         case Algorithm::EC:
             return {224, 384, 521};
-        case Algorithm::AES:
-            return {192};
         default:
             return {};
     }
@@ -672,7 +670,8 @@ std::vector<EcCurve> KeymasterHidlTest::InvalidCurves() {
     return {EcCurve::P_224, EcCurve::P_384, EcCurve::P_521};
 }
 
-std::vector<Digest> KeymasterHidlTest::ValidDigests(bool withNone, bool withMD5) {
+std::initializer_list<Digest> KeymasterHidlTest::ValidDigests(bool withNone, bool withMD5) {
+    std::vector<Digest> result;
     switch (SecLevel()) {
         case SecurityLevel::TRUSTED_ENVIRONMENT:
             if (withNone) {
