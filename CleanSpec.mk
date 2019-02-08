@@ -66,8 +66,3 @@ $(call add-clean-step, rm -rf $(PRODUCT_OUT)/system/lib/vndk-sp/android.hardware
 $(call add-clean-step, find $(PRODUCT_OUT)/system $(PRODUCT_OUT)/vendor -type f -name "android\.hardware\.configstore\@1\.1*" -print0 | xargs -0 rm -f)
 $(call add-clean-step, find $(PRODUCT_OUT)/system $(PRODUCT_OUT)/vendor -type f -name "android\.hardware\.configstore*" -print0 | xargs -0 rm -f)
 $(call add-clean-step, rm -rf $(PRODUCT_OUT)/vendor/etc/seccomp_policy/configstore@1.0.policy)
-$(call add-clean-step, rm -rf $(PRODUCT_OUT)/vendor/etc/seccomp_policy/configstore@1.1.policy)
-$(call add-clean-step, rm -rf $(PRODUCT_OUT)/vendor/bin/hw/android.hardware.configstore@1.1-service)
-$(call add-clean-step, rm -rf $(PRODUCT_OUT)/vendor/etc/init/android.hardware.configstore@1.1-service.rc)
-$(call add-clean-step, rm -rf $(PRODUCT_OUT)/vendor/bin/hw/android.hardware.cas@1.0*)
-$(call add-clean-step, rm -rf $(PRODUCT_OUT)/vendor/etc/init/android.hardware.cas@1.0*)
