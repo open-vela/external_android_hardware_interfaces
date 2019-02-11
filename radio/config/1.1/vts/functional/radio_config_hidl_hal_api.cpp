@@ -48,8 +48,8 @@ TEST_F(RadioConfigHidlTest, setModemsConfig_invalidArgument) {
     ALOGI("setModemsConfig, rspInfo.error = %s\n", toString(radioConfigRsp->rspInfo.error).c_str());
 
     ASSERT_TRUE(
-            CheckAnyOfErrors(radioConfigRsp->rspInfo.error,
-                             {RadioError::INVALID_ARGUMENTS, RadioError::REQUEST_NOT_SUPPORTED}));
+        CheckAnyOfErrors(radioConfigRsp->rspInfo.error,
+                         {RadioError::INVALID_ARGUMENTS, RadioError::REQUEST_NOT_SUPPORTED}));
 }
 
 /*
