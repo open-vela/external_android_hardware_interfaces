@@ -31,16 +31,5 @@ cc_test {
         "BasicTests.cpp",
         "GeneratedTests.cpp",
     ],
-}
-
-cc_test {
-    name: "PresubmitHalNeuralnetworksV1_1TargetTest",
-    defaults: ["VtsHalNeuralNetworksTargetTestDefaults"],
-    srcs: [
-        "BasicTests.cpp",
-        "GeneratedTests.cpp",
-    ],
-    cflags: [
-        "-DPRESUBMIT_NOT_VTS",
-    ],
+    test_suites: ["general-tests"],
 }
