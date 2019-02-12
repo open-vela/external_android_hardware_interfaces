@@ -14,7 +14,12 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "WorkerThread"
+//#define LOG_NDEBUG 0
+
 #include <broadcastradio-utils/WorkerThread.h>
+
+#include <log/log.h>
 
 namespace android {
 
@@ -34,6 +39,7 @@ bool operator<(const WorkerThread::Task& lhs, const WorkerThread::Task& rhs) {
 WorkerThread::WorkerThread() : mIsTerminating(false), mThread(&WorkerThread::threadLoop, this) {}
 
 WorkerThread::~WorkerThread() {
+    ALOGV("%s", __func__);
     {
         lock_guard<mutex> lk(mMut);
         mIsTerminating = true;
@@ -43,6 +49,8 @@ WorkerThread::~WorkerThread() {
 }
 
 void WorkerThread::schedule(function<void()> task, milliseconds delay) {
+    ALOGV("%s", __func__);
+
     auto when = steady_clock::now() + delay;
 
     lock_guard<mutex> lk(mMut);
@@ -51,11 +59,14 @@ void WorkerThread::schedule(function<void()> task, milliseconds delay) {
 }
 
 void WorkerThread::cancelAll() {
+    ALOGV("%s", __func__);
+
     lock_guard<mutex> lk(mMut);
     priority_queue<Task>().swap(mTasks);  // empty queue
 }
 
 void WorkerThread::threadLoop() {
+    ALOGV("%s", __func__);
     while (!mIsTerminating) {
         unique_lock<mutex> lk(mMut);
         if (mTasks.empty()) {
