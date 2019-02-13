@@ -93,9 +93,6 @@ protected:
             hidl_vec<buffer_handle_t*>& allBufPtrs,
             hidl_vec<int>& allFences) override;
 
-    Return<void> isReconfigurationRequired(const V3_2::CameraMetadata& oldSessionParams,
-            const V3_2::CameraMetadata& newSessionParams,
-            ICameraDeviceSession::isReconfigurationRequired_cb _hidl_cb);
     /**
      * Static callback forwarding methods from HAL to instance
      */
@@ -241,11 +238,6 @@ private:
             return mParent->signalStreamFlush(requests, streamConfigCounter);
         }
 
-        virtual Return<void> isReconfigurationRequired(const V3_2::CameraMetadata& oldSessionParams,
-                const V3_2::CameraMetadata& newSessionParams,
-                ICameraDeviceSession::isReconfigurationRequired_cb _hidl_cb) override {
-            return mParent->isReconfigurationRequired(oldSessionParams, newSessionParams, _hidl_cb);
-        }
     private:
         sp<CameraDeviceSession> mParent;
     };
