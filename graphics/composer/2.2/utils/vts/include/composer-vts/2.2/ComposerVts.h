@@ -36,31 +36,36 @@ namespace composer {
 namespace V2_2 {
 namespace vts {
 
-using common::V1_0::Hdr;
-using common::V1_1::ColorMode;
-using common::V1_1::Dataspace;
-using common::V1_1::PixelFormat;
-using common::V1_1::RenderIntent;
+using android::hardware::graphics::common::V1_0::Hdr;
+using android::hardware::graphics::common::V1_1::ColorMode;
+using android::hardware::graphics::common::V1_1::Dataspace;
+using android::hardware::graphics::common::V1_1::PixelFormat;
+using android::hardware::graphics::common::V1_1::RenderIntent;
+using android::hardware::graphics::composer::V2_2::IComposer;
+using android::hardware::graphics::composer::V2_2::IComposerClient;
 
-class ComposerClient;
+class ComposerClient_v2_2;
 
-// A wrapper to IComposer.
-class Composer : public V2_1::vts::Composer {
+// Only thing I need for Composer_v2_2 is to create a v2_2 ComposerClient
+// Everything else is the same
+class Composer_v2_2 : public V2_1::vts::Composer {
    public:
-    using V2_1::vts::Composer::Composer;
+    Composer_v2_2() : V2_1::vts::Composer(){};
+    explicit Composer_v2_2(const std::string& name) : V2_1::vts::Composer(name){};
 
-    std::unique_ptr<ComposerClient> createClient();
+    std::unique_ptr<ComposerClient_v2_2> createClient_v2_2();
 };
 
 // A wrapper to IComposerClient.
-class ComposerClient : public V2_1::vts::ComposerClient {
+class ComposerClient_v2_2
+    : public android::hardware::graphics::composer::V2_1::vts::ComposerClient {
    public:
-    explicit ComposerClient(const sp<IComposerClient>& client)
-        : V2_1::vts::ComposerClient(client), mClient(client) {}
+    ComposerClient_v2_2(const sp<IComposerClient>& client)
+        : V2_1::vts::ComposerClient(client), mClient_v2_2(client){};
 
-    sp<IComposerClient> getRaw() const;
+    sp<V2_2::IComposerClient> getRaw() const;
 
-    void execute(V2_1::vts::TestCommandReader* reader, CommandWriterBase* writer);
+    void execute_v2_2(V2_1::vts::TestCommandReader* reader, V2_2::CommandWriterBase* writer);
 
     std::vector<IComposerClient::PerFrameMetadataKey> getPerFrameMetadataKeys(Display display);
 
@@ -68,7 +73,7 @@ class ComposerClient : public V2_1::vts::ComposerClient {
                                      uint32_t outputBufferSlotCount, PixelFormat* outFormat);
     bool getClientTargetSupport_2_2(Display display, uint32_t width, uint32_t height,
                                     PixelFormat format, Dataspace dataspace);
-    void setPowerMode_2_2(Display display, IComposerClient::PowerMode mode);
+    void setPowerMode_2_2(Display display, V2_2::IComposerClient::PowerMode mode);
     void setReadbackBuffer(Display display, const native_handle_t* buffer, int32_t releaseFence);
     void getReadbackBufferAttributes(Display display, PixelFormat* outPixelFormat,
                                      Dataspace* outDataspace);
@@ -81,7 +86,7 @@ class ComposerClient : public V2_1::vts::ComposerClient {
     std::array<float, 16> getDataspaceSaturationMatrix(Dataspace dataspace);
 
    private:
-    const sp<IComposerClient> mClient;
+    sp<V2_2::IComposerClient> mClient_v2_2;
 };
 
 }  // namespace vts
