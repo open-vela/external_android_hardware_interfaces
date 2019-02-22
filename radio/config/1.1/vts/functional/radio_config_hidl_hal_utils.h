@@ -51,13 +51,14 @@ class RadioConfigResponse : public IRadioConfigResponse {
 
    public:
     RadioResponseInfo rspInfo;
+    PhoneCapability phoneCap;
 
     RadioConfigResponse(RadioConfigHidlTest& parent);
     virtual ~RadioConfigResponse() = default;
 
     Return<void> getSimSlotsStatusResponse(
-            const RadioResponseInfo& info,
-            const ::android::hardware::hidl_vec<SimSlotStatus>& slotStatus);
+        const RadioResponseInfo& info,
+        const ::android::hardware::hidl_vec<SimSlotStatus>& slotStatus);
 
     Return<void> setSimSlotsMappingResponse(const RadioResponseInfo& info);
 
