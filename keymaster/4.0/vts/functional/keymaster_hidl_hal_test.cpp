@@ -751,6 +751,7 @@ TEST_F(SigningOperationsTest, RsaPaddingNoneDoesNotAllowOther) {
  * presented.
  */
 TEST_F(SigningOperationsTest, NoUserConfirmation) {
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(1024, 65537)
                                              .Digest(Digest::NONE)
@@ -3879,33 +3880,6 @@ TEST_F(AttestationTest, EcAttestation) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .EcdsaSigningKey(EcCurve::P_256)
-                                             .Digest(Digest::SHA_2_256)
-                                             .Authorization(TAG_INCLUDE_UNIQUE_ID)));
-
-    hidl_vec<hidl_vec<uint8_t>> cert_chain;
-    ASSERT_EQ(ErrorCode::OK,
-              AttestKey(AuthorizationSetBuilder()
-                            .Authorization(TAG_ATTESTATION_CHALLENGE, HidlBuf("challenge"))
-                            .Authorization(TAG_ATTESTATION_APPLICATION_ID, HidlBuf("foo")),
-                        &cert_chain));
-    EXPECT_GE(cert_chain.size(), 2U);
-    EXPECT_TRUE(verify_chain(cert_chain));
-
-    EXPECT_TRUE(verify_attestation_record("challenge", "foo",                     //
-                                          key_characteristics_.softwareEnforced,  //
-                                          key_characteristics_.hardwareEnforced,  //
-                                          SecLevel(), cert_chain[0]));
-}
-
-/*
- * AttestationTest.EcAttestationByKeySize
- *
- * Verifies that attesting to EC keys works and generates the expected output.
- */
-TEST_F(AttestationTest, EcAttestationByKeySize) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                             .Authorization(TAG_NO_AUTH_REQUIRED)
-                                             .EcdsaSigningKey(256)
                                              .Digest(Digest::SHA_2_256)
                                              .Authorization(TAG_INCLUDE_UNIQUE_ID)));
 
