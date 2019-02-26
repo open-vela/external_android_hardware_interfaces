@@ -776,6 +776,7 @@ Return<void> RadioResponse_v1_4::setSystemSelectionChannelsResponse(const RadioR
 
 Return<void> RadioResponse_v1_4::enableModemResponse(const RadioResponseInfo& info) {
     rspInfo = info;
+    enableModemResponseToggle = !enableModemResponseToggle;
     parent_v1_4.notify(info.serial);
     return Void();
 }
@@ -831,9 +832,9 @@ Return<void> RadioResponse_v1_4::getIccCardStatusResponse_1_4(
 Return<void> RadioResponse_v1_4::getPreferredNetworkTypeBitmapResponse(
         const RadioResponseInfo& info, const ::android::hardware::hidl_bitfield<
                                                ::android::hardware::radio::V1_4::RadioAccessFamily>
-                                               networkTypeBitmap) {
+        /*networkTypeBitmap*/) {
     rspInfo = info;
-    networkTypeBitmapResponse = networkTypeBitmap;
+    // TODO: may need a new member for bitfield networkTypeBitmap.
     parent_v1_4.notify(info.serial);
     return Void();
 }
@@ -862,18 +863,12 @@ Return<void> RadioResponse_v1_4::setupDataCallResponse_1_4(
     return Void();
 }
 
-Return<void> RadioResponse_v1_4::setAllowedCarriersResponse_1_4(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_v1_4.notify(info.serial);
+Return<void> RadioResponse_v1_4::setAllowedCarriersResponse_1_4(const RadioResponseInfo& /*info*/) {
     return Void();
 }
 
 Return<void> RadioResponse_v1_4::getAllowedCarriersResponse_1_4(
-        const RadioResponseInfo& info, const CarrierRestrictionsWithPriority& carriers,
-        SimLockMultiSimPolicy multiSimPolicy) {
-    rspInfo = info;
-    carrierRestrictionsResp = carriers;
-    multiSimPolicyResp = multiSimPolicy;
-    parent_v1_4.notify(info.serial);
+        const RadioResponseInfo& /*info*/, const CarrierRestrictionsWithPriority& /*carriers*/,
+        SimLockMultiSimPolicy /*multiSimPolicy*/) {
     return Void();
 }
