@@ -216,8 +216,7 @@ class ComposerDisplayResource {
         : mType(type),
           mClientTargetCache(importer),
           mOutputBufferCache(importer, ComposerHandleCache::HandleType::BUFFER,
-                             outputBufferCacheSize),
-          mMustValidate(true) {}
+                             outputBufferCacheSize) {}
 
     bool initClientTargetCache(uint32_t cacheSize) {
         return mClientTargetCache.initCache(ComposerHandleCache::HandleType::BUFFER, cacheSize);
@@ -264,15 +263,10 @@ class ComposerDisplayResource {
         return layers;
     }
 
-    void setMustValidateState(bool mustValidate) { mMustValidate = mustValidate; }
-
-    bool mustValidate() const { return mMustValidate; }
-
    protected:
     const DisplayType mType;
     ComposerHandleCache mClientTargetCache;
     ComposerHandleCache mOutputBufferCache;
-    bool mMustValidate;
 
     std::unordered_map<Layer, std::unique_ptr<ComposerLayerResource>> mLayerResources;
 };
@@ -393,23 +387,6 @@ class ComposerResources {
                                  ReplacedStreamHandle* outReplacedStream) {
         return getHandle<Cache::LAYER_SIDEBAND_STREAM>(display, layer, 0, false, rawHandle,
                                                        outStreamHandle, outReplacedStream);
-    }
-
-    void setDisplayMustValidateState(Display display, bool mustValidate) {
-        std::lock_guard<std::mutex> lock(mDisplayResourcesMutex);
-        auto* displayResource = findDisplayResourceLocked(display);
-        if (displayResource) {
-            displayResource->setMustValidateState(mustValidate);
-        }
-    }
-
-    bool mustValidateDisplay(Display display) {
-        std::lock_guard<std::mutex> lock(mDisplayResourcesMutex);
-        auto* displayResource = findDisplayResourceLocked(display);
-        if (displayResource) {
-            return displayResource->mustValidate();
-        }
-        return false;
     }
 
    protected:
