@@ -51,7 +51,6 @@ class RadioConfigResponse : public IRadioConfigResponse {
 
    public:
     RadioResponseInfo rspInfo;
-    PhoneCapability phoneCap;
 
     RadioConfigResponse(RadioConfigHidlTest& parent);
     virtual ~RadioConfigResponse() = default;
