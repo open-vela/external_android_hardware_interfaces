@@ -122,7 +122,8 @@ Return<void> Gnss::deleteAidingData(V1_0::IGnss::GnssAidingData) {
 Return<bool> Gnss::setPositionMode(V1_0::IGnss::GnssPositionMode,
                                    V1_0::IGnss::GnssPositionRecurrence, uint32_t, uint32_t,
                                    uint32_t) {
-    return true;
+    // TODO(b/124012850): Implement function.
+    return bool{};
 }
 
 Return<sp<V1_0::IAGnssRil>> Gnss::getExtensionAGnssRil() {
@@ -266,7 +267,7 @@ Return<bool> Gnss::setCallback_2_0(const sp<V2_0::IGnssCallback>& callback) {
 
     sGnssCallback_2_0 = callback;
 
-    uint32_t capabilities = static_cast<uint32_t>(V1_0::IGnssCallback::Capabilities::MEASUREMENTS);
+    uint32_t capabilities = 0x0;
     auto ret = sGnssCallback_2_0->gnssSetCapabilitesCb(capabilities);
     if (!ret.isOk()) {
         ALOGE("%s: Unable to invoke callback", __func__);
