@@ -15,6 +15,9 @@ hidl_interface {
         "android.hardware.nfc@1.1",
         "android.hidl.base@1.0",
     ],
+    types: [
+        "NfcConfig",
+    ],
     gen_java: true,
 }
 
