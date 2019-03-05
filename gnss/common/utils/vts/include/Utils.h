@@ -18,10 +18,8 @@
 #define android_hardware_gnss_common_vts_Utils_H_
 
 #include <android/hardware/gnss/1.0/IGnss.h>
-#include <android/hardware/gnss/measurement_corrections/1.0/IMeasurementCorrections.h>
 
 using GnssLocation = ::android::hardware::gnss::V1_0::GnssLocation;
-using namespace android::hardware::gnss::measurement_corrections::V1_0;
 
 namespace android {
 namespace hardware {
@@ -31,7 +29,6 @@ namespace common {
 struct Utils {
     static void checkLocation(const GnssLocation& location, bool check_speed,
                               bool check_more_accuracies);
-    static const MeasurementCorrections getMockMeasurementCorrections();
 };
 
 }  // namespace common
