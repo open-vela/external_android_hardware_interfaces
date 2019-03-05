@@ -42,7 +42,6 @@ using android::hardware::biometrics::face::V1_0::FaceError;
 using android::hardware::biometrics::face::V1_0::Feature;
 using android::hardware::biometrics::face::V1_0::IBiometricsFace;
 using android::hardware::biometrics::face::V1_0::IBiometricsFaceClientCallback;
-using android::hardware::biometrics::face::V1_0::OptionalBool;
 using android::hardware::biometrics::face::V1_0::OptionalUint64;
 using android::hardware::biometrics::face::V1_0::Status;
 
@@ -168,19 +167,6 @@ class RemoveCallback : public FaceCallbackBase {
     std::promise<void> promise;
 };
 
-class LockoutChangedCallback : public FaceCallbackBase {
-  public:
-    Return<void> onLockoutChanged(uint64_t duration) override {
-        this->hasDuration = true;
-        this->duration = duration;
-        promise.set_value();
-        return Return<void>();
-    }
-    bool hasDuration;
-    uint64_t duration;
-    std::promise<void> promise;
-};
-
 // Test environment for Face HIDL HAL.
 class FaceHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
   public:
@@ -280,8 +266,12 @@ TEST_F(FaceHidlTest, SetFeatureZeroHatTest) {
         token[i] = 0;
     }
 
-    Return<Status> res = mService->setFeature(Feature::REQUIRE_DIVERSITY, false, token, 0);
-    ASSERT_EQ(Status::ILLEGAL_ARGUMENT, static_cast<Status>(res));
+    Return<Status> res = mService->setFeature(Feature::REQUIRE_DIVERSITY, false, token);
+    ASSERT_EQ(Status::OK, static_cast<Status>(res));
+
+    // At least one call to onError should occur
+    ASSERT_TRUE(waitForCallback(cb->promise.get_future()));
+    ASSERT_TRUE(cb->hasError);
 }
 
 // setFeature with an invalid HAT should fail.
@@ -295,27 +285,24 @@ TEST_F(FaceHidlTest, SetFeatureGarbageHatTest) {
         token[i] = i;
     }
 
-    Return<Status> res = mService->setFeature(Feature::REQUIRE_DIVERSITY, false, token, 0);
-    ASSERT_EQ(Status::ILLEGAL_ARGUMENT, static_cast<Status>(res));
+    Return<Status> res = mService->setFeature(Feature::REQUIRE_DIVERSITY, false, token);
+    ASSERT_EQ(Status::OK, static_cast<Status>(res));
+
+    // At least one call to onError should occur
+    ASSERT_TRUE(waitForCallback(cb->promise.get_future()));
+    ASSERT_TRUE(cb->hasError);
 }
 
-void assertGetFeatureFails(sp<IBiometricsFace> service, int faceId, Feature feature) {
-    std::promise<void> promise;
-
-    // Features cannot be retrieved for invalid faces.
-    Return<void> res = service->getFeature(feature, faceId, [&promise](const OptionalBool& result) {
-        ASSERT_EQ(Status::ILLEGAL_ARGUMENT, result.status);
-        promise.set_value();
-    });
-    ASSERT_TRUE(waitForCallback(promise.get_future()));
-}
-
+// getFeature by default should return true for REQUIRE_ATTENTION.
 TEST_F(FaceHidlTest, GetFeatureRequireAttentionTest) {
-    assertGetFeatureFails(mService, 0 /* faceId */, Feature::REQUIRE_ATTENTION);
+    Return<bool> res = mService->getFeature(Feature::REQUIRE_ATTENTION);
+    ASSERT_EQ(true, static_cast<bool>(res));
 }
 
+// getFeature by default should return true for REQUIRE_DIVERSITY.
 TEST_F(FaceHidlTest, GetFeatureRequireDiversityTest) {
-    assertGetFeatureFails(mService, 0 /* faceId */, Feature::REQUIRE_DIVERSITY);
+    Return<bool> res = mService->getFeature(Feature::REQUIRE_DIVERSITY);
+    ASSERT_EQ(true, static_cast<bool>(res));
 }
 
 // revokeChallenge should always return within the timeout
@@ -411,20 +398,6 @@ TEST_F(FaceHidlTest, CancelTest) {
     ASSERT_TRUE(waitForCallback(cb->promise.get_future()));
     // check error should be CANCELED
     ASSERT_EQ(FaceError::CANCELED, cb->error);
-}
-
-TEST_F(FaceHidlTest, OnLockoutChangedTest) {
-    sp<LockoutChangedCallback> cb = new LockoutChangedCallback();
-    mService->setCallback(cb, kAssertCallbackIsSet);
-
-    // Update active user and ensure lockout duration 0 is received
-    mService->setActiveUser(5, kTmpDir);
-
-    // Make sure callback was invoked
-    ASSERT_TRUE(waitForCallback(cb->promise.get_future()));
-
-    // Check that duration 0 was received
-    ASSERT_EQ(0, cb->duration);
 }
 
 }  // anonymous namespace
