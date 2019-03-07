@@ -12,26 +12,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
-cc_library_static {
-    name: "android.hardware.gnss@common-vts-lib",
-    vendor_available: true,
-    relative_install_path: "hw",
-    cflags: [
-        "-Wall",
-        "-Wextra",
-        "-Werror",
-    ],
+cc_library {
+    name: "android.hardware.fastboot@1.0-impl-mock",
+    recovery: true,
     srcs: [
-        "Utils.cpp",
+        "Fastboot.cpp",
     ],
-    export_include_dirs: ["include"],
+    relative_install_path: "hw",
     shared_libs: [
-        "android.hardware.gnss@1.0",
-        "android.hardware.gnss.measurement_corrections@1.0",
-    ],
-    static_libs: [
-        "libgtest",
+        "libbase",
+        "libhidlbase",
+        "libhidltransport",
+        "libutils",
+        "libcutils",
+        "android.hardware.fastboot@1.0",
     ],
 }
