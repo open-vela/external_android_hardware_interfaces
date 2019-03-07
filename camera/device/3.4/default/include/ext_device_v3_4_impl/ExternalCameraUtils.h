@@ -77,12 +77,6 @@ struct ExternalCameraConfig {
     };
     std::vector<FpsLimitation> fpsLimits;
 
-    // Minimum output stream size
-    Size minStreamSize;
-
-    // The value of android.sensor.orientation
-    int32_t orientation;
-
 private:
     ExternalCameraConfig();
 };
