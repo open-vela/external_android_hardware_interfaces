@@ -522,8 +522,8 @@ TEST_F(RadioHidlTest_v1_4, setupDataCall_1_4) {
     memset(&dataProfileInfo, 0, sizeof(dataProfileInfo));
     dataProfileInfo.profileId = DataProfileId::DEFAULT;
     dataProfileInfo.apn = hidl_string("internet");
-    dataProfileInfo.protocol = PdpProtocolType::IPV4V6;
-    dataProfileInfo.roamingProtocol = PdpProtocolType::IPV4V6;
+    dataProfileInfo.protocol = PdpProtocolType::IP;
+    dataProfileInfo.roamingProtocol = PdpProtocolType::IP;
     dataProfileInfo.authType = ApnAuthType::NO_PAP_NO_CHAP;
     dataProfileInfo.user = hidl_string("username");
     dataProfileInfo.password = hidl_string("password");
@@ -674,87 +674,5 @@ TEST_F(RadioHidlTest_v1_4, setAllowedCarriers_1_4) {
             EXPECT_NE(CardState::RESTRICTED, cardStatus.base.base.cardState);
             sleep(10);
         }
-    }
-}
-
-TEST_F(RadioHidlTest_v1_4, setDataProfile_1_4) {
-    serial = GetRandomSerialNumber();
-
-    // Create a dataProfileInfo
-    android::hardware::radio::V1_4::DataProfileInfo dataProfileInfo;
-    memset(&dataProfileInfo, 0, sizeof(dataProfileInfo));
-    dataProfileInfo.profileId = DataProfileId::DEFAULT;
-    dataProfileInfo.apn = hidl_string("internet");
-    dataProfileInfo.protocol = PdpProtocolType::IPV4V6;
-    dataProfileInfo.roamingProtocol = PdpProtocolType::IPV4V6;
-    dataProfileInfo.authType = ApnAuthType::NO_PAP_NO_CHAP;
-    dataProfileInfo.user = hidl_string("username");
-    dataProfileInfo.password = hidl_string("password");
-    dataProfileInfo.type = DataProfileInfoType::THREE_GPP;
-    dataProfileInfo.maxConnsTime = 300;
-    dataProfileInfo.maxConns = 20;
-    dataProfileInfo.waitTime = 0;
-    dataProfileInfo.enabled = true;
-    dataProfileInfo.supportedApnTypesBitmap = 320;
-    dataProfileInfo.bearerBitmap = 161543;
-    dataProfileInfo.mtu = 0;
-    dataProfileInfo.preferred = true;
-    dataProfileInfo.persistent = true;
-
-    // Create a dataProfileInfoList
-    android::hardware::hidl_vec<android::hardware::radio::V1_4::DataProfileInfo>
-            dataProfileInfoList = {dataProfileInfo};
-
-    radio_v1_4->setDataProfile_1_4(serial, dataProfileInfoList);
-
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
-    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_4->rspInfo.type);
-    EXPECT_EQ(serial, radioRsp_v1_4->rspInfo.serial);
-
-    if (cardStatus.base.base.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_4->rspInfo.error,
-                                     {RadioError::SIM_ABSENT, RadioError::RADIO_NOT_AVAILABLE}));
-    } else if (cardStatus.base.base.cardState == CardState::PRESENT) {
-        ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_4->rspInfo.error,
-                                     {RadioError::NONE, RadioError::RADIO_NOT_AVAILABLE}));
-    }
-}
-
-TEST_F(RadioHidlTest_v1_4, setInitialAttachApn_1_4) {
-    serial = GetRandomSerialNumber();
-
-    // Create a dataProfileInfo
-    android::hardware::radio::V1_4::DataProfileInfo dataProfileInfo;
-    memset(&dataProfileInfo, 0, sizeof(dataProfileInfo));
-    dataProfileInfo.profileId = DataProfileId::DEFAULT;
-    dataProfileInfo.apn = hidl_string("internet");
-    dataProfileInfo.protocol = PdpProtocolType::IPV4V6;
-    dataProfileInfo.roamingProtocol = PdpProtocolType::IPV4V6;
-    dataProfileInfo.authType = ApnAuthType::NO_PAP_NO_CHAP;
-    dataProfileInfo.user = hidl_string("username");
-    dataProfileInfo.password = hidl_string("password");
-    dataProfileInfo.type = DataProfileInfoType::THREE_GPP;
-    dataProfileInfo.maxConnsTime = 300;
-    dataProfileInfo.maxConns = 20;
-    dataProfileInfo.waitTime = 0;
-    dataProfileInfo.enabled = true;
-    dataProfileInfo.supportedApnTypesBitmap = 320;
-    dataProfileInfo.bearerBitmap = 161543;
-    dataProfileInfo.mtu = 0;
-    dataProfileInfo.preferred = true;
-    dataProfileInfo.persistent = false;
-
-    radio_v1_4->setInitialAttachApn_1_4(serial, dataProfileInfo);
-
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
-    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_4->rspInfo.type);
-    EXPECT_EQ(serial, radioRsp_v1_4->rspInfo.serial);
-
-    if (cardStatus.base.base.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_4->rspInfo.error,
-                                     {RadioError::SIM_ABSENT, RadioError::RADIO_NOT_AVAILABLE}));
-    } else if (cardStatus.base.base.cardState == CardState::PRESENT) {
-        ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_4->rspInfo.error,
-                                     {RadioError::NONE, RadioError::RADIO_NOT_AVAILABLE}));
     }
 }
