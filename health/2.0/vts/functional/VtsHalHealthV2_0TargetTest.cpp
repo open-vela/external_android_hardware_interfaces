@@ -22,15 +22,12 @@
 #include <android-base/logging.h>
 #include <android/hardware/health/2.0/IHealth.h>
 #include <android/hardware/health/2.0/types.h>
-#include <gflags/gflags.h>
 
 using ::testing::AssertionFailure;
 using ::testing::AssertionResult;
 using ::testing::AssertionSuccess;
 using ::testing::VtsHalHidlTargetTestBase;
 using ::testing::VtsHalHidlTargetTestEnvBase;
-
-DEFINE_bool(force, false, "Force test healthd even when the default instance is present.");
 
 namespace android {
 namespace hardware {
@@ -60,14 +57,6 @@ class HealthHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
         std::string serviceName = HealthHidlEnvironment::Instance()->getServiceName<IHealth>();
-
-        if (serviceName == "backup" && !FLAGS_force &&
-            ::testing::VtsHalHidlTargetTestBase::getService<IHealth>() != nullptr) {
-            LOG(INFO) << "Skipping tests on healthd because the default instance is present. "
-                      << "Use --force if you really want to test healthd.";
-            GTEST_SKIP();
-        }
-
         LOG(INFO) << "get service with name:" << serviceName;
         ASSERT_FALSE(serviceName.empty());
         mHealth = ::testing::VtsHalHidlTargetTestBase::getService<IHealth>(serviceName);
@@ -325,7 +314,6 @@ int main(int argc, char** argv) {
     ::testing::AddGlobalTestEnvironment(HealthHidlEnvironment::Instance());
     ::testing::InitGoogleTest(&argc, argv);
     HealthHidlEnvironment::Instance()->init(&argc, argv);
-    gflags::ParseCommandLineFlags(&argc, &argv, true /* remove flags */);
     int status = RUN_ALL_TESTS();
     LOG(INFO) << "Test result = " << status;
     return status;

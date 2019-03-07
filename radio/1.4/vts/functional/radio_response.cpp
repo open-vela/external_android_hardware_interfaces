@@ -533,9 +533,7 @@ Return<void> RadioResponse_v1_4::setCellInfoListRateResponse(const RadioResponse
     return Void();
 }
 
-Return<void> RadioResponse_v1_4::setInitialAttachApnResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_v1_4.notify(info.serial);
+Return<void> RadioResponse_v1_4::setInitialAttachApnResponse(const RadioResponseInfo& /*info*/) {
     return Void();
 }
 
@@ -606,9 +604,7 @@ Return<void> RadioResponse_v1_4::requestIccSimAuthenticationResponse(
     return Void();
 }
 
-Return<void> RadioResponse_v1_4::setDataProfileResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_v1_4.notify(info.serial);
+Return<void> RadioResponse_v1_4::setDataProfileResponse(const RadioResponseInfo& /*info*/) {
     return Void();
 }
 
