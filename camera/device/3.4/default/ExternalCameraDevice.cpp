@@ -90,7 +90,7 @@ Return<void> ExternalCameraDevice::getCameraCharacteristics(
 }
 
 Return<Status> ExternalCameraDevice::setTorchMode(TorchMode) {
-    return Status::OPERATION_NOT_SUPPORTED;
+    return Status::METHOD_NOT_SUPPORTED;
 }
 
 Return<void> ExternalCameraDevice::open(
@@ -290,14 +290,8 @@ status_t ExternalCameraDevice::initDefaultCharsKeys(
     UPDATE(ANDROID_HOT_PIXEL_AVAILABLE_HOT_PIXEL_MODES, &hotPixelMode, 1);
 
     // android.jpeg
-    const int32_t jpegAvailableThumbnailSizes[] = {0, 0,
-                                                  176, 144,
-                                                  240, 144,
-                                                  256, 144,
-                                                  240, 160,
-                                                  256, 154,
-                                                  240, 240,
-                                                  320, 240};
+    // TODO: b/72261675 See if we can provide thumbnail size for all jpeg aspect ratios
+    const int32_t jpegAvailableThumbnailSizes[] = {0, 0, 240, 180};
     UPDATE(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES, jpegAvailableThumbnailSizes,
            ARRAY_SIZE(jpegAvailableThumbnailSizes));
 
@@ -793,8 +787,7 @@ void ExternalCameraDevice::trimSupportedFormats(
 std::vector<SupportedV4L2Format>
 ExternalCameraDevice::getCandidateSupportedFormatsLocked(
         int fd, CroppingType cropType,
-        const std::vector<ExternalCameraConfig::FpsLimitation>& fpsLimits,
-        const Size& minStreamSize) {
+        const std::vector<ExternalCameraConfig::FpsLimitation>& fpsLimits) {
     std::vector<SupportedV4L2Format> outFmts;
     struct v4l2_fmtdesc fmtdesc {
         .index = 0,
@@ -827,11 +820,6 @@ ExternalCameraDevice::getCandidateSupportedFormatsLocked(
                         // Disregard h > w formats so all aspect ratio (h/w) <= 1.0
                         // This will simplify the crop/scaling logic down the road
                         if (frameSize.discrete.height > frameSize.discrete.width) {
-                            continue;
-                        }
-                        // Discard all formats which is smaller than minStreamSize
-                        if (frameSize.discrete.width < minStreamSize.width
-                            || frameSize.discrete.height < minStreamSize.height) {
                             continue;
                         }
                         SupportedV4L2Format format {
@@ -876,9 +864,9 @@ ExternalCameraDevice::getCandidateSupportedFormatsLocked(
 void ExternalCameraDevice::initSupportedFormatsLocked(int fd) {
 
     std::vector<SupportedV4L2Format> horizontalFmts =
-            getCandidateSupportedFormatsLocked(fd, HORIZONTAL, mCfg.fpsLimits, mCfg.minStreamSize);
+            getCandidateSupportedFormatsLocked(fd, HORIZONTAL, mCfg.fpsLimits);
     std::vector<SupportedV4L2Format> verticalFmts =
-            getCandidateSupportedFormatsLocked(fd, VERTICAL, mCfg.fpsLimits, mCfg.minStreamSize);
+            getCandidateSupportedFormatsLocked(fd, VERTICAL, mCfg.fpsLimits);
 
     size_t horiSize = horizontalFmts.size();
     size_t vertSize = verticalFmts.size();
