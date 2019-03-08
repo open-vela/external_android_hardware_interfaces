@@ -44,15 +44,18 @@ static constexpr int METADATA_SHRINK_ABS_THRESHOLD = 4096;
 static constexpr int METADATA_SHRINK_REL_THRESHOLD = 2;
 
 HandleImporter CameraDeviceSession::sHandleImporter;
+buffer_handle_t CameraDeviceSession::sEmptyBuffer = nullptr;
+
 const int CameraDeviceSession::ResultBatcher::NOT_BATCHED;
 
 CameraDeviceSession::CameraDeviceSession(
     camera3_device_t* device,
     const camera_metadata_t* deviceInfo,
     const sp<ICameraDeviceCallback>& callback) :
-        camera3_callback_ops({&sProcessCaptureResult, &sNotify}),
+        camera3_callback_ops({&sProcessCaptureResult, &sNotify, nullptr, nullptr}),
         mDevice(device),
         mDeviceVersion(device->common.version),
+        mFreeBufEarly(shouldFreeBufEarly()),
         mIsAELockAvailable(false),
         mDerivePostRawSensKey(false),
         mNumPartialResults(1),
@@ -127,6 +130,10 @@ bool CameraDeviceSession::initialize() {
     mResultBatcher.setResultMetadataQueue(mResultMetadataQueue);
 
     return false;
+}
+
+bool CameraDeviceSession::shouldFreeBufEarly() {
+    return property_get_bool("ro.vendor.camera.free_buf_early", 0) == 1;
 }
 
 CameraDeviceSession::~CameraDeviceSession() {
@@ -241,10 +248,50 @@ void CameraDeviceSession::overrideResultForPrecaptureCancelLocked(
     }
 }
 
+Status CameraDeviceSession::importBuffer(int32_t streamId,
+        uint64_t bufId, buffer_handle_t buf,
+        /*out*/buffer_handle_t** outBufPtr,
+        bool allowEmptyBuf) {
+
+    if (buf == nullptr && bufId == BUFFER_ID_NO_BUFFER) {
+        if (allowEmptyBuf) {
+            *outBufPtr = &sEmptyBuffer;
+            return Status::OK;
+        } else {
+            ALOGE("%s: bufferId %" PRIu64 " has null buffer handle!", __FUNCTION__, bufId);
+            return Status::ILLEGAL_ARGUMENT;
+        }
+    }
+
+    Mutex::Autolock _l(mInflightLock);
+    CirculatingBuffers& cbs = mCirculatingBuffers[streamId];
+    if (cbs.count(bufId) == 0) {
+        // Register a newly seen buffer
+        buffer_handle_t importedBuf = buf;
+        sHandleImporter.importBuffer(importedBuf);
+        if (importedBuf == nullptr) {
+            ALOGE("%s: output buffer for stream %d is invalid!", __FUNCTION__, streamId);
+            return Status::INTERNAL_ERROR;
+        } else {
+            cbs[bufId] = importedBuf;
+        }
+    }
+    *outBufPtr = &cbs[bufId];
+    return Status::OK;
+}
+
 Status CameraDeviceSession::importRequest(
         const CaptureRequest& request,
         hidl_vec<buffer_handle_t*>& allBufPtrs,
         hidl_vec<int>& allFences) {
+    return importRequestImpl(request, allBufPtrs, allFences);
+}
+
+Status CameraDeviceSession::importRequestImpl(
+        const CaptureRequest& request,
+        hidl_vec<buffer_handle_t*>& allBufPtrs,
+        hidl_vec<int>& allFences,
+        bool allowEmptyBuf) {
     bool hasInputBuf = (request.inputBuffer.streamId != -1 &&
             request.inputBuffer.bufferId != 0);
     size_t numOutputBufs = request.outputBuffers.size();
@@ -272,25 +319,15 @@ Status CameraDeviceSession::importRequest(
     }
 
     for (size_t i = 0; i < numBufs; i++) {
-        buffer_handle_t buf = allBufs[i];
-        uint64_t bufId = allBufIds[i];
-        CirculatingBuffers& cbs = mCirculatingBuffers[streamIds[i]];
-        if (cbs.count(bufId) == 0) {
-            if (buf == nullptr) {
-                ALOGE("%s: bufferId %" PRIu64 " has null buffer handle!", __FUNCTION__, bufId);
-                return Status::ILLEGAL_ARGUMENT;
-            }
-            // Register a newly seen buffer
-            buffer_handle_t importedBuf = buf;
-            sHandleImporter.importBuffer(importedBuf);
-            if (importedBuf == nullptr) {
-                ALOGE("%s: output buffer %zu is invalid!", __FUNCTION__, i);
-                return Status::INTERNAL_ERROR;
-            } else {
-                cbs[bufId] = importedBuf;
-            }
+        Status st = importBuffer(
+                streamIds[i], allBufIds[i], allBufs[i], &allBufPtrs[i],
+                // Disallow empty buf for input stream, otherwise follow
+                // the allowEmptyBuf argument.
+                (hasInputBuf && i == numOutputBufs) ? false : allowEmptyBuf);
+        if (st != Status::OK) {
+            // Detailed error logs printed in importBuffer
+            return st;
         }
-        allBufPtrs[i] = &cbs[bufId];
     }
 
     // All buffers are imported. Now validate output buffer acquire fences
@@ -887,6 +924,24 @@ bool CameraDeviceSession::preProcessConfigurationLocked(
         (*streams)[i] = &mStreamMap[id];
     }
 
+    if (mFreeBufEarly) {
+        // Remove buffers of deleted streams
+        for(auto it = mStreamMap.begin(); it != mStreamMap.end(); it++) {
+            int id = it->first;
+            bool found = false;
+            for (const auto& stream : requestedConfiguration.streams) {
+                if (id == stream.id) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                // Unmap all buffers of deleted stream
+                cleanupBuffersLocked(id);
+            }
+        }
+    }
+
     return true;
 }
 
@@ -908,7 +963,9 @@ void CameraDeviceSession::postProcessConfigurationLocked(
             // Unmap all buffers of deleted stream
             // in case the configuration call succeeds and HAL
             // is able to release the corresponding resources too.
-            cleanupBuffersLocked(id);
+            if (!mFreeBufEarly) {
+                cleanupBuffersLocked(id);
+            }
             it = mStreamMap.erase(it);
         } else {
             ++it;
@@ -925,6 +982,27 @@ void CameraDeviceSession::postProcessConfigurationLocked(
         }
     }
     mResultBatcher.setBatchedStreams(mVideoStreamIds);
+}
+
+
+void CameraDeviceSession::postProcessConfigurationFailureLocked(
+        const StreamConfiguration& requestedConfiguration) {
+    if (mFreeBufEarly) {
+        // Re-build the buf cache entry for deleted streams
+        for(auto it = mStreamMap.begin(); it != mStreamMap.end(); it++) {
+            int id = it->first;
+            bool found = false;
+            for (const auto& stream : requestedConfiguration.streams) {
+                if (id == stream.id) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                mCirculatingBuffers.emplace(id, CirculatingBuffers{});
+            }
+        }
+    }
 }
 
 Return<void> CameraDeviceSession::configureStreams(
@@ -979,6 +1057,8 @@ Return<void> CameraDeviceSession::configureStreams(
     // the corresponding resources of the deleted streams.
     if (ret == OK) {
         postProcessConfigurationLocked(requestedConfiguration);
+    } else {
+        postProcessConfigurationFailureLocked(requestedConfiguration);
     }
 
     if (ret == -EINVAL) {
@@ -1223,16 +1303,24 @@ Return<void> CameraDeviceSession::close()  {
         ATRACE_END();
 
         // free all imported buffers
+        Mutex::Autolock _l(mInflightLock);
         for(auto& pair : mCirculatingBuffers) {
             CirculatingBuffers& buffers = pair.second;
             for (auto& p2 : buffers) {
                 sHandleImporter.freeBuffer(p2.second);
             }
+            buffers.clear();
         }
+        mCirculatingBuffers.clear();
 
         mClosed = true;
     }
     return Void();
+}
+
+uint64_t CameraDeviceSession::getCapResultBufferId(const buffer_handle_t&, int) {
+    // No need to fill in bufferId by default
+    return BUFFER_ID_NO_BUFFER;
 }
 
 status_t CameraDeviceSession::constructCaptureResult(CaptureResult& result,
@@ -1348,6 +1436,14 @@ status_t CameraDeviceSession::constructCaptureResult(CaptureResult& result,
         result.outputBuffers[i].streamId =
                 static_cast<Camera3Stream*>(hal_result->output_buffers[i].stream)->mId;
         result.outputBuffers[i].buffer = nullptr;
+        if (hal_result->output_buffers[i].buffer != nullptr) {
+            result.outputBuffers[i].bufferId = getCapResultBufferId(
+                    *(hal_result->output_buffers[i].buffer),
+                    result.outputBuffers[i].streamId);
+        } else {
+            result.outputBuffers[i].bufferId = 0;
+        }
+
         result.outputBuffers[i].status = (BufferStatus) hal_result->output_buffers[i].status;
         // skip acquire fence since it's of no use to camera service
         if (hal_result->output_buffers[i].release_fence != -1) {

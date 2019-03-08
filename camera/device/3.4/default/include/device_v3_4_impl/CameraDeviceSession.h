@@ -84,6 +84,14 @@ protected:
             camera3_stream_configuration_t *stream_list /*out*/,
             hidl_vec<camera3_stream_t*> *streams /*out*/);
     void postProcessConfigurationLocked_3_4(const StreamConfiguration& requestedConfiguration);
+    void postProcessConfigurationFailureLocked_3_4(
+            const StreamConfiguration& requestedConfiguration);
+
+    void configureStreams_3_4_Impl(
+            const StreamConfiguration& requestedConfiguration,
+            ICameraDeviceSession::configureStreams_3_4_cb _hidl_cb,
+            // Optional argument for ICameraDeviceSession@3.5 impl
+            uint32_t streamConfigCounter = 0);
 
     Return<void> processCaptureRequest_3_4(
             const hidl_vec<V3_4::CaptureRequest>& requests,
@@ -115,6 +123,10 @@ protected:
     // Physical camera ids for the logical multi-camera. Empty if this
     // is not a logical multi-camera.
     std::unordered_set<std::string> mPhysicalCameraIds;
+
+    Mutex    mStreamConfigCounterLock;
+    uint32_t mStreamConfigCounter = 1;
+
 private:
 
     struct TrampolineSessionInterface_3_4 : public ICameraDeviceSession {
