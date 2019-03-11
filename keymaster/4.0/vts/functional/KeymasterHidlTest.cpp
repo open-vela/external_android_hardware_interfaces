@@ -672,7 +672,8 @@ std::vector<EcCurve> KeymasterHidlTest::InvalidCurves() {
     return {EcCurve::P_224, EcCurve::P_384, EcCurve::P_521};
 }
 
-std::vector<Digest> KeymasterHidlTest::ValidDigests(bool withNone, bool withMD5) {
+std::initializer_list<Digest> KeymasterHidlTest::ValidDigests(bool withNone, bool withMD5) {
+    std::vector<Digest> result;
     switch (SecLevel()) {
         case SecurityLevel::TRUSTED_ENVIRONMENT:
             if (withNone) {
