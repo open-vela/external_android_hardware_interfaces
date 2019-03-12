@@ -35,8 +35,8 @@ static const int INVALID_FD = -1;
 
 namespace {
 
-using android::hardware::hidl_vec;
 using android::hardware::bluetooth::V1_0::implementation::VendorInterface;
+using android::hardware::hidl_vec;
 
 struct {
   tINT_CMD_CBACK cb;
@@ -258,7 +258,8 @@ bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
     fd_watcher_.WatchFdForNonBlockingReads(
         fd_list[CH_EVT], [mct_hci](int fd) { mct_hci->OnEventDataReady(fd); });
     fd_watcher_.WatchFdForNonBlockingReads(
-        fd_list[CH_ACL_IN], [mct_hci](int fd) { mct_hci->OnAclDataReady(fd); });
+        fd_list[CH_ACL_IN],
+        [mct_hci](int fd) { mct_hci->OnAclDataReady(fd); });
     hci_ = mct_hci;
   }
 
@@ -294,7 +295,6 @@ void VendorInterface::Close() {
     lib_interface_->op(BT_VND_OP_POWER_CTRL, &power_state);
 
     lib_interface_->cleanup();
-    lib_interface_ = nullptr;
   }
 
   if (lib_handle_ != nullptr) {

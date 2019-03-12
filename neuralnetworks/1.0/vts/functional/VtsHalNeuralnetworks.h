@@ -72,17 +72,14 @@ class GeneratedTest : public NeuralnetworksHidlTest {};
 
 }  // namespace functional
 }  // namespace vts
-}  // namespace V1_0
-}  // namespace neuralnetworks
-}  // namespace hardware
-}  // namespace android
-
-namespace android::hardware::neuralnetworks::V1_0 {
 
 // pretty-print values for error messages
 ::std::ostream& operator<<(::std::ostream& os, ErrorStatus errorStatus);
 ::std::ostream& operator<<(::std::ostream& os, DeviceStatus deviceStatus);
 
-}  // namespace android::hardware::neuralnetworks::V1_0
+}  // namespace V1_0
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
 
 #endif  // VTS_HAL_NEURALNETWORKS_V1_0_TARGET_TESTS_H
