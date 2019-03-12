@@ -241,7 +241,7 @@ static std::vector<int32_t> getInvalidZeroPoints(OperandType type) {
         case OperandType::TENSOR_QUANT8_ASYMM:
             return {-1, 256};
         case OperandType::TENSOR_QUANT8_SYMM:
-          return {-129, -1, 1, 128};
+            return {-129, -1, 1, 128};
         case OperandType::TENSOR_QUANT16_ASYMM:
             return {-1, 65536};
         case OperandType::TENSOR_QUANT16_SYMM:
@@ -388,9 +388,8 @@ static bool mutateOperationOperandTypeSkip(size_t operand, OperandType type, con
             case OperationType::GROUPED_CONV_2D:
             case OperationType::DEPTHWISE_CONV_2D:
             case OperationType::CONV_2D: {
-                if (operand == operation.inputs[1] &&
-                    (type == OperandType::TENSOR_QUANT8_ASYMM ||
-                     type == OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL)) {
+                if (operand == 1 && (type == OperandType::TENSOR_QUANT8_ASYMM ||
+                                     type == OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL)) {
                     return true;
                 }
             } break;
