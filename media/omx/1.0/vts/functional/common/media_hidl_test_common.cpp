@@ -387,28 +387,17 @@ void changeStateLoadedtoIdle(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                                   OMX_StateIdle);
     ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::OK);
 
-    OMX_PARAM_PORTDEFINITIONTYPE portDefInput;
-    OMX_PARAM_PORTDEFINITIONTYPE portDefOutput;
-    status = getPortParam(omxNode, OMX_IndexParamPortDefinition, kPortIndexInput, &portDefInput);
-    EXPECT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
-    status = getPortParam(omxNode, OMX_IndexParamPortDefinition, kPortIndexOutput, &portDefOutput);
-    EXPECT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
-
     // Dont switch states until the ports are populated
-    if (portDefInput.nBufferCountActual || portDefOutput.nBufferCountActual) {
-        status = observer->dequeueMessage(&msg, DEFAULT_TIMEOUT, iBuffer, oBuffer);
-        ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::TIMED_OUT);
-    }
+    status = observer->dequeueMessage(&msg, DEFAULT_TIMEOUT, iBuffer, oBuffer);
+    ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::TIMED_OUT);
 
     // allocate buffers on input port
     ASSERT_NO_FATAL_FAILURE(allocatePortBuffers(
         omxNode, iBuffer, kPortIndexInput, pm[0], allocGrap));
 
     // Dont switch states until the ports are populated
-    if (portDefOutput.nBufferCountActual) {
-        status = observer->dequeueMessage(&msg, DEFAULT_TIMEOUT, iBuffer, oBuffer);
-        ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::TIMED_OUT);
-    }
+    status = observer->dequeueMessage(&msg, DEFAULT_TIMEOUT, iBuffer, oBuffer);
+    ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::TIMED_OUT);
 
     // allocate buffers on output port
     ASSERT_NO_FATAL_FAILURE(allocatePortBuffers(
@@ -441,18 +430,9 @@ void changeStateIdletoLoaded(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                                   OMX_StateLoaded);
     ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::OK);
 
-    OMX_PARAM_PORTDEFINITIONTYPE portDefInput;
-    OMX_PARAM_PORTDEFINITIONTYPE portDefOutput;
-    status = getPortParam(omxNode, OMX_IndexParamPortDefinition, kPortIndexInput, &portDefInput);
-    EXPECT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
-    status = getPortParam(omxNode, OMX_IndexParamPortDefinition, kPortIndexOutput, &portDefOutput);
-    EXPECT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
-
     // dont change state until all buffers are freed
-    if (portDefInput.nBufferCountActual || portDefOutput.nBufferCountActual) {
-        status = observer->dequeueMessage(&msg, DEFAULT_TIMEOUT, iBuffer, oBuffer);
-        ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::TIMED_OUT);
-    }
+    status = observer->dequeueMessage(&msg, DEFAULT_TIMEOUT, iBuffer, oBuffer);
+    ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::TIMED_OUT);
 
     for (size_t i = 0; i < iBuffer->size(); ++i) {
         status = omxNode->freeBuffer(kPortIndexInput, (*iBuffer)[i].id);
@@ -460,10 +440,8 @@ void changeStateIdletoLoaded(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
     }
 
     // dont change state until all buffers are freed
-    if (portDefOutput.nBufferCountActual) {
-        status = observer->dequeueMessage(&msg, DEFAULT_TIMEOUT, iBuffer, oBuffer);
-        ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::TIMED_OUT);
-    }
+    status = observer->dequeueMessage(&msg, DEFAULT_TIMEOUT, iBuffer, oBuffer);
+    ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::TIMED_OUT);
 
     for (size_t i = 0; i < oBuffer->size(); ++i) {
         status = omxNode->freeBuffer(kPortIndexOutput, (*oBuffer)[i].id);
