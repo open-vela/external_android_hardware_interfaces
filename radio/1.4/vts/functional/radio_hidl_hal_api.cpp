@@ -96,6 +96,56 @@ TEST_F(RadioHidlTest_v1_4, emergencyDial_withEmergencyRouting) {
 }
 
 /*
+ * Test IRadio.getPreferredNetworkTypeBitmap() for the response returned.
+ */
+TEST_F(RadioHidlTest_v1_4, getPreferredNetworkTypeBitmap) {
+    serial = GetRandomSerialNumber();
+
+    Return<void> res = radio_v1_4->getPreferredNetworkTypeBitmap(serial);
+
+    ASSERT_OK(res);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
+    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_4->rspInfo.type);
+    EXPECT_EQ(serial, radioRsp_v1_4->rspInfo.serial);
+    ALOGI("getPreferredNetworkTypeBitmap, rspInfo.error = %s\n",
+          toString(radioRsp_v1_4->rspInfo.error).c_str());
+    EXPECT_EQ(RadioError::NONE, radioRsp_v1_4->rspInfo.error);
+}
+
+TEST_F(RadioHidlTest_v1_4, setPreferredNetworkTypeBitmap) {
+    serial = GetRandomSerialNumber();
+    ::android::hardware::hidl_bitfield<::android::hardware::radio::V1_4::RadioAccessFamily>
+            network_type_bitmap{};
+
+    network_type_bitmap |= ::android::hardware::radio::V1_4::RadioAccessFamily::LTE;
+
+    Return<void> res = radio_v1_4->setPreferredNetworkTypeBitmap(serial, network_type_bitmap);
+
+    ASSERT_OK(res);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
+    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_4->rspInfo.type);
+    EXPECT_EQ(serial, radioRsp_v1_4->rspInfo.serial);
+    ALOGI("setPreferredNetworkTypeBitmap, rspInfo.error = %s\n",
+          toString(radioRsp_v1_4->rspInfo.error).c_str());
+    EXPECT_EQ(RadioError::NONE, radioRsp_v1_4->rspInfo.error);
+    if (radioRsp_v1_4->rspInfo.error == RadioError::NONE) {
+         // give some time for modem to set the value.
+        sleep(3);
+        serial = GetRandomSerialNumber();
+        Return<void> res = radio_v1_4->getPreferredNetworkTypeBitmap(serial);
+
+        ASSERT_OK(res);
+        EXPECT_EQ(std::cv_status::no_timeout, wait());
+        EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_4->rspInfo.type);
+        EXPECT_EQ(serial, radioRsp_v1_4->rspInfo.serial);
+        ALOGI("getPreferredNetworkTypeBitmap, rspInfo.error = %s\n",
+              toString(radioRsp_v1_4->rspInfo.error).c_str());
+        EXPECT_EQ(RadioError::NONE, radioRsp_v1_4->rspInfo.error);
+        EXPECT_EQ(network_type_bitmap, radioRsp_v1_4->networkTypeBitmapResponse);
+    }
+}
+
+/*
  * Test IRadio.startNetworkScan() for the response returned.
  */
 TEST_F(RadioHidlTest_v1_4, startNetworkScan) {
@@ -472,8 +522,8 @@ TEST_F(RadioHidlTest_v1_4, setupDataCall_1_4) {
     memset(&dataProfileInfo, 0, sizeof(dataProfileInfo));
     dataProfileInfo.profileId = DataProfileId::DEFAULT;
     dataProfileInfo.apn = hidl_string("internet");
-    dataProfileInfo.protocol = PdpProtocolType::IPV4V6;
-    dataProfileInfo.roamingProtocol = PdpProtocolType::IPV4V6;
+    dataProfileInfo.protocol = PdpProtocolType::IP;
+    dataProfileInfo.roamingProtocol = PdpProtocolType::IP;
     dataProfileInfo.authType = ApnAuthType::NO_PAP_NO_CHAP;
     dataProfileInfo.user = hidl_string("username");
     dataProfileInfo.password = hidl_string("password");
@@ -511,5 +561,118 @@ TEST_F(RadioHidlTest_v1_4, setupDataCall_1_4) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_4->rspInfo.error,
                                      {RadioError::NONE, RadioError::RADIO_NOT_AVAILABLE,
                                       RadioError::OP_NOT_ALLOWED_BEFORE_REG_TO_NW}));
+    }
+}
+
+/*
+ * Test IRadio.getAllowedCarriers_1_4() for the response returned.
+ */
+TEST_F(RadioHidlTest_v1_4, getAllowedCarriers_1_4) {
+    serial = GetRandomSerialNumber();
+
+    radio_v1_4->getAllowedCarriers_1_4(serial);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
+    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_4->rspInfo.type);
+    EXPECT_EQ(serial, radioRsp_v1_4->rspInfo.serial);
+
+    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_4->rspInfo.error,
+                                 {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED}));
+}
+
+/**
+ * Test IRadio.setAllowedCarriers_1_4() for the response returned.
+ */
+TEST_F(RadioHidlTest_v1_4, setAllowedCarriers_1_4) {
+    serial = GetRandomSerialNumber();
+    CarrierRestrictionsWithPriority carrierRestrictions;
+    memset(&carrierRestrictions, 0, sizeof(carrierRestrictions));
+    carrierRestrictions.allowedCarriers.resize(1);
+    carrierRestrictions.excludedCarriers.resize(0);
+    carrierRestrictions.allowedCarriers[0].mcc = hidl_string("123");
+    carrierRestrictions.allowedCarriers[0].mnc = hidl_string("456");
+    carrierRestrictions.allowedCarriers[0].matchType = CarrierMatchType::ALL;
+    carrierRestrictions.allowedCarriers[0].matchData = hidl_string();
+    carrierRestrictions.allowedCarriersPrioritized = true;
+    SimLockMultiSimPolicy multisimPolicy = SimLockMultiSimPolicy::NO_MULTISIM_POLICY;
+
+    radio_v1_4->setAllowedCarriers_1_4(serial, carrierRestrictions, multisimPolicy);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
+    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_4->rspInfo.type);
+    EXPECT_EQ(serial, radioRsp_v1_4->rspInfo.serial);
+
+    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_4->rspInfo.error,
+                                 {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED}));
+
+    if (radioRsp_v1_4->rspInfo.error == RadioError::NONE) {
+        /* Verify the update of the SIM status. This might need some time */
+        if (cardStatus.base.base.cardState != CardState::ABSENT) {
+            updateSimCardStatus();
+            auto startTime = std::chrono::system_clock::now();
+            while (cardStatus.base.base.cardState != CardState::RESTRICTED &&
+                   std::chrono::duration_cast<chrono::seconds>(std::chrono::system_clock::now() -
+                                                               startTime)
+                                   .count() < 10) {
+                /* Set 2 seconds as interval to check card status */
+                sleep(2);
+                updateSimCardStatus();
+            }
+            EXPECT_EQ(CardState::RESTRICTED, cardStatus.base.base.cardState);
+        }
+
+        /* Verify that configuration was set correctly, retrieving it from the modem */
+        serial = GetRandomSerialNumber();
+
+        radio_v1_4->getAllowedCarriers_1_4(serial);
+        EXPECT_EQ(std::cv_status::no_timeout, wait());
+        EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_4->rspInfo.type);
+        EXPECT_EQ(serial, radioRsp_v1_4->rspInfo.serial);
+        EXPECT_EQ(RadioError::NONE, radioRsp_v1_4->rspInfo.error);
+
+        EXPECT_EQ(1, radioRsp_v1_4->carrierRestrictionsResp.allowedCarriers.size());
+        EXPECT_EQ(0, radioRsp_v1_4->carrierRestrictionsResp.excludedCarriers.size());
+        ASSERT_TRUE(hidl_string("123") ==
+                    radioRsp_v1_4->carrierRestrictionsResp.allowedCarriers[0].mcc);
+        ASSERT_TRUE(hidl_string("456") ==
+                    radioRsp_v1_4->carrierRestrictionsResp.allowedCarriers[0].mnc);
+        EXPECT_EQ(CarrierMatchType::ALL,
+                  radioRsp_v1_4->carrierRestrictionsResp.allowedCarriers[0].matchType);
+        ASSERT_TRUE(radioRsp_v1_4->carrierRestrictionsResp.allowedCarriersPrioritized);
+        EXPECT_EQ(SimLockMultiSimPolicy::NO_MULTISIM_POLICY, radioRsp_v1_4->multiSimPolicyResp);
+
+        sleep(10);
+
+        /**
+         * Another test case of the API to cover to allow carrier.
+         * If the API is supported, this is also used to reset to no carrier restriction
+         * status for cardStatus.
+         */
+        memset(&carrierRestrictions, 0, sizeof(carrierRestrictions));
+        carrierRestrictions.allowedCarriers.resize(0);
+        carrierRestrictions.excludedCarriers.resize(0);
+        carrierRestrictions.allowedCarriersPrioritized = false;
+
+        serial = GetRandomSerialNumber();
+        radio_v1_4->setAllowedCarriers_1_4(serial, carrierRestrictions, multisimPolicy);
+        EXPECT_EQ(std::cv_status::no_timeout, wait());
+        EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_4->rspInfo.type);
+        EXPECT_EQ(serial, radioRsp_v1_4->rspInfo.serial);
+
+        EXPECT_EQ(RadioError::NONE, radioRsp_v1_4->rspInfo.error);
+
+        if (cardStatus.base.base.cardState != CardState::ABSENT) {
+            /* Resetting back to no carrier restriction needs some time */
+            updateSimCardStatus();
+            auto startTime = std::chrono::system_clock::now();
+            while (cardStatus.base.base.cardState == CardState::RESTRICTED &&
+                   std::chrono::duration_cast<chrono::seconds>(std::chrono::system_clock::now() -
+                                                               startTime)
+                                   .count() < 10) {
+                /* Set 2 seconds as interval to check card status */
+                sleep(2);
+                updateSimCardStatus();
+            }
+            EXPECT_NE(CardState::RESTRICTED, cardStatus.base.base.cardState);
+            sleep(10);
+        }
     }
 }
