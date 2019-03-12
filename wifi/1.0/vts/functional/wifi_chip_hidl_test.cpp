@@ -17,7 +17,6 @@
 #include <android-base/logging.h>
 
 #include <android/hardware/wifi/1.0/IWifiChip.h>
-#include <android/hardware/wifi/1.3/IWifiChip.h>
 
 #include <VtsHalHidlTargetTestBase.h>
 
@@ -88,19 +87,7 @@ class WifiChipHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 
     uint32_t configureChipForStaIfaceAndGetCapabilities() {
         configureChipForIfaceType(IfaceType::STA, true);
-
-        sp<::android::hardware::wifi::V1_3::IWifiChip> chip_converted =
-            ::android::hardware::wifi::V1_3::IWifiChip::castFrom(wifi_chip_);
-
-        std::pair<WifiStatus, uint32_t> status_and_caps;
-
-        if (chip_converted != nullptr) {
-            // Call the newer HAL version
-            status_and_caps = HIDL_INVOKE(chip_converted, getCapabilities_1_3);
-        } else {
-            status_and_caps = HIDL_INVOKE(wifi_chip_, getCapabilities);
-        }
-
+        const auto& status_and_caps = HIDL_INVOKE(wifi_chip_, getCapabilities);
         if (status_and_caps.first.code != WifiStatusCode::SUCCESS) {
             EXPECT_EQ(WifiStatusCode::ERROR_NOT_SUPPORTED, status_and_caps.first.code);
             return 0;
@@ -365,7 +352,6 @@ TEST_F(WifiChipHidlTest, GetDebugHostWakeReasonStats) {
  * succeeds. The 2nd iface creation should be rejected.
  */
 TEST_F(WifiChipHidlTest, CreateApIface) {
-    if (!gEnv->isSoftApOn) return;
     configureChipForIfaceType(IfaceType::AP, true);
 
     sp<IWifiApIface> iface;
@@ -382,7 +368,6 @@ TEST_F(WifiChipHidlTest, CreateApIface) {
  * iface name is returned via the list.
  */
 TEST_F(WifiChipHidlTest, GetApIfaceNames) {
-    if (!gEnv->isSoftApOn) return;
     configureChipForIfaceType(IfaceType::AP, true);
 
     const auto& status_and_iface_names1 =
@@ -415,7 +400,6 @@ TEST_F(WifiChipHidlTest, GetApIfaceNames) {
  * doesn't retrieve an iface object.
  */
 TEST_F(WifiChipHidlTest, GetApIface) {
-    if (!gEnv->isSoftApOn) return;
     configureChipForIfaceType(IfaceType::AP, true);
 
     sp<IWifiApIface> ap_iface;
@@ -442,7 +426,6 @@ TEST_F(WifiChipHidlTest, GetApIface) {
  * doesn't remove the iface.
  */
 TEST_F(WifiChipHidlTest, RemoveApIface) {
-    if (!gEnv->isSoftApOn) return;
     configureChipForIfaceType(IfaceType::AP, true);
 
     sp<IWifiApIface> ap_iface;
@@ -752,10 +735,10 @@ TEST_F(WifiChipHidlTest, RemoveStaIface) {
  * CreateRttController
  */
 TEST_F(WifiChipHidlTest, CreateRttController) {
-    configureChipForIfaceType(IfaceType::STA, true);
+    configureChipForIfaceType(IfaceType::AP, true);
 
-    sp<IWifiStaIface> iface;
-    EXPECT_EQ(WifiStatusCode::SUCCESS, createStaIface(&iface));
+    sp<IWifiApIface> iface;
+    EXPECT_EQ(WifiStatusCode::SUCCESS, createApIface(&iface));
     EXPECT_NE(nullptr, iface.get());
 
     const auto& status_and_rtt_controller =
