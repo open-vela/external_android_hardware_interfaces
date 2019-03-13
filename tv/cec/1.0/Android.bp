@@ -14,6 +14,20 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
+    types: [
+        "AbortReason",
+        "CecDeviceType",
+        "CecLogicalAddress",
+        "CecMessage",
+        "CecMessageType",
+        "HdmiPortInfo",
+        "HdmiPortType",
+        "HotplugEvent",
+        "MaxLength",
+        "OptionKey",
+        "Result",
+        "SendMessageResult",
+    ],
     gen_java: true,
 }
 
