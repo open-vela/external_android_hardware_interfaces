@@ -38,7 +38,6 @@ using ::android::hardware::Void;
 struct GnssMeasurementCorrections : public IMeasurementCorrections {
     // Methods from V1_0::IMeasurementCorrections follow.
     Return<bool> setCorrections(const MeasurementCorrections& corrections) override;
-    Return<bool> setCallback(const sp<V1_0::IMeasurementCorrectionsCallback>& callback) override;
 };
 
 }  // namespace implementation
