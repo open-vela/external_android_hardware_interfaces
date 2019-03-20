@@ -14,7 +14,6 @@ hidl_interface {
         "IGnss.hal",
         "IGnssCallback.hal",
         "IGnssConfiguration.hal",
-        "IGnssDebug.hal",
         "IGnssMeasurement.hal",
         "IGnssMeasurementCallback.hal",
     ],

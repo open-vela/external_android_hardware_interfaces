@@ -33,7 +33,7 @@ GnssHalTest::GnssHalTest()
 void GnssHalTest::SetUp() {
     gnss_hal_ = ::testing::VtsHalHidlTargetTestBase::getService<IGnss>(
         GnssHidlEnvironment::Instance()->getServiceName<IGnss>());
-    list_vec_gnss_sv_info_.clear();
+    list_gnss_sv_status_.clear();
     ASSERT_NE(gnss_hal_, nullptr);
 
     SetUpGnssCallback();
@@ -59,7 +59,7 @@ void GnssHalTest::SetUpGnssCallback() {
     gnss_cb_ = new GnssCallback(*this);
     ASSERT_NE(gnss_cb_, nullptr);
 
-    auto result = gnss_hal_->setCallback_2_0(gnss_cb_);
+    auto result = gnss_hal_->setCallback_1_1(gnss_cb_);
     if (!result.isOk()) {
         ALOGE("result of failed setCallback %s", result.description().c_str());
     }
@@ -77,6 +77,16 @@ void GnssHalTest::SetUpGnssCallback() {
     EXPECT_EQ(capabilities_called_count_, 1);
     EXPECT_EQ(info_called_count_, 1);
     EXPECT_EQ(name_called_count_, 1);
+
+    // Setup measurement corrections callback.
+    auto measurementCorrections = gnss_hal_->getExtensionMeasurementCorrections();
+    ASSERT_TRUE(measurementCorrections.isOk());
+    sp<IMeasurementCorrections> iMeasurementCorrections = measurementCorrections;
+    if (iMeasurementCorrections != nullptr) {
+        sp<IMeasurementCorrectionsCallback> iMeasurementCorrectionsCallback =
+                new GnssMeasurementCorrectionsCallback(*this);
+        iMeasurementCorrections->setCallback(iMeasurementCorrectionsCallback);
+    }
 }
 
 void GnssHalTest::StopAndClearLocations() {
@@ -183,12 +193,11 @@ std::cv_status GnssHalTest::waitForMeasurementCorrectionsCapabilities(int timeou
         status = cv_.wait_for(lock, std::chrono::seconds(timeout_seconds));
         if (status == std::cv_status::timeout) return status;
     }
-    notify_count_--;
     return status;
 }
 
 Return<void> GnssHalTest::GnssCallback::gnssSetSystemInfoCb(
-        const IGnssCallback_1_0::GnssSystemInfo& info) {
+    const IGnssCallback::GnssSystemInfo& info) {
     ALOGI("Info received, year %d", info.yearOfHw);
     parent_.info_called_count_++;
     parent_.last_info_ = info;
@@ -239,9 +248,10 @@ Return<void> GnssHalTest::GnssCallback::gnssLocationCbImpl(const GnssLocation_2_
     return Void();
 }
 
-Return<void> GnssHalTest::GnssCallback::gnssSvStatusCb(const IGnssCallback_1_0::GnssSvStatus&) {
-    ALOGI("gnssSvStatusCb");
-
+Return<void> GnssHalTest::GnssCallback::gnssSvStatusCb(
+    const IGnssCallback::GnssSvStatus& svStatus) {
+    ALOGI("GnssSvStatus received");
+    parent_.list_gnss_sv_status_.emplace_back(svStatus);
     return Void();
 }
 
@@ -259,14 +269,6 @@ Return<void> GnssHalTest::GnssMeasurementCorrectionsCallback::setCapabilitiesCb(
     ALOGI("GnssMeasurementCorrectionsCallback capabilities received %d", capabilities);
     parent_.measurement_corrections_capabilities_called_count_++;
     parent_.last_measurement_corrections_capabilities_ = capabilities;
-    parent_.notify();
-    return Void();
-}
-
-Return<void> GnssHalTest::GnssCallback::gnssSvStatusCb_2_0(
-        const hidl_vec<IGnssCallback_2_0::GnssSvInfo>& svInfoList) {
-    ALOGI("gnssSvStatusCb_2_0. Size = %d", (int)svInfoList.size());
-    parent_.list_vec_gnss_sv_info_.emplace_back(svInfoList);
     parent_.notify();
     return Void();
 }
