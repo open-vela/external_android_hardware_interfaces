@@ -38,7 +38,6 @@ using android::hardware::gnss::measurement_corrections::V1_0::IMeasurementCorrec
 using android::hardware::gnss::measurement_corrections::V1_0::MeasurementCorrections;
 using android::hardware::gnss::V1_0::IGnssNi;
 using android::hardware::gnss::V2_0::ElapsedRealtimeFlags;
-using android::hardware::gnss::V2_0::GnssConstellationType;
 using android::hardware::gnss::V2_0::IGnssCallback;
 using android::hardware::gnss::visibility_control::V1_0::IGnssVisibilityControl;
 
@@ -164,13 +163,10 @@ TEST_F(GnssHalTest, TestAGnssRil_UpdateNetworkState_2_0) {
 }
 
 /*
- * TestGnssMeasurementFields:
- * Sets a GnssMeasurementCallback, waits for a measurement, and verifies
- * 1. codeType is valid,
- * 2. constellation is valid.
- * 3. state is valid.
+ * TestGnssMeasurementCodeType:
+ * Sets a GnssMeasurementCallback, waits for a measurement, and verifies the codeType is valid.
  */
-TEST_F(GnssHalTest, TestGnssMeasurementFields) {
+TEST_F(GnssHalTest, TestGnssMeasurementCodeType) {
     const int kFirstGnssMeasurementTimeoutSeconds = 10;
 
     auto gnssMeasurement = gnss_hal_->getExtensionGnssMeasurement_2_0();
@@ -193,23 +189,7 @@ TEST_F(GnssHalTest, TestGnssMeasurementFields) {
     EXPECT_EQ(measurement_called_count_, 1);
     ASSERT_TRUE(last_measurement_.measurements.size() > 0);
     for (auto measurement : last_measurement_.measurements) {
-        // Verify CodeType is valid.
         ASSERT_NE(measurement.codeType, "");
-
-        // Verify ConstellationType is valid.
-        ASSERT_TRUE(static_cast<uint8_t>(measurement.constellation) >=
-                            static_cast<uint8_t>(GnssConstellationType::UNKNOWN) &&
-                    static_cast<uint8_t>(measurement.constellation) <=
-                            static_cast<uint8_t>(GnssConstellationType::IRNSS));
-
-        // Verify State is valid.
-        ASSERT_TRUE(
-                static_cast<uint32_t>(measurement.state) >=
-                        static_cast<uint32_t>(IGnssMeasurementCallback_2_0::GnssMeasurementState::
-                                                      STATE_UNKNOWN) &&
-                static_cast<uint32_t>(measurement.state) <=
-                        static_cast<uint32_t>(IGnssMeasurementCallback_2_0::GnssMeasurementState::
-                                                      STATE_2ND_CODE_LOCK));
     }
 
     iGnssMeasurement->close();
@@ -292,17 +272,12 @@ TEST_F(GnssHalTest, TestGnssVisibilityControlExtension) {
  * capability flag is set.
  */
 TEST_F(GnssHalTest, TestGnssMeasurementCorrectionsCapabilities) {
-    // Setup measurement corrections callback.
     auto measurementCorrections = gnss_hal_->getExtensionMeasurementCorrections();
     ASSERT_TRUE(measurementCorrections.isOk());
     sp<IMeasurementCorrections> iMeasurementCorrections = measurementCorrections;
     if (iMeasurementCorrections == nullptr) {
         return;
     }
-
-    sp<IMeasurementCorrectionsCallback> iMeasurementCorrectionsCallback =
-            new GnssMeasurementCorrectionsCallback(*this);
-    iMeasurementCorrections->setCallback(iMeasurementCorrectionsCallback);
 
     const int kMeasurementCorrectionsCapabilitiesTimeoutSeconds = 5;
     waitForMeasurementCorrectionsCapabilities(kMeasurementCorrectionsCapabilitiesTimeoutSeconds);
@@ -362,9 +337,9 @@ TEST_F(GnssHalTest, TestGnssDataElapsedRealtimeFlags) {
     wait(kFirstGnssMeasurementTimeoutSeconds);
     EXPECT_EQ(measurement_called_count_, 1);
 
-    ASSERT_TRUE((int)last_measurement_.elapsedRealtime.flags <=
-                (int)(ElapsedRealtimeFlags::HAS_TIMESTAMP_NS |
-                      ElapsedRealtimeFlags::HAS_TIME_UNCERTAINTY_NS));
+    ASSERT_TRUE((int)last_measurement_.elapsedRealtime.flags >= 0 &&
+                (int)last_measurement_.elapsedRealtime.flags <=
+                        (int)ElapsedRealtimeFlags::HAS_TIME_UNCERTAINTY_NS);
 
     // We expect a non-zero timestamp when set.
     if (last_measurement_.elapsedRealtime.flags & ElapsedRealtimeFlags::HAS_TIMESTAMP_NS) {
@@ -377,9 +352,9 @@ TEST_F(GnssHalTest, TestGnssDataElapsedRealtimeFlags) {
 TEST_F(GnssHalTest, TestGnssLocationElapsedRealtime) {
     StartAndCheckFirstLocation();
 
-    ASSERT_TRUE((int)last_location_.elapsedRealtime.flags <=
-                (int)(ElapsedRealtimeFlags::HAS_TIMESTAMP_NS |
-                      ElapsedRealtimeFlags::HAS_TIME_UNCERTAINTY_NS));
+    ASSERT_TRUE((int)last_location_.elapsedRealtime.flags >= 0 &&
+                (int)last_location_.elapsedRealtime.flags <=
+                        (int)ElapsedRealtimeFlags::HAS_TIME_UNCERTAINTY_NS);
 
     // We expect a non-zero timestamp when set.
     if (last_location_.elapsedRealtime.flags & ElapsedRealtimeFlags::HAS_TIMESTAMP_NS) {
