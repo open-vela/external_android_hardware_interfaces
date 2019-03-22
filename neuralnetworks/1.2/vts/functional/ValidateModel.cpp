@@ -33,7 +33,6 @@ namespace functional {
 
 using ::android::hardware::neuralnetworks::V1_2::implementation::ExecutionCallback;
 using ::android::hardware::neuralnetworks::V1_2::implementation::PreparedModelCallback;
-using HidlToken = hidl_array<uint8_t, static_cast<uint32_t>(Constant::BYTE_SIZE_OF_CACHE_TOKEN)>;
 
 ///////////////////////// UTILITY FUNCTIONS /////////////////////////
 
@@ -55,8 +54,7 @@ static void validatePrepareModel(const sp<IDevice>& device, const std::string& m
     sp<PreparedModelCallback> preparedModelCallback = new PreparedModelCallback();
     ASSERT_NE(nullptr, preparedModelCallback.get());
     Return<ErrorStatus> prepareLaunchStatus =
-            device->prepareModel_1_2(model, preference, hidl_vec<hidl_handle>(),
-                                     hidl_vec<hidl_handle>(), HidlToken(), preparedModelCallback);
+        device->prepareModel_1_2(model, preference, preparedModelCallback);
     ASSERT_TRUE(prepareLaunchStatus.isOk());
     ASSERT_EQ(ErrorStatus::INVALID_ARGUMENT, static_cast<ErrorStatus>(prepareLaunchStatus));
 
@@ -243,7 +241,7 @@ static std::vector<int32_t> getInvalidZeroPoints(OperandType type) {
         case OperandType::TENSOR_QUANT8_ASYMM:
             return {-1, 256};
         case OperandType::TENSOR_QUANT8_SYMM:
-          return {-129, -1, 1, 128};
+            return {-129, -1, 1, 128};
         case OperandType::TENSOR_QUANT16_ASYMM:
             return {-1, 65536};
         case OperandType::TENSOR_QUANT16_SYMM:
