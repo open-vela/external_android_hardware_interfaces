@@ -184,9 +184,9 @@ class WifiLegacyHal {
     // Checks if legacy HAL has successfully started
     bool isStarted();
     // Wrappers for all the functions in the legacy HAL function table.
-    virtual std::pair<wifi_error, std::string> getDriverVersion(
+    std::pair<wifi_error, std::string> getDriverVersion(
         const std::string& iface_name);
-    virtual std::pair<wifi_error, std::string> getFirmwareVersion(
+    std::pair<wifi_error, std::string> getFirmwareVersion(
         const std::string& iface_name);
     std::pair<wifi_error, std::vector<uint8_t>> requestDriverMemoryDump(
         const std::string& iface_name);

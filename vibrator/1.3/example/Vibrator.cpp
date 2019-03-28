@@ -100,22 +100,14 @@ Return<Status> Vibrator::setExternalControl(bool enabled) {
 Return<void> Vibrator::perform_1_3(Effect effect, EffectStrength strength, perform_cb _hidl_cb) {
     uint8_t amplitude;
     uint32_t ms;
-    Status status = Status::OK;
+    Status status;
 
-    ALOGI("Perform: Effect %s\n", effectToName(effect).c_str());
+    ALOGI("Perform: Effect %s\n", effectToName(effect));
 
-    amplitude = strengthToAmplitude(strength, &status);
-    if (status != Status::OK) {
-        _hidl_cb(status, 0);
-        return Void();
-    }
+    amplitude = strengthToAmplitude(strength);
     setAmplitude(amplitude);
 
-    ms = effectToMs(effect, &status);
-    if (status != Status::OK) {
-        _hidl_cb(status, 0);
-        return Void();
-    }
+    ms = effectToMs(effect);
     status = activate(ms);
 
     _hidl_cb(status, ms);
@@ -186,11 +178,11 @@ void Vibrator::timerCallback(union sigval sigval) {
     static_cast<Vibrator*>(sigval.sival_ptr)->timeout();
 }
 
-const std::string Vibrator::effectToName(Effect effect) {
-    return toString(effect);
+const char* Vibrator::effectToName(Effect effect) {
+    return toString(effect).c_str();
 }
 
-uint32_t Vibrator::effectToMs(Effect effect, Status* status) {
+uint32_t Vibrator::effectToMs(Effect effect) {
     switch (effect) {
         case Effect::CLICK:
             return 10;
@@ -236,11 +228,9 @@ uint32_t Vibrator::effectToMs(Effect effect, Status* status) {
         case Effect::RINGTONE_15:
             return 30000;
     }
-    *status = Status::UNSUPPORTED_OPERATION;
-    return 0;
 }
 
-uint8_t Vibrator::strengthToAmplitude(EffectStrength strength, Status* status) {
+uint8_t Vibrator::strengthToAmplitude(EffectStrength strength) {
     switch (strength) {
         case EffectStrength::LIGHT:
             return 128;
@@ -249,8 +239,6 @@ uint8_t Vibrator::strengthToAmplitude(EffectStrength strength, Status* status) {
         case EffectStrength::STRONG:
             return 255;
     }
-    *status = Status::UNSUPPORTED_OPERATION;
-    return 0;
 }
 
 }  // namespace implementation
