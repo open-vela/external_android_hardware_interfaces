@@ -172,6 +172,20 @@ string ec_521_key = hex2str(
     "E78E70BEFE930DB34818EE4D5C26259F5C6B8E28A652950F9F88D7B4B2C9"
     "D9");
 
+string ec_256_key_rfc5915 =
+        hex2str("308193020100301306072a8648ce3d020106082a8648ce3d030107047930"
+                "770201010420782370a8c8ce5537baadd04dcff079c8158cfa9c67b818b3"
+                "8e8d21c9fa750c1da00a06082a8648ce3d030107a14403420004e2cc561e"
+                "e701da0ad0ef0d176bb0c919d42e79c393fdc1bd6c4010d85cf2cf8e68c9"
+                "05464666f98dad4f01573ba81078b3428570a439ba3229fbc026c550682f");
+
+string ec_256_key_sec1 =
+        hex2str("308187020100301306072a8648ce3d020106082a8648ce3d030107046d30"
+                "6b0201010420782370a8c8ce5537baadd04dcff079c8158cfa9c67b818b3"
+                "8e8d21c9fa750c1da14403420004e2cc561ee701da0ad0ef0d176bb0c919"
+                "d42e79c393fdc1bd6c4010d85cf2cf8e68c905464666f98dad4f01573ba8"
+                "1078b3428570a439ba3229fbc026c550682f");
+
 struct RSA_Delete {
     void operator()(RSA* p) { RSA_free(p); }
 };
@@ -181,7 +195,35 @@ X509* parse_cert_blob(const hidl_vec<uint8_t>& blob) {
     return d2i_X509(nullptr, &p, blob.size());
 }
 
-bool verify_chain(const hidl_vec<hidl_vec<uint8_t>>& chain) {
+bool verify_chain(const hidl_vec<hidl_vec<uint8_t>>& chain, const std::string& msg,
+                  const std::string& signature) {
+    {
+        EVP_MD_CTX md_ctx_verify;
+        X509_Ptr signing_cert(parse_cert_blob(chain[0]));
+        EVP_PKEY_Ptr signing_pubkey(X509_get_pubkey(signing_cert.get()));
+        EXPECT_TRUE(signing_pubkey);
+        ERR_print_errors_cb(
+            [](const char* str, size_t len, void* ctx) -> int {
+                (void)ctx;
+                std::cerr << std::string(str, len) << std::endl;
+                return 1;
+            },
+            nullptr);
+
+        EVP_MD_CTX_init(&md_ctx_verify);
+
+        bool result = false;
+        EXPECT_TRUE((result = EVP_DigestVerifyInit(&md_ctx_verify, NULL, EVP_sha256(), NULL,
+                                                   signing_pubkey.get())));
+        EXPECT_TRUE(
+            (result = result && EVP_DigestVerifyUpdate(&md_ctx_verify, msg.c_str(), msg.size())));
+        EXPECT_TRUE((result = result && EVP_DigestVerifyFinal(
+                                            &md_ctx_verify,
+                                            reinterpret_cast<const uint8_t*>(signature.c_str()),
+                                            signature.size())));
+        EVP_MD_CTX_cleanup(&md_ctx_verify);
+        if (!result) return false;
+    }
     for (size_t i = 0; i < chain.size(); ++i) {
         X509_Ptr key_cert(parse_cert_blob(chain[i]));
         X509_Ptr signing_cert;
@@ -1735,6 +1777,56 @@ TEST_F(ImportKeyTest, EcdsaSuccess) {
                                            .EcdsaSigningKey(256)
                                            .Digest(Digest::SHA_2_256),
                                        KeyFormat::PKCS8, ec_256_key));
+
+    CheckCryptoParam(TAG_ALGORITHM, Algorithm::EC);
+    CheckCryptoParam(TAG_KEY_SIZE, 256U);
+    CheckCryptoParam(TAG_DIGEST, Digest::SHA_2_256);
+    CheckCryptoParam(TAG_EC_CURVE, EcCurve::P_256);
+
+    CheckOrigin();
+
+    string message(32, 'a');
+    auto params = AuthorizationSetBuilder().Digest(Digest::SHA_2_256);
+    string signature = SignMessage(message, params);
+    VerifyMessage(message, signature, params);
+}
+
+/*
+ * ImportKeyTest.EcdsaP256RFC5915Success
+ *
+ * Verifies that importing and using an ECDSA P-256 key pair encoded using RFC5915 works correctly.
+ */
+TEST_F(ImportKeyTest, EcdsaP256RFC5915Success) {
+    ASSERT_EQ(ErrorCode::OK, ImportKey(AuthorizationSetBuilder()
+                                               .Authorization(TAG_NO_AUTH_REQUIRED)
+                                               .EcdsaSigningKey(256)
+                                               .Digest(Digest::SHA_2_256),
+                                       KeyFormat::PKCS8, ec_256_key_rfc5915));
+
+    CheckCryptoParam(TAG_ALGORITHM, Algorithm::EC);
+    CheckCryptoParam(TAG_KEY_SIZE, 256U);
+    CheckCryptoParam(TAG_DIGEST, Digest::SHA_2_256);
+    CheckCryptoParam(TAG_EC_CURVE, EcCurve::P_256);
+
+    CheckOrigin();
+
+    string message(32, 'a');
+    auto params = AuthorizationSetBuilder().Digest(Digest::SHA_2_256);
+    string signature = SignMessage(message, params);
+    VerifyMessage(message, signature, params);
+}
+
+/*
+ * ImportKeyTest.EcdsaP256SEC1Success
+ *
+ * Verifies that importing and using an ECDSA P-256 key pair encoded using SEC1 works correctly.
+ */
+TEST_F(ImportKeyTest, EcdsaP256SEC1Success) {
+    ASSERT_EQ(ErrorCode::OK, ImportKey(AuthorizationSetBuilder()
+                                               .Authorization(TAG_NO_AUTH_REQUIRED)
+                                               .EcdsaSigningKey(256)
+                                               .Digest(Digest::SHA_2_256),
+                                       KeyFormat::PKCS8, ec_256_key_sec1));
 
     CheckCryptoParam(TAG_ALGORITHM, Algorithm::EC);
     CheckCryptoParam(TAG_KEY_SIZE, 256U);
@@ -3833,8 +3925,8 @@ TEST_F(AttestationTest, RsaAttestation) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaSigningKey(2048, 65537)
-                                             .Digest(Digest::NONE)
-                                             .Padding(PaddingMode::NONE)
+                                             .Digest(Digest::SHA_2_256)
+                                             .Padding(PaddingMode::RSA_PKCS1_1_5_SIGN)
                                              .Authorization(TAG_INCLUDE_UNIQUE_ID)));
 
     hidl_vec<hidl_vec<uint8_t>> cert_chain;
@@ -3844,7 +3936,13 @@ TEST_F(AttestationTest, RsaAttestation) {
                             .Authorization(TAG_ATTESTATION_APPLICATION_ID, HidlBuf("foo")),
                         &cert_chain));
     EXPECT_GE(cert_chain.size(), 2U);
-    EXPECT_TRUE(verify_chain(cert_chain));
+
+    string message = "12345678901234567890123456789012";
+    string signature = SignMessage(message, AuthorizationSetBuilder()
+                                                .Digest(Digest::SHA_2_256)
+                                                .Padding(PaddingMode::RSA_PKCS1_1_5_SIGN));
+
+    EXPECT_TRUE(verify_chain(cert_chain, message, signature));
     EXPECT_TRUE(verify_attestation_record("challenge", "foo",                     //
                                           key_characteristics_.softwareEnforced,  //
                                           key_characteristics_.hardwareEnforced,  //
@@ -3890,7 +3988,11 @@ TEST_F(AttestationTest, EcAttestation) {
                             .Authorization(TAG_ATTESTATION_APPLICATION_ID, HidlBuf("foo")),
                         &cert_chain));
     EXPECT_GE(cert_chain.size(), 2U);
-    EXPECT_TRUE(verify_chain(cert_chain));
+
+    string message(1024, 'a');
+    string signature = SignMessage(message, AuthorizationSetBuilder().Digest(Digest::SHA_2_256));
+
+    EXPECT_TRUE(verify_chain(cert_chain, message, signature));
 
     EXPECT_TRUE(verify_attestation_record("challenge", "foo",                     //
                                           key_characteristics_.softwareEnforced,  //
