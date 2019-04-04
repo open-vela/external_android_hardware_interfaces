@@ -289,21 +289,19 @@ TEST_F(GnssHalTest, TestGnssVisibilityControlExtension) {
 
 /*
  * TestGnssMeasurementCorrectionsCapabilities:
- * If measurement corrections capability is supported, verifies that the measurement corrections
+ * If the GnssMeasurementCorrectionsExtension is not null, verifies that the measurement corrections
  * capabilities are reported and the mandatory LOS_SATS or the EXCESS_PATH_LENGTH
  * capability flag is set.
  */
 TEST_F(GnssHalTest, TestGnssMeasurementCorrectionsCapabilities) {
-    if (!(last_capabilities_ & IGnssCallback::Capabilities::MEASUREMENT_CORRECTIONS)) {
-        return;
-    }
-
+    // Setup measurement corrections callback.
     auto measurementCorrections = gnss_hal_->getExtensionMeasurementCorrections();
     ASSERT_TRUE(measurementCorrections.isOk());
     sp<IMeasurementCorrections> iMeasurementCorrections = measurementCorrections;
-    ASSERT_NE(iMeasurementCorrections, nullptr);
+    if (iMeasurementCorrections == nullptr) {
+        return;
+    }
 
-    // Setup measurement corrections callback.
     sp<IMeasurementCorrectionsCallback> iMeasurementCorrectionsCallback =
             new GnssMeasurementCorrectionsCallback(*this);
     iMeasurementCorrections->setCallback(iMeasurementCorrectionsCallback);
@@ -318,19 +316,17 @@ TEST_F(GnssHalTest, TestGnssMeasurementCorrectionsCapabilities) {
 
 /*
  * TestGnssMeasurementCorrections:
- * If measurement corrections capability is supported, verifies that it supports the
+ * If the GnssMeasurementCorrectionsExtension is not null, verifies that it supports the
  * gnss.measurement_corrections@1.0::IMeasurementCorrections interface by invoking a method.
  */
 TEST_F(GnssHalTest, TestGnssMeasurementCorrections) {
-    if (!(last_capabilities_ & IGnssCallback::Capabilities::MEASUREMENT_CORRECTIONS)) {
-        return;
-    }
-
     // Verify IMeasurementCorrections is supported.
     auto measurementCorrections = gnss_hal_->getExtensionMeasurementCorrections();
     ASSERT_TRUE(measurementCorrections.isOk());
     sp<IMeasurementCorrections> iMeasurementCorrections = measurementCorrections;
-    ASSERT_NE(iMeasurementCorrections, nullptr);
+    if (iMeasurementCorrections == nullptr) {
+        return;
+    }
 
     sp<IMeasurementCorrectionsCallback> iMeasurementCorrectionsCallback =
             new GnssMeasurementCorrectionsCallback(*this);
