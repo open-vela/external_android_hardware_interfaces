@@ -177,17 +177,13 @@ Error ComposerClient::getDisplayedContentSample(uint64_t display, uint64_t maxFr
     return error;
 }
 
-Error ComposerClient::getDisplayCapabilities(
-        Display display, std::vector<IComposerClient::DisplayCapability>* outCapabilities) {
+std::vector<IComposerClient::DisplayCapability> ComposerClient::getDisplayCapabilities(
+    Display display) {
     std::vector<IComposerClient::DisplayCapability> capabilities;
-    Error error = Error::NONE;
-    mClient->getDisplayCapabilities(display,
-                                    [&](const auto& tmpError, const auto& tmpCapabilities) {
-                                        error = tmpError;
-                                        *outCapabilities = tmpCapabilities;
-                                    });
+    mClient->getDisplayCapabilities(
+        display, [&](const auto&, const auto& tmpCapabilities) { capabilities = tmpCapabilities; });
 
-    return error;
+    return capabilities;
 }
 
 bool ComposerClient::getDisplayBrightnessSupport(Display display) {

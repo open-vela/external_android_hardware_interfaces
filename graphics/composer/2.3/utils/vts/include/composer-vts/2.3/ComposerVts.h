@@ -95,9 +95,7 @@ class ComposerClient : public V2_2::vts::ComposerClient {
 
     bool getClientTargetSupport_2_3(Display display, uint32_t width, uint32_t height,
                                     PixelFormat format, Dataspace dataspace);
-    Error getDisplayCapabilities(
-            Display display,
-            std::vector<IComposerClient::DisplayCapability>* outDisplayCapabilities);
+    std::vector<IComposerClient::DisplayCapability> getDisplayCapabilities(Display display);
 
     std::vector<IComposerClient::PerFrameMetadataKey> getPerFrameMetadataKeys_2_3(Display display);
 
