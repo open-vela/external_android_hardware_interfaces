@@ -572,10 +572,6 @@ TEST_F(GraphicsComposerHidlTest, getDisplayCapabilitiesBasic) {
             std::find(capabilities.begin(), capabilities.end(),
                       IComposerClient::DisplayCapability::DOZE) != capabilities.end();
     EXPECT_EQ(mComposerClient->getDozeSupport(mPrimaryDisplay), hasDozeSupport);
-    bool hasBrightnessSupport =
-            std::find(capabilities.begin(), capabilities.end(),
-                      IComposerClient::DisplayCapability::BRIGHTNESS) != capabilities.end();
-    EXPECT_EQ(mComposerClient->getDisplayBrightnessSupport(mPrimaryDisplay), hasBrightnessSupport);
 }
 
 TEST_F(GraphicsComposerHidlTest, getDisplayCapabilitiesBadDisplay) {
@@ -608,18 +604,24 @@ TEST_F(GraphicsComposerHidlTest, SetLayerPerFrameMetadataBlobs) {
 }
 
 /*
- * Test that if brightness operations are supported, setDisplayBrightness works as expected.
+ * Test that getDisplayBrightnessSupport works as expected.
  */
-TEST_F(GraphicsComposerHidlTest, setDisplayBrightness) {
+TEST_F(GraphicsComposerHidlTest, getDisplayBrightnessSupport) {
     std::vector<IComposerClient::DisplayCapability> capabilities;
     const auto error = mComposerClient->getDisplayCapabilities(mPrimaryDisplay, &capabilities);
     ASSERT_EQ(Error::NONE, error);
     bool brightnessSupport =
             std::find(capabilities.begin(), capabilities.end(),
                       IComposerClient::DisplayCapability::BRIGHTNESS) != capabilities.end();
-    if (!brightnessSupport) {
-        EXPECT_EQ(mComposerClient->getRaw()->setDisplayBrightness(mPrimaryDisplay, 0.5f),
-                  Error::UNSUPPORTED);
+    EXPECT_EQ(mComposerClient->getDisplayBrightnessSupport(mPrimaryDisplay), brightnessSupport);
+}
+
+/*
+ * Test that if brightness operations are supported, setDisplayBrightness works as expected.
+ */
+TEST_F(GraphicsComposerHidlTest, setDisplayBrightness) {
+    if (!mComposerClient->getDisplayBrightnessSupport(mPrimaryDisplay)) {
+        EXPECT_EQ(mComposerClient->setDisplayBrightness(mPrimaryDisplay, 0.5f), Error::UNSUPPORTED);
         GTEST_SUCCEED() << "Brightness operations are not supported";
         return;
     }
