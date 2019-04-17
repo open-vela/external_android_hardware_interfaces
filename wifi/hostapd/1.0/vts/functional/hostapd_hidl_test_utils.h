@@ -25,7 +25,6 @@
 // Used to stop the android wifi framework before every test.
 void stopWifiFramework();
 void startWifiFramework();
-void stopSupplicantIfNeeded();
 void stopHostapd();
 // Used to configure the chip, driver and start wpa_hostapd before every
 // test.
