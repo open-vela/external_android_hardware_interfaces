@@ -131,9 +131,6 @@ enum VehiclePropertyGroup : int32_t {
  * When a property's status field is not set to AVAILABLE:
  *  - IVehicle#set may return StatusCode::NOT_AVAILABLE.
  *  - IVehicle#get is not guaranteed to work.
- *
- * Properties set to values out of range must be ignored and no action taken
- * in response to such ill formed requests.
  */
 enum VehicleProperty : int32_t {
 
@@ -246,7 +243,7 @@ enum VehicleProperty : int32_t {
      * Fuel door location
      *
      * @change_mode VehiclePropertyChangeMode:STATIC
-     * @data_enum PortLocationType
+     * @data_enum FuelDoorLocationType
      * @access VehiclePropertyAccess:READ
      */
     INFO_FUEL_DOOR_LOCATION = (
@@ -270,7 +267,6 @@ enum VehicleProperty : int32_t {
 
     /**
      * Driver's seat location
-     * VHAL implementations must ignore the areaId. Use VehicleArea:GLOBAL.
      *
      * @change_mode VehiclePropertyChangeMode:STATIC
      * @data_enum VehicleAreaSeat
@@ -281,6 +277,7 @@ enum VehicleProperty : int32_t {
         | VehiclePropertyGroup:SYSTEM
         | VehiclePropertyType:INT32
         | VehicleArea:SEAT),
+
 
     /**
      * Current odometer value of the vehicle
@@ -304,37 +301,6 @@ enum VehicleProperty : int32_t {
      */
     PERF_VEHICLE_SPEED = (
         0x0207
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:FLOAT
-        | VehicleArea:GLOBAL),
-
-    /**
-     * Speed of the vehicle for displays
-     *
-     * Some cars display a slightly slower speed than the actual speed.  This is
-     * usually displayed on the speedometer.
-     *
-     * @change_mode VehiclePropertyChangeMode:CONTINUOUS
-     * @access VehiclePropertyAccess:READ
-     * @unit VehicleUnit:METER_PER_SEC
-     */
-    PERF_VEHICLE_SPEED_DISPLAY = (
-        0x0208
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:FLOAT
-        | VehicleArea:GLOBAL),
-
-    /**
-     * Steering angle of the vehicle
-     *
-     * Angle is in degrees.  Left is negative.
-     *
-     * @change_mode VehiclePropertyChangeMode:CONTINUOUS
-     * @access VehiclePropertyAccess:READ
-     * @unit VehicleUnit:DEGREES
-     */
-    PERF_STEERING_ANGLE = (
-        0x0209
         | VehiclePropertyGroup:SYSTEM
         | VehiclePropertyType:FLOAT
         | VehicleArea:GLOBAL),
@@ -621,13 +587,7 @@ enum VehicleProperty : int32_t {
      *
      * This property corresponds to the low fuel warning on the dashboard.
      * Once FUEL_LEVEL_LOW is set, it should not be cleared until more fuel is
-     * added to the vehicle.  This property may take into account all fuel
-     * sources for a vehicle - for example:
-     *
-     *   For a gas powered vehicle, this property is based soley on gas level.
-     *   For a battery powered vehicle, this property is based solely on battery level.
-     *   For a hybrid vehicle, this property may be based on the combination of gas and battery
-     *      levels, at the OEM's discretion.
+     * added to the vehicle.
      *
      * @change_mode VehiclePropertyChangeMode:ON_CHANGE
      * @access VehiclePropertyAccess:READ
@@ -641,9 +601,7 @@ enum VehicleProperty : int32_t {
     /**
      * Night mode
      *
-     * True indicates that the night mode sensor has detected that the car cabin environment has
-     * low light. The platform could use this, for example, to enable appropriate UI for
-     * better viewing in dark or low light environments.
+     * True indicates that night mode is currently enabled.
      *
      * @change_mode VehiclePropertyChangeMode:ON_CHANGE
      * @access VehiclePropertyAccess:READ
@@ -985,17 +943,12 @@ enum VehicleProperty : int32_t {
      *
      * Indicates whether the vehicle is displaying temperature to the user as
      * Celsius or Fahrenheit.
-     * VehiclePropConfig.configArray is used to indicate the supported temperature display units.
-     * For example: configArray[0] = CELSIUS
-     *              configArray[1] = FAHRENHEIT
-     *
      * This parameter MAY be used for displaying any HVAC temperature in the system.
      * Values must be one of VehicleUnit::CELSIUS or VehicleUnit::FAHRENHEIT
      * Note that internally, all temperatures are represented in floating point Celsius.
      *
      * @change_mode VehiclePropertyChangeMode:ON_CHANGE
      * @access VehiclePropertyAccess:READ_WRITE
-     * @data_enum VehicleUnit
      */
     HVAC_TEMPERATURE_DISPLAY_UNITS = (
         0x050E
@@ -1118,123 +1071,6 @@ enum VehicleProperty : int32_t {
         | VehiclePropertyType:INT32
         | VehicleArea:SEAT),
 
-   /**
-     * Distance units for display
-     *
-     * Indicates which units the car is using to display distances to the user. Eg. Mile, Meter
-     * Kilometer.
-     *
-     * Distance units are defined in VehicleUnit.
-     * VehiclePropConfig.configArray is used to indicate the supported distance display units.
-     * For example: configArray[0] = METER
-     *              configArray[1] = KILOMETER
-     *              configArray[2] = MILE
-     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:READ_WRITE
-     * @data_enum VehicleUnit
-     */
-    DISTANCE_DISPLAY_UNITS = (
-        0x0600
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:INT32
-        | VehicleArea:GLOBAL),
-
-    /**
-     * Fuel volume units for display
-     *
-     * Indicates which units the car is using to display fuel volume to the user. Eg. Liter or
-     * Gallon.
-     *
-     * VehiclePropConfig.configArray is used to indicate the supported fuel volume display units.
-     * Volume units are defined in VehicleUnit.
-     * For example: configArray[0] = LITER
-     *              configArray[1] = GALLON
-     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:READ_WRITE
-     * @data_enum VehicleUnit
-     */
-    FUEL_VOLUME_DISPLAY_UNITS = (
-        0x0601
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:INT32
-        | VehicleArea:GLOBAL),
-
-    /**
-     * Tire pressure units for display
-     *
-     * Indicates which units the car is using to display tire pressure to the user. Eg. PSI, Bar or
-     * Kilopascal.
-     *
-     * VehiclePropConfig.configArray is used to indicate the supported pressure display units.
-     * Pressure units are defined in VehicleUnit.
-     * For example: configArray[0] = KILOPASCAL
-     *              configArray[1] = PSI
-     *              configArray[2] = BAR
-     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:READ_WRITE
-     * @data_enum VehicleUnit
-     */
-    TIRE_PRESSURE_DISPLAY_UNITS = (
-        0x0602
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:INT32
-        | VehicleArea:GLOBAL),
-
-    /**
-     * EV battery units for display
-     *
-     * Indicates which units the car is using to display EV battery information to the user. Eg.
-     * watt-hours(Wh), kilowatt-hours(kWh) or ampere-hours(Ah).
-     *
-     * VehiclePropConfig.configArray is used to indicate the supported electrical energy units.
-     * Electrical energy units are defined in VehicleUnit.
-     * For example: configArray[0] = WATT_HOUR
-     *              configArray[1] = AMPERE_HOURS
-     *              configArray[2] = KILOWATT_HOUR
-     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:READ_WRITE
-     * @data_enum VehicleUnit
-     */
-    EV_BATTERY_DISPLAY_UNITS = (
-        0x0603
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:INT32
-        | VehicleArea:GLOBAL),
-
-    /**
-     * Fuel consumption units for display
-     *
-     * Indicates type of units the car is using to display fuel consumption information to user
-     * True indicates units are distance over volume such as MPG.
-     * False indicates units are volume over distance such as L/100KM.
-     *
-     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:READ_WRITE
-     */
-    FUEL_CONSUMPTION_UNITS_DISTANCE_OVER_VOLUME = (
-        0x0604
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:BOOLEAN
-        | VehicleArea:GLOBAL),
-
-    /**
-     * Speed units for display
-     *
-     * Indicates type of units the car is using to display speed to user. Eg. m/s, km/h, or mph.
-     *
-     * VehiclePropConfig.configArray is used to indicate the supported speed display units.
-     * Pressure units are defined in VehicleUnit.
-     * For example: configArray[0] = METER_PER_SEC
-     *              configArray[1] = MILES_PER_HOUR
-     *              configArray[2] = KILOMETERS_PER_HOUR
-     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:READ_WRITE
-     */
-    VEHICLE_SPEED_DISPLAY_UNITS = (
-        0x0605
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:INT32
-        | VehicleArea:GLOBAL),
 
     /**
      * Outside temperature
@@ -1252,7 +1088,7 @@ enum VehicleProperty : int32_t {
     /**
      * Property to control power state of application processor
      *
-     * It is assumed that AP's power state is controlled by a separate power
+     * It is assumed that AP's power state is controller by separate power
      * controller.
      *
      * For configuration information, VehiclePropConfig.configArray can have bit flag combining
@@ -1263,7 +1099,7 @@ enum VehicleProperty : int32_t {
      *                    0 if not used.
      *
      * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:READ
+     * @access VEHICLE_PROP_ACCESS_READ
      */
     AP_POWER_STATE_REQ = (
         0x0A00
@@ -1282,7 +1118,7 @@ enum VehicleProperty : int32_t {
 
      *
      * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:WRITE
+     * @access VEHICLE_PROP_ACCESS_WRITE
      */
     AP_POWER_STATE_REPORT = (
         0x0A01
@@ -1902,22 +1738,6 @@ enum VehicleProperty : int32_t {
         | VehicleArea:SEAT),
 
     /**
-     * Seat Occupancy
-     *
-     * Indicates whether a particular seat is occupied or not, to the best of the car's ability
-     * to determine. Valid values are from the VehicleSeatOccupancyState enum.
-     *
-     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:READ
-     * @data_enum VehicleSeatOccupancyState
-     */
-    SEAT_OCCUPANCY = (
-        0x0BB0
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:INT32
-        | VehicleArea:SEAT),
-
-    /**
      * Window Position
      *
      * Min = window up / closed
@@ -2252,83 +2072,6 @@ enum VehicleProperty : int32_t {
         | VehiclePropertyGroup:SYSTEM
         | VehiclePropertyType:INT32
         | VehicleArea:GLOBAL),
-
-    /**
-     * Cabin lights
-     *
-     * Return current status of cabin lights.
-     *
-     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:READ
-     * @data_enum VehicleLightState
-     */
-    CABIN_LIGHTS_STATE = (
-        0x0F01
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:INT32
-        | VehicleArea:GLOBAL),
-
-    /**
-     * Cabin lights switch
-     *
-     * The position of the physical switch which controls the cabin lights.
-     * This might be different than the CABIN_LIGHTS_STATE if the lights are on because a door
-     * is open or because of a voice command.
-     * For example, while the switch is in the "off" or "automatic" position.
-     *
-     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:READ_WRITE
-     * @data_enum VehicleLightSwitch
-     */
-    CABIN_LIGHTS_SWITCH = (
-        0x0F02
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:INT32
-        | VehicleArea:GLOBAL),
-
-    /**
-     * Reading lights
-     *
-     * Return current status of reading lights.
-     *
-     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:READ
-     * @data_enum VehicleLightState
-     */
-    READING_LIGHTS_STATE = (
-        0x0F03
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:INT32
-        | VehicleArea:SEAT),
-
-    /**
-     * Reading lights switch
-     *
-     * The position of the physical switch which controls the reading lights.
-     * This might be different than the READING_LIGHTS_STATE if the lights are on because a door
-     * is open or because of a voice command.
-     * For example, while the switch is in the "off" or "automatic" position.
-     *
-     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:READ_WRITE
-     * @data_enum VehicleLightSwitch
-     */
-    READING_LIGHTS_SWITCH = (
-        0x0F04
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:INT32
-        | VehicleArea:SEAT),
-
-};
-
-/**
- * Used by seat occupancy to enumerate the current occupancy state of the seat.
- */
-enum  VehicleSeatOccupancyState : int32_t {
-
-    UNKNOWN = 0,
-    VACANT = 1,
-    OCCUPIED = 2
 };
 
 /**
@@ -2487,8 +2230,17 @@ enum VehicleApPowerStateConfigFlag : int32_t {
 };
 
 enum VehicleApPowerStateReq : int32_t {
-    /** Transition Android from WAIT_FOR_VHAL to ON state */
-    ON = 0,
+    /** vehicle HAL will never publish this state to AP */
+    OFF = 0,
+
+    /** vehicle HAL will never publish this state to AP */
+    DEEP_SLEEP = 1,
+
+    /** AP is on but display must be off. */
+    ON_DISP_OFF = 2,
+
+    /** AP is on with display on. This state allows full user interaction. */
+    ON_FULL = 3,
 
     /**
      * The power controller has requested AP to shutdown. AP can either enter
@@ -2498,16 +2250,8 @@ enum VehicleApPowerStateReq : int32_t {
      * system.
      *
      * int32Values[1] : one of enum_vehicle_ap_power_state_shutdown_param_type
-     *
-     * SHUTDOWN_PRPARE may be requested from either WAIT_FOR_VHAL or ON states.
      */
-    SHUTDOWN_PREPARE = 1,
-
-    /** Cancel the shutdown and transition from SHUTDOWN_PREPARE to WAIT_FOR_VHAL state */
-    CANCEL_SHUTDOWN = 2,
-
-    /** VHAL is finished with shutdown procedures and ready for Android to suspend/shutdown */
-    FINISHED = 3,
+    SHUTDOWN_PREPARE = 4,
 };
 
 /**
@@ -2533,30 +2277,26 @@ enum VehicleApPowerStateShutdownParam : int32_t {
 
 enum VehicleApPowerStateReport : int32_t {
     /**
-     * Device has booted, CarService has initialized and is ready to accept commands from VHAL.
-     * Device starts in WAIT_FOR_VHAL state.  The user is not logged in, and vendor apps/services
-     * are expected to control the display and audio.
+     * AP has finished boot up, and can start shutdown if requested by power
+     * controller.
      */
-    WAIT_FOR_VHAL = 0x1,
+    BOOT_COMPLETE = 0x1,
 
     /**
-     * AP is ready to suspend and has entered WAIT_FOR_FINISHED state.
-     *
-     * int32Values[1]: Time to turn on AP in secs. Power controller may turn on
-     *                 AP after specified time so that AP can run tasks like
-     *                 update. If it is set to 0, there is no wake up, and power
-     *                 controller may not necessarily support wake-up.
+     * AP is entering deep sleep state. How this state is implemented may vary
+     * depending on each H/W, but AP's power must be kept in this state.
      */
     DEEP_SLEEP_ENTRY = 0x2,
 
     /**
-     * AP is exiting from deep sleep state, and is in WAIT_FOR_VHAL state.
+     * AP is exiting from deep sleep state, and is in
+     * VehicleApPowerState#SHUTDOWN_PREPARE state.
+     * The power controller may change state to other ON states based on the
+     * current state.
      */
     DEEP_SLEEP_EXIT = 0x3,
 
     /**
-     * AP remains in SHUTDOWN_PREPARE state as idle and cleanup tasks execute.
-     *
      * int32Values[1]: Time to postpone shutdown in ms. Maximum value can be
      *                 5000 ms.
      *                 If AP needs more time, it will send another POSTPONE
@@ -2565,31 +2305,63 @@ enum VehicleApPowerStateReport : int32_t {
     SHUTDOWN_POSTPONE = 0x4,
 
     /**
-     * AP is ready to shutdown and has entered WAIT_FOR_FINISHED state.
+     * AP is starting shutting down. When system completes shutdown, everything
+     * will stop in AP as kernel will stop all other contexts. It is
+     * responsibility of vehicle HAL or lower level to synchronize that state
+     * with external power controller. As an example, some kind of ping
+     * with timeout in power controller can be a solution.
      *
      * int32Values[1]: Time to turn on AP in secs. Power controller may turn on
      *                 AP after specified time so that AP can run tasks like
      *                 update. If it is set to 0, there is no wake up, and power
-     *                 controller may not necessarily support wake-up.
+     *                 controller may not necessarily support wake-up. If power
+     *                 controller turns on AP due to timer, it must start with
+     *                 VehicleApPowerState#ON_DISP_OFF state, and after
+     *                 receiving VehicleApPowerSetState#BOOT_COMPLETE, it shall
+     *                 do state transition to
+     *                 VehicleApPowerState#SHUTDOWN_PREPARE.
      */
     SHUTDOWN_START = 0x5,
 
     /**
-     * AP has transitioned from WAIT_FOR_VHAL state to ON.
+     * User has requested to turn off headunit's display, which is detected in
+     * android side.
+     * The power controller may change the power state to
+     * VehicleApPowerState#ON_DISP_OFF.
      */
-    ON = 0x6,
+    DISPLAY_OFF = 0x6,
 
     /**
-     * AP has transitions to SHUTDOWN_PREPARE state.  In this state, Garage Mode will execute idle
-     * tasks, and other services that have registered for this state transition may execute
-     * cleanup activities.
+     * User has requested to turn on headunit's display, most probably from power
+     * key input which is attached to headunit. The power controller may change
+     * the power state to VehicleApPowerState#ON_FULL.
      */
-    SHUTDOWN_PREPARE = 0x7,
+    DISPLAY_ON = 0x7,
+};
+
+/**
+ * Enum to represent bootup reason.
+ */
+enum VehicleApPowerBootupReason : int32_t {
+    /**
+     * Power on due to user's pressing of power key or rotating of ignition
+     * switch.
+     */
+    USER_POWER_ON = 0,
 
     /**
-     * AP has transitioned from SHUTDOWN_PREPARE state to WAIT_FOR_VHAL.
+     * Automatic power on triggered by door unlock or any other kind of automatic
+     * user detection.
      */
-    SHUTDOWN_CANCELLED = 0x8,
+    USER_UNLOCK = 1,
+
+    /**
+     * Automatic power on triggered by timer. This only happens when AP has asked
+     * wake-up after
+     * certain time through time specified in
+     * VehicleApPowerSetState#SHUTDOWN_START.
+     */
+    TIMER = 2,
 };
 
 enum VehicleHwKeyInputAction : int32_t {
@@ -2611,45 +2383,29 @@ enum VehicleDisplay : int32_t {
  * Units used for int or float type with no attached enum types.
  */
 enum VehicleUnit : int32_t {
-    SHOULD_NOT_USE      = 0x000,
+    SHOULD_NOT_USE = 0x000,
 
-    METER_PER_SEC       = 0x01,
-    RPM                 = 0x02,
-    HERTZ               = 0x03,
-    PERCENTILE          = 0x10,
-    MILLIMETER          = 0x20,
-    METER               = 0x21,
-    KILOMETER           = 0x23,
-    MILE                = 0x24,
-    CELSIUS             = 0x30,
-    FAHRENHEIT          = 0x31,
-    KELVIN              = 0x32,
-    MILLILITER          = 0x40,
-    LITER               = 0x41,
-
-    /** deprecated. Use US_GALLON instead. */
-    GALLON              = 0x42,
-    US_GALLON           = 0x42,
-    IMPERIAL_GALLON     = 0x43,
-    NANO_SECS           = 0x50,
-    SECS                = 0x53,
-    YEAR                = 0x59,
+    METER_PER_SEC  = 0x01,
+    RPM            = 0x02,
+    HERTZ          = 0x03,
+    PERCENTILE     = 0x10,
+    MILLIMETER     = 0x20,
+    METER          = 0x21,
+    KILOMETER      = 0x23,
+    CELSIUS        = 0x30,
+    FAHRENHEIT     = 0x31,
+    KELVIN         = 0x32,
+    MILLILITER     = 0x40,
+    NANO_SECS      = 0x50,
+    SECS           = 0x53,
+    YEAR           = 0x59,
+    KILOPASCAL     = 0x70,
 
     // Electrical Units
-    WATT_HOUR           = 0x60,
-    MILLIAMPERE         = 0x61,
-    MILLIVOLT           = 0x62,
-    MILLIWATTS          = 0x63,
-    AMPERE_HOURS        = 0x64,
-    KILOWATT_HOUR       = 0x65,
-
-    KILOPASCAL          = 0x70,
-    PSI                 = 0x71,
-    BAR                 = 0x72,
-    DEGREES             = 0x80,
-
-    MILES_PER_HOUR      = 0x90,
-    KILOMETERS_PER_HOUR = 0x91,
+    WATT_HOUR      = 0x60,
+    MILLIAMPERE    = 0x61,
+    MILLIVOLT      = 0x62,
+    MILLIWATTS     = 0x63,
 };
 
 /**
@@ -2797,14 +2553,6 @@ struct VehicleAreaConfig {
      * Area id is ignored for VehiclePropertyGroup:GLOBAL properties.
      */
     int32_t areaId;
-
-    /**
-     * If the property has @data_enum, leave the range to zero.
-     *
-     * Range will be ignored in the following cases:
-     *    - The VehiclePropertyType is not INT32, INT64 or FLOAT.
-     *    - Both of min value and max value are zero.
-     */
 
     int32_t minInt32Value;
     int32_t maxInt32Value;
@@ -3285,16 +3033,6 @@ enum DiagnosticFloatSensorIndex : int32_t {
  */
 enum VmsMessageType : int32_t {
     /**
-     * A notification indicating that the sender has been reset.
-     *
-     * The receiving party must reset its internal state and respond to the
-     * sender with a START_SESSION message as acknowledgement.
-     *
-     * This message type uses enum VmsStartSessionMessageIntegerValuesIndex.
-     */
-    START_SESSION = 17,
-
-    /**
      * A request from the subscribers to the VMS service to subscribe to a layer.
      *
      * This message type uses enum VmsMessageWithLayerIntegerValuesIndex.
@@ -3410,7 +3148,7 @@ enum VmsMessageType : int32_t {
      */
     PUBLISHER_INFORMATION_RESPONSE = 16,
 
-    LAST_VMS_MESSAGE_TYPE = START_SESSION,
+    LAST_VMS_MESSAGE_TYPE = PUBLISHER_INFORMATION_RESPONSE,
 };
 
 /**
@@ -3421,30 +3159,6 @@ enum VmsMessageType : int32_t {
 enum VmsBaseMessageIntegerValuesIndex : int32_t {
     /* The message type as enumerated by VmsMessageType enum. */
     MESSAGE_TYPE = 0,
-};
-
-/*
- * Handshake data sent as part of a VmsMessageType.START_SESSION message.
- *
- * A new session is initiated by sending a START_SESSION message with the
- * sender's identifier populated and the receiver's identifier set to -1.
- *
- * Identifier values are independently generated, but must be non-negative, and
- * increase monotonically between reboots.
- *
- * Upon receiving a START_SESSION with a mis-matching identifier, the receiver
- * must clear any cached VMS offering or subscription state and acknowledge the
- * new session by responding with a START_SESSION message that populates both
- * identifier fields.
- *
- * Any VMS messages received between initiation and completion of the handshake
- * must be discarded.
- */
-enum VmsStartSessionMessageIntegerValuesIndex : VmsBaseMessageIntegerValuesIndex {
-    /* Identifier field for the Android system service. */
-    SERVICE_ID = 1,
-    /* Identifier field for the HAL client process. */
-    CLIENT_ID = 2,
 };
 
 /*
