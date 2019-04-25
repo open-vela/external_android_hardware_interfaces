@@ -342,7 +342,8 @@ status_t ExternalCameraDevice::initDefaultCharsKeys(
                                                   256, 144,
                                                   240, 160,
                                                   256, 154,
-                                                  240, 180};
+                                                  240, 240,
+                                                  320, 240};
     UPDATE(ANDROID_JPEG_AVAILABLE_THUMBNAIL_SIZES, jpegAvailableThumbnailSizes,
            ARRAY_SIZE(jpegAvailableThumbnailSizes));
 
