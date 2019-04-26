@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,6 @@
 #include "Utils.h"
 
 #include <android-base/logging.h>
-#include <cstring>
 
 namespace android {
 namespace hardware {
@@ -39,13 +38,7 @@ using ::android::nn::RequestChannelSender;
 using ::android::nn::ResultChannelReceiver;
 using ExecutionBurstCallback = ::android::nn::ExecutionBurstController::ExecutionBurstCallback;
 
-// This constant value represents the length of an FMQ that is large enough to
-// return a result from a burst execution for all of the generated test cases.
 constexpr size_t kExecutionBurstChannelLength = 1024;
-
-// This constant value represents a length of an FMQ that is not large enough
-// to return a result from a burst execution for some of the generated test
-// cases.
 constexpr size_t kExecutionBurstChannelSmallLength = 8;
 
 ///////////////////////// UTILITY FUNCTIONS /////////////////////////
@@ -57,8 +50,7 @@ static bool badTiming(Timing timing) {
 static void createBurst(const sp<IPreparedModel>& preparedModel, const sp<IBurstCallback>& callback,
                         std::unique_ptr<RequestChannelSender>* sender,
                         std::unique_ptr<ResultChannelReceiver>* receiver,
-                        sp<IBurstContext>* context,
-                        size_t resultChannelLength = kExecutionBurstChannelLength) {
+                        sp<IBurstContext>* context) {
     ASSERT_NE(nullptr, preparedModel.get());
     ASSERT_NE(nullptr, sender);
     ASSERT_NE(nullptr, receiver);
@@ -68,7 +60,7 @@ static void createBurst(const sp<IPreparedModel>& preparedModel, const sp<IBurst
     auto [fmqRequestChannel, fmqRequestDescriptor] =
             RequestChannelSender::create(kExecutionBurstChannelLength, /*blocking=*/true);
     auto [fmqResultChannel, fmqResultDescriptor] =
-            ResultChannelReceiver::create(resultChannelLength, /*blocking=*/true);
+            ResultChannelReceiver::create(kExecutionBurstChannelLength, /*blocking=*/true);
     ASSERT_NE(nullptr, fmqRequestChannel.get());
     ASSERT_NE(nullptr, fmqResultChannel.get());
     ASSERT_NE(nullptr, fmqRequestDescriptor);
@@ -94,25 +86,38 @@ static void createBurst(const sp<IPreparedModel>& preparedModel, const sp<IBurst
 }
 
 static void createBurstWithResultChannelLength(
-        const sp<IPreparedModel>& preparedModel, size_t resultChannelLength,
-        std::shared_ptr<ExecutionBurstController>* controller) {
+        const sp<IPreparedModel>& preparedModel,
+        std::shared_ptr<ExecutionBurstController>* controller, size_t resultChannelLength) {
     ASSERT_NE(nullptr, preparedModel.get());
     ASSERT_NE(nullptr, controller);
 
     // create FMQ objects
-    std::unique_ptr<RequestChannelSender> sender;
-    std::unique_ptr<ResultChannelReceiver> receiver;
+    auto [fmqRequestChannel, fmqRequestDescriptor] =
+            RequestChannelSender::create(kExecutionBurstChannelLength, /*blocking=*/true);
+    auto [fmqResultChannel, fmqResultDescriptor] =
+            ResultChannelReceiver::create(resultChannelLength, /*blocking=*/true);
+    ASSERT_NE(nullptr, fmqRequestChannel.get());
+    ASSERT_NE(nullptr, fmqResultChannel.get());
+    ASSERT_NE(nullptr, fmqRequestDescriptor);
+    ASSERT_NE(nullptr, fmqResultDescriptor);
+
+    // configure burst
     sp<ExecutionBurstCallback> callback = new ExecutionBurstCallback();
-    sp<IBurstContext> context;
-    ASSERT_NO_FATAL_FAILURE(createBurst(preparedModel, callback, &sender, &receiver, &context,
-                                        resultChannelLength));
-    ASSERT_NE(nullptr, sender.get());
-    ASSERT_NE(nullptr, receiver.get());
-    ASSERT_NE(nullptr, context.get());
+    ErrorStatus errorStatus;
+    sp<IBurstContext> burstContext;
+    const Return<void> ret = preparedModel->configureExecutionBurst(
+            callback, *fmqRequestDescriptor, *fmqResultDescriptor,
+            [&errorStatus, &burstContext](ErrorStatus status, const sp<IBurstContext>& context) {
+                errorStatus = status;
+                burstContext = context;
+            });
+    ASSERT_TRUE(ret.isOk());
+    ASSERT_EQ(ErrorStatus::NONE, errorStatus);
+    ASSERT_NE(nullptr, burstContext.get());
 
     // return values
-    *controller = std::make_shared<ExecutionBurstController>(std::move(sender), std::move(receiver),
-                                                             context, callback);
+    *controller = std::make_shared<ExecutionBurstController>(
+            std::move(fmqRequestChannel), std::move(fmqResultChannel), burstContext, callback);
 }
 
 // Primary validation function. This function will take a valid serialized
@@ -133,7 +138,7 @@ static void validate(RequestChannelSender* sender, ResultChannelReceiver* receiv
     SCOPED_TRACE(message);
 
     // send invalid packet
-    ASSERT_TRUE(sender->sendPacket(serialized));
+    sender->sendPacket(serialized);
 
     // receive error
     auto results = receiver->getBlocking();
@@ -144,34 +149,27 @@ static void validate(RequestChannelSender* sender, ResultChannelReceiver* receiv
     EXPECT_TRUE(badTiming(timing));
 }
 
-// For validation, valid packet entries are mutated to invalid packet entries,
-// or invalid packet entries are inserted into valid packets. This function
-// creates pre-set invalid packet entries for convenience.
-static std::vector<FmqRequestDatum> createBadRequestPacketEntries() {
+static std::vector<FmqRequestDatum> createUniqueDatum() {
     const FmqRequestDatum::PacketInformation packetInformation = {
             /*.packetSize=*/10, /*.numberOfInputOperands=*/10, /*.numberOfOutputOperands=*/10,
             /*.numberOfPools=*/10};
     const FmqRequestDatum::OperandInformation operandInformation = {
             /*.hasNoValue=*/false, /*.location=*/{}, /*.numberOfDimensions=*/10};
     const int32_t invalidPoolIdentifier = std::numeric_limits<int32_t>::max();
-    std::vector<FmqRequestDatum> bad(7);
-    bad[0].packetInformation(packetInformation);
-    bad[1].inputOperandInformation(operandInformation);
-    bad[2].inputOperandDimensionValue(0);
-    bad[3].outputOperandInformation(operandInformation);
-    bad[4].outputOperandDimensionValue(0);
-    bad[5].poolIdentifier(invalidPoolIdentifier);
-    bad[6].measureTiming(MeasureTiming::YES);
-    return bad;
+    std::vector<FmqRequestDatum> unique(7);
+    unique[0].packetInformation(packetInformation);
+    unique[1].inputOperandInformation(operandInformation);
+    unique[2].inputOperandDimensionValue(0);
+    unique[3].outputOperandInformation(operandInformation);
+    unique[4].outputOperandDimensionValue(0);
+    unique[5].poolIdentifier(invalidPoolIdentifier);
+    unique[6].measureTiming(MeasureTiming::YES);
+    return unique;
 }
 
-// For validation, valid packet entries are mutated to invalid packet entries,
-// or invalid packet entries are inserted into valid packets. This function
-// retrieves pre-set invalid packet entries for convenience. This function
-// caches these data so they can be reused on subsequent validation checks.
-static const std::vector<FmqRequestDatum>& getBadRequestPacketEntries() {
-    static const std::vector<FmqRequestDatum> bad = createBadRequestPacketEntries();
-    return bad;
+static const std::vector<FmqRequestDatum>& getUniqueDatum() {
+    static const std::vector<FmqRequestDatum> unique = createUniqueDatum();
+    return unique;
 }
 
 ///////////////////////// REMOVE DATUM ////////////////////////////////////
@@ -191,7 +189,7 @@ static void removeDatumTest(RequestChannelSender* sender, ResultChannelReceiver*
 
 static void addDatumTest(RequestChannelSender* sender, ResultChannelReceiver* receiver,
                          const std::vector<FmqRequestDatum>& serialized) {
-    const std::vector<FmqRequestDatum>& extra = getBadRequestPacketEntries();
+    const std::vector<FmqRequestDatum>& extra = getUniqueDatum();
     for (size_t index = 0; index <= serialized.size(); ++index) {
         for (size_t type = 0; type < extra.size(); ++type) {
             const std::string message = "addDatum: added datum type " + std::to_string(type) +
@@ -210,17 +208,17 @@ static bool interestingCase(const FmqRequestDatum& lhs, const FmqRequestDatum& r
     using Discriminator = FmqRequestDatum::hidl_discriminator;
 
     const bool differentValues = (lhs != rhs);
-    const bool sameDiscriminator = (lhs.getDiscriminator() == rhs.getDiscriminator());
+    const bool sameSumType = (lhs.getDiscriminator() == rhs.getDiscriminator());
     const auto discriminator = rhs.getDiscriminator();
     const bool isDimensionValue = (discriminator == Discriminator::inputOperandDimensionValue ||
                                    discriminator == Discriminator::outputOperandDimensionValue);
 
-    return differentValues && !(sameDiscriminator && isDimensionValue);
+    return differentValues && !(sameSumType && isDimensionValue);
 }
 
 static void mutateDatumTest(RequestChannelSender* sender, ResultChannelReceiver* receiver,
                             const std::vector<FmqRequestDatum>& serialized) {
-    const std::vector<FmqRequestDatum>& change = getBadRequestPacketEntries();
+    const std::vector<FmqRequestDatum>& change = getUniqueDatum();
     for (size_t index = 0; index < serialized.size(); ++index) {
         for (size_t type = 0; type < change.size(); ++type) {
             if (interestingCase(serialized[index], change[type])) {
@@ -253,17 +251,17 @@ static void validateBurstSerialization(const sp<IPreparedModel>& preparedModel,
     // validate each request
     for (const Request& request : requests) {
         // load memory into callback slots
-        std::vector<intptr_t> keys;
-        keys.reserve(request.pools.size());
-        std::transform(request.pools.begin(), request.pools.end(), std::back_inserter(keys),
-                       [](const auto& pool) { return reinterpret_cast<intptr_t>(&pool); });
+        std::vector<intptr_t> keys(request.pools.size());
+        for (size_t i = 0; i < keys.size(); ++i) {
+            keys[i] = reinterpret_cast<intptr_t>(&request.pools[i]);
+        }
         const std::vector<int32_t> slots = callback->getSlots(request.pools, keys);
 
         // ensure slot std::numeric_limits<int32_t>::max() doesn't exist (for
         // subsequent slot validation testing)
-        ASSERT_TRUE(std::all_of(slots.begin(), slots.end(), [](int32_t slot) {
-            return slot != std::numeric_limits<int32_t>::max();
-        }));
+        const auto maxElement = std::max_element(slots.begin(), slots.end());
+        ASSERT_NE(slots.end(), maxElement);
+        ASSERT_NE(std::numeric_limits<int32_t>::max(), *maxElement);
 
         // serialize the request
         const auto serialized = ::android::nn::serialize(request, MeasureTiming::YES, slots);
@@ -275,20 +273,18 @@ static void validateBurstSerialization(const sp<IPreparedModel>& preparedModel,
     }
 }
 
-// This test validates that when the Result message size exceeds length of the
-// result FMQ, the service instance gracefully fails and returns an error.
 static void validateBurstFmqLength(const sp<IPreparedModel>& preparedModel,
                                    const std::vector<Request>& requests) {
     // create regular burst
     std::shared_ptr<ExecutionBurstController> controllerRegular;
-    ASSERT_NO_FATAL_FAILURE(createBurstWithResultChannelLength(
-            preparedModel, kExecutionBurstChannelLength, &controllerRegular));
+    ASSERT_NO_FATAL_FAILURE(createBurstWithResultChannelLength(preparedModel, &controllerRegular,
+                                                               kExecutionBurstChannelLength));
     ASSERT_NE(nullptr, controllerRegular.get());
 
     // create burst with small output channel
     std::shared_ptr<ExecutionBurstController> controllerSmall;
-    ASSERT_NO_FATAL_FAILURE(createBurstWithResultChannelLength(
-            preparedModel, kExecutionBurstChannelSmallLength, &controllerSmall));
+    ASSERT_NO_FATAL_FAILURE(createBurstWithResultChannelLength(preparedModel, &controllerSmall,
+                                                               kExecutionBurstChannelSmallLength));
     ASSERT_NE(nullptr, controllerSmall.get());
 
     // validate each request
@@ -300,103 +296,24 @@ static void validateBurstFmqLength(const sp<IPreparedModel>& preparedModel,
         }
 
         // collect serialized result by running regular burst
-        const auto [statusRegular, outputShapesRegular, timingRegular] =
+        const auto [status1, outputShapes1, timing1] =
                 controllerRegular->compute(request, MeasureTiming::NO, keys);
 
-        // skip test if regular burst output isn't useful for testing a failure
-        // caused by having too small of a length for the result FMQ
+        // skip test if synchronous output isn't useful
         const std::vector<FmqResultDatum> serialized =
-                ::android::nn::serialize(statusRegular, outputShapesRegular, timingRegular);
-        if (statusRegular != ErrorStatus::NONE ||
+                ::android::nn::serialize(status1, outputShapes1, timing1);
+        if (status1 != ErrorStatus::NONE ||
             serialized.size() <= kExecutionBurstChannelSmallLength) {
             continue;
         }
 
         // by this point, execution should fail because the result channel isn't
         // large enough to return the serialized result
-        const auto [statusSmall, outputShapesSmall, timingSmall] =
+        const auto [status2, outputShapes2, timing2] =
                 controllerSmall->compute(request, MeasureTiming::NO, keys);
-        EXPECT_NE(ErrorStatus::NONE, statusSmall);
-        EXPECT_EQ(0u, outputShapesSmall.size());
-        EXPECT_TRUE(badTiming(timingSmall));
-    }
-}
-
-static bool isSanitized(const FmqResultDatum& datum) {
-    using Discriminator = FmqResultDatum::hidl_discriminator;
-
-    // check to ensure the padding values in the returned
-    // FmqResultDatum::OperandInformation are initialized to 0
-    if (datum.getDiscriminator() == Discriminator::operandInformation) {
-        static_assert(
-                offsetof(FmqResultDatum::OperandInformation, isSufficient) == 0,
-                "unexpected value for offset of FmqResultDatum::OperandInformation::isSufficient");
-        static_assert(
-                sizeof(FmqResultDatum::OperandInformation::isSufficient) == 1,
-                "unexpected value for size of FmqResultDatum::OperandInformation::isSufficient");
-        static_assert(offsetof(FmqResultDatum::OperandInformation, numberOfDimensions) == 4,
-                      "unexpected value for offset of "
-                      "FmqResultDatum::OperandInformation::numberOfDimensions");
-        static_assert(sizeof(FmqResultDatum::OperandInformation::numberOfDimensions) == 4,
-                      "unexpected value for size of "
-                      "FmqResultDatum::OperandInformation::numberOfDimensions");
-        static_assert(sizeof(FmqResultDatum::OperandInformation) == 8,
-                      "unexpected value for size of "
-                      "FmqResultDatum::OperandInformation");
-
-        constexpr size_t paddingOffset =
-                offsetof(FmqResultDatum::OperandInformation, isSufficient) +
-                sizeof(FmqResultDatum::OperandInformation::isSufficient);
-        constexpr size_t paddingSize =
-                offsetof(FmqResultDatum::OperandInformation, numberOfDimensions) - paddingOffset;
-
-        FmqResultDatum::OperandInformation initialized{};
-        std::memset(&initialized, 0, sizeof(initialized));
-
-        const char* initializedPaddingStart =
-                reinterpret_cast<const char*>(&initialized) + paddingOffset;
-        const char* datumPaddingStart =
-                reinterpret_cast<const char*>(&datum.operandInformation()) + paddingOffset;
-
-        return std::memcmp(datumPaddingStart, initializedPaddingStart, paddingSize) == 0;
-    }
-
-    // there are no other padding initialization checks required, so return true
-    // for any sum-type that isn't FmqResultDatum::OperandInformation
-    return true;
-}
-
-static void validateBurstSanitized(const sp<IPreparedModel>& preparedModel,
-                                   const std::vector<Request>& requests) {
-    // create burst
-    std::unique_ptr<RequestChannelSender> sender;
-    std::unique_ptr<ResultChannelReceiver> receiver;
-    sp<ExecutionBurstCallback> callback = new ExecutionBurstCallback();
-    sp<IBurstContext> context;
-    ASSERT_NO_FATAL_FAILURE(createBurst(preparedModel, callback, &sender, &receiver, &context));
-    ASSERT_NE(nullptr, sender.get());
-    ASSERT_NE(nullptr, receiver.get());
-    ASSERT_NE(nullptr, context.get());
-
-    // validate each request
-    for (const Request& request : requests) {
-        // load memory into callback slots
-        std::vector<intptr_t> keys;
-        keys.reserve(request.pools.size());
-        std::transform(request.pools.begin(), request.pools.end(), std::back_inserter(keys),
-                       [](const auto& pool) { return reinterpret_cast<intptr_t>(&pool); });
-        const std::vector<int32_t> slots = callback->getSlots(request.pools, keys);
-
-        // send valid request
-        ASSERT_TRUE(sender->send(request, MeasureTiming::YES, slots));
-
-        // receive valid result
-        auto serialized = receiver->getPacketBlocking();
-        ASSERT_TRUE(serialized.has_value());
-
-        // sanitize result
-        ASSERT_TRUE(std::all_of(serialized->begin(), serialized->end(), isSanitized))
-                << "The result serialized data is not properly sanitized";
+        EXPECT_NE(ErrorStatus::NONE, status2);
+        EXPECT_EQ(0u, outputShapes2.size());
+        EXPECT_TRUE(badTiming(timing2));
     }
 }
 
@@ -406,7 +323,6 @@ void ValidationTest::validateBurst(const sp<IPreparedModel>& preparedModel,
                                    const std::vector<Request>& requests) {
     ASSERT_NO_FATAL_FAILURE(validateBurstSerialization(preparedModel, requests));
     ASSERT_NO_FATAL_FAILURE(validateBurstFmqLength(preparedModel, requests));
-    ASSERT_NO_FATAL_FAILURE(validateBurstSanitized(preparedModel, requests));
 }
 
 }  // namespace functional
