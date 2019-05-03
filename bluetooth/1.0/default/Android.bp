@@ -94,7 +94,6 @@ cc_test {
         "android.hardware.bluetooth-hci",
         "libgmock",
     ],
-    test_suites: ["general-tests"],
 }
 
 cc_test_host {
