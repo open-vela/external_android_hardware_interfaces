@@ -67,8 +67,7 @@ class ValidationTest : public NeuralnetworksHidlTest {
 
    private:
      void validateModel(const Model& model);
-     void validateRequests(const sp<IPreparedModel>& preparedModel,
-                           const std::vector<Request>& requests);
+     void validateRequests(const Model& model, const std::vector<Request>& request);
 };
 
 // Tag for the generated tests
