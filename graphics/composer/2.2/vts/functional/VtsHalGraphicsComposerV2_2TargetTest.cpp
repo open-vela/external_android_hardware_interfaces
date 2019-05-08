@@ -246,19 +246,7 @@ TEST_F(GraphicsComposerHidlCommandTest, SET_LAYER_PER_FRAME_METADATA) {
  * Test IComposerClient::getPerFrameMetadataKeys.
  */
 TEST_F(GraphicsComposerHidlTest, GetPerFrameMetadataKeys) {
-    std::vector<IComposerClient::PerFrameMetadataKey> keys;
-    Error error = Error::NONE;
-    mComposerClient->getRaw()->getPerFrameMetadataKeys(
-            mPrimaryDisplay, [&](const auto& tmpError, const auto& tmpKeys) {
-                error = tmpError;
-                keys = tmpKeys;
-            });
-    if (error == Error::UNSUPPORTED) {
-        GTEST_SUCCEED() << "getPerFrameMetadataKeys is not supported";
-        return;
-    }
-    ASSERT_EQ(Error::NONE, error);
-    ASSERT_TRUE(keys.size() >= 0);
+    mComposerClient->getPerFrameMetadataKeys(mPrimaryDisplay);
 }
 
 /**
