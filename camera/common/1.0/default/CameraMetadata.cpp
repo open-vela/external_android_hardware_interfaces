@@ -171,16 +171,17 @@ status_t CameraMetadata::sort() {
 }
 
 status_t CameraMetadata::checkType(uint32_t tag, uint8_t expectedType) {
-    int tagType = get_local_camera_metadata_tag_type(tag, mBuffer);
+    int tagType = get_camera_metadata_tag_type(tag);
     if ( CC_UNLIKELY(tagType == -1)) {
         ALOGE("Update metadata entry: Unknown tag %d", tag);
         return INVALID_OPERATION;
     }
     if ( CC_UNLIKELY(tagType != expectedType) ) {
         ALOGE("Mismatched tag type when updating entry %s (%d) of type %s; "
-              "got type %s data instead ",
-              get_local_camera_metadata_tag_name(tag, mBuffer), tag,
-              camera_metadata_type_names[tagType], camera_metadata_type_names[expectedType]);
+                "got type %s data instead ",
+                get_camera_metadata_tag_name(tag), tag,
+                camera_metadata_type_names[tagType],
+                camera_metadata_type_names[expectedType]);
         return INVALID_OPERATION;
     }
     return OK;
@@ -297,7 +298,7 @@ status_t CameraMetadata::updateImpl(uint32_t tag, const void *data,
         ALOGE("%s: CameraMetadata is locked", __FUNCTION__);
         return INVALID_OPERATION;
     }
-    int type = get_local_camera_metadata_tag_type(tag, mBuffer);
+    int type = get_camera_metadata_tag_type(tag);
     if (type == -1) {
         ALOGE("%s: Tag %d not found", __FUNCTION__, tag);
         return BAD_VALUE;
@@ -331,9 +332,9 @@ status_t CameraMetadata::updateImpl(uint32_t tag, const void *data,
     }
 
     if (res != OK) {
-        ALOGE("%s: Unable to update metadata entry %s.%s (%x): %s (%d)", __FUNCTION__,
-              get_local_camera_metadata_section_name(tag, mBuffer),
-              get_local_camera_metadata_tag_name(tag, mBuffer), tag, strerror(-res), res);
+        ALOGE("%s: Unable to update metadata entry %s.%s (%x): %s (%d)",
+                __FUNCTION__, get_camera_metadata_section_name(tag),
+                get_camera_metadata_tag_name(tag), tag, strerror(-res), res);
     }
 
     IF_ALOGV() {
@@ -390,16 +391,18 @@ status_t CameraMetadata::erase(uint32_t tag) {
     if (res == NAME_NOT_FOUND) {
         return OK;
     } else if (res != OK) {
-        ALOGE("%s: Error looking for entry %s.%s (%x): %s %d", __FUNCTION__,
-              get_local_camera_metadata_section_name(tag, mBuffer),
-              get_local_camera_metadata_tag_name(tag, mBuffer), tag, strerror(-res), res);
+        ALOGE("%s: Error looking for entry %s.%s (%x): %s %d",
+                __FUNCTION__,
+                get_camera_metadata_section_name(tag),
+                get_camera_metadata_tag_name(tag), tag, strerror(-res), res);
         return res;
     }
     res = delete_camera_metadata_entry(mBuffer, entry.index);
     if (res != OK) {
-        ALOGE("%s: Error deleting entry %s.%s (%x): %s %d", __FUNCTION__,
-              get_local_camera_metadata_section_name(tag, mBuffer),
-              get_local_camera_metadata_tag_name(tag, mBuffer), tag, strerror(-res), res);
+        ALOGE("%s: Error deleting entry %s.%s (%x): %s %d",
+                __FUNCTION__,
+                get_camera_metadata_section_name(tag),
+                get_camera_metadata_tag_name(tag), tag, strerror(-res), res);
     }
     return res;
 }
