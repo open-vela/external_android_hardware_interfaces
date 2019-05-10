@@ -58,7 +58,6 @@ cc_test {
         "android.hardware.broadcastradio@common-utils-2x-lib",
     ],
     shared_libs: [
-        "libhidlbase",
         "android.hardware.broadcastradio@2.0",
     ],
     test_suites: ["general-tests"],
