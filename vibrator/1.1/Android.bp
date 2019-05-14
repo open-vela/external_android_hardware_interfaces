@@ -14,6 +14,9 @@ hidl_interface {
         "android.hardware.vibrator@1.0",
         "android.hidl.base@1.0",
     ],
+    types: [
+        "Effect_1_1",
+    ],
     gen_java: true,
     gen_java_constants: true,
 }
