@@ -21,7 +21,6 @@ cc_test {
         "VtsHalMediaOmxV1_0TargetVideoDecTest.cpp",
         "media_video_hidl_test_common.cpp"
     ],
-    test_suites: ["general-tests"],
 }
 
 cc_test {
@@ -34,5 +33,4 @@ cc_test {
     static_libs: [
         "libnativewindow",
     ],
-    test_suites: ["general-tests"],
 }
