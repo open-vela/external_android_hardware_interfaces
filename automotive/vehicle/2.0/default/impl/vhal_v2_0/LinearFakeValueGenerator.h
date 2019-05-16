@@ -17,6 +17,8 @@
 #ifndef android_hardware_automotive_vehicle_V2_0_impl_LinearFakeValueGenerator_H_
 #define android_hardware_automotive_vehicle_V2_0_impl_LinearFakeValueGenerator_H_
 
+#include <vhal_v2_0/RecurrentTimer.h>
+
 #include "FakeValueGenerator.h"
 
 namespace android {
@@ -34,24 +36,27 @@ private:
     // to the client.
 
     struct GeneratorCfg {
-        int32_t propId;
-        float initialValue;
+        float initialValue;  //
         float currentValue;  //  Should be in range (initialValue +/- dispersion).
         float dispersion;    //  Defines minimum and maximum value based on initial value.
         float increment;     //  Value that we will be added to currentValue with each timer tick.
-        Nanos interval;
     };
 
 public:
-    LinearFakeValueGenerator(const VehiclePropValue& request);
+    LinearFakeValueGenerator(const OnHalEvent& onHalEvent);
     ~LinearFakeValueGenerator() = default;
-
-    VehiclePropValue nextEvent();
-
-    bool hasNext();
+    StatusCode start(const VehiclePropValue& request) override;
+    StatusCode stop(const VehiclePropValue& request) override;
 
 private:
-    GeneratorCfg mGenCfg;
+    void removeLocked(int propId);
+    void onTimer(const std::vector<int32_t>& properties);
+
+private:
+    mutable std::mutex mLock;
+    OnHalEvent mOnHalEvent;
+    RecurrentTimer mRecurrentTimer;
+    std::unordered_map<int32_t, GeneratorCfg> mGenCfg;
 };
 
 }  // namespace impl
