@@ -27,9 +27,8 @@
 #include <cstdlib>
 #include <random>
 
-#include "1.2/Callbacks.h"
+#include "Callbacks.h"
 #include "GeneratedTestHarness.h"
-#include "MemoryUtils.h"
 #include "TestHarness.h"
 #include "Utils.h"
 #include "VtsHalNeuralnetworks.h"
