@@ -19,7 +19,6 @@
 #include "core/default/StreamIn.h"
 #include "core/default/Conversions.h"
 #include "core/default/Util.h"
-#include "common/all-versions/HidlSupport.h"
 
 //#define LOG_NDEBUG 0
 #define ATRACE_TAG ATRACE_TAG_AUDIO
@@ -28,7 +27,6 @@
 #include <hardware/audio.h>
 #include <utils/Trace.h>
 #include <memory>
-#include <cmath>
 
 namespace android {
 namespace hardware {
@@ -503,10 +501,6 @@ Return<Result> StreamIn::setMicrophoneDirection(MicrophoneDirection direction) {
     if (mStream->set_microphone_direction == nullptr) {
         return Result::NOT_SUPPORTED;
     }
-    if (!common::utils::isValidHidlEnum(direction)) {
-        ALOGE("%s: Invalid direction %d", __func__, direction);
-        return Result::INVALID_ARGUMENTS;
-    }
     return Stream::analyzeStatus(
             "set_microphone_direction",
             mStream->set_microphone_direction(
@@ -516,10 +510,6 @@ Return<Result> StreamIn::setMicrophoneDirection(MicrophoneDirection direction) {
 Return<Result> StreamIn::setMicrophoneFieldDimension(float zoom) {
     if (mStream->set_microphone_field_dimension == nullptr) {
         return Result::NOT_SUPPORTED;
-    }
-    if (std::isnan(zoom) || zoom < -1 || zoom > 1) {
-        ALOGE("%s: Invalid zoom %f", __func__, zoom);
-        return Result::INVALID_ARGUMENTS;
     }
     return Stream::analyzeStatus("set_microphone_field_dimension",
                                  mStream->set_microphone_field_dimension(mStream, zoom));
