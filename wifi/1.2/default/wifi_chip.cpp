@@ -113,7 +113,7 @@ bool removeOldFilesInternal() {
     const time_t delete_files_before = now - kMaxRingBufferFileAgeSeconds;
     DIR* dir_dump = opendir(kTombstoneFolderPath);
     if (!dir_dump) {
-        PLOG(ERROR) << "Failed to open directory";
+        LOG(ERROR) << "Failed to open directory: " << strerror(errno);
         return false;
     }
     unique_fd dir_auto_closer(dirfd(dir_dump));
@@ -128,7 +128,8 @@ bool removeOldFilesInternal() {
         struct stat cur_file_stat;
         std::string cur_file_path = kTombstoneFolderPath + cur_file_name;
         if (stat(cur_file_path.c_str(), &cur_file_stat) == -1) {
-            PLOG(ERROR) << "Failed to get file stat for " << cur_file_path;
+            LOG(ERROR) << "Failed to get file stat for " << cur_file_path
+                       << ": " << strerror(errno);
             success = false;
             continue;
         }
@@ -143,7 +144,7 @@ bool removeOldFilesInternal() {
         if (cur_file_count > kMaxRingBufferFileNum ||
             cur_file.first < delete_files_before) {
             if (unlink(cur_file.second.c_str()) != 0) {
-                PLOG(ERROR) << "Error deleting file";
+                LOG(ERROR) << "Error deleting file " << strerror(errno);
                 success = false;
             }
             cur_file_count--;
@@ -167,11 +168,13 @@ bool cpioWriteHeader(int out_fd, struct stat& st, const char* file_name,
                 major(st.st_dev), minor(st.st_dev), major(st.st_rdev),
                 minor(st.st_rdev), static_cast<uint32_t>(file_name_len), 0);
     if (write(out_fd, read_buf.data(), llen) == -1) {
-        PLOG(ERROR) << "Error writing cpio header to file " << file_name;
+        LOG(ERROR) << "Error writing cpio header to file " << file_name << " "
+                   << strerror(errno);
         return false;
     }
     if (write(out_fd, file_name, file_name_len) == -1) {
-        PLOG(ERROR) << "Error writing filename to file " << file_name;
+        LOG(ERROR) << "Error writing filename to file " << file_name << " "
+                   << strerror(errno);
         return false;
     }
 
@@ -180,7 +183,8 @@ bool cpioWriteHeader(int out_fd, struct stat& st, const char* file_name,
     if (llen != 0) {
         const uint32_t zero = 0;
         if (write(out_fd, &zero, 4 - llen) == -1) {
-            PLOG(ERROR) << "Error padding 0s to file " << file_name;
+            LOG(ERROR) << "Error padding 0s to file " << file_name << " "
+                       << strerror(errno);
             return false;
         }
     }
@@ -196,17 +200,17 @@ size_t cpioWriteFileContent(int fd_read, int out_fd, struct stat& st) {
     while (llen > 0) {
         ssize_t bytes_read = read(fd_read, read_buf.data(), read_buf.size());
         if (bytes_read == -1) {
-            PLOG(ERROR) << "Error reading file";
+            LOG(ERROR) << "Error reading file " << strerror(errno);
             return ++n_error;
         }
         llen -= bytes_read;
         if (write(out_fd, read_buf.data(), bytes_read) == -1) {
-            PLOG(ERROR) << "Error writing data to file";
+            LOG(ERROR) << "Error writing data to file " << strerror(errno);
             return ++n_error;
         }
         if (bytes_read == 0) {  // this should never happen, but just in case
                                 // to unstuck from while loop
-            PLOG(ERROR) << "Unexpected read result";
+            LOG(ERROR) << "Unexpected read result for " << strerror(errno);
             n_error++;
             break;
         }
@@ -215,7 +219,7 @@ size_t cpioWriteFileContent(int fd_read, int out_fd, struct stat& st) {
     if (llen != 0) {
         const uint32_t zero = 0;
         if (write(out_fd, &zero, 4 - llen) == -1) {
-            PLOG(ERROR) << "Error padding 0s to file";
+            LOG(ERROR) << "Error padding 0s to file " << strerror(errno);
             return ++n_error;
         }
     }
@@ -230,7 +234,7 @@ bool cpioWriteFileTrailer(int out_fd) {
               sprintf(read_buf.data(), "070701%040X%056X%08XTRAILER!!!", 1,
                       0x0b, 0) +
                   4) == -1) {
-        PLOG(ERROR) << "Error writing trailing bytes";
+        LOG(ERROR) << "Error writing trailing bytes " << strerror(errno);
         return false;
     }
     return true;
@@ -244,7 +248,7 @@ size_t cpioArchiveFilesInDir(int out_fd, const char* input_dir) {
     size_t n_error = 0;
     DIR* dir_dump = opendir(input_dir);
     if (!dir_dump) {
-        PLOG(ERROR) << "Failed to open directory";
+        LOG(ERROR) << "Failed to open directory: " << strerror(errno);
         return ++n_error;
     }
     unique_fd dir_auto_closer(dirfd(dir_dump));
@@ -259,13 +263,15 @@ size_t cpioArchiveFilesInDir(int out_fd, const char* input_dir) {
         struct stat st;
         const std::string cur_file_path = kTombstoneFolderPath + cur_file_name;
         if (stat(cur_file_path.c_str(), &st) == -1) {
-            PLOG(ERROR) << "Failed to get file stat for " << cur_file_path;
+            LOG(ERROR) << "Failed to get file stat for " << cur_file_path
+                       << ": " << strerror(errno);
             n_error++;
             continue;
         }
         const int fd_read = open(cur_file_path.c_str(), O_RDONLY);
         if (fd_read == -1) {
-            PLOG(ERROR) << "Failed to open file " << cur_file_path;
+            LOG(ERROR) << "Failed to open file " << cur_file_path << " "
+                       << strerror(errno);
             n_error++;
             continue;
         }
@@ -1394,14 +1400,14 @@ bool WifiChip::writeRingbufferFilesInternal() {
             kTombstoneFolderPath + item.first + "XXXXXXXXXX";
         const int dump_fd = mkstemp(makeCharVec(file_path_raw).data());
         if (dump_fd == -1) {
-            PLOG(ERROR) << "create file failed";
+            LOG(ERROR) << "create file failed: " << strerror(errno);
             return false;
         }
         unique_fd file_auto_closer(dump_fd);
         for (const auto& cur_block : cur_buffer.getData()) {
             if (write(dump_fd, cur_block.data(),
                       sizeof(cur_block[0]) * cur_block.size()) == -1) {
-                PLOG(ERROR) << "Error writing to file";
+                LOG(ERROR) << "Error writing to file " << strerror(errno);
             }
         }
     }
