@@ -53,7 +53,6 @@ CameraDeviceSession::CameraDeviceSession(
         camera3_callback_ops({&sProcessCaptureResult, &sNotify}),
         mDevice(device),
         mDeviceVersion(device->common.version),
-        mFreeBufEarly(shouldFreeBufEarly()),
         mIsAELockAvailable(false),
         mDerivePostRawSensKey(false),
         mNumPartialResults(1),
@@ -128,10 +127,6 @@ bool CameraDeviceSession::initialize() {
     mResultBatcher.setResultMetadataQueue(mResultMetadataQueue);
 
     return false;
-}
-
-bool CameraDeviceSession::shouldFreeBufEarly() {
-    return property_get_bool("ro.vendor.camera.free_buf_early", 0) == 1;
 }
 
 CameraDeviceSession::~CameraDeviceSession() {
@@ -892,24 +887,6 @@ bool CameraDeviceSession::preProcessConfigurationLocked(
         (*streams)[i] = &mStreamMap[id];
     }
 
-    if (mFreeBufEarly) {
-        // Remove buffers of deleted streams
-        for(auto it = mStreamMap.begin(); it != mStreamMap.end(); it++) {
-            int id = it->first;
-            bool found = false;
-            for (const auto& stream : requestedConfiguration.streams) {
-                if (id == stream.id) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                // Unmap all buffers of deleted stream
-                cleanupBuffersLocked(id);
-            }
-        }
-    }
-
     return true;
 }
 
@@ -931,9 +908,7 @@ void CameraDeviceSession::postProcessConfigurationLocked(
             // Unmap all buffers of deleted stream
             // in case the configuration call succeeds and HAL
             // is able to release the corresponding resources too.
-            if (!mFreeBufEarly) {
-                cleanupBuffersLocked(id);
-            }
+            cleanupBuffersLocked(id);
             it = mStreamMap.erase(it);
         } else {
             ++it;
@@ -950,27 +925,6 @@ void CameraDeviceSession::postProcessConfigurationLocked(
         }
     }
     mResultBatcher.setBatchedStreams(mVideoStreamIds);
-}
-
-
-void CameraDeviceSession::postProcessConfigurationFailureLocked(
-        const StreamConfiguration& requestedConfiguration) {
-    if (mFreeBufEarly) {
-        // Re-build the buf cache entry for deleted streams
-        for(auto it = mStreamMap.begin(); it != mStreamMap.end(); it++) {
-            int id = it->first;
-            bool found = false;
-            for (const auto& stream : requestedConfiguration.streams) {
-                if (id == stream.id) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                mCirculatingBuffers.emplace(id, CirculatingBuffers{});
-            }
-        }
-    }
 }
 
 Return<void> CameraDeviceSession::configureStreams(
@@ -1025,8 +979,6 @@ Return<void> CameraDeviceSession::configureStreams(
     // the corresponding resources of the deleted streams.
     if (ret == OK) {
         postProcessConfigurationLocked(requestedConfiguration);
-    } else {
-        postProcessConfigurationFailureLocked(requestedConfiguration);
     }
 
     if (ret == -EINVAL) {
