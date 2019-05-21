@@ -13,22 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <android-base/logging.h>
+#include <android-base/macros.h>
+#include <gmock/gmock.h>
 
-#ifndef android_hardware_audio_common_HidlSupport_H_
-#define android_hardware_audio_common_HidlSupport_H_
+#undef NAN  // This is weird, NAN is defined in bionic/libc/include/math.h:38
+#include "mock_interface_tool.h"
 
+namespace android {
+namespace wifi_system {
 
-#include <hidl/HidlSupport.h>
-#include <algorithm>
+MockInterfaceTool::MockInterfaceTool() {}
 
-namespace android::hardware::audio::common::utils {
-
-template <typename Enum>
-bool isValidHidlEnum(Enum e) {
-    hidl_enum_range<Enum> values;
-    return std::find(values.begin(), values.end(), e) != values.end();
-}
-
-} // namespace android::hardware::audio::common::utils
-
-#endif  // android_hardware_audio_common_HidlSupport_H_
+}  // namespace wifi_system
+}  // namespace android
