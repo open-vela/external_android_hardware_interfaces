@@ -28,7 +28,9 @@ namespace V1_3 {
 namespace implementation {
 namespace legacy_hal {
 
-MockWifiLegacyHal::MockWifiLegacyHal() : WifiLegacyHal() {}
+MockWifiLegacyHal::MockWifiLegacyHal(
+    const std::weak_ptr<wifi_system::InterfaceTool> iface_tool)
+    : WifiLegacyHal(iface_tool) {}
 }  // namespace legacy_hal
 }  // namespace implementation
 }  // namespace V1_3
