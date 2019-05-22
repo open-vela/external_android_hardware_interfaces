@@ -410,7 +410,6 @@ eb754b58c93e5591613208b4c972811288b0fa16a82430d602f107c91a908b22 android.hardwar
 ed9da80ec0c96991fd03f0a46107815d0e50f764656e49dba4980fa5c31d5bc3 android.hardware.radio@1.0::types
 1d19720d4fd38b1095f0f555a4bd92b3b12c9b1d0f560b0e9a474cd6dcc20db6 android.hardware.radio@1.2::IRadio
 cd1757867a5e3a3faa362e785239515870d1a3c9ce756c6f0cf0f0fd8aac2547 android.hardware.radio@1.2::types
-722b3595548ed7f1953b6e0143dc842d4d6e290ff009a134eb518d7c17a09347 android.hardware.radio@1.2::types # b/112486807
 e78cf871f9fd1c072874e481e06e18e2681763cf2aa38c1fd777d53bab4eb69b android.hardware.sensors@1.0::types
 3d01e29e8129186f7567c4f9c8bee7480a0768e587b1be9b28adb0a6cbec6bf2 android.hardware.tv.cec@1.0::types
 1722ad002317b1fae1400de709e90f442d94ef22864e05f7a12af48c32e8edc8 android.hardware.usb@1.1::types
@@ -566,3 +565,7 @@ f3dbd8dd0d6333c005610288a4785d0ef79a72a7bbe6d0a46d46fa89fc886f1e android.hardwar
 09e08b5d12b109562ecdd8882532fd1f2c4639588e07769d5c7396b7c5b9f34f android.hardware.wifi.supplicant@1.2::ISupplicantStaIfaceCallback
 efbb061c969fa9553d243da6ee23b83fe5d4aa663a7b8896adc52e2b015bc2f3 android.hardware.wifi.supplicant@1.2::ISupplicantStaNetwork
 cfa81f229b69f9011c58f48264fcb552447430fe68610eac514e811e65bc306a android.hardware.wifi.supplicant@1.2::types
+
+# ABI preserving changes to HALs during Android R
+b69a7615c508acf5c5201efd1bfa3262167874fc3594e2db5a3ff93addd8ac75 android.hardware.keymaster@4.0::IKeymasterDevice
+1a6e2bd289f22931c526b21916910f1d4c436b7acb9556e4243de4ce8e6cc2e4 android.hardware.soundtrigger@2.0::ISoundTriggerHwCallback
