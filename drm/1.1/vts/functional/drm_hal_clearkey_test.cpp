@@ -228,13 +228,13 @@ protected:
                                       const std::string& componentName, const VT& componentValue) {
      bool validAttribute = false;
      bool validComponent = false;
-     for (const DrmMetricGroup::Attribute& attribute : metric.attributes) {
+     for (DrmMetricGroup::Attribute attribute : metric.attributes) {
          if (attribute.name == attributeName &&
              ValueEquals(attribute.type, attributeValue, attribute)) {
              validAttribute = true;
          }
      }
-     for (const DrmMetricGroup::Value& value : metric.values) {
+     for (DrmMetricGroup::Value value : metric.values) {
          if (value.componentName == componentName &&
              ValueEquals(value.type, componentValue, value)) {
              validComponent = true;
