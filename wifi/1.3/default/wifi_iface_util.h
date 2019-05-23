@@ -40,7 +40,7 @@ struct IfaceEventHandlers {
  */
 class WifiIfaceUtil {
    public:
-    WifiIfaceUtil(const std::weak_ptr<wifi_system::InterfaceTool> iface_tool);
+    WifiIfaceUtil();
     virtual ~WifiIfaceUtil() = default;
 
     virtual std::array<uint8_t, 6> getFactoryMacAddress(
@@ -60,7 +60,7 @@ class WifiIfaceUtil {
    private:
     std::array<uint8_t, 6> createRandomMacAddress();
 
-    std::weak_ptr<wifi_system::InterfaceTool> iface_tool_;
+    wifi_system::InterfaceTool iface_tool_;
     std::unique_ptr<std::array<uint8_t, 6>> random_mac_address_;
     std::map<std::string, IfaceEventHandlers> event_handlers_map_;
 };
