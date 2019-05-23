@@ -634,27 +634,6 @@ void WifiChip::invalidateAndRemoveAllIfaces() {
     rtt_controllers_.clear();
 }
 
-void WifiChip::invalidateAndRemoveDependencies(
-    const std::string& removed_iface_name) {
-    for (const auto& nan_iface : nan_ifaces_) {
-        if (nan_iface->getName() == removed_iface_name) {
-            invalidateAndClear(nan_ifaces_, nan_iface);
-            for (const auto& callback : event_cb_handler_.getCallbacks()) {
-                if (!callback
-                         ->onIfaceRemoved(IfaceType::NAN, removed_iface_name)
-                         .isOk()) {
-                    LOG(ERROR) << "Failed to invoke onIfaceRemoved callback";
-                }
-            }
-        }
-    }
-    for (const auto& rtt : rtt_controllers_) {
-        if (rtt->getIfaceName() == removed_iface_name) {
-            invalidateAndClear(rtt_controllers_, rtt);
-        }
-    }
-}
-
 std::pair<WifiStatus, ChipId> WifiChip::getIdInternal() {
     return {createWifiStatus(WifiStatusCode::SUCCESS), chip_id_};
 }
@@ -840,11 +819,6 @@ WifiStatus WifiChip::removeApIfaceInternal(const std::string& ifname) {
     if (!iface.get()) {
         return createWifiStatus(WifiStatusCode::ERROR_INVALID_ARGS);
     }
-    // Invalidate & remove any dependent objects first.
-    // Note: This is probably not required because we never create
-    // nan/rtt objects over AP iface. But, there is no harm to do it
-    // here and not make that assumption all over the place.
-    invalidateAndRemoveDependencies(ifname);
     invalidateAndClear(ap_ifaces_, iface);
     for (const auto& callback : event_cb_handler_.getCallbacks()) {
         if (!callback->onIfaceRemoved(IfaceType::AP, ifname).isOk()) {
@@ -861,7 +835,7 @@ std::pair<WifiStatus, sp<IWifiNanIface>> WifiChip::createNanIfaceInternal() {
     }
     // These are still assumed to be based on wlan0.
     std::string ifname = getFirstActiveWlanIfaceName();
-    sp<WifiNanIface> iface = new WifiNanIface(ifname, legacy_hal_, iface_util_);
+    sp<WifiNanIface> iface = new WifiNanIface(ifname, legacy_hal_);
     nan_ifaces_.push_back(iface);
     for (const auto& callback : event_cb_handler_.getCallbacks()) {
         if (!callback->onIfaceAdded(IfaceType::NAN, ifname).isOk()) {
@@ -986,8 +960,6 @@ WifiStatus WifiChip::removeStaIfaceInternal(const std::string& ifname) {
     if (!iface.get()) {
         return createWifiStatus(WifiStatusCode::ERROR_INVALID_ARGS);
     }
-    // Invalidate & remove any dependent objects first.
-    invalidateAndRemoveDependencies(ifname);
     invalidateAndClear(sta_ifaces_, iface);
     for (const auto& callback : event_cb_handler_.getCallbacks()) {
         if (!callback->onIfaceRemoved(IfaceType::STA, ifname).isOk()) {
