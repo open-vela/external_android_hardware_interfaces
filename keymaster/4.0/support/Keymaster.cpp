@@ -19,7 +19,7 @@
 #include <iomanip>
 
 #include <android-base/logging.h>
-#include <android/hidl/manager/1.0/IServiceManager.h>
+#include <android/hidl/manager/1.2/IServiceManager.h>
 #include <keymasterV4_0/Keymaster3.h>
 #include <keymasterV4_0/Keymaster4.h>
 #include <keymasterV4_0/key_param_output.h>
@@ -69,7 +69,7 @@ std::ostream& operator<<(std::ostream& os, const HmacSharingParameters& params) 
 namespace support {
 
 using ::android::sp;
-using ::android::hidl::manager::V1_0::IServiceManager;
+using ::android::hidl::manager::V1_2::IServiceManager;
 
 std::ostream& operator<<(std::ostream& os, const Keymaster& keymaster) {
     auto& version = keymaster.halVersion();
@@ -86,7 +86,7 @@ std::vector<std::unique_ptr<Keymaster>> enumerateDevices(
 
     bool foundDefault = false;
     auto& descriptor = Wrapper::WrappedIKeymasterDevice::descriptor;
-    serviceManager->listByInterface(descriptor, [&](const hidl_vec<hidl_string>& names) {
+    serviceManager->listManifestByInterface(descriptor, [&](const hidl_vec<hidl_string>& names) {
         for (auto& name : names) {
             if (name == "default") foundDefault = true;
             auto device = Wrapper::WrappedIKeymasterDevice::getService(name);
@@ -97,13 +97,26 @@ std::vector<std::unique_ptr<Keymaster>> enumerateDevices(
     });
 
     if (!foundDefault) {
-        // "default" wasn't provided by listByInterface.  Maybe there's a passthrough
+        // "default" wasn't provided by listManifestByInterface.  Maybe there's a passthrough
         // implementation.
         auto device = Wrapper::WrappedIKeymasterDevice::getService("default");
         if (device) result.push_back(std::unique_ptr<Keymaster>(new Wrapper(device, "default")));
     }
 
     return result;
+}
+
+void Keymaster::logIfKeymasterVendorError(ErrorCode ec) const {
+    static constexpr int32_t k_keymaster_vendor_error_code_range_max = -10000;
+    if (static_cast<int32_t>(ec) <= k_keymaster_vendor_error_code_range_max) {
+        const auto& versionInfo = halVersion();
+        LOG(ERROR) << "Keymaster reported error: " << static_cast<int32_t>(ec) << "\n"
+                   << "NOTE: This is an error in the vendor specific error range.\n"
+                   << "      Refer to the vendor of the implementation for details.\n"
+                   << "      Implementation name: " << versionInfo.keymasterName << "\n"
+                   << "      Vendor name:         " << versionInfo.authorName << "\n"
+                   << "      MajorVersion:        " << versionInfo.majorVersion;
+    }
 }
 
 Keymaster::KeymasterSet Keymaster::enumerateAvailableDevices() {
