@@ -33,8 +33,6 @@ using ::android::hardware::wifi::supplicant::V1_0::IfaceType;
 using ::android::hardware::wifi::supplicant::V1_1::ISupplicant;
 using ::android::sp;
 
-extern WifiSupplicantHidlEnvironment* gEnv;
-
 class SupplicantHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
@@ -83,7 +81,6 @@ TEST_F(SupplicantHidlTest, AddStaInterface) {
  * AddP2pInterface
  */
 TEST_F(SupplicantHidlTest, AddP2pInterface) {
-    if (!gEnv->isP2pOn) return;
     ISupplicant::IfaceInfo iface_info;
     iface_info.name = getP2pIfaceName();
     iface_info.type = IfaceType::P2P;
@@ -123,7 +120,6 @@ TEST_F(SupplicantHidlTest, RemoveStaInterface) {
  * RemoveP2pInterface
  */
 TEST_F(SupplicantHidlTest, RemoveP2pInterface) {
-    if (!gEnv->isP2pOn) return;
     ISupplicant::IfaceInfo iface_info;
     iface_info.name = getP2pIfaceName();
     iface_info.type = IfaceType::P2P;

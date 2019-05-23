@@ -297,7 +297,6 @@ void setDefaultPortParam(
             setupAACPort(omxNode, portIndex, OMX_AUDIO_AACObjectNull,
                          OMX_AUDIO_AACStreamFormatMP4FF, nChannels, 0,
                          nSampleRate);
-            break;
         default:
             break;
     }
