@@ -14,24 +14,29 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "biometrics_face_hidl_hal_test"
+#define LOG_TAG "face_hidl_test"
 
-#include <android/hardware/biometrics/face/1.0/IBiometricsFace.h>
-#include <android/hardware/biometrics/face/1.0/IBiometricsFaceClientCallback.h>
-
-#include <VtsHalHidlTargetCallbackBase.h>
 #include <VtsHalHidlTargetTestBase.h>
 #include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/logging.h>
+#include <android-base/properties.h>
+#include <android/hardware/biometrics/face/1.0/IBiometricsFace.h>
+#include <android/hardware/biometrics/face/1.0/IBiometricsFaceClientCallback.h>
+#include <hidl/HidlSupport.h>
+#include <hidl/HidlTransportSupport.h>
+#include <utils/Condition.h>
 
-#include <chrono>
+#include <cinttypes>
 #include <cstdint>
-#include <random>
+#include <future>
+#include <utility>
 
+using android::Condition;
+using android::Mutex;
 using android::sp;
+using android::base::GetUintProperty;
 using android::hardware::hidl_vec;
 using android::hardware::Return;
-using android::hardware::Void;
 using android::hardware::biometrics::face::V1_0::FaceAcquiredInfo;
 using android::hardware::biometrics::face::V1_0::FaceError;
 using android::hardware::biometrics::face::V1_0::Feature;
@@ -43,203 +48,263 @@ using android::hardware::biometrics::face::V1_0::Status;
 
 namespace {
 
-// Arbitrary, nonexistent userId
-constexpr uint32_t kUserId = 9;
-// Arbitrary, nonexistent faceId
-constexpr uint32_t kFaceId = 5;
-constexpr uint32_t kTimeoutSec = 3;
-constexpr auto kTimeout = std::chrono::seconds(kTimeoutSec);
-constexpr int kGenerateChallengeIterations = 10;
-constexpr char kFacedataDir[] = "/data/vendor_de/0/facedata";
-constexpr char kCallbackNameOnEnrollResult[] = "onEnrollResult";
-constexpr char kCallbackNameOnAuthenticated[] = "onAuthenticated";
-constexpr char kCallbackNameOnAcquired[] = "onAcquired";
-constexpr char kCallbackNameOnError[] = "onError";
-constexpr char kCallbackNameOnRemoved[] = "onRemoved";
-constexpr char kCallbackNameOnEnumerate[] = "onEnumerate";
-constexpr char kCallbackNameOnLockoutChanged[] = "onLockoutChanged";
+const uint32_t kTimeout = 3;
+const std::chrono::seconds kTimeoutInSeconds = std::chrono::seconds(kTimeout);
+const uint32_t kUserId = 99;
+const uint32_t kFaceId = 5;
+const char kTmpDir[] = "/data/system/users/0/facedata";
+const int kIterations = 1000;
 
-// Callback arguments that need to be captured for the tests.
-struct FaceCallbackArgs {
-    // The error passed to the last onError() callback.
-    FaceError error;
-
-    // The userId passed to the last onRemoved() callback.
-    int32_t userId;
+const auto kAssertCallbackIsSet = [](const OptionalUint64& res) {
+    ASSERT_EQ(Status::OK, res.status);
+    // Makes sure the "deviceId" represented by "res.value" is not 0.
+    // 0 would mean the HIDL is not available.
+    ASSERT_NE(0UL, res.value);
 };
 
-// Test callback class for the BiometricsFace HAL.
-// The HAL will call these callback methods to notify about completed operations
-// or encountered errors.
-class FaceCallback : public ::testing::VtsHalHidlTargetCallbackBase<FaceCallbackArgs>,
-                     public IBiometricsFaceClientCallback {
+// Wait for a callback to occur (signaled by the given future) up to the
+// provided timeout. If the future is invalid or the callback does not come
+// within the given time, returns false.
+template <class ReturnType>
+bool waitForCallback(std::future<ReturnType> future,
+                     std::chrono::milliseconds timeout = kTimeoutInSeconds) {
+    auto expiration = std::chrono::system_clock::now() + timeout;
+    EXPECT_TRUE(future.valid());
+    if (future.valid()) {
+        std::future_status status = future.wait_until(expiration);
+        EXPECT_NE(std::future_status::timeout, status) << "Timed out waiting for callback";
+        if (status == std::future_status::ready) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Base callback implementation that just logs all callbacks by default
+class FaceCallbackBase : public IBiometricsFaceClientCallback {
   public:
     Return<void> onEnrollResult(uint64_t, uint32_t, int32_t, uint32_t) override {
-        NotifyFromCallback(kCallbackNameOnEnrollResult);
-        return Void();
+        ALOGD("Enroll callback called.");
+        return Return<void>();
     }
 
     Return<void> onAuthenticated(uint64_t, uint32_t, int32_t, const hidl_vec<uint8_t>&) override {
-        NotifyFromCallback(kCallbackNameOnAuthenticated);
-        return Void();
+        ALOGD("Authenticated callback called.");
+        return Return<void>();
     }
 
     Return<void> onAcquired(uint64_t, int32_t, FaceAcquiredInfo, int32_t) override {
-        NotifyFromCallback(kCallbackNameOnAcquired);
-        return Void();
+        ALOGD("Acquired callback called.");
+        return Return<void>();
     }
 
-    Return<void> onError(uint64_t, int32_t, FaceError error, int32_t) override {
-        FaceCallbackArgs args = {};
-        args.error = error;
-        NotifyFromCallback(kCallbackNameOnError, args);
-        return Void();
+    Return<void> onError(uint64_t, int32_t, FaceError, int32_t) override {
+        ALOGD("Error callback called.");
+        EXPECT_TRUE(false);  // fail any test that triggers an error
+        return Return<void>();
     }
 
-    Return<void> onRemoved(uint64_t, const hidl_vec<uint32_t>&, int32_t userId) override {
-        FaceCallbackArgs args = {};
-        args.userId = userId;
-        NotifyFromCallback(kCallbackNameOnRemoved, args);
-        return Void();
+    Return<void> onRemoved(uint64_t, const hidl_vec<uint32_t>&, int32_t) override {
+        ALOGD("Removed callback called.");
+        return Return<void>();
     }
 
-    Return<void> onEnumerate(uint64_t, const hidl_vec<uint32_t>&, int32_t) override {
-        NotifyFromCallback(kCallbackNameOnEnumerate);
-        return Void();
+    Return<void> onEnumerate(uint64_t, const hidl_vec<uint32_t>&, int32_t /* userId */) override {
+        ALOGD("Enumerate callback called.");
+        return Return<void>();
     }
 
     Return<void> onLockoutChanged(uint64_t) override {
-        NotifyFromCallback(kCallbackNameOnLockoutChanged);
-        return Void();
+        ALOGD("LockoutChanged callback called.");
+        return Return<void>();
     }
 };
 
-// Test environment for the BiometricsFace HAL.
+class EnumerateCallback : public FaceCallbackBase {
+  public:
+    Return<void> onEnumerate(uint64_t, const hidl_vec<uint32_t>&, int32_t) override {
+        promise.set_value();
+        return Return<void>();
+    }
+
+    std::promise<void> promise;
+};
+
+class ErrorCallback : public FaceCallbackBase {
+  public:
+    ErrorCallback(bool filterErrors = false, FaceError errorType = FaceError::HW_UNAVAILABLE)
+        : filterErrors(filterErrors), errorType(errorType), hasError(false) {}
+
+    Return<void> onError(uint64_t, int32_t, FaceError error, int32_t) override {
+        if ((filterErrors && errorType == error) || !filterErrors) {
+            hasError = true;
+            this->error = error;
+            promise.set_value();
+        }
+        return Return<void>();
+    }
+
+    bool filterErrors;
+    FaceError errorType;
+    bool hasError;
+    FaceError error;
+    std::promise<void> promise;
+};
+
+class RemoveCallback : public FaceCallbackBase {
+  public:
+    explicit RemoveCallback(int32_t userId) : removeUserId(userId) {}
+
+    Return<void> onRemoved(uint64_t, const hidl_vec<uint32_t>&, int32_t userId) override {
+        EXPECT_EQ(removeUserId, userId);
+        promise.set_value();
+        return Return<void>();
+    }
+
+    int32_t removeUserId;
+    std::promise<void> promise;
+};
+
+class LockoutChangedCallback : public FaceCallbackBase {
+  public:
+    Return<void> onLockoutChanged(uint64_t duration) override {
+        this->hasDuration = true;
+        this->duration = duration;
+        promise.set_value();
+        return Return<void>();
+    }
+    bool hasDuration;
+    uint64_t duration;
+    std::promise<void> promise;
+};
+
+// Test environment for Face HIDL HAL.
 class FaceHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
   public:
-    // Get the test environment singleton.
+    // get the test environment singleton
     static FaceHidlEnvironment* Instance() {
         static FaceHidlEnvironment* instance = new FaceHidlEnvironment;
         return instance;
     }
 
     void registerTestServices() override { registerTestService<IBiometricsFace>(); }
-
-  private:
-    FaceHidlEnvironment() = default;
 };
 
-// Test class for the BiometricsFace HAL.
 class FaceHidlTest : public ::testing::VtsHalHidlTargetTestBase {
   public:
     void SetUp() override {
         mService = ::testing::VtsHalHidlTargetTestBase::getService<IBiometricsFace>(
                 FaceHidlEnvironment::Instance()->getServiceName<IBiometricsFace>());
-        ASSERT_NE(mService, nullptr);
-        mCallback = new FaceCallback();
-        mCallback->SetWaitTimeoutDefault(kTimeout);
-        Return<void> ret1 = mService->setCallback(mCallback, [](const OptionalUint64& res) {
-            ASSERT_EQ(Status::OK, res.status);
-            // Makes sure the "deviceId" represented by "res.value" is not 0.
-            // 0 would mean the HIDL is not available.
-            ASSERT_NE(0UL, res.value);
-        });
-        ASSERT_TRUE(ret1.isOk());
-        Return<Status> ret2 = mService->setActiveUser(kUserId, kFacedataDir);
-        ASSERT_EQ(Status::OK, static_cast<Status>(ret2));
+        ASSERT_FALSE(mService == nullptr);
+        Return<Status> res = mService->setActiveUser(kUserId, kTmpDir);
+        ASSERT_EQ(Status::OK, static_cast<Status>(res));
     }
 
     void TearDown() override {}
 
     sp<IBiometricsFace> mService;
-    sp<FaceCallback> mCallback;
 };
+
+// The service should be reachable.
+TEST_F(FaceHidlTest, ConnectTest) {
+    sp<FaceCallbackBase> cb = new FaceCallbackBase();
+    mService->setCallback(cb, kAssertCallbackIsSet);
+}
+
+// Starting the service with null callback should succeed.
+TEST_F(FaceHidlTest, ConnectNullTest) {
+    mService->setCallback(nullptr, kAssertCallbackIsSet);
+}
 
 // generateChallenge should always return a unique, cryptographically secure,
 // non-zero number.
 TEST_F(FaceHidlTest, GenerateChallengeTest) {
     std::map<uint64_t, int> m;
-    for (int i = 0; i < kGenerateChallengeIterations; ++i) {
-        Return<void> ret =
-                mService->generateChallenge(kTimeoutSec, [&m](const OptionalUint64& res) {
-                    ASSERT_EQ(Status::OK, res.status);
-                    EXPECT_NE(0UL, res.value);
-                    m[res.value]++;
-                    EXPECT_EQ(1UL, m[res.value]);
-                });
-        ASSERT_TRUE(ret.isOk());
+    for (int i = 0; i < kIterations; ++i) {
+        mService->generateChallenge(kTimeout, [&m](const OptionalUint64& res) {
+            ASSERT_EQ(Status::OK, res.status);
+            EXPECT_NE(0UL, res.value);
+            m[res.value]++;
+            EXPECT_EQ(1UL, m[res.value]);
+        });
     }
 }
 
 // enroll with an invalid (all zeroes) HAT should fail.
 TEST_F(FaceHidlTest, EnrollZeroHatTest) {
-    // Filling HAT with zeros
+    sp<ErrorCallback> cb = new ErrorCallback();
+    mService->setCallback(cb, kAssertCallbackIsSet);
+
     hidl_vec<uint8_t> token(69);
     for (size_t i = 0; i < 69; i++) {
         token[i] = 0;
     }
 
-    Return<Status> ret = mService->enroll(token, kTimeoutSec, {});
-    ASSERT_EQ(Status::OK, static_cast<Status>(ret));
+    Return<Status> res = mService->enroll(token, kTimeout, {});
+    ASSERT_EQ(Status::OK, static_cast<Status>(res));
 
-    // onError should be called with a meaningful (nonzero) error.
-    auto res = mCallback->WaitForCallback(kCallbackNameOnError);
-    EXPECT_TRUE(res.no_timeout);
-    EXPECT_EQ(FaceError::UNABLE_TO_PROCESS, res.args->error);
+    // At least one call to onError should occur
+    ASSERT_TRUE(waitForCallback(cb->promise.get_future()));
+    ASSERT_TRUE(cb->hasError);
 }
 
 // enroll with an invalid HAT should fail.
 TEST_F(FaceHidlTest, EnrollGarbageHatTest) {
-    // Filling HAT with pseudorandom invalid data.
-    // Using default seed to make the test reproducible.
-    std::mt19937 gen(std::mt19937::default_seed);
-    std::uniform_int_distribution<uint8_t> dist;
+    sp<ErrorCallback> cb = new ErrorCallback();
+    mService->setCallback(cb, kAssertCallbackIsSet);
+
+    // Filling HAT with invalid data
     hidl_vec<uint8_t> token(69);
     for (size_t i = 0; i < 69; ++i) {
-        token[i] = dist(gen);
+        token[i] = i;
     }
 
-    Return<Status> ret = mService->enroll(token, kTimeoutSec, {});
-    ASSERT_EQ(Status::OK, static_cast<Status>(ret));
+    Return<Status> res = mService->enroll(token, kTimeout, {});
+    ASSERT_EQ(Status::OK, static_cast<Status>(res));
 
-    // onError should be called with a meaningful (nonzero) error.
-    auto res = mCallback->WaitForCallback(kCallbackNameOnError);
-    EXPECT_TRUE(res.no_timeout);
-    EXPECT_EQ(FaceError::UNABLE_TO_PROCESS, res.args->error);
+    // At least one call to onError should occur
+    ASSERT_TRUE(waitForCallback(cb->promise.get_future()));
+    ASSERT_TRUE(cb->hasError);
 }
 
 // setFeature with an invalid (all zeros) HAT should fail.
 TEST_F(FaceHidlTest, SetFeatureZeroHatTest) {
+    sp<ErrorCallback> cb = new ErrorCallback();
+    mService->setCallback(cb, kAssertCallbackIsSet);
+
     hidl_vec<uint8_t> token(69);
     for (size_t i = 0; i < 69; i++) {
         token[i] = 0;
     }
 
-    Return<Status> ret = mService->setFeature(Feature::REQUIRE_DIVERSITY, false, token, 0);
-    ASSERT_EQ(Status::ILLEGAL_ARGUMENT, static_cast<Status>(ret));
+    Return<Status> res = mService->setFeature(Feature::REQUIRE_DIVERSITY, false, token, 0);
+    ASSERT_EQ(Status::ILLEGAL_ARGUMENT, static_cast<Status>(res));
 }
 
 // setFeature with an invalid HAT should fail.
 TEST_F(FaceHidlTest, SetFeatureGarbageHatTest) {
-    // Filling HAT with pseudorandom invalid data.
-    // Using default seed to make the test reproducible.
-    std::mt19937 gen(std::mt19937::default_seed);
-    std::uniform_int_distribution<uint8_t> dist;
+    sp<ErrorCallback> cb = new ErrorCallback();
+    mService->setCallback(cb, kAssertCallbackIsSet);
+
+    // Filling HAT with invalid data
     hidl_vec<uint8_t> token(69);
     for (size_t i = 0; i < 69; ++i) {
-        token[i] = dist(gen);
+        token[i] = i;
     }
 
-    Return<Status> ret = mService->setFeature(Feature::REQUIRE_DIVERSITY, false, token, 0);
-    ASSERT_EQ(Status::ILLEGAL_ARGUMENT, static_cast<Status>(ret));
+    Return<Status> res = mService->setFeature(Feature::REQUIRE_DIVERSITY, false, token, 0);
+    ASSERT_EQ(Status::ILLEGAL_ARGUMENT, static_cast<Status>(res));
 }
 
-void assertGetFeatureFails(const sp<IBiometricsFace>& service, uint32_t faceId, Feature feature) {
+void assertGetFeatureFails(sp<IBiometricsFace> service, int faceId, Feature feature) {
+    std::promise<void> promise;
+
     // Features cannot be retrieved for invalid faces.
-    Return<void> res = service->getFeature(feature, faceId, [](const OptionalBool& result) {
+    Return<void> res = service->getFeature(feature, faceId, [&promise](const OptionalBool& result) {
         ASSERT_EQ(Status::ILLEGAL_ARGUMENT, result.status);
+        promise.set_value();
     });
-    ASSERT_TRUE(res.isOk());
+    ASSERT_TRUE(waitForCallback(promise.get_future()));
 }
 
 TEST_F(FaceHidlTest, GetFeatureRequireAttentionTest) {
@@ -252,95 +317,111 @@ TEST_F(FaceHidlTest, GetFeatureRequireDiversityTest) {
 
 // revokeChallenge should always return within the timeout
 TEST_F(FaceHidlTest, RevokeChallengeTest) {
+    sp<FaceCallbackBase> cb = new FaceCallbackBase();
+    mService->setCallback(cb, kAssertCallbackIsSet);
+
     auto start = std::chrono::system_clock::now();
-    Return<Status> ret = mService->revokeChallenge();
+    mService->revokeChallenge();
     auto elapsed = std::chrono::system_clock::now() - start;
-    ASSERT_EQ(Status::OK, static_cast<Status>(ret));
-    ASSERT_GE(kTimeout, elapsed);
+    ASSERT_GE(kTimeoutInSeconds, elapsed);
 }
 
 // The call to getAuthenticatorId should succeed.
 TEST_F(FaceHidlTest, GetAuthenticatorIdTest) {
-    Return<void> ret = mService->getAuthenticatorId(
+    mService->getAuthenticatorId(
             [](const OptionalUint64& res) { ASSERT_EQ(Status::OK, res.status); });
-    ASSERT_TRUE(ret.isOk());
 }
 
 // The call to enumerate should succeed.
 TEST_F(FaceHidlTest, EnumerateTest) {
-    Return<Status> ret = mService->enumerate();
-    ASSERT_EQ(Status::OK, static_cast<Status>(ret));
-    auto res = mCallback->WaitForCallback(kCallbackNameOnEnumerate);
-    EXPECT_TRUE(res.no_timeout);
+    sp<EnumerateCallback> cb = new EnumerateCallback();
+    mService->setCallback(cb, kAssertCallbackIsSet);
+    Return<Status> res = mService->enumerate();
+    ASSERT_EQ(Status::OK, static_cast<Status>(res));
+    ASSERT_TRUE(waitForCallback(cb->promise.get_future()));
 }
 
 // The call to remove should succeed for any faceId
 TEST_F(FaceHidlTest, RemoveFaceTest) {
+    sp<ErrorCallback> cb = new ErrorCallback();
+    mService->setCallback(cb, kAssertCallbackIsSet);
+
     // Remove a face
-    Return<Status> ret = mService->remove(kFaceId);
-    ASSERT_EQ(Status::OK, static_cast<Status>(ret));
+    Return<Status> res = mService->remove(kFaceId);
+    ASSERT_EQ(Status::OK, static_cast<Status>(res));
 }
 
 // Remove should accept 0 to delete all faces
 TEST_F(FaceHidlTest, RemoveAllFacesTest) {
+    sp<ErrorCallback> cb = new ErrorCallback();
+    mService->setCallback(cb, kAssertCallbackIsSet);
+
     // Remove all faces
-    Return<Status> ret = mService->remove(0);
-    ASSERT_EQ(Status::OK, static_cast<Status>(ret));
+    Return<Status> res = mService->remove(0);
+    ASSERT_EQ(Status::OK, static_cast<Status>(res));
 }
 
 // Active user should successfully set to a writable location.
 TEST_F(FaceHidlTest, SetActiveUserTest) {
     // Create an active user
-    Return<Status> ret = mService->setActiveUser(2, kFacedataDir);
-    ASSERT_EQ(Status::OK, static_cast<Status>(ret));
+    Return<Status> res = mService->setActiveUser(2, kTmpDir);
+    ASSERT_EQ(Status::OK, static_cast<Status>(res));
 
     // Reset active user
-    ret = mService->setActiveUser(kUserId, kFacedataDir);
-    ASSERT_EQ(Status::OK, static_cast<Status>(ret));
+    res = mService->setActiveUser(kUserId, kTmpDir);
+    ASSERT_EQ(Status::OK, static_cast<Status>(res));
 }
 
 // Active user should fail to set to an unwritable location.
 TEST_F(FaceHidlTest, SetActiveUserUnwritableTest) {
     // Create an active user to an unwritable location (device root dir)
-    Return<Status> ret = mService->setActiveUser(3, "/");
-    ASSERT_NE(Status::OK, static_cast<Status>(ret));
+    Return<Status> res = mService->setActiveUser(3, "/");
+    ASSERT_NE(Status::OK, static_cast<Status>(res));
 
     // Reset active user
-    ret = mService->setActiveUser(kUserId, kFacedataDir);
-    ASSERT_EQ(Status::OK, static_cast<Status>(ret));
+    res = mService->setActiveUser(kUserId, kTmpDir);
+    ASSERT_EQ(Status::OK, static_cast<Status>(res));
 }
 
 // Active user should fail to set to a null location.
 TEST_F(FaceHidlTest, SetActiveUserNullTest) {
     // Create an active user to a null location.
-    Return<Status> ret = mService->setActiveUser(4, nullptr);
-    ASSERT_NE(Status::OK, static_cast<Status>(ret));
+    Return<Status> res = mService->setActiveUser(4, nullptr);
+    ASSERT_NE(Status::OK, static_cast<Status>(res));
 
     // Reset active user
-    ret = mService->setActiveUser(kUserId, kFacedataDir);
-    ASSERT_EQ(Status::OK, static_cast<Status>(ret));
+    res = mService->setActiveUser(kUserId, kTmpDir);
+    ASSERT_EQ(Status::OK, static_cast<Status>(res));
 }
 
 // Cancel should always return CANCELED from any starting state including
 // the IDLE state.
 TEST_F(FaceHidlTest, CancelTest) {
-    Return<Status> ret = mService->cancel();
+    sp<ErrorCallback> cb = new ErrorCallback(true, FaceError::CANCELED);
+    mService->setCallback(cb, kAssertCallbackIsSet);
+
+    Return<Status> res = mService->cancel();
     // check that we were able to make an IPC request successfully
-    ASSERT_EQ(Status::OK, static_cast<Status>(ret));
-    auto res = mCallback->WaitForCallback(kCallbackNameOnError);
-    // make sure callback was invoked within kRevokeChallengeTimeout
-    EXPECT_TRUE(res.no_timeout);
-    EXPECT_EQ(FaceError::CANCELED, res.args->error);
+    ASSERT_EQ(Status::OK, static_cast<Status>(res));
+
+    // make sure callback was invoked within kTimeoutInSeconds
+    ASSERT_TRUE(waitForCallback(cb->promise.get_future()));
+    // check error should be CANCELED
+    ASSERT_EQ(FaceError::CANCELED, cb->error);
 }
 
 TEST_F(FaceHidlTest, OnLockoutChangedTest) {
-    // Update active user and ensure onLockoutChanged was called.
-    Return<Status> ret = mService->setActiveUser(kUserId + 1, kFacedataDir);
-    ASSERT_EQ(Status::OK, static_cast<Status>(ret));
+    sp<LockoutChangedCallback> cb = new LockoutChangedCallback();
+    mService->setCallback(cb, kAssertCallbackIsSet);
+
+    // Update active user and ensure lockout duration 0 is received
+    mService->setActiveUser(5, kTmpDir);
 
     // Make sure callback was invoked
-    auto res = mCallback->WaitForCallback(kCallbackNameOnLockoutChanged);
-    EXPECT_TRUE(res.no_timeout);
+    ASSERT_TRUE(waitForCallback(cb->promise.get_future()));
+
+    // Check that duration 0 was received
+    ASSERT_EQ(0, cb->duration);
 }
 
 }  // anonymous namespace
