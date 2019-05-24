@@ -22,7 +22,6 @@
 #include <android/hardware/wifi/1.2/IWifiNanIface.h>
 
 #include "hidl_callback_util.h"
-#include "wifi_iface_util.h"
 #include "wifi_legacy_hal.h"
 
 namespace android {
@@ -38,8 +37,7 @@ using namespace android::hardware::wifi::V1_0;
 class WifiNanIface : public V1_2::IWifiNanIface {
    public:
     WifiNanIface(const std::string& ifname,
-                 const std::weak_ptr<legacy_hal::WifiLegacyHal> legacy_hal,
-                 const std::weak_ptr<iface_util::WifiIfaceUtil> iface_util);
+                 const std::weak_ptr<legacy_hal::WifiLegacyHal> legacy_hal);
     // Refer to |WifiChip::invalidate()|.
     void invalidate();
     bool isValid();
@@ -149,7 +147,6 @@ class WifiNanIface : public V1_2::IWifiNanIface {
 
     std::string ifname_;
     std::weak_ptr<legacy_hal::WifiLegacyHal> legacy_hal_;
-    std::weak_ptr<iface_util::WifiIfaceUtil> iface_util_;
     bool is_valid_;
     hidl_callback_util::HidlCallbackHandler<V1_0::IWifiNanIfaceEventCallback>
         event_cb_handler_;
