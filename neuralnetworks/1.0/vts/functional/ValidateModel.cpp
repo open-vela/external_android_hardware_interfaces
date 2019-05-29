@@ -18,7 +18,7 @@
 
 #include "VtsHalNeuralnetworks.h"
 
-#include "1.0/Callbacks.h"
+#include "Callbacks.h"
 
 namespace android {
 namespace hardware {
@@ -283,7 +283,7 @@ static void mutateOperationOperandTypeTest(const sp<IDevice>& device, const V1_0
         if (mutateOperationOperandTypeSkip(operand, model)) {
             continue;
         }
-        for (OperandType invalidOperandType : hidl_enum_range<OperandType>{}) {
+        for (OperandType invalidOperandType : hidl_enum_iterator<OperandType>{}) {
             // Do not test OEM types
             if (invalidOperandType == model.operands[operand].type ||
                 invalidOperandType == OperandType::OEM ||
