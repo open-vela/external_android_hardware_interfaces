@@ -16,17 +16,9 @@
 
 #define LOG_TAG "GnssHalTest"
 
-#include <android/hidl/manager/1.2/IServiceManager.h>
-#include <hidl/ServiceManagement.h>
-
 #include <gnss_hal_test.h>
+
 #include <chrono>
-#include "Utils.h"
-
-using ::android::hardware::hidl_string;
-using ::android::hardware::hidl_vec;
-
-using ::android::hardware::gnss::common::Utils;
 
 // Implementations for the main test class for GNSS HAL
 GnssHalTest::GnssHalTest()
@@ -132,7 +124,69 @@ bool GnssHalTest::StartAndCheckFirstLocation() {
 void GnssHalTest::CheckLocation(GnssLocation& location, bool check_speed) {
     bool check_more_accuracies = (info_called_count_ > 0 && last_info_.yearOfHw >= 2017);
 
-    Utils::checkLocation(location, check_speed, check_more_accuracies);
+    EXPECT_TRUE(location.gnssLocationFlags & GnssLocationFlags::HAS_LAT_LONG);
+    EXPECT_TRUE(location.gnssLocationFlags & GnssLocationFlags::HAS_ALTITUDE);
+    if (check_speed) {
+        EXPECT_TRUE(location.gnssLocationFlags & GnssLocationFlags::HAS_SPEED);
+    }
+    EXPECT_TRUE(location.gnssLocationFlags & GnssLocationFlags::HAS_HORIZONTAL_ACCURACY);
+    // New uncertainties available in O must be provided,
+    // at least when paired with modern hardware (2017+)
+    if (check_more_accuracies) {
+        EXPECT_TRUE(location.gnssLocationFlags & GnssLocationFlags::HAS_VERTICAL_ACCURACY);
+        if (check_speed) {
+            EXPECT_TRUE(location.gnssLocationFlags & GnssLocationFlags::HAS_SPEED_ACCURACY);
+            if (location.gnssLocationFlags & GnssLocationFlags::HAS_BEARING) {
+                EXPECT_TRUE(location.gnssLocationFlags & GnssLocationFlags::HAS_BEARING_ACCURACY);
+            }
+        }
+    }
+    EXPECT_GE(location.latitudeDegrees, -90.0);
+    EXPECT_LE(location.latitudeDegrees, 90.0);
+    EXPECT_GE(location.longitudeDegrees, -180.0);
+    EXPECT_LE(location.longitudeDegrees, 180.0);
+    EXPECT_GE(location.altitudeMeters, -1000.0);
+    EXPECT_LE(location.altitudeMeters, 30000.0);
+    if (check_speed) {
+        EXPECT_GE(location.speedMetersPerSec, 0.0);
+        EXPECT_LE(location.speedMetersPerSec, 5.0);  // VTS tests are stationary.
+
+        // Non-zero speeds must be reported with an associated bearing
+        if (location.speedMetersPerSec > 0.0) {
+            EXPECT_TRUE(location.gnssLocationFlags & GnssLocationFlags::HAS_BEARING);
+        }
+    }
+
+    /*
+     * Tolerating some especially high values for accuracy estimate, in case of
+     * first fix with especially poor geometry (happens occasionally)
+     */
+    EXPECT_GT(location.horizontalAccuracyMeters, 0.0);
+    EXPECT_LE(location.horizontalAccuracyMeters, 250.0);
+
+    /*
+     * Some devices may define bearing as -180 to +180, others as 0 to 360.
+     * Both are okay & understandable.
+     */
+    if (location.gnssLocationFlags & GnssLocationFlags::HAS_BEARING) {
+        EXPECT_GE(location.bearingDegrees, -180.0);
+        EXPECT_LE(location.bearingDegrees, 360.0);
+    }
+    if (location.gnssLocationFlags & GnssLocationFlags::HAS_VERTICAL_ACCURACY) {
+        EXPECT_GT(location.verticalAccuracyMeters, 0.0);
+        EXPECT_LE(location.verticalAccuracyMeters, 500.0);
+    }
+    if (location.gnssLocationFlags & GnssLocationFlags::HAS_SPEED_ACCURACY) {
+        EXPECT_GT(location.speedAccuracyMetersPerSecond, 0.0);
+        EXPECT_LE(location.speedAccuracyMetersPerSecond, 50.0);
+    }
+    if (location.gnssLocationFlags & GnssLocationFlags::HAS_BEARING_ACCURACY) {
+        EXPECT_GT(location.bearingAccuracyDegrees, 0.0);
+        EXPECT_LE(location.bearingAccuracyDegrees, 360.0);
+    }
+
+    // Check timestamp > 1.48e12 (47 years in msec - 1970->2017+)
+    EXPECT_GT(location.timestamp, 1.48e12);
 }
 
 void GnssHalTest::StartAndCheckLocations(int count) {
@@ -153,28 +207,6 @@ void GnssHalTest::StartAndCheckLocations(int count) {
             CheckLocation(last_location_, location_called_count_ > 1);
         }
     }
-}
-
-bool GnssHalTest::IsGnssHalVersion_1_1() const {
-    using ::android::hidl::manager::V1_2::IServiceManager;
-    sp<IServiceManager> manager = ::android::hardware::defaultServiceManager1_2();
-
-    bool hasGnssHalVersion_1_1 = false;
-    manager->listManifestByInterface(
-            "android.hardware.gnss@1.1::IGnss",
-            [&hasGnssHalVersion_1_1](const hidl_vec<hidl_string>& registered) {
-                ASSERT_EQ(1, registered.size());
-                hasGnssHalVersion_1_1 = true;
-            });
-
-    bool hasGnssHalVersion_2_0 = false;
-    manager->listManifestByInterface(
-            "android.hardware.gnss@2.0::IGnss",
-            [&hasGnssHalVersion_2_0](const hidl_vec<hidl_string>& registered) {
-                hasGnssHalVersion_2_0 = registered.size() != 0;
-            });
-
-    return hasGnssHalVersion_1_1 && !hasGnssHalVersion_2_0;
 }
 
 void GnssHalTest::notify() {
