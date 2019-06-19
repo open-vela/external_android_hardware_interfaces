@@ -41,7 +41,7 @@ using common::V1_2::ColorMode;
 using common::V1_2::Dataspace;
 using common::V1_2::PixelFormat;
 using mapper::V2_0::IMapper;
-using V2_2::vts::Gralloc;
+using mapper::V2_0::vts::Gralloc;
 
 // Test environment for graphics.composer
 class GraphicsComposerHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
@@ -156,9 +156,15 @@ class GraphicsComposerHidlCommandTest : public GraphicsComposerHidlTest {
     }
 
     const native_handle_t* allocate() {
-        return mGralloc->allocate(
-                64, 64, 1, static_cast<common::V1_1::PixelFormat>(PixelFormat::RGBA_8888),
-                static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN));
+        IMapper::BufferDescriptorInfo info{};
+        info.width = 64;
+        info.height = 64;
+        info.layerCount = 1;
+        info.format = static_cast<common::V1_0::PixelFormat>(PixelFormat::RGBA_8888);
+        info.usage =
+            static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN);
+
+        return mGralloc->allocate(info);
     }
 
     void execute() { mComposerClient->execute(mReader.get(), mWriter.get()); }
