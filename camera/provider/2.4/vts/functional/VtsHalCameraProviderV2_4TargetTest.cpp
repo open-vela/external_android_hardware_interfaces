@@ -1233,14 +1233,7 @@ bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& r
     }
 
     if (mUseHalBufManager) {
-        // Don't return buffers of bufId 0 (empty buffer)
-        std::vector<StreamBuffer> buffers;
-        for (const auto& sb : results.outputBuffers) {
-            if (sb.bufferId != 0) {
-                buffers.push_back(sb);
-            }
-        }
-        returnStreamBuffers(buffers);
+        returnStreamBuffers(results.outputBuffers);
     }
     return notify;
 }
