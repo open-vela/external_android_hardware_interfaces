@@ -39,9 +39,9 @@ using common::V1_1::BufferUsage;
 using common::V1_1::Dataspace;
 using common::V1_1::PixelFormat;
 using mapper::V2_1::IMapper;
+using mapper::V2_1::vts::Gralloc;
 using V2_1::Display;
 using V2_1::Layer;
-using V2_1::vts::AccessRegion;
 using V2_1::vts::TestCommandReader;
 
 static const IComposerClient::Color BLACK = {0, 0, 0, 0xff};
@@ -296,13 +296,14 @@ class ReadbackBuffer {
         mComposerClient = client;
         mGralloc = gralloc;
 
-        mFormat = pixelFormat;
+        mPixelFormat = pixelFormat;
         mDataspace = dataspace;
 
-        mWidth = width;
-        mHeight = height;
-        mLayerCount = 1;
-        mUsage = static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::GPU_TEXTURE);
+        mInfo.width = width;
+        mInfo.height = height;
+        mInfo.layerCount = 1;
+        mInfo.format = mPixelFormat;
+        mInfo.usage = static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::GPU_TEXTURE);
 
         mAccessRegion.top = 0;
         mAccessRegion.left = 0;
@@ -321,10 +322,8 @@ class ReadbackBuffer {
             mGralloc->freeBuffer(mBufferHandle);
             mBufferHandle = nullptr;
         }
-        mBufferHandle = mGralloc->allocate(mWidth, mHeight, mLayerCount, mFormat, mUsage,
-                                           /*import*/ true, &mStride);
-        ASSERT_NE(false, mGralloc->validateBufferSize(mBufferHandle, mWidth, mHeight, mLayerCount,
-                                                      mFormat, mUsage, mStride));
+        mBufferHandle = mGralloc->allocate(mInfo, /*import*/ true, &mStride);
+        ASSERT_NE(false, mGralloc->validateBufferSize(mBufferHandle, mInfo, mStride));
         ASSERT_NO_FATAL_FAILURE(mComposerClient->setReadbackBuffer(mDisplay, mBufferHandle, -1));
     }
 
@@ -333,13 +332,13 @@ class ReadbackBuffer {
         int32_t fenceHandle;
         ASSERT_NO_FATAL_FAILURE(mComposerClient->getReadbackBufferFence(mDisplay, &fenceHandle));
 
-        void* bufData = mGralloc->lock(mBufferHandle, mUsage, mAccessRegion, fenceHandle);
-        ASSERT_TRUE(mFormat == PixelFormat::RGB_888 || mFormat == PixelFormat::RGBA_8888);
-        int32_t bytesPerPixel = GraphicsComposerReadbackTest::GetBytesPerPixel(mFormat);
+        void* bufData = mGralloc->lock(mBufferHandle, mInfo.usage, mAccessRegion, fenceHandle);
+        ASSERT_TRUE(mPixelFormat == PixelFormat::RGB_888 || mPixelFormat == PixelFormat::RGBA_8888);
+        int32_t bytesPerPixel = GraphicsComposerReadbackTest::GetBytesPerPixel(mPixelFormat);
         ASSERT_NE(-1, bytesPerPixel);
-        for (int row = 0; row < mHeight; row++) {
-            for (int col = 0; col < mWidth; col++) {
-                int pixel = row * mWidth + col;
+        for (int row = 0; row < mInfo.height; row++) {
+            for (int col = 0; col < mInfo.width; col++) {
+                int pixel = row * mInfo.width + col;
                 int offset = (row * mStride + col) * bytesPerPixel;
                 uint8_t* pixelColor = (uint8_t*)bufData + offset;
 
@@ -355,16 +354,12 @@ class ReadbackBuffer {
         }
     }
 
-    uint32_t mWidth;
-    uint32_t mHeight;
-    uint32_t mLayerCount;
-    PixelFormat mFormat;
-    uint64_t mUsage;
-    AccessRegion mAccessRegion;
-
-  protected:
+   protected:
+    IMapper::BufferDescriptorInfo mInfo;
+    IMapper::Rect mAccessRegion;
     uint32_t mStride;
     const native_handle_t* mBufferHandle = nullptr;
+    PixelFormat mPixelFormat;
     Dataspace mDataspace;
     Display mDisplay;
     std::shared_ptr<Gralloc> mGralloc;
@@ -397,12 +392,13 @@ class TestBufferLayer : public TestLayer {
         : TestLayer{client, display} {
         mGralloc = gralloc;
         mComposition = composition;
-        mWidth = width;
-        mHeight = height;
-        mLayerCount = 1;
-        mFormat = format;
-        mUsage = static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN |
-                                       BufferUsage::COMPOSER_OVERLAY);
+        mInfo.width = width;
+        mInfo.height = height;
+        mInfo.layerCount = 1;
+        mInfo.format = format;
+        mInfo.usage =
+            static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN |
+                                  BufferUsage::COMPOSER_OVERLAY);
 
         mAccessRegion.top = 0;
         mAccessRegion.left = 0;
@@ -427,9 +423,9 @@ class TestBufferLayer : public TestLayer {
     }
 
     void fillBuffer(std::vector<IComposerClient::Color> expectedColors) {
-        void* bufData = mGralloc->lock(mBufferHandle, mUsage, mAccessRegion, -1);
+        void* bufData = mGralloc->lock(mBufferHandle, mInfo.usage, mAccessRegion, -1);
         ASSERT_NO_FATAL_FAILURE(GraphicsComposerReadbackTest::fillBuffer(
-                mWidth, mHeight, mStride, bufData, mFormat, expectedColors));
+            mInfo.width, mInfo.height, mStride, bufData, mInfo.format, expectedColors));
         mFillFence = mGralloc->unlock(mBufferHandle);
         if (mFillFence != -1) {
             sync_wait(mFillFence, -1);
@@ -441,12 +437,10 @@ class TestBufferLayer : public TestLayer {
             mGralloc->freeBuffer(mBufferHandle);
             mBufferHandle = nullptr;
         }
-        mBufferHandle = mGralloc->allocate(mWidth, mHeight, mLayerCount, mFormat, mUsage,
-                                           /*import*/ true, &mStride);
+        mBufferHandle = mGralloc->allocate(mInfo, /*import*/ true, &mStride);
         ASSERT_NE(nullptr, mBufferHandle);
         ASSERT_NO_FATAL_FAILURE(fillBuffer(colors));
-        ASSERT_NE(false, mGralloc->validateBufferSize(mBufferHandle, mWidth, mHeight, mLayerCount,
-                                                      mFormat, mUsage, mStride));
+        ASSERT_NE(false, mGralloc->validateBufferSize(mBufferHandle, mInfo, mStride));
     }
 
     void setToClientComposition(const std::shared_ptr<CommandWriterBase>& writer) {
@@ -454,15 +448,11 @@ class TestBufferLayer : public TestLayer {
         writer->setLayerCompositionType(IComposerClient::Composition::CLIENT);
     }
 
-    AccessRegion mAccessRegion;
+    IMapper::BufferDescriptorInfo mInfo;
+    IMapper::Rect mAccessRegion;
     uint32_t mStride;
-    uint32_t mWidth;
-    uint32_t mHeight;
-    uint32_t mLayerCount;
-    PixelFormat mFormat;
 
-  protected:
-    uint64_t mUsage;
+   protected:
     IComposerClient::Composition mComposition;
     std::shared_ptr<Gralloc> mGralloc;
     int32_t mFillFence;
@@ -578,11 +568,14 @@ TEST_F(GraphicsComposerReadbackTest, SetLayerBufferNoEffect) {
     layer->write(mWriter);
 
     // This following buffer call should have no effect
-    PixelFormat format = PixelFormat::RGBA_8888;
-    uint64_t usage =
-            static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN);
-    const native_handle_t* bufferHandle =
-            mGralloc->allocate(mDisplayWidth, mDisplayHeight, 1, format, usage);
+    IMapper::BufferDescriptorInfo bufferInfo{};
+    bufferInfo.width = mDisplayWidth;
+    bufferInfo.height = mDisplayHeight;
+    bufferInfo.layerCount = 1;
+    bufferInfo.format = PixelFormat::RGBA_8888;
+    bufferInfo.usage =
+        static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN);
+    const native_handle_t* bufferHandle = mGralloc->allocate(bufferInfo);
     mWriter->setLayerBuffer(0, bufferHandle, -1);
 
     // expected color for each pixel
@@ -649,20 +642,23 @@ TEST_F(GraphicsComposerReadbackTest, ClientComposition) {
 
         // create client target buffer
         uint32_t clientStride;
-        PixelFormat clientFormat = PixelFormat::RGBA_8888;
-        uint64_t clientUsage =
-                static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN |
-                                      BufferUsage::COMPOSER_CLIENT_TARGET);
+        IMapper::BufferDescriptorInfo clientInfo;
+        clientInfo.width = layer->mInfo.width;
+        clientInfo.height = layer->mInfo.height;
+        clientInfo.layerCount = layer->mInfo.layerCount;
+        clientInfo.format = PixelFormat::RGBA_8888;
+        clientInfo.usage =
+            static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN |
+                                  BufferUsage::COMPOSER_CLIENT_TARGET);
         const native_handle_t* clientBufferHandle =
-                mGralloc->allocate(layer->mWidth, layer->mHeight, layer->mLayerCount, clientFormat,
-                                   clientUsage, /*import*/ true, &clientStride);
+            mGralloc->allocate(clientInfo, /*import*/ true, &clientStride);
         ASSERT_NE(nullptr, clientBufferHandle);
 
         void* clientBufData =
-                mGralloc->lock(clientBufferHandle, clientUsage, layer->mAccessRegion, -1);
+            mGralloc->lock(clientBufferHandle, clientInfo.usage, layer->mAccessRegion, -1);
 
-        ASSERT_NO_FATAL_FAILURE(fillBuffer(layer->mWidth, layer->mHeight, clientStride,
-                                           clientBufData, clientFormat, expectedColors));
+        ASSERT_NO_FATAL_FAILURE(fillBuffer(clientInfo.width, clientInfo.height, clientStride,
+                                           clientBufData, clientInfo.format, expectedColors));
         int clientFence = mGralloc->unlock(clientBufferHandle);
         if (clientFence != -1) {
             sync_wait(clientFence, -1);
@@ -710,13 +706,14 @@ TEST_F(GraphicsComposerReadbackTest, DeviceAndClientComposition) {
     auto deviceLayer =
         std::make_shared<TestBufferLayer>(mComposerClient, mGralloc, mPrimaryDisplay, mDisplayWidth,
                                           mDisplayHeight / 2, PixelFormat::RGBA_8888);
-    std::vector<IComposerClient::Color> deviceColors(deviceLayer->mWidth * deviceLayer->mHeight);
-    fillColorsArea(deviceColors, deviceLayer->mWidth,
-                   {0, 0, static_cast<int32_t>(deviceLayer->mWidth),
-                    static_cast<int32_t>(deviceLayer->mHeight)},
+    std::vector<IComposerClient::Color> deviceColors(deviceLayer->mInfo.width *
+                                                     deviceLayer->mInfo.height);
+    fillColorsArea(deviceColors, deviceLayer->mInfo.width,
+                   {0, 0, static_cast<int32_t>(deviceLayer->mInfo.width),
+                    static_cast<int32_t>(deviceLayer->mInfo.height)},
                    GREEN);
-    deviceLayer->setDisplayFrame({0, 0, static_cast<int32_t>(deviceLayer->mWidth),
-                                  static_cast<int32_t>(deviceLayer->mHeight)});
+    deviceLayer->setDisplayFrame({0, 0, static_cast<int32_t>(deviceLayer->mInfo.width),
+                                  static_cast<int32_t>(deviceLayer->mInfo.height)});
     deviceLayer->setZOrder(10);
     ASSERT_NO_FATAL_FAILURE(deviceLayer->setBuffer(deviceColors));
     deviceLayer->write(mWriter);
@@ -731,25 +728,30 @@ TEST_F(GraphicsComposerReadbackTest, DeviceAndClientComposition) {
     execute();
     ASSERT_EQ(0, mReader->mErrors.size());
 
-    uint64_t clientUsage =
-            static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN |
-                                  BufferUsage::COMPOSER_CLIENT_TARGET);
+    IMapper::BufferDescriptorInfo clientInfo;
+    clientInfo.width = mDisplayWidth;
+    clientInfo.height = mDisplayHeight;
+    clientInfo.layerCount = 1;
+    clientInfo.format = PixelFormat::RGBA_8888;
+    clientInfo.usage =
+        static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN |
+                              BufferUsage::COMPOSER_CLIENT_TARGET);
+
     uint32_t clientStride;
     const native_handle_t* clientBufferHandle =
-            mGralloc->allocate(mDisplayWidth, mDisplayHeight, 1, PixelFormat::RGBA_8888,
-                               clientUsage, /*import*/ true, &clientStride);
+        mGralloc->allocate(clientInfo, /*import*/ true, &clientStride);
     ASSERT_NE(nullptr, clientBufferHandle);
 
-    AccessRegion clientAccessRegion;
+    IMapper::Rect clientAccessRegion;
     clientAccessRegion.left = 0;
     clientAccessRegion.top = 0;
     clientAccessRegion.width = mDisplayWidth;
     clientAccessRegion.height = mDisplayHeight;
-    void* clientData = mGralloc->lock(clientBufferHandle, clientUsage, clientAccessRegion, -1);
-    std::vector<IComposerClient::Color> clientColors(mDisplayWidth * mDisplayHeight);
-    fillColorsArea(clientColors, mDisplayWidth, clientFrame, RED);
-    ASSERT_NO_FATAL_FAILURE(fillBuffer(mDisplayWidth, mDisplayHeight, clientStride, clientData,
-                                       PixelFormat::RGBA_8888, clientColors));
+    void* clientData = mGralloc->lock(clientBufferHandle, clientInfo.usage, clientAccessRegion, -1);
+    std::vector<IComposerClient::Color> clientColors(clientInfo.width * clientInfo.height);
+    fillColorsArea(clientColors, clientInfo.width, clientFrame, RED);
+    ASSERT_NO_FATAL_FAILURE(fillBuffer(clientInfo.width, clientInfo.height, clientStride,
+                                       clientData, clientInfo.format, clientColors));
     int clientFence = mGralloc->unlock(clientBufferHandle);
     if (clientFence != -1) {
         sync_wait(clientFence, -1);
