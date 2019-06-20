@@ -115,13 +115,7 @@ class EventCallback : public IEventCallback {
 // The main test class for SENSORS HIDL HAL.
 
 class SensorsHidlTest : public SensorsHidlTestBase {
-  public:
-    virtual void SetUp() override {
-        // Ensure that we have a valid environment before performing tests
-        ASSERT_NE(getSensors(), nullptr);
-    }
-
-  protected:
+   protected:
     SensorInfo defaultSensorByType(SensorType type) override;
     std::vector<SensorInfo> getSensorsList();
     // implementation wrapper
@@ -618,9 +612,6 @@ TEST_F(SensorsHidlTest, CallInitializeTwice) {
     std::unique_ptr<SensorsHidlEnvironmentTest> newEnv =
         std::make_unique<SensorsHidlEnvironmentTest>();
     newEnv->HidlSetUp();
-    if (HasFatalFailure()) {
-        return;  // Exit early if setting up the new environment failed
-    }
 
     activateAllSensors(true);
     // Verify that the old environment does not receive any events
@@ -633,11 +624,8 @@ TEST_F(SensorsHidlTest, CallInitializeTwice) {
     newEnv->HidlTearDown();
 
     // Restore the test environment for future tests
-    getEnvironment()->HidlTearDown();
-    getEnvironment()->HidlSetUp();
-    if (HasFatalFailure()) {
-        return;  // Exit early if resetting the environment failed
-    }
+    SensorsHidlEnvironmentV2_0::Instance()->HidlTearDown();
+    SensorsHidlEnvironmentV2_0::Instance()->HidlSetUp();
 
     // Ensure that the original environment is receiving events
     activateAllSensors(true);
@@ -656,11 +644,8 @@ TEST_F(SensorsHidlTest, CleanupConnectionsOnInitialize) {
     // Clear the active sensor handles so they are not disabled during TearDown
     auto handles = mSensorHandles;
     mSensorHandles.clear();
-    getEnvironment()->HidlTearDown();
-    getEnvironment()->HidlSetUp();
-    if (HasFatalFailure()) {
-        return;  // Exit early if resetting the environment failed
-    }
+    getEnvironment()->TearDown();
+    getEnvironment()->SetUp();
 
     // Verify no events are received until sensors are re-activated
     ASSERT_EQ(collectEvents(kCollectionTimeoutUs, kNumEvents, getEnvironment()).size(), 0);
@@ -1038,11 +1023,8 @@ TEST_F(SensorsHidlTest, CleanupDirectConnectionOnInitialize) {
     // Clear the active direct connections so they are not stopped during TearDown
     auto handles = mDirectChannelHandles;
     mDirectChannelHandles.clear();
-    getEnvironment()->HidlTearDown();
-    getEnvironment()->HidlSetUp();
-    if (HasFatalFailure()) {
-        return;  // Exit early if resetting the environment failed
-    }
+    getEnvironment()->TearDown();
+    getEnvironment()->SetUp();
 
     // Attempt to configure the direct channel and expect it to fail
     configDirectReport(
