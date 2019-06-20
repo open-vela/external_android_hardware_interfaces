@@ -80,8 +80,7 @@ class ComposerImpl : public Interface {
 
     Return<void> createClient(IComposer::createClient_cb hidl_cb) override {
         std::unique_lock<std::mutex> lock(mClientMutex);
-        bool destroyed = waitForClientDestroyedLocked(lock);
-        if (!destroyed) {
+        if (!waitForClientDestroyedLocked(lock)) {
             hidl_cb(Error::NO_RESOURCES, nullptr);
             return Void();
         }
