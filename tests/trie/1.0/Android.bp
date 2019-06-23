@@ -12,3 +12,4 @@ hidl_interface {
     ],
     gen_java: false,
 }
+
