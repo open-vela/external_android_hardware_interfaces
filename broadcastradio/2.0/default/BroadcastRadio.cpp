@@ -13,11 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define LOG_TAG "BcRadioDef.module"
+#define LOG_NDEBUG 0
+
 #include "BroadcastRadio.h"
 
-#include "resources.h"
+#include <log/log.h>
 
-#include <android-base/logging.h>
+#include "resources.h"
 
 namespace android {
 namespace hardware {
@@ -49,7 +52,6 @@ static Properties initProperties(const VirtualRadio& virtualRadio) {
         static_cast<uint32_t>(IdentifierType::AMFM_FREQUENCY),
         static_cast<uint32_t>(IdentifierType::RDS_PI),
         static_cast<uint32_t>(IdentifierType::HD_STATION_ID_EXT),
-        static_cast<uint32_t>(IdentifierType::DAB_SID_EXT),
     });
     prop.vendorInfo = hidl_vec<VendorKeyValue>({
         {"com.google.dummy", "dummy"},
@@ -64,6 +66,7 @@ BroadcastRadio::BroadcastRadio(const VirtualRadio& virtualRadio)
       mAmFmConfig(gDefaultAmFmConfig) {}
 
 Return<void> BroadcastRadio::getProperties(getProperties_cb _hidl_cb) {
+    ALOGV("%s", __func__);
     _hidl_cb(mProperties);
     return {};
 }
@@ -74,6 +77,8 @@ AmFmRegionConfig BroadcastRadio::getAmFmConfig() const {
 }
 
 Return<void> BroadcastRadio::getAmFmRegionConfig(bool full, getAmFmRegionConfig_cb _hidl_cb) {
+    ALOGV("%s(%d)", __func__, full);
+
     if (full) {
         AmFmRegionConfig config = {};
         config.ranges = hidl_vec<AmFmBandRange>({
@@ -91,6 +96,8 @@ Return<void> BroadcastRadio::getAmFmRegionConfig(bool full, getAmFmRegionConfig_
 }
 
 Return<void> BroadcastRadio::getDabRegionConfig(getDabRegionConfig_cb _hidl_cb) {
+    ALOGV("%s", __func__);
+
     hidl_vec<DabTableEntry> config = {
         {"5A", 174928},  {"7D", 194064},  {"8A", 195936},  {"8B", 197648},  {"9A", 202928},
         {"9B", 204640},  {"9C", 206352},  {"10B", 211648}, {"10C", 213360}, {"10D", 215072},
@@ -104,7 +111,7 @@ Return<void> BroadcastRadio::getDabRegionConfig(getDabRegionConfig_cb _hidl_cb) 
 
 Return<void> BroadcastRadio::openSession(const sp<ITunerCallback>& callback,
                                          openSession_cb _hidl_cb) {
-    LOG(DEBUG) << "opening new session...";
+    ALOGV("%s", __func__);
 
     /* For the needs of default implementation it's fine to instantiate new session object
      * out of the lock scope. If your implementation needs it, use reentrant lock.
@@ -115,7 +122,7 @@ Return<void> BroadcastRadio::openSession(const sp<ITunerCallback>& callback,
 
     auto oldSession = mSession.promote();
     if (oldSession != nullptr) {
-        LOG(INFO) << "closing previously opened tuner";
+        ALOGI("Closing previously opened tuner");
         oldSession->close();
         mSession = nullptr;
     }
@@ -127,14 +134,14 @@ Return<void> BroadcastRadio::openSession(const sp<ITunerCallback>& callback,
 }
 
 Return<void> BroadcastRadio::getImage(uint32_t id, getImage_cb _hidl_cb) {
-    LOG(DEBUG) << "fetching image " << std::hex << id;
+    ALOGV("%s(%x)", __func__, id);
 
     if (id == resources::demoPngId) {
         _hidl_cb(std::vector<uint8_t>(resources::demoPng, std::end(resources::demoPng)));
         return {};
     }
 
-    LOG(INFO) << "image " << std::hex << id << " doesn't exists";
+    ALOGI("Image %x doesn't exists", id);
     _hidl_cb({});
     return {};
 }
@@ -142,7 +149,7 @@ Return<void> BroadcastRadio::getImage(uint32_t id, getImage_cb _hidl_cb) {
 Return<void> BroadcastRadio::registerAnnouncementListener(
     const hidl_vec<AnnouncementType>& enabled, const sp<IAnnouncementListener>& /* listener */,
     registerAnnouncementListener_cb _hidl_cb) {
-    LOG(DEBUG) << "registering announcement listener for " << toString(enabled);
+    ALOGV("%s(%s)", __func__, toString(enabled).c_str());
 
     _hidl_cb(Result::NOT_SUPPORTED, nullptr);
     return {};
