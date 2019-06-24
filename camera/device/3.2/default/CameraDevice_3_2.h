@@ -51,7 +51,7 @@ using ::android::Mutex;
 /*
  * The camera device HAL implementation is opened lazily (via the open call)
  */
-struct CameraDevice : public virtual RefBase {
+struct CameraDevice : public ICameraDevice {
     // Called by provider HAL. Provider HAL must ensure the uniqueness of
     // CameraDevice object per cameraId, or there could be multiple CameraDevice
     // trying to access the same physical camera.
@@ -60,14 +60,7 @@ struct CameraDevice : public virtual RefBase {
     CameraDevice(sp<CameraModule> module,
                  const std::string& cameraId,
                  const SortedVector<std::pair<std::string, std::string>>& cameraDeviceNames);
-    virtual ~CameraDevice();
-
-    // Retrieve the HIDL interface, split into its own class to avoid inheritance issues when
-    // dealing with minor version revs and simultaneous implementation and interface inheritance
-    virtual sp<ICameraDevice> getInterface() {
-        return new TrampolineDeviceInterface_3_2(this);
-    }
-
+    ~CameraDevice();
     // Caller must use this method to check if CameraDevice ctor failed
     bool isInitFailed() { return mInitFail; }
     // Used by provider HAL to signal external camera disconnected
@@ -75,16 +68,16 @@ struct CameraDevice : public virtual RefBase {
 
     /* Methods from ::android::hardware::camera::device::V3_2::ICameraDevice follow. */
     // The following method can be called without opening the actual camera device
-    Return<void> getResourceCost(ICameraDevice::getResourceCost_cb _hidl_cb);
-    Return<void> getCameraCharacteristics(ICameraDevice::getCameraCharacteristics_cb _hidl_cb);
-    Return<Status> setTorchMode(TorchMode mode);
+    Return<void> getResourceCost(getResourceCost_cb _hidl_cb) override;
+    Return<void> getCameraCharacteristics(getCameraCharacteristics_cb _hidl_cb) override;
+    Return<Status> setTorchMode(TorchMode mode) override;
 
     // Open the device HAL and also return a default capture session
-    Return<void> open(const sp<ICameraDeviceCallback>& callback, ICameraDevice::open_cb _hidl_cb);
+    Return<void> open(const sp<ICameraDeviceCallback>& callback, open_cb _hidl_cb) override;
 
 
     // Forward the dump call to the opened session, or do nothing
-    Return<void> dumpState(const ::android::hardware::hidl_handle& fd);
+    Return<void> dumpState(const ::android::hardware::hidl_handle& fd) override;
     /* End of Methods from ::android::hardware::camera::device::V3_2::ICameraDevice */
 
 protected:
@@ -113,39 +106,6 @@ protected:
     static Status getHidlStatus(int);
 
     Status initStatus() const;
-
-private:
-    struct TrampolineDeviceInterface_3_2 : public ICameraDevice {
-        TrampolineDeviceInterface_3_2(sp<CameraDevice> parent) :
-            mParent(parent) {}
-
-        virtual Return<void> getResourceCost(V3_2::ICameraDevice::getResourceCost_cb _hidl_cb)
-                override {
-            return mParent->getResourceCost(_hidl_cb);
-        }
-
-        virtual Return<void> getCameraCharacteristics(
-                V3_2::ICameraDevice::getCameraCharacteristics_cb _hidl_cb) override {
-            return mParent->getCameraCharacteristics(_hidl_cb);
-        }
-
-        virtual Return<Status> setTorchMode(TorchMode mode) override {
-            return mParent->setTorchMode(mode);
-        }
-
-        virtual Return<void> open(const sp<V3_2::ICameraDeviceCallback>& callback,
-                V3_2::ICameraDevice::open_cb _hidl_cb) override {
-            return mParent->open(callback, _hidl_cb);
-        }
-
-        virtual Return<void> dumpState(const hidl_handle& fd) override {
-            return mParent->dumpState(fd);
-        }
-
-    private:
-        sp<CameraDevice> mParent;
-    };
-
 };
 
 }  // namespace implementation
