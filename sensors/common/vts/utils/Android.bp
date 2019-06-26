@@ -16,7 +16,6 @@
 
 cc_library_static {
     name: "VtsHalSensorsTargetTestUtils",
-    cflags: ["-DLOG_TAG=\"sensors_hidl_hal_test\""],
     srcs: [
         "GrallocWrapper.cpp",
         "SensorsHidlEnvironmentBase.cpp",
