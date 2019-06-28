@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "GrallocWrapper"
+
 #include "GrallocWrapper.h"
 
 #include <utils/Log.h>
@@ -33,7 +35,8 @@ void GrallocWrapper::init() {
     mMapper = mapper2::IMapper::getService();
     if (mMapper == nullptr) {
         ALOGE("Failed to get mapper service");
-    } else if (mMapper->isRemote()) {
+    }
+    if (mMapper->isRemote()) {
         ALOGE("Mapper is not in passthrough mode");
     }
 }
