@@ -607,7 +607,9 @@ public:
 
     struct DeviceCb : public V3_5::ICameraDeviceCallback {
         DeviceCb(CameraHidlTest *parent, int deviceVersion, const camera_metadata_t *staticMeta) :
-                mParent(parent), mDeviceVersion(deviceVersion), mStaticMetadata(staticMeta) {}
+                mParent(parent), mDeviceVersion(deviceVersion) {
+            mStaticMetadata = staticMeta;
+        }
 
         Return<void> processCaptureResult_3_4(
                 const hidl_vec<V3_4::CaptureResult>& results) override;
@@ -631,7 +633,7 @@ public:
 
         CameraHidlTest *mParent; // Parent object
         int mDeviceVersion;
-        const camera_metadata_t *mStaticMetadata;
+        android::hardware::camera::common::V1_0::helper::CameraMetadata mStaticMetadata;
         bool hasOutstandingBuffersLocked();
 
         /* members for requestStreamBuffers() and returnStreamBuffers()*/
@@ -755,7 +757,8 @@ public:
             uint32_t *partialResultCount /*out*/,
             bool *useHalBufManager /*out*/,
             sp<DeviceCb> *cb /*out*/,
-            uint32_t streamConfigCounter = 0);
+            uint32_t streamConfigCounter = 0,
+            bool allowUnsupport = false);
     void configurePreviewStream(const std::string &name, int32_t deviceVersion,
             sp<ICameraProvider> provider,
             const AvailableStream *previewThreshold,
@@ -1193,18 +1196,20 @@ bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& r
         // Verify final result metadata
         bool isAtLeast_3_5 = mDeviceVersion >= CAMERA_DEVICE_API_VERSION_3_5;
         if (isAtLeast_3_5) {
+            auto staticMetadataBuffer = mStaticMetadata.getAndLock();
             bool isMonochrome = Status::OK ==
-                    CameraHidlTest::isMonochromeCamera(mStaticMetadata);
+                    CameraHidlTest::isMonochromeCamera(staticMetadataBuffer);
             if (isMonochrome) {
                 mParent->verifyMonochromeCameraResult(request->collectedResult);
             }
 
             // Verify logical camera result metadata
             bool isLogicalCamera =
-                    Status::OK == CameraHidlTest::isLogicalMultiCamera(mStaticMetadata);
+                    Status::OK == CameraHidlTest::isLogicalMultiCamera(staticMetadataBuffer);
             if (isLogicalCamera) {
-                mParent->verifyLogicalCameraResult(mStaticMetadata, request->collectedResult);
+                mParent->verifyLogicalCameraResult(staticMetadataBuffer, request->collectedResult);
             }
+            mStaticMetadata.unlock(staticMetadataBuffer);
         }
     }
 
@@ -4055,7 +4060,7 @@ TEST_F(CameraHidlTest, processMultiCaptureRequestPreview) {
 
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
-        if (deviceVersion < CAMERA_DEVICE_API_VERSION_3_4) {
+        if (deviceVersion < CAMERA_DEVICE_API_VERSION_3_5) {
             continue;
         }
         std::string version, deviceId;
@@ -4127,8 +4132,11 @@ TEST_F(CameraHidlTest, processMultiCaptureRequestPreview) {
         configurePreviewStreams3_4(name, deviceVersion, mProvider, &previewThreshold, physicalIds,
                 &session3_4, &session3_5, &previewStream, &halStreamConfig /*out*/,
                 &supportsPartialResults /*out*/, &partialResultCount /*out*/,
-                &useHalBufManager /*out*/, &cb /*out*/);
-        ASSERT_NE(session3_4, nullptr);
+                &useHalBufManager /*out*/, &cb /*out*/, 0 /*streamConfigCounter*/,
+                true /*allowUnsupport*/);
+        if (session3_5 == nullptr) {
+            continue;
+        }
 
         std::shared_ptr<ResultMetadataQueue> resultQueue;
         auto resultQueueRet =
@@ -5174,7 +5182,8 @@ void CameraHidlTest::configurePreviewStreams3_4(const std::string &name, int32_t
         uint32_t *partialResultCount /*out*/,
         bool *useHalBufManager /*out*/,
         sp<DeviceCb> *outCb /*out*/,
-        uint32_t streamConfigCounter) {
+        uint32_t streamConfigCounter,
+        bool allowUnsupport) {
     ASSERT_NE(nullptr, session3_4);
     ASSERT_NE(nullptr, session3_5);
     ASSERT_NE(nullptr, halStreamConfig);
@@ -5272,6 +5281,28 @@ void CameraHidlTest::configurePreviewStreams3_4(const std::string &name, int32_t
             config3_4.sessionParams = req;
             });
     ASSERT_TRUE(ret.isOk());
+
+    ASSERT_TRUE(!allowUnsupport || deviceVersion == CAMERA_DEVICE_API_VERSION_3_5);
+    if (allowUnsupport) {
+        sp<device::V3_5::ICameraDevice> cameraDevice3_5;
+        castDevice(device3_x, deviceVersion, &cameraDevice3_5);
+
+        bool supported = false;
+        ret = cameraDevice3_5->isStreamCombinationSupported(config3_4,
+                [&supported](Status s, bool combStatus) {
+                    ASSERT_TRUE((Status::OK == s) ||
+                            (Status::METHOD_NOT_SUPPORTED == s));
+                    if (Status::OK == s) {
+                        supported = combStatus;
+                    }
+                });
+        ASSERT_TRUE(ret.isOk());
+        // If stream combination is not supported, return null session.
+        if (!supported) {
+            *session3_5 = nullptr;
+            return;
+        }
+    }
 
     if (*session3_5 != nullptr) {
         config3_5.v3_4 = config3_4;
@@ -5375,7 +5406,7 @@ void CameraHidlTest::configurePreviewStream(const std::string &name, int32_t dev
         ASSERT_EQ(Status::OK, s);
         staticMeta = clone_camera_metadata(
                 reinterpret_cast<const camera_metadata_t*>(metadata.data()));
-         ASSERT_NE(nullptr, staticMeta);
+        ASSERT_NE(nullptr, staticMeta);
     });
     ASSERT_TRUE(ret.isOk());
 
