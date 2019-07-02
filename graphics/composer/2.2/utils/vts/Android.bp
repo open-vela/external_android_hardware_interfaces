@@ -19,17 +19,8 @@ cc_library_static {
     defaults: ["hidl_defaults"],
     srcs: [
         "ComposerVts.cpp",
-        "ReadbackVts.cpp",
-        "RenderEngineVts.cpp",
-    ],
-    shared_libs: [
-        "libui",
     ],
     static_libs: [
-        "librenderengine",
-        "libmath",
-        "libarect",
-        "libnativewindow",
         "VtsHalHidlTargetTestBase",
         "android.hardware.graphics.composer@2.1",
         "android.hardware.graphics.composer@2.1-vts",
