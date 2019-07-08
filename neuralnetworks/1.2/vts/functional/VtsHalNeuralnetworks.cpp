@@ -20,7 +20,7 @@
 
 #include <android-base/logging.h>
 
-#include "1.2/Callbacks.h"
+#include "Callbacks.h"
 
 namespace android {
 namespace hardware {
