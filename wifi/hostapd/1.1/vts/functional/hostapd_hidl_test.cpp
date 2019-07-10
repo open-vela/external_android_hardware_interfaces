@@ -56,8 +56,7 @@ class HostapdHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    protected:
     std::string getPrimaryWlanIfaceName() {
         std::array<char, PROPERTY_VALUE_MAX> buffer;
-        auto res = property_get("ro.vendor.wifi.sap.interface",
-                                buffer.data(), nullptr);
+        auto res = property_get("wifi.sap.interface", buffer.data(), nullptr);
         if (res > 0) return buffer.data();
         property_get("wifi.interface", buffer.data(), "wlan0");
         return buffer.data();
@@ -178,8 +177,7 @@ TEST_F(HostapdHidlTest, registerCallback) {
 TEST_F(HostapdHidlTest, AddPskAccessPointWithAcs) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithAcs(), getPskNwParams());
-    // TODO: b/140172237, fix this in R.
-    // EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -190,8 +188,7 @@ TEST_F(HostapdHidlTest, AddPskAccessPointWithAcsAndChannelRange) {
     auto status =
         HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                     getIfaceParamsWithAcsAndChannelRange(), getPskNwParams());
-    // TODO: b/140172237, fix this in R
-    // EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -202,8 +199,7 @@ TEST_F(HostapdHidlTest, AddPskAccessPointWithAcsAndInvalidChannelRange) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithAcsAndInvalidChannelRange(),
                               getPskNwParams());
-    // TODO: b/140172237, fix this in R
-    // EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
+    EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -213,8 +209,7 @@ TEST_F(HostapdHidlTest, AddPskAccessPointWithAcsAndInvalidChannelRange) {
 TEST_F(HostapdHidlTest, AddOpenAccessPointWithAcs) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithAcs(), getOpenNwParams());
-    // TODO: b/140172237, fix this in R
-    // EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -244,13 +239,10 @@ TEST_F(HostapdHidlTest, AddOpenAccessPointWithoutAcs) {
 TEST_F(HostapdHidlTest, RemoveAccessPointWithAcs) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithAcs(), getPskNwParams());
-    // TODO: b/140172237, fix this in R
-    /*
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
     status =
         HIDL_INVOKE(hostapd_, removeAccessPoint, getPrimaryWlanIfaceName());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
-    */
 }
 
 /**
