@@ -16,15 +16,16 @@
 
 #define LOG_TAG "neuralnetworks_hidl_hal_test"
 
+#include "VtsHalNeuralnetworks.h"
+
+#include "Callbacks.h"
+#include "GeneratedTestHarness.h"
+#include "TestHarness.h"
+#include "Utils.h"
+
 #include <android-base/logging.h>
 #include <android/hidl/memory/1.0/IMemory.h>
 #include <hidlmemory/mapping.h>
-
-#include "1.0/Callbacks.h"
-#include "GeneratedTestHarness.h"
-#include "MemoryUtils.h"
-#include "TestHarness.h"
-#include "VtsHalNeuralnetworks.h"
 
 namespace android {
 namespace hardware {
@@ -33,10 +34,8 @@ namespace V1_1 {
 namespace vts {
 namespace functional {
 
-using ::android::hardware::neuralnetworks::V1_0::OperandLifeTime;
-using ::android::hardware::neuralnetworks::V1_0::implementation::ExecutionCallback;
-using ::android::hardware::neuralnetworks::V1_0::implementation::PreparedModelCallback;
-using ::android::hidl::memory::V1_0::IMemory;
+using ::android::hardware::neuralnetworks::V1_2::implementation::ExecutionCallback;
+using ::android::hardware::neuralnetworks::V1_2::implementation::PreparedModelCallback;
 using ::android::nn::allocateSharedMemory;
 using ::test_helper::MixedTypedExample;
 
