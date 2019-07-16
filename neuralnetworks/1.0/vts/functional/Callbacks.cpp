@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include "Callbacks.h"
+#include "1.0/Callbacks.h"
 #include <android-base/logging.h>
 
 namespace android {
 namespace hardware {
 namespace neuralnetworks {
-namespace V1_2 {
+namespace V1_0 {
 namespace implementation {
 
 CallbackBase::CallbackBase() : mNotified(false) {}
@@ -111,14 +111,6 @@ Return<void> PreparedModelCallback::notify(ErrorStatus errorStatus,
     return Void();
 }
 
-Return<void> PreparedModelCallback::notify_1_2(ErrorStatus errorStatus,
-                                               const sp<V1_2::IPreparedModel>& preparedModel) {
-    mErrorStatus = errorStatus;
-    mPreparedModel = preparedModel;
-    CallbackBase::notify();
-    return Void();
-}
-
 ErrorStatus PreparedModelCallback::getStatus() {
     wait();
     return mErrorStatus;
@@ -135,18 +127,6 @@ ExecutionCallback::~ExecutionCallback() {}
 
 Return<void> ExecutionCallback::notify(ErrorStatus errorStatus) {
     mErrorStatus = errorStatus;
-    mOutputShapes = {};
-    mTiming = {.timeOnDevice = UINT64_MAX, .timeInDriver = UINT64_MAX};
-    CallbackBase::notify();
-    return Void();
-}
-
-Return<void> ExecutionCallback::notify_1_2(ErrorStatus errorStatus,
-                                           const hidl_vec<OutputShape>& outputShapes,
-                                           const Timing& timing) {
-    mErrorStatus = errorStatus;
-    mOutputShapes = outputShapes;
-    mTiming = timing;
     CallbackBase::notify();
     return Void();
 }
@@ -156,18 +136,8 @@ ErrorStatus ExecutionCallback::getStatus() {
     return mErrorStatus;
 }
 
-const std::vector<OutputShape>& ExecutionCallback::getOutputShapes() {
-    wait();
-    return mOutputShapes;
-}
-
-Timing ExecutionCallback::getTiming() {
-    wait();
-    return mTiming;
-}
-
 }  // namespace implementation
-}  // namespace V1_2
+}  // namespace V1_0
 }  // namespace neuralnetworks
 }  // namespace hardware
 }  // namespace android
