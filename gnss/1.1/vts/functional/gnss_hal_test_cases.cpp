@@ -59,6 +59,11 @@ TEST_F(GnssHalTest, TestGnssMeasurementCallback) {
  * each received location.
  */
 TEST_F(GnssHalTest, GetLocationLowPower) {
+    if (!IsGnssHalVersion_1_1()) {
+        ALOGI("Test GetLocationLowPower skipped. GNSS HAL version is greater than 1.1.");
+        return;
+    }
+
     const int kMinIntervalMsec = 5000;
     const int kLocationTimeoutSubsequentSec = (kMinIntervalMsec / 1000) * 2;
     const int kNoLocationPeriodSec = (kMinIntervalMsec / 1000) / 2;
@@ -202,6 +207,11 @@ IGnssConfiguration::BlacklistedSource FindStrongFrequentNonGpsSource(
  * formerly strongest satellite
  */
 TEST_F(GnssHalTest, BlacklistIndividualSatellites) {
+    if (!IsGnssHalVersion_1_1()) {
+        ALOGI("Test BlacklistIndividualSatellites skipped. GNSS HAL version is greater than 1.1.");
+        return;
+    }
+
     const int kLocationsToAwait = 3;
     const int kRetriesToUnBlacklist = 10;
 
@@ -323,6 +333,11 @@ TEST_F(GnssHalTest, BlacklistIndividualSatellites) {
  * 4a & b) Clean up by turning off location, and send in empty blacklist.
  */
 TEST_F(GnssHalTest, BlacklistConstellation) {
+    if (!IsGnssHalVersion_1_1()) {
+        ALOGI("Test BlacklistConstellation skipped. GNSS HAL version is greater than 1.1.");
+        return;
+    }
+
     const int kLocationsToAwait = 3;
 
     StartAndCheckLocations(kLocationsToAwait);
