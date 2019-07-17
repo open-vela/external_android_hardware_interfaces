@@ -16,16 +16,16 @@
 
 #define LOG_TAG "neuralnetworks_hidl_hal_test"
 
+#include "VtsHalNeuralnetworks.h"
+
+#include "Callbacks.h"
+#include "GeneratedTestHarness.h"
+#include "TestHarness.h"
+#include "Utils.h"
+
 #include <android-base/logging.h>
 #include <android/hidl/memory/1.0/IMemory.h>
 #include <hidlmemory/mapping.h>
-
-#include "1.2/Callbacks.h"
-#include "GeneratedTestHarness.h"
-#include "MemoryUtils.h"
-#include "TestHarness.h"
-#include "Utils.h"
-#include "VtsHalNeuralnetworks.h"
 
 namespace android {
 namespace hardware {
@@ -42,7 +42,7 @@ using ::test_helper::MixedTypedExample;
 std::vector<Request> createRequests(const std::vector<MixedTypedExample>& examples);
 
 // in frameworks/ml/nn/runtime/tests/generated/
-#include "vts/V1_2/all_generated_V1_0_vts_tests.cpp"
+#include "all_generated_V1_0_vts_tests.cpp"
 
 }  // namespace functional
 }  // namespace vts
