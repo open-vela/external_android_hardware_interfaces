@@ -52,9 +52,6 @@ class VirtualRadio {
 /** AM/FM virtual radio space. */
 extern VirtualRadio gAmFmRadio;
 
-/** DAB virtual radio space. */
-extern VirtualRadio gDabRadio;
-
 }  // namespace implementation
 }  // namespace V2_0
 }  // namespace broadcastradio

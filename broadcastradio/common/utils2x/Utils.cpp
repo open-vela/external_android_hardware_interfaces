@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 #define LOG_TAG "BcRadioDef.utils"
+//#define LOG_NDEBUG 0
 
 #include <broadcastradio-utils-2x/Utils.h>
 
 #include <android-base/logging.h>
+#include <log/log.h>
 
 namespace android {
 namespace hardware {
@@ -128,7 +130,7 @@ bool tunesTo(const ProgramSelector& a, const ProgramSelector& b) {
         case IdentifierType::SXM_SERVICE_ID:
             return haveEqualIds(a, b, IdentifierType::SXM_SERVICE_ID);
         default:  // includes all vendor types
-            LOG(WARNING) << "unsupported program type: " << toString(type);
+            ALOGW("Unsupported program type: %s", toString(type).c_str());
             return false;
     }
 }
@@ -164,7 +166,7 @@ uint64_t getId(const ProgramSelector& sel, const IdentifierType type) {
         return val;
     }
 
-    LOG(WARNING) << "identifier not found: " << toString(type);
+    ALOGW("Identifier %s not found", toString(type).c_str());
     return 0;
 }
 
@@ -203,7 +205,7 @@ bool isValid(const ProgramIdentifier& id) {
     auto expect = [&valid](bool condition, std::string message) {
         if (!condition) {
             valid = false;
-            LOG(ERROR) << "identifier not valid, expected " << message;
+            ALOGE("Identifier not valid, expected %s", message.c_str());
         }
     };
 
@@ -296,20 +298,6 @@ ProgramIdentifier make_identifier(IdentifierType type, uint64_t value) {
 ProgramSelector make_selector_amfm(uint32_t frequency) {
     ProgramSelector sel = {};
     sel.primaryId = make_identifier(IdentifierType::AMFM_FREQUENCY, frequency);
-    return sel;
-}
-
-ProgramSelector make_selector_dab(uint32_t sidExt, uint32_t ensemble) {
-    ProgramSelector sel = {};
-    // TODO(maryabad): Have a helper function to create the sidExt instead of
-    // passing the whole identifier here. Something like make_dab_sid_ext.
-    sel.primaryId = make_identifier(IdentifierType::DAB_SID_EXT, sidExt);
-    hidl_vec<ProgramIdentifier> secondaryIds = {
-        make_identifier(IdentifierType::DAB_ENSEMBLE, ensemble),
-        // TODO(maryabad): Include frequency here when the helper method to
-        // translate between ensemble and frequency is implemented.
-    };
-    sel.secondaryIds = secondaryIds;
     return sel;
 }
 
