@@ -137,6 +137,10 @@ TEST_F(RadioHidlTest_v1_4, setPreferredNetworkTypeBitmap) {
 
     network_type_bitmap |= ::android::hardware::radio::V1_4::RadioAccessFamily::LTE;
 
+    // TODO(b/131634656): LTE_CA will be sent to modem as a RAF in Q, but LTE_CA is not a RAF,
+    // we will not send it to modem as a RAF in R.
+    network_type_bitmap |= ::android::hardware::radio::V1_4::RadioAccessFamily::LTE_CA;
+
     Return<void> res = radio_v1_4->setPreferredNetworkTypeBitmap(serial, network_type_bitmap);
 
     ASSERT_OK(res);
@@ -165,6 +169,11 @@ TEST_F(RadioHidlTest_v1_4, setPreferredNetworkTypeBitmap) {
 
 /*
  * Test IRadio.startNetworkScan() for the response returned.
+ *
+ * REQUEST_NOT_SUPPORTED is temporarily returned because of vendors failed to fully implement
+ * startNetworkScan in HAL @1.4 (see b/137298570 and b/135595082). Starting from @1.5, however,
+ * REQUEST_NOT_SUPPORTED will be disallowed for all tests. Modems have "GSM" rat scan need to
+ * support scanning requests combined with some parameters.
  */
 TEST_F(RadioHidlTest_v1_4, startNetworkScan) {
     serial = GetRandomSerialNumber();
