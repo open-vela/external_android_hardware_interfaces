@@ -20,7 +20,7 @@
 
 #include <android-base/logging.h>
 
-#include "Callbacks.h"
+#include "1.2/Callbacks.h"
 
 namespace android {
 namespace hardware {
@@ -138,6 +138,20 @@ void ValidationTest::validateEverything(const Model& model, const std::vector<Re
 
     validateRequests(preparedModel, requests);
     validateBurst(preparedModel, requests);
+}
+
+void ValidationTest::validateFailure(const Model& model, const std::vector<Request>& requests) {
+    // TODO: Should this always succeed?
+    //       What if the invalid input is part of the model (i.e., a parameter).
+    validateModel(model);
+
+    sp<IPreparedModel> preparedModel;
+    ASSERT_NO_FATAL_FAILURE(createPreparedModel(device, model, &preparedModel));
+    if (preparedModel == nullptr) {
+        return;
+    }
+
+    validateRequestFailure(preparedModel, requests);
 }
 
 sp<IPreparedModel> getPreparedModel_1_2(
