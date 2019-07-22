@@ -26,11 +26,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <random>
-#include <thread>
 
-#include "1.2/Callbacks.h"
+#include "Callbacks.h"
 #include "GeneratedTestHarness.h"
-#include "MemoryUtils.h"
 #include "TestHarness.h"
 #include "Utils.h"
 #include "VtsHalNeuralnetworks.h"
@@ -42,11 +40,8 @@ namespace V1_2 {
 namespace vts {
 namespace functional {
 
-using ::android::hardware::neuralnetworks::V1_0::OperandLifeTime;
-using ::android::hardware::neuralnetworks::V1_1::ExecutionPreference;
 using ::android::hardware::neuralnetworks::V1_2::implementation::ExecutionCallback;
 using ::android::hardware::neuralnetworks::V1_2::implementation::PreparedModelCallback;
-using ::android::hidl::memory::V1_0::IMemory;
 using ::android::nn::allocateSharedMemory;
 using ::test_helper::MixedTypedExample;
 
@@ -54,7 +49,7 @@ namespace float32_model {
 
 // In frameworks/ml/nn/runtime/test/generated/, creates a hidl model of float32 mobilenet.
 #include "examples/mobilenet_224_gender_basic_fixed.example.cpp"
-#include "vts/V1_2/models/mobilenet_224_gender_basic_fixed.model.cpp"
+#include "vts_models/mobilenet_224_gender_basic_fixed.model.cpp"
 
 // Prevent the compiler from complaining about an otherwise unused function.
 [[maybe_unused]] auto dummy_createTestModel = createTestModel_dynamic_output_shape;
@@ -77,7 +72,7 @@ namespace quant8_model {
 
 // In frameworks/ml/nn/runtime/test/generated/, creates a hidl model of quant8 mobilenet.
 #include "examples/mobilenet_quantized.example.cpp"
-#include "vts/V1_2/models/mobilenet_quantized.model.cpp"
+#include "vts_models/mobilenet_quantized.model.cpp"
 
 // Prevent the compiler from complaining about an otherwise unused function.
 [[maybe_unused]] auto dummy_createTestModel = createTestModel_dynamic_output_shape;
