@@ -43,20 +43,15 @@
 namespace android {
 namespace hardware {
 namespace neuralnetworks {
-namespace V1_2 {
 namespace generated_tests {
 
 using ::android::hardware::neuralnetworks::V1_0::ErrorStatus;
 using ::android::hardware::neuralnetworks::V1_0::Request;
 using ::android::hardware::neuralnetworks::V1_0::RequestArgument;
 using ::android::hardware::neuralnetworks::V1_1::ExecutionPreference;
-using ::android::hardware::neuralnetworks::V1_2::Constant;
 using ::android::hardware::neuralnetworks::V1_2::IDevice;
 using ::android::hardware::neuralnetworks::V1_2::IPreparedModel;
-using ::android::hardware::neuralnetworks::V1_2::MeasureTiming;
 using ::android::hardware::neuralnetworks::V1_2::Model;
-using ::android::hardware::neuralnetworks::V1_2::OutputShape;
-using ::android::hardware::neuralnetworks::V1_2::Timing;
 using ::android::hardware::neuralnetworks::V1_2::implementation::ExecutionCallback;
 using ::android::hardware::neuralnetworks::V1_2::implementation::PreparedModelCallback;
 using ::android::hidl::memory::V1_0::IMemory;
@@ -452,7 +447,6 @@ void Execute(const sp<IDevice>& device, std::function<Model(void)> create_model,
 }
 
 }  // namespace generated_tests
-}  // namespace V1_2
 }  // namespace neuralnetworks
 }  // namespace hardware
 }  // namespace android
