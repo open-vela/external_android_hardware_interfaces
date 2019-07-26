@@ -17,12 +17,10 @@
 #define LOG_TAG "neuralnetworks_hidl_hal_test"
 
 #include "VtsHalNeuralnetworks.h"
-#include "1.0/Callbacks.h"
-#include "1.0/Utils.h"
-#include "GeneratedTestHarness.h"
-#include "TestHarness.h"
 
 #include <android-base/logging.h>
+
+#include "Callbacks.h"
 
 namespace android {
 namespace hardware {
@@ -128,7 +126,7 @@ void NeuralnetworksHidlTest::TearDown() {
     ::testing::VtsHalHidlTargetTestBase::TearDown();
 }
 
-void ValidationTest::validateEverything(const Model& model, const Request& request) {
+void ValidationTest::validateEverything(const Model& model, const std::vector<Request>& requests) {
     validateModel(model);
 
     // create IPreparedModel
@@ -138,35 +136,9 @@ void ValidationTest::validateEverything(const Model& model, const Request& reque
         return;
     }
 
-    validateRequest(preparedModel, request);
-    validateBurst(preparedModel, request);
+    validateRequests(preparedModel, requests);
+    validateBurst(preparedModel, requests);
 }
-
-void ValidationTest::validateFailure(const Model& model, const Request& request) {
-    // TODO: Should this always succeed?
-    //       What if the invalid input is part of the model (i.e., a parameter).
-    validateModel(model);
-
-    sp<IPreparedModel> preparedModel;
-    ASSERT_NO_FATAL_FAILURE(createPreparedModel(device, model, &preparedModel));
-    if (preparedModel == nullptr) {
-        return;
-    }
-
-    validateRequestFailure(preparedModel, request);
-}
-
-TEST_P(ValidationTest, Test) {
-    const Model model = createModel(*mTestModel);
-    const Request request = createRequest(*mTestModel);
-    if (mTestModel->expectFailure) {
-        validateFailure(model, request);
-    } else {
-        validateEverything(model, request);
-    }
-}
-
-INSTANTIATE_GENERATED_TEST(ValidationTest, [](const test_helper::TestModel&) { return true; });
 
 sp<IPreparedModel> getPreparedModel_1_2(
     const sp<V1_2::implementation::PreparedModelCallback>& callback) {
