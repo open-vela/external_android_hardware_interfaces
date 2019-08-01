@@ -20,6 +20,7 @@ cc_library_shared {
     srcs: ["ConsumerIr.cpp"],
     shared_libs: [
         "libhidlbase",
+        "libhidltransport",
         "libhardware",
         "liblog",
         "libutils",
@@ -39,6 +40,7 @@ cc_binary {
         "liblog",
         "libhardware",
         "libhidlbase",
+        "libhidltransport",
         "libutils",
         "android.hardware.ir@1.0",
     ],
