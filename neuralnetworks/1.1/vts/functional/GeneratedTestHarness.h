@@ -18,20 +18,21 @@
 #define ANDROID_HARDWARE_NEURALNETWORKS_V1_1_GENERATED_TEST_HARNESS_H
 
 #include <android/hardware/neuralnetworks/1.1/IDevice.h>
+#include <android/hardware/neuralnetworks/1.1/types.h>
+#include <functional>
+#include <vector>
 #include "TestHarness.h"
 
 namespace android {
 namespace hardware {
 namespace neuralnetworks {
-namespace V1_1 {
 namespace generated_tests {
 
-Model createModel(const ::test_helper::TestModel& testModel);
-
-void Execute(const sp<V1_1::IDevice>& device, const ::test_helper::TestModel& testModel);
+void Execute(const sp<V1_1::IDevice>& device, std::function<V1_1::Model(void)> create_model,
+             std::function<bool(int)> is_ignored,
+             const std::vector<::test_helper::MixedTypedExample>& examples);
 
 }  // namespace generated_tests
-}  // namespace V1_1
 }  // namespace neuralnetworks
 }  // namespace hardware
 }  // namespace android
