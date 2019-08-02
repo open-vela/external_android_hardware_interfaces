@@ -20,7 +20,7 @@
 
 #include <android-base/logging.h>
 
-#include "1.2/Callbacks.h"
+#include "Callbacks.h"
 
 namespace android {
 namespace hardware {
@@ -126,7 +126,7 @@ void NeuralnetworksHidlTest::TearDown() {
     ::testing::VtsHalHidlTargetTestBase::TearDown();
 }
 
-void ValidationTest::validateEverything(const Model& model, const Request& request) {
+void ValidationTest::validateEverything(const Model& model, const std::vector<Request>& requests) {
     validateModel(model);
 
     // create IPreparedModel
@@ -136,22 +136,8 @@ void ValidationTest::validateEverything(const Model& model, const Request& reque
         return;
     }
 
-    validateRequest(preparedModel, request);
-    validateBurst(preparedModel, request);
-}
-
-void ValidationTest::validateFailure(const Model& model, const Request& request) {
-    // TODO: Should this always succeed?
-    //       What if the invalid input is part of the model (i.e., a parameter).
-    validateModel(model);
-
-    sp<IPreparedModel> preparedModel;
-    ASSERT_NO_FATAL_FAILURE(createPreparedModel(device, model, &preparedModel));
-    if (preparedModel == nullptr) {
-        return;
-    }
-
-    validateRequestFailure(preparedModel, request);
+    validateRequests(preparedModel, requests);
+    validateBurst(preparedModel, requests);
 }
 
 sp<IPreparedModel> getPreparedModel_1_2(
