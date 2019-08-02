@@ -182,15 +182,14 @@ class SensorsHidlTest : public SensorsHidlTestBase {
     int32_t getInvalidSensorHandle();
     bool getDirectChannelSensor(SensorInfo* sensor, SharedMemType* memType, RateLevel* rate);
     void verifyDirectChannel(SharedMemType memType);
-    void verifyRegisterDirectChannel(std::shared_ptr<SensorsTestSharedMemory> mem,
-                                     int32_t* directChannelHandle, bool supportsSharedMemType,
-                                     bool supportsAnyDirectChannel);
+    void verifyRegisterDirectChannel(const SensorInfo& sensor, SharedMemType memType,
+                                     std::shared_ptr<SensorsTestSharedMemory> mem,
+                                     int32_t* directChannelHandle);
     void verifyConfigure(const SensorInfo& sensor, SharedMemType memType,
-                         int32_t directChannelHandle, bool directChannelSupported);
-    void verifyUnregisterDirectChannel(int32_t directChannelHandle, bool directChannelSupported);
+                         int32_t directChannelHandle);
+    void verifyUnregisterDirectChannel(const SensorInfo& sensor, SharedMemType memType,
+                                       int32_t directChannelHandle);
     void checkRateLevel(const SensorInfo& sensor, int32_t directChannelHandle, RateLevel rateLevel);
-    void queryDirectChannelSupport(SharedMemType memType, bool* supportsSharedMemType,
-                                   bool* supportsAnyDirectChannel);
 };
 
 Return<Result> SensorsHidlTest::activate(int32_t sensorHandle, bool enabled) {
@@ -911,43 +910,21 @@ void SensorsHidlTest::checkRateLevel(const SensorInfo& sensor, int32_t directCha
                        [&](Result result, int32_t reportToken) {
                            if (isDirectReportRateSupported(sensor, rateLevel)) {
                                ASSERT_EQ(result, Result::OK);
-                               if (rateLevel != RateLevel::STOP) {
-                                   ASSERT_GT(reportToken, 0);
-                               }
+                               ASSERT_GT(reportToken, 0);
                            } else {
                                ASSERT_EQ(result, Result::BAD_VALUE);
                            }
                        });
 }
 
-void SensorsHidlTest::queryDirectChannelSupport(SharedMemType memType, bool* supportsSharedMemType,
-                                                bool* supportsAnyDirectChannel) {
-    *supportsSharedMemType = false;
-    *supportsAnyDirectChannel = false;
-    for (const SensorInfo& curSensor : getSensorsList()) {
-        if (isDirectChannelTypeSupported(curSensor, memType)) {
-            *supportsSharedMemType = true;
-        }
-        if (isDirectChannelTypeSupported(curSensor, SharedMemType::ASHMEM) ||
-            isDirectChannelTypeSupported(curSensor, SharedMemType::GRALLOC)) {
-            *supportsAnyDirectChannel = true;
-        }
-
-        if (*supportsSharedMemType && *supportsAnyDirectChannel) {
-            break;
-        }
-    }
-}
-
-void SensorsHidlTest::verifyRegisterDirectChannel(std::shared_ptr<SensorsTestSharedMemory> mem,
-                                                  int32_t* directChannelHandle,
-                                                  bool supportsSharedMemType,
-                                                  bool supportsAnyDirectChannel) {
+void SensorsHidlTest::verifyRegisterDirectChannel(const SensorInfo& sensor, SharedMemType memType,
+                                                  std::shared_ptr<SensorsTestSharedMemory> mem,
+                                                  int32_t* directChannelHandle) {
     char* buffer = mem->getBuffer();
     memset(buffer, 0xff, mem->getSize());
 
     registerDirectChannel(mem->getSharedMemInfo(), [&](Result result, int32_t channelHandle) {
-        if (supportsSharedMemType) {
+        if (isDirectChannelTypeSupported(sensor, memType)) {
             ASSERT_EQ(result, Result::OK);
             ASSERT_GT(channelHandle, 0);
 
@@ -956,9 +933,7 @@ void SensorsHidlTest::verifyRegisterDirectChannel(std::shared_ptr<SensorsTestSha
                 ASSERT_EQ(buffer[i], 0x00);
             }
         } else {
-            Result expectedResult =
-                    supportsAnyDirectChannel ? Result::BAD_VALUE : Result::INVALID_OPERATION;
-            ASSERT_EQ(result, expectedResult);
+            ASSERT_EQ(result, Result::INVALID_OPERATION);
             ASSERT_EQ(channelHandle, -1);
         }
         *directChannelHandle = channelHandle;
@@ -966,7 +941,7 @@ void SensorsHidlTest::verifyRegisterDirectChannel(std::shared_ptr<SensorsTestSha
 }
 
 void SensorsHidlTest::verifyConfigure(const SensorInfo& sensor, SharedMemType memType,
-                                      int32_t directChannelHandle, bool supportsAnyDirectChannel) {
+                                      int32_t directChannelHandle) {
     if (isDirectChannelTypeSupported(sensor, memType)) {
         // Verify that each rate level is properly supported
         checkRateLevel(sensor, directChannelHandle, RateLevel::NORMAL);
@@ -982,22 +957,22 @@ void SensorsHidlTest::verifyConfigure(const SensorInfo& sensor, SharedMemType me
             -1 /* sensorHandle */, directChannelHandle, RateLevel::STOP,
             [](Result result, int32_t /* reportToken */) { ASSERT_EQ(result, Result::OK); });
     } else {
-        // directChannelHandle will be -1 here, HAL should either reject it as a bad value if there
-        // is some level of direct channel report, otherwise return INVALID_OPERATION if direct
-        // channel is not supported at all
-        Result expectedResult =
-                supportsAnyDirectChannel ? Result::BAD_VALUE : Result::INVALID_OPERATION;
+        // Direct channel is not supported for this SharedMemType
         configDirectReport(sensor.sensorHandle, directChannelHandle, RateLevel::NORMAL,
-                           [expectedResult](Result result, int32_t /* reportToken */) {
-                               ASSERT_EQ(result, expectedResult);
+                           [](Result result, int32_t /* reportToken */) {
+                               ASSERT_EQ(result, Result::INVALID_OPERATION);
                            });
     }
 }
 
-void SensorsHidlTest::verifyUnregisterDirectChannel(int32_t directChannelHandle,
-                                                    bool supportsAnyDirectChannel) {
-    Result expectedResult = supportsAnyDirectChannel ? Result::OK : Result::INVALID_OPERATION;
-    ASSERT_EQ(unregisterDirectChannel(directChannelHandle), expectedResult);
+void SensorsHidlTest::verifyUnregisterDirectChannel(const SensorInfo& sensor, SharedMemType memType,
+                                                    int32_t directChannelHandle) {
+    Result result = unregisterDirectChannel(directChannelHandle);
+    if (isDirectChannelTypeSupported(sensor, memType)) {
+        ASSERT_EQ(result, Result::OK);
+    } else {
+        ASSERT_EQ(result, Result::INVALID_OPERATION);
+    }
 }
 
 void SensorsHidlTest::verifyDirectChannel(SharedMemType memType) {
@@ -1008,16 +983,11 @@ void SensorsHidlTest::verifyDirectChannel(SharedMemType memType) {
         SensorsTestSharedMemory::create(memType, kMemSize));
     ASSERT_NE(mem, nullptr);
 
-    bool supportsSharedMemType;
-    bool supportsAnyDirectChannel;
-    queryDirectChannelSupport(memType, &supportsSharedMemType, &supportsAnyDirectChannel);
-
     for (const SensorInfo& sensor : getSensorsList()) {
         int32_t directChannelHandle = 0;
-        verifyRegisterDirectChannel(mem, &directChannelHandle, supportsSharedMemType,
-                                    supportsAnyDirectChannel);
-        verifyConfigure(sensor, memType, directChannelHandle, supportsAnyDirectChannel);
-        verifyUnregisterDirectChannel(directChannelHandle, supportsAnyDirectChannel);
+        verifyRegisterDirectChannel(sensor, memType, mem, &directChannelHandle);
+        verifyConfigure(sensor, memType, directChannelHandle);
+        verifyUnregisterDirectChannel(sensor, memType, directChannelHandle);
     }
 }
 
