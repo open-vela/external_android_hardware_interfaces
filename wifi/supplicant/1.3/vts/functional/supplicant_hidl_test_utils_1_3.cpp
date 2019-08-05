@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 
-package android.hardware.wifi@1.0;
+#include <VtsHalHidlTargetTestBase.h>
+#include <android-base/logging.h>
 
-import IWifiIface;
+#include "supplicant_hidl_test_utils.h"
+#include "supplicant_hidl_test_utils_1_3.h"
 
-/**
- * Interface used to represent a single NAN iface.
- */
-interface IWifiP2pIface extends IWifiIface {};
+using ::android::sp;
+using ::android::hardware::wifi::supplicant::V1_3::ISupplicantStaNetwork;
+
+sp<ISupplicantStaNetwork> createSupplicantStaNetwork_1_3() {
+    return ISupplicantStaNetwork::castFrom(createSupplicantStaNetwork());
+}

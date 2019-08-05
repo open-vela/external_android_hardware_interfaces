@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 The Android Open Source Project
+ * Copyright 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,17 @@
  * limitations under the License.
  */
 
-package android.hardware.wifi@1.0;
+package android.hardware.wifi.supplicant@1.3;
 
-import IWifiIface;
+import @1.2::ISupplicant;
 
 /**
- * Interface used to represent a single NAN iface.
+ * Interface exposed by the supplicant HIDL service registered
+ * with the hardware service manager.
+ * This is the root level object for any the supplicant interactions.
+ * To use 1.3 features you must cast specific interfaces returned from the
+ * 1.2 HAL. For example V1_2::ISupplicant::addIface() adds V1_2::ISupplicantIface,
+ * which can be cast to V1_3::ISupplicantStaIface.
  */
-interface IWifiP2pIface extends IWifiIface {};
+interface ISupplicant extends @1.2::ISupplicant {
+};
