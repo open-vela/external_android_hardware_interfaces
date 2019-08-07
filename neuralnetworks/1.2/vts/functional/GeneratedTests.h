@@ -35,5 +35,6 @@ using namespace ::android::hardware::neuralnetworks::V1_2::vts::functional;
 
 using ::android::hardware::neuralnetworks::V1_0::OperandLifeTime;
 using ::android::hardware::neuralnetworks::V1_0::Request;
+using ::android::hardware::neuralnetworks::V1_2::Model;
 
 }  // namespace android::hardware::neuralnetworks::V1_2::generated_tests
