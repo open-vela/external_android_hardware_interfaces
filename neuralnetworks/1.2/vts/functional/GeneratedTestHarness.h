@@ -27,7 +27,6 @@
 namespace android {
 namespace hardware {
 namespace neuralnetworks {
-namespace V1_2 {
 namespace generated_tests {
 
 using ::test_helper::MixedTypedExample;
@@ -45,7 +44,6 @@ void Execute(const sp<V1_2::IDevice>& device, std::function<V1_2::Model(void)> c
              bool testDynamicOutputShape = false);
 
 }  // namespace generated_tests
-}  // namespace V1_2
 }  // namespace neuralnetworks
 }  // namespace hardware
 }  // namespace android
