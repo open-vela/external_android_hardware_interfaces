@@ -187,11 +187,11 @@ Gralloc::Gralloc() {
                                                                        /*errOnFailure=*/false));
         if (mGralloc3->getMapper() == nullptr || mGralloc3->getAllocator() == nullptr) {
             mGralloc3 = nullptr;
-            ALOGD("Failed to create gralloc3, initializing gralloc2_1");
+            ALOGD("Failed to initialize gralloc3, initializing gralloc2_1");
             mGralloc2_1 = std::make_shared<Gralloc2_1>(/*errOnFailure*/ false);
             if (!mGralloc2_1->getMapper()) {
                 mGralloc2_1 = nullptr;
-                ALOGD("Failed to create gralloc2_1, initializing gralloc2");
+                ALOGD("Failed to initialize gralloc2_1, initializing gralloc2");
                 ASSERT_NO_FATAL_FAILURE(mGralloc2 = std::make_shared<Gralloc2>());
             }
         }
