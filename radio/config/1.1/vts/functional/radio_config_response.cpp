@@ -21,8 +21,8 @@
 RadioConfigResponse::RadioConfigResponse(RadioConfigHidlTest& parent) : parent(parent) {}
 
 Return<void> RadioConfigResponse::getSimSlotsStatusResponse(
-    const RadioResponseInfo& /* info */,
-    const ::android::hardware::hidl_vec<SimSlotStatus>& /* slotStatus */) {
+        const RadioResponseInfo& /* info */,
+        const ::android::hardware::hidl_vec<SimSlotStatus>& /* slotStatus */) {
     return Void();
 }
 
@@ -38,21 +38,16 @@ Return<void> RadioConfigResponse::getPhoneCapabilityResponse(
     return Void();
 }
 
-Return<void> RadioConfigResponse::setPreferredDataModemResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent.notify(info.serial);
+Return<void> RadioConfigResponse::setPreferredDataModemResponse(
+        const RadioResponseInfo& /* info */) {
     return Void();
 }
 
-Return<void> RadioConfigResponse::getModemsConfigResponse(const RadioResponseInfo& info,
+Return<void> RadioConfigResponse::getModemsConfigResponse(const RadioResponseInfo& /* info */,
                                                           const ModemsConfig& /* mConfig */) {
-    rspInfo = info;
-    parent.notify(info.serial);
     return Void();
 }
 
-Return<void> RadioConfigResponse::setModemsConfigResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent.notify(info.serial);
+Return<void> RadioConfigResponse::setModemsConfigResponse(const RadioResponseInfo& /* info */) {
     return Void();
 }
