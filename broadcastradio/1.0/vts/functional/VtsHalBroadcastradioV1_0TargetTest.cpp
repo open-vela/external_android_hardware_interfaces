@@ -22,12 +22,12 @@
 #include <hidl/HidlTransportSupport.h>
 #include <utils/threads.h>
 
-#include <android/hardware/broadcastradio/1.0/IBroadcastRadio.h>
 #include <android/hardware/broadcastradio/1.0/IBroadcastRadioFactory.h>
+#include <android/hardware/broadcastradio/1.0/IBroadcastRadio.h>
 #include <android/hardware/broadcastradio/1.0/ITuner.h>
 #include <android/hardware/broadcastradio/1.0/ITunerCallback.h>
 #include <android/hardware/broadcastradio/1.0/types.h>
-#include <broadcastradio-vts-utils/environment-utils.h>
+
 
 using ::android::sp;
 using ::android::Mutex;
@@ -48,7 +48,6 @@ using ::android::hardware::broadcastradio::V1_0::ProgramInfo;
 using ::android::hardware::broadcastradio::V1_0::MetaData;
 using ::android::hardware::broadcastradio::V1_0::MetadataKey;
 using ::android::hardware::broadcastradio::V1_0::MetadataType;
-using ::android::hardware::broadcastradio::vts::BroadcastRadioHidlEnvironment;
 
 #define RETURN_IF_SKIPPED \
     if (skipped) { \
@@ -56,8 +55,8 @@ using ::android::hardware::broadcastradio::vts::BroadcastRadioHidlEnvironment;
         return; \
     }
 
-static BroadcastRadioHidlEnvironment<IBroadcastRadioFactory>* gEnv = nullptr;
 // The main test class for Broadcast Radio HIDL HAL.
+
 class BroadcastRadioHidlTest : public ::testing::VtsHalHidlTargetTestBase,
         public ::testing::WithParamInterface<Class> {
  protected:
@@ -68,7 +67,7 @@ class BroadcastRadioHidlTest : public ::testing::VtsHalHidlTargetTestBase,
         skipped = false;
 
         sp<IBroadcastRadioFactory> factory =
-            getService<IBroadcastRadioFactory>(gEnv->getServiceName<IBroadcastRadioFactory>());
+              ::testing::VtsHalHidlTargetTestBase::getService<IBroadcastRadioFactory>();
         ASSERT_NE(nullptr, factory.get());
 
         Result connectResult;
@@ -732,11 +731,8 @@ INSTANTIATE_TEST_CASE_P(
     ::testing::Values(Class::AM_FM, Class::SAT, Class::DT));
 
 int main(int argc, char** argv) {
-    gEnv = new BroadcastRadioHidlEnvironment<IBroadcastRadioFactory>;
-    ::testing::AddGlobalTestEnvironment(gEnv);
-    ::testing::InitGoogleTest(&argc, argv);
-    gEnv->init(&argc, argv);
-    int status = RUN_ALL_TESTS();
-    ALOGI("Test result = %d", status);
-    return status;
+  ::testing::InitGoogleTest(&argc, argv);
+  int status = RUN_ALL_TESTS();
+  ALOGI("Test result = %d", status);
+  return status;
 }

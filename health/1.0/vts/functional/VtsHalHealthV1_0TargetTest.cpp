@@ -19,9 +19,7 @@
 #include <android/hardware/health/1.0/IHealth.h>
 #include <android/hardware/health/1.0/types.h>
 #include <log/log.h>
-
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 
 using HealthConfig = ::android::hardware::health::V1_0::HealthConfig;
 using HealthInfo = ::android::hardware::health::V1_0::HealthInfo;
@@ -30,25 +28,10 @@ using Result = ::android::hardware::health::V1_0::Result;
 
 using ::android::sp;
 
-// Test environment for Health HIDL HAL.
-class HealthHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static HealthHidlEnvironment* Instance() {
-        static HealthHidlEnvironment* instance = new HealthHidlEnvironment;
-        return instance;
-    }
-
-    virtual void registerTestServices() override { registerTestService<IHealth>(); }
-   private:
-    HealthHidlEnvironment() {}
-};
-
 class HealthHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        health = ::testing::VtsHalHidlTargetTestBase::getService<IHealth>(
-            HealthHidlEnvironment::Instance()->getServiceName<IHealth>());
+        health = ::testing::VtsHalHidlTargetTestBase::getService<IHealth>();
         ASSERT_NE(health, nullptr);
         health->init(config,
                      [&](const auto& halConfigOut) { config = halConfigOut; });
@@ -74,9 +57,7 @@ TEST_F(HealthHidlTest, TestEnergyCounter) {
 }
 
 int main(int argc, char **argv) {
-    ::testing::AddGlobalTestEnvironment(HealthHidlEnvironment::Instance());
     ::testing::InitGoogleTest(&argc, argv);
-    HealthHidlEnvironment::Instance()->init(&argc, argv);
     int status = RUN_ALL_TESTS();
     ALOGI("Test result = %d", status);
     return status;

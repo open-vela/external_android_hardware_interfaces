@@ -24,7 +24,6 @@
 #include <system/camera_vendor_tags.h>
 
 #include <stdint.h>
-#include <unordered_map>
 
 namespace android {
 namespace hardware {
@@ -95,8 +94,7 @@ class VendorTagDescriptor {
         KeyedVector<String8, KeyedVector<String8, uint32_t>*> mReverseMapping;
         KeyedVector<uint32_t, String8> mTagToNameMap;
         KeyedVector<uint32_t, uint32_t> mTagToSectionMap; // Value is offset in mSections
-
-        std::unordered_map<uint32_t, int32_t> mTagToTypeMap;
+        KeyedVector<uint32_t, int32_t> mTagToTypeMap;
         SortedVector<String8> mSections;
         // must be int32_t to be compatible with Parcel::writeInt32
         int32_t mTagCount;

@@ -21,8 +21,6 @@
 
 #include <hidl/MQDescriptor.h>
 
-#include <functional>
-
 namespace android {
 namespace hardware {
 namespace bluetooth {

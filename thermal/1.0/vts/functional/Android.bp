@@ -16,8 +16,22 @@
 
 cc_test {
     name: "VtsHalThermalV1_0TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
+    defaults: ["hidl_defaults"],
     srcs: ["VtsHalThermalV1_0TargetTest.cpp"],
-    static_libs: ["android.hardware.thermal@1.0"],
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libcutils",
+        "libhidlbase",
+        "libhidltransport",
+        "libnativehelper",
+        "libutils",
+        "android.hardware.thermal@1.0",
+    ],
+    static_libs: ["VtsHalHidlTargetTestBase"],
+    cflags: [
+        "-O0",
+        "-g",
+    ],
 }
 

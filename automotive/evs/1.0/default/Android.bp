@@ -13,6 +13,7 @@ cc_binary {
 
     shared_libs: [
         "android.hardware.automotive.evs@1.0",
+        "libui",
         "libbase",
         "libbinder",
         "libcutils",
@@ -20,7 +21,6 @@ cc_binary {
         "libhidlbase",
         "libhidltransport",
         "liblog",
-        "libui",
         "libutils",
     ],
 

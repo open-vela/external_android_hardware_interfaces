@@ -16,7 +16,6 @@
 
 #define LOG_TAG "sensors_hidl_hal_test"
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/logging.h>
 #include <android/hardware/sensors/1.0/ISensors.h>
 #include <android/hardware/sensors/1.0/types.h>
@@ -24,7 +23,6 @@
 #include <hardware/sensors.h>  // for sensor type strings
 #include <log/log.h>
 #include <utils/SystemClock.h>
-#include "GrallocWrapper.h"
 
 #include <algorithm>
 #include <cinttypes>
@@ -38,7 +36,6 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
-using ::android::GrallocWrapper;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
 using ::android::hardware::hidl_string;
@@ -47,67 +44,63 @@ using namespace ::android::hardware::sensors::V1_0;
 
 // Test environment for sensors
 class SensorsHidlTest;
-class SensorsHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static SensorsHidlEnvironment* Instance() {
-        static SensorsHidlEnvironment* instance = new SensorsHidlEnvironment;
-        return instance;
-    }
+class SensorsHidlEnvironment : public ::testing::Environment {
+ public:
+  // get the test environment singleton
+  static SensorsHidlEnvironment* Instance() {
+    static SensorsHidlEnvironment* instance = new SensorsHidlEnvironment;
+    return instance;
+  }
 
-    virtual void HidlSetUp() override;
-    virtual void HidlTearDown() override;
+  virtual void SetUp();
+  virtual void TearDown();
 
-    virtual void registerTestServices() override { registerTestService<ISensors>(); }
+  // Get and clear all events collected so far (like "cat" shell command).
+  // If output is nullptr, it clears all collected events.
+  void catEvents(std::vector<Event>* output);
 
-    // Get and clear all events collected so far (like "cat" shell command).
-    // If output is nullptr, it clears all collected events.
-    void catEvents(std::vector<Event>* output);
+  // set sensor event collection status
+  void setCollection(bool enable);
 
-    // set sensor event collection status
-    void setCollection(bool enable);
+ private:
+  friend SensorsHidlTest;
+  // sensors hidl service
+  sp<ISensors> sensors;
 
-   private:
-    friend SensorsHidlTest;
-    // sensors hidl service
-    sp<ISensors> sensors;
+  SensorsHidlEnvironment() {}
 
-    SensorsHidlEnvironment() {}
+  void addEvent(const Event& ev);
+  void startPollingThread();
+  void resetHal();
+  static void pollingThread(SensorsHidlEnvironment* env, std::shared_ptr<bool> stop);
 
-    void addEvent(const Event& ev);
-    void startPollingThread();
-    void resetHal();
-    static void pollingThread(SensorsHidlEnvironment* env, std::shared_ptr<bool> stop);
+  bool collectionEnabled;
+  std::shared_ptr<bool> stopThread;
+  std::thread pollThread;
+  std::vector<Event> events;
+  std::mutex events_mutex;
 
-    bool collectionEnabled;
-    std::shared_ptr<bool> stopThread;
-    std::thread pollThread;
-    std::vector<Event> events;
-    std::mutex events_mutex;
-
-    GTEST_DISALLOW_COPY_AND_ASSIGN_(SensorsHidlEnvironment);
+  GTEST_DISALLOW_COPY_AND_ASSIGN_(SensorsHidlEnvironment);
 };
 
-void SensorsHidlEnvironment::HidlSetUp() {
-    resetHal();
+void SensorsHidlEnvironment::SetUp() {
+  resetHal();
 
-    ASSERT_NE(sensors, nullptr) << "sensors is nullptr, cannot get hidl service";
+  ASSERT_NE(sensors, nullptr) << "sensors is nullptr, cannot get hidl service";
 
-    collectionEnabled = false;
-    startPollingThread();
+  collectionEnabled = false;
+  startPollingThread();
 
-    // In case framework just stopped for test and there is sensor events in the pipe,
-    // wait some time for those events to be cleared to avoid them messing up the test.
-    std::this_thread::sleep_for(std::chrono::seconds(3));
+  // In case framework just stopped for test and there is sensor events in the pipe,
+  // wait some time for those events to be cleared to avoid them messing up the test.
+  std::this_thread::sleep_for(std::chrono::seconds(3));
 }
 
-void SensorsHidlEnvironment::HidlTearDown() {
-    if (stopThread) {
-        *stopThread = true;
-    }
-    if (pollThread.joinable()) {
-        pollThread.detach();
-    }
+void SensorsHidlEnvironment::TearDown() {
+  if (stopThread) {
+    *stopThread = true;
+  }
+  pollThread.detach();
 }
 
 void SensorsHidlEnvironment::resetHal() {
@@ -120,8 +113,7 @@ void SensorsHidlEnvironment::resetHal() {
     // this do ... while is for easy error handling
     do {
       step = "getService()";
-      sensors = ISensors::getService(
-          SensorsHidlEnvironment::Instance()->getServiceName<ISensors>());
+      sensors = ISensors::getService();
       if (sensors == nullptr) {
         break;
       }
@@ -238,7 +230,6 @@ class SensorsTestSharedMemory {
   native_handle_t* mNativeHandle;
   size_t mSize;
   char* mBuffer;
-  std::unique_ptr<GrallocWrapper> mGrallocWrapper;
 
   DISALLOW_COPY_AND_ASSIGN(SensorsTestSharedMemory);
 };
@@ -274,7 +265,6 @@ std::vector<Event> SensorsTestSharedMemory::parseEvents(int64_t lastCounter, siz
   while (offset + kEventSize <= mSize) {
     int64_t atomicCounter = *reinterpret_cast<uint32_t *>(mBuffer + offset + kOffsetAtomicCounter);
     if (atomicCounter <= lastCounter) {
-      ALOGV("atomicCounter = %" PRId64 ", lastCounter = %" PRId64, atomicCounter, lastCounter);
       break;
     }
 
@@ -334,34 +324,7 @@ SensorsTestSharedMemory::SensorsTestSharedMemory(SharedMemType type, size_t size
       break;
     }
     case SharedMemType::GRALLOC: {
-      mGrallocWrapper = std::make_unique<GrallocWrapper>();
-      if (mGrallocWrapper->getAllocator() == nullptr || mGrallocWrapper->getMapper() == nullptr) {
-        break;
-      }
-      using android::hardware::graphics::common::V1_0::BufferUsage;
-      using android::hardware::graphics::common::V1_0::PixelFormat;
-      mapper2::IMapper::BufferDescriptorInfo buf_desc_info = {
-        .width = static_cast<uint32_t>(size),
-        .height = 1,
-        .layerCount = 1,
-        .usage = static_cast<uint64_t> (BufferUsage::SENSOR_DIRECT_DATA |
-            BufferUsage::CPU_READ_OFTEN),
-        .format = PixelFormat::BLOB
-      };
 
-      handle = const_cast<native_handle_t *>(mGrallocWrapper->allocate(buf_desc_info));
-      if (handle != nullptr) {
-        mapper2::IMapper::Rect region{0, 0,
-            static_cast<int32_t>(buf_desc_info.width),
-            static_cast<int32_t>(buf_desc_info.height)};
-        buffer = static_cast<char *>
-                (mGrallocWrapper->lock(handle, buf_desc_info.usage, region, /*fence=*/-1));
-        if (buffer != nullptr) {
-          break;
-        }
-        mGrallocWrapper->freeBuffer(handle);
-        handle = nullptr;
-      }
       break;
     }
     default:
@@ -384,16 +347,6 @@ SensorsTestSharedMemory::~SensorsTestSharedMemory() {
 
         ::native_handle_close(mNativeHandle);
         ::native_handle_delete(mNativeHandle);
-
-        mNativeHandle = nullptr;
-        mSize = 0;
-      }
-      break;
-    }
-    case SharedMemType::GRALLOC: {
-      if (mSize != 0) {
-        mGrallocWrapper->unlock(mNativeHandle);
-        mGrallocWrapper->freeBuffer(mNativeHandle);
 
         mNativeHandle = nullptr;
         mSize = 0;
@@ -567,7 +520,7 @@ class SensorsHidlTest : public ::testing::VtsHalHidlTargetTestBase {
                               std::chrono::nanoseconds samplingPeriod,
                               std::chrono::seconds duration,
                               const SensorEventsChecker &checker);
-  void testSamplingRateHotSwitchOperation(SensorType type, bool fastToSlow = true);
+  void testSamplingRateHotSwitchOperation(SensorType type);
   void testBatchingOperation(SensorType type);
   void testDirectReportOperation(
       SensorType type, SharedMemType memType, RateLevel rate, const SensorEventsChecker &checker);
@@ -590,7 +543,7 @@ class SensorsHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 };
 
 const Vec3NormChecker SensorsHidlTest::sAccelNormChecker(
-        Vec3NormChecker::byNominal(GRAVITY_EARTH, 1.0f/*m/s^2*/));
+        Vec3NormChecker::byNominal(GRAVITY_EARTH, 0.5f/*m/s^2*/));
 const Vec3NormChecker SensorsHidlTest::sGyroNormChecker(
         Vec3NormChecker::byNominal(0.f, 0.1f/*rad/s*/));
 
@@ -1088,11 +1041,10 @@ TEST_F(SensorsHidlTest, MagnetometerStreamingOperationFast) {
                          NullChecker());
 }
 
-void SensorsHidlTest::testSamplingRateHotSwitchOperation(SensorType type, bool fastToSlow) {
+void SensorsHidlTest::testSamplingRateHotSwitchOperation(SensorType type) {
   std::vector<Event> events1, events2;
 
   constexpr int64_t batchingPeriodInNs = 0; // no batching
-  constexpr int64_t collectionTimeoutUs = 60000000; // 60s
   constexpr size_t minNEvent = 50;
 
   SensorInfo sensor = defaultSensorByType(type);
@@ -1111,23 +1063,17 @@ void SensorsHidlTest::testSamplingRateHotSwitchOperation(SensorType type, bool f
     return;
   }
 
-  int64_t firstCollectionPeriod = fastToSlow ? minSamplingPeriodInNs : maxSamplingPeriodInNs;
-  int64_t secondCollectionPeriod = !fastToSlow ? minSamplingPeriodInNs : maxSamplingPeriodInNs;
-
-  // first collection
-  ASSERT_EQ(batch(handle, firstCollectionPeriod, batchingPeriodInNs), Result::OK);
+  ASSERT_EQ(batch(handle, minSamplingPeriodInNs, batchingPeriodInNs), Result::OK);
   ASSERT_EQ(activate(handle, 1), Result::OK);
 
   usleep(500000); // sleep 0.5 sec to wait for change rate to happen
-  events1 = collectEvents(collectionTimeoutUs, minNEvent);
+  events1 = collectEvents(sensor.minDelay * minNEvent, minNEvent, true /*clearBeforeStart*/);
 
-  // second collection, without stop sensor
-  ASSERT_EQ(batch(handle, secondCollectionPeriod, batchingPeriodInNs), Result::OK);
+  ASSERT_EQ(batch(handle, maxSamplingPeriodInNs, batchingPeriodInNs), Result::OK);
 
   usleep(500000); // sleep 0.5 sec to wait for change rate to happen
-  events2 = collectEvents(collectionTimeoutUs, minNEvent);
+  events2 = collectEvents(sensor.maxDelay * minNEvent, minNEvent, true /*clearBeforeStart*/);
 
-  // end of collection, stop sensor
   ASSERT_EQ(activate(handle, 0), Result::OK);
 
   ALOGI("Collected %zu fast samples and %zu slow samples", events1.size(), events2.size());
@@ -1136,13 +1082,11 @@ void SensorsHidlTest::testSamplingRateHotSwitchOperation(SensorType type, bool f
   ASSERT_GT(events2.size(), 0u);
 
   int64_t minDelayAverageInterval, maxDelayAverageInterval;
-  std::vector<Event> &minDelayEvents(fastToSlow ? events1 : events2);
-  std::vector<Event> &maxDelayEvents(fastToSlow ? events2 : events1);
 
   size_t nEvent = 0;
   int64_t prevTimestamp = -1;
   int64_t timestampInterval = 0;
-  for (auto & e : minDelayEvents) {
+  for (auto & e : events1) {
     if (e.sensorType == type) {
       ASSERT_EQ(e.sensorHandle, handle);
       if (prevTimestamp > 0) {
@@ -1158,7 +1102,7 @@ void SensorsHidlTest::testSamplingRateHotSwitchOperation(SensorType type, bool f
   nEvent = 0;
   prevTimestamp = -1;
   timestampInterval = 0;
-  for (auto & e : maxDelayEvents) {
+  for (auto & e : events2) {
     if (e.sensorType == type) {
       ASSERT_EQ(e.sensorHandle, handle);
       if (prevTimestamp > 0) {
@@ -1172,35 +1116,27 @@ void SensorsHidlTest::testSamplingRateHotSwitchOperation(SensorType type, bool f
   maxDelayAverageInterval = timestampInterval / (nEvent - 1);
 
   // change of rate is significant.
-  ALOGI("min/maxDelayAverageInterval = %" PRId64 " %" PRId64,
-      minDelayAverageInterval, maxDelayAverageInterval);
   EXPECT_GT((maxDelayAverageInterval - minDelayAverageInterval), minDelayAverageInterval / 10);
 
   // fastest rate sampling time is close to spec
+  ALOGI("minDelayAverageInterval = %" PRId64, minDelayAverageInterval);
   EXPECT_LT(std::abs(minDelayAverageInterval - minSamplingPeriodInNs),
       minSamplingPeriodInNs / 10);
-
-  // slowest rate sampling time is close to spec
-  EXPECT_LT(std::abs(maxDelayAverageInterval - maxSamplingPeriodInNs),
-      maxSamplingPeriodInNs / 10);
 }
 
 // Test if sensor hal can do accelerometer sampling rate switch properly when sensor is active
 TEST_F(SensorsHidlTest, AccelerometerSamplingPeriodHotSwitchOperation) {
   testSamplingRateHotSwitchOperation(SensorType::ACCELEROMETER);
-  testSamplingRateHotSwitchOperation(SensorType::ACCELEROMETER, false /*fastToSlow*/);
 }
 
 // Test if sensor hal can do gyroscope sampling rate switch properly when sensor is active
 TEST_F(SensorsHidlTest, GyroscopeSamplingPeriodHotSwitchOperation) {
   testSamplingRateHotSwitchOperation(SensorType::GYROSCOPE);
-  testSamplingRateHotSwitchOperation(SensorType::GYROSCOPE, false /*fastToSlow*/);
 }
 
 // Test if sensor hal can do magnetometer sampling rate switch properly when sensor is active
 TEST_F(SensorsHidlTest, MagnetometerSamplingPeriodHotSwitchOperation) {
   testSamplingRateHotSwitchOperation(SensorType::MAGNETIC_FIELD);
-  testSamplingRateHotSwitchOperation(SensorType::MAGNETIC_FIELD, false /*fastToSlow*/);
 }
 
 void SensorsHidlTest::testBatchingOperation(SensorType type) {
@@ -1400,7 +1336,9 @@ void SensorsHidlTest::testDirectReportOperation(
 
   // stop sensor and unregister channel
   configDirectReport(sensor.sensorHandle, channelHandle, RateLevel::STOP,
-                     [](auto result, auto) { EXPECT_EQ(result, Result::OK); });
+        [&eventToken] (auto result, auto) {
+            EXPECT_EQ(result, Result::OK);
+        });
   EXPECT_EQ(unregisterDirectChannel(channelHandle), Result::OK);
 }
 
@@ -1458,64 +1396,9 @@ TEST_F(SensorsHidlTest, MagnetometerAshmemDirectReportOperationVeryFast) {
       SensorType::MAGNETIC_FIELD, SharedMemType::ASHMEM, RateLevel::VERY_FAST, NullChecker());
 }
 
-// Test sensor event direct report with gralloc for accel sensor at normal rate
-TEST_F(SensorsHidlTest, AccelerometerGrallocDirectReportOperationNormal) {
-  testDirectReportOperation(SensorType::ACCELEROMETER, SharedMemType::GRALLOC, RateLevel::NORMAL,
-                            sAccelNormChecker);
-}
-
-// Test sensor event direct report with gralloc for accel sensor at fast rate
-TEST_F(SensorsHidlTest, AccelerometerGrallocDirectReportOperationFast) {
-  testDirectReportOperation(SensorType::ACCELEROMETER, SharedMemType::GRALLOC, RateLevel::FAST,
-                            sAccelNormChecker);
-}
-
-// Test sensor event direct report with gralloc for accel sensor at very fast rate
-TEST_F(SensorsHidlTest, AccelerometerGrallocDirectReportOperationVeryFast) {
-  testDirectReportOperation(SensorType::ACCELEROMETER, SharedMemType::GRALLOC, RateLevel::VERY_FAST,
-                            sAccelNormChecker);
-}
-
-// Test sensor event direct report with gralloc for gyro sensor at normal rate
-TEST_F(SensorsHidlTest, GyroscopeGrallocDirectReportOperationNormal) {
-  testDirectReportOperation(SensorType::GYROSCOPE, SharedMemType::GRALLOC, RateLevel::NORMAL,
-                            sGyroNormChecker);
-}
-
-// Test sensor event direct report with gralloc for gyro sensor at fast rate
-TEST_F(SensorsHidlTest, GyroscopeGrallocDirectReportOperationFast) {
-  testDirectReportOperation(SensorType::GYROSCOPE, SharedMemType::GRALLOC, RateLevel::FAST,
-                            sGyroNormChecker);
-}
-
-// Test sensor event direct report with gralloc for gyro sensor at very fast rate
-TEST_F(SensorsHidlTest, GyroscopeGrallocDirectReportOperationVeryFast) {
-  testDirectReportOperation(SensorType::GYROSCOPE, SharedMemType::GRALLOC, RateLevel::VERY_FAST,
-                            sGyroNormChecker);
-}
-
-// Test sensor event direct report with gralloc for mag sensor at normal rate
-TEST_F(SensorsHidlTest, MagnetometerGrallocDirectReportOperationNormal) {
-  testDirectReportOperation(SensorType::MAGNETIC_FIELD, SharedMemType::GRALLOC, RateLevel::NORMAL,
-                            NullChecker());
-}
-
-// Test sensor event direct report with gralloc for mag sensor at fast rate
-TEST_F(SensorsHidlTest, MagnetometerGrallocDirectReportOperationFast) {
-  testDirectReportOperation(SensorType::MAGNETIC_FIELD, SharedMemType::GRALLOC, RateLevel::FAST,
-                            NullChecker());
-}
-
-// Test sensor event direct report with gralloc for mag sensor at very fast rate
-TEST_F(SensorsHidlTest, MagnetometerGrallocDirectReportOperationVeryFast) {
-  testDirectReportOperation(
-      SensorType::MAGNETIC_FIELD, SharedMemType::GRALLOC, RateLevel::VERY_FAST, NullChecker());
-}
-
 int main(int argc, char **argv) {
   ::testing::AddGlobalTestEnvironment(SensorsHidlEnvironment::Instance());
   ::testing::InitGoogleTest(&argc, argv);
-  SensorsHidlEnvironment::Instance()->init(&argc, argv);
   int status = RUN_ALL_TESTS();
   ALOGI("Test result = %d", status);
   return status;

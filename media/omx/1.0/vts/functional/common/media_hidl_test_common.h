@@ -1,5 +1,5 @@
 /*
- * Copyright 2017, The Android Open Source Project
+ * Copyright 2016, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@
 #define OMX_ANDROID_COMPILE_AS_32BIT_ON_64BIT_PLATFORMS
 #endif
 
-#include <getopt.h>
 #include <media/stagefright/foundation/ALooper.h>
 #include <utils/Condition.h>
 #include <utils/List.h>
@@ -34,23 +33,8 @@
 #include <media/openmax/OMX_AudioExt.h>
 #include <media/openmax/OMX_VideoExt.h>
 
-#include <VtsHalHidlTargetTestEnvBase.h>
-
-/* TIME OUTS (Wait time in dequeueMessage()) */
-
-/* As component is switching states (loaded<->idle<->execute), dequeueMessage()
- * expects the events to be received within this duration */
 #define DEFAULT_TIMEOUT 100000
-/* Time interval between successive Input/Output enqueues */
-#define DEFAULT_TIMEOUT_Q 2000
-/* While the component is amidst a process call, asynchronous commands like
- * flush, change states can get delayed (at max by process call time). Instead
- * of waiting on DEFAULT_TIMEOUT, we give an additional leeway. */
-#define DEFAULT_TIMEOUT_PE 500000
-
-/* Breakout Timeout :: 5 sec*/
-#define TIMEOUT_COUNTER_Q (5000000 / DEFAULT_TIMEOUT_Q)
-#define TIMEOUT_COUNTER_PE (5000000 / DEFAULT_TIMEOUT_PE)
+#define TIMEOUT_COUNTER (10000000 / DEFAULT_TIMEOUT)
 
 /*
  * Random Index used for monkey testing while get/set parameters
@@ -136,15 +120,13 @@ struct CodecObserver : public IOmxObserver {
                 if (it->type ==
                     android::hardware::media::omx::V1_0::Message::Type::EVENT) {
                     *msg = *it;
-                    if (callBack) callBack(*it, nullptr);
-                    it = msgQueue.erase(it);
+                    msgQueue.erase(it);
                     // OMX_EventBufferFlag event is sent when the component has
                     // processed a buffer with its EOS flag set. This event is
                     // not sent by soft omx components. Vendor components can
                     // send this. From IOMX point of view, we will ignore this
                     // event.
-                    if (msg->data.eventData.event == OMX_EventBufferFlag)
-                        continue;
+                    if (msg->data.eventData.event == OMX_EventBufferFlag) break;
                     return ::android::hardware::media::omx::V1_0::Status::OK;
                 } else if (it->type == android::hardware::media::omx::V1_0::
                                            Message::Type::FILL_BUFFER_DONE) {
@@ -155,7 +137,7 @@ struct CodecObserver : public IOmxObserver {
                                 it->data.bufferData.buffer) {
                                 if (callBack) callBack(*it, &(*oBuffers)[i]);
                                 oBuffers->editItemAt(i).owner = client;
-                                it = msgQueue.erase(it);
+                                msgQueue.erase(it);
                                 break;
                             }
                         }
@@ -170,22 +152,24 @@ struct CodecObserver : public IOmxObserver {
                                 it->data.bufferData.buffer) {
                                 if (callBack) callBack(*it, &(*iBuffers)[i]);
                                 iBuffers->editItemAt(i).owner = client;
-                                it = msgQueue.erase(it);
+                                msgQueue.erase(it);
                                 break;
                             }
                         }
                         EXPECT_LE(i, iBuffers->size());
                     }
-                } else {
-                    EXPECT_TRUE(false) << "Received unexpected message";
-                    ++it;
                 }
+                ++it;
             }
-            int64_t delayUs = finishBy - android::ALooper::GetNowUs();
-            if (delayUs < 0) return toStatus(android::TIMED_OUT);
-            (timeoutUs < 0)
-                ? msgCondition.wait(msgLock)
-                : msgCondition.waitRelative(msgLock, delayUs * 1000ll);
+            if (finishBy - android::ALooper::GetNowUs() < 0)
+                return toStatus(android::TIMED_OUT);
+            android::status_t err =
+                (timeoutUs < 0)
+                    ? msgCondition.wait(msgLock)
+                    : msgCondition.waitRelative(
+                          msgLock,
+                          (finishBy - android::ALooper::GetNowUs()) * 1000ll);
+            if (err == android::TIMED_OUT) return toStatus(err);
         }
     }
 
@@ -300,21 +284,16 @@ Return<android::hardware::media::omx::V1_0::Status> setVideoPortFormat(
 Return<android::hardware::media::omx::V1_0::Status> setAudioPortFormat(
     sp<IOmxNode> omxNode, OMX_U32 portIndex, OMX_AUDIO_CODINGTYPE eEncoding);
 
-void allocateBuffer(sp<IOmxNode> omxNode, BufferInfo* buffer, OMX_U32 portIndex,
-                    OMX_U32 nBufferSize, PortMode portMode);
-
 void allocatePortBuffers(sp<IOmxNode> omxNode,
                          android::Vector<BufferInfo>* buffArray,
                          OMX_U32 portIndex,
-                         PortMode portMode = PortMode::PRESET_BYTE_BUFFER,
-                         bool allocGrap = false);
+                         PortMode portMode = PortMode::PRESET_BYTE_BUFFER);
 
 void changeStateLoadedtoIdle(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                              android::Vector<BufferInfo>* iBuffer,
                              android::Vector<BufferInfo>* oBuffer,
                              OMX_U32 kPortIndexInput, OMX_U32 kPortIndexOutput,
-                             PortMode* portMode = nullptr,
-                             bool allocGrap = false);
+                             PortMode* portMode = nullptr);
 
 void changeStateIdletoLoaded(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                              android::Vector<BufferInfo>* iBuffer,
@@ -343,8 +322,7 @@ void dispatchInputBuffer(sp<IOmxNode> omxNode,
 void flushPorts(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                 android::Vector<BufferInfo>* iBuffer,
                 android::Vector<BufferInfo>* oBuffer, OMX_U32 kPortIndexInput,
-                OMX_U32 kPortIndexOutput,
-                int64_t timeoutUs = DEFAULT_TIMEOUT_PE);
+                OMX_U32 kPortIndexOutput, int64_t timeoutUs = DEFAULT_TIMEOUT);
 
 typedef void (*portreconfig)(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                              android::Vector<BufferInfo>* iBuffer,
@@ -357,78 +335,5 @@ void testEOS(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
              bool& eosFlag, PortMode* portMode = nullptr,
              portreconfig fptr = nullptr, OMX_U32 kPortIndexInput = 0,
              OMX_U32 kPortIndexOutput = 1, void* args = nullptr);
-
-// A class for test environment setup
-class ComponentTestEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   private:
-    typedef ::testing::VtsHalHidlTargetTestEnvBase Super;
-
-   public:
-    virtual void registerTestServices() override { registerTestService<IOmx>(); }
-
-    ComponentTestEnvironment() : res("/data/local/tmp/media/") {}
-
-    void setComponent(const char* _component) { component = _component; }
-
-    void setRole(const char* _role) { role = _role; }
-
-    void setRes(const char* _res) { res = _res; }
-
-    const hidl_string getInstance() { return Super::getServiceName<IOmx>(); }
-
-    const hidl_string getComponent() const { return component; }
-
-    const hidl_string getRole() const { return role; }
-
-    const hidl_string getRes() const { return res; }
-
-    int initFromOptions(int argc, char** argv) {
-        static struct option options[] = {{"component", required_argument, 0, 'C'},
-                                          {"role", required_argument, 0, 'R'},
-                                          {"res", required_argument, 0, 'P'},
-                                          {0, 0, 0, 0}};
-
-        while (true) {
-            int index = 0;
-            int c = getopt_long(argc, argv, "C:R:P:", options, &index);
-            if (c == -1) {
-                break;
-            }
-
-            switch (c) {
-                case 'C':
-                    setComponent(optarg);
-                    break;
-                case 'R':
-                    setRole(optarg);
-                    break;
-                case 'P':
-                    setRes(optarg);
-                    break;
-                case '?':
-                    break;
-            }
-        }
-
-        if (optind < argc) {
-            fprintf(stderr,
-                    "unrecognized option: %s\n\n"
-                    "usage: %s <gtest options> <test options>\n\n"
-                    "test options are:\n\n"
-                    "-C, --component: OMX component to test\n"
-                    "-R, --role: OMX component Role\n"
-                    "-P, --res: Resource files directory location\n",
-                    argv[optind ?: 1], argv[0]);
-            return 2;
-        }
-        return 0;
-    }
-
-   private:
-    hidl_string instance;
-    hidl_string component;
-    hidl_string role;
-    hidl_string res;
-};
 
 #endif  // MEDIA_HIDL_TEST_COMMON_H

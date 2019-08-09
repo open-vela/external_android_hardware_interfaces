@@ -42,8 +42,6 @@ using ::android::hardware::wifi::V1_0::IWifiP2pIface;
 using ::android::hardware::wifi::V1_0::IWifiRttController;
 using ::android::hardware::wifi::V1_0::IWifiStaIface;
 
-extern WifiHidlEnvironment* gEnv;
-
 namespace {
 constexpr WifiDebugRingBufferVerboseLevel kDebugRingBufferVerboseLvl =
     WifiDebugRingBufferVerboseLevel::VERBOSE;
@@ -80,8 +78,7 @@ class WifiChipHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     // to be first configured.
     ChipModeId configureChipForIfaceType(IfaceType type, bool expectSuccess) {
         ChipModeId mode_id;
-        EXPECT_EQ(expectSuccess,
-            configureChipToSupportIfaceType(wifi_chip_, type, &mode_id));
+        EXPECT_EQ(expectSuccess, configureChipToSupportIfaceType(wifi_chip_, type, &mode_id));
         return mode_id;
     }
 
@@ -185,8 +182,6 @@ TEST_F(WifiChipHidlTest, ConfigureChip) {
         EXPECT_EQ(WifiStatusCode::SUCCESS,
                   HIDL_INVOKE(wifi_chip_, configureChip, mode.id).code);
         stopWifi();
-        // Sleep for 5 milliseconds between each wifi state toggle.
-        usleep(5000);
     }
 }
 
@@ -348,8 +343,8 @@ TEST_F(WifiChipHidlTest, GetDebugHostWakeReasonStats) {
 
 /*
  * CreateApIface
- * Configures the chip in AP mode and ensures that at least 1 iface creation
- * succeeds.
+ * Configures the chip in AP mode and ensures that only 1 iface creation
+ * succeeds. The 2nd iface creation should be rejected.
  */
 TEST_F(WifiChipHidlTest, CreateApIface) {
     configureChipForIfaceType(IfaceType::AP, true);
@@ -357,6 +352,8 @@ TEST_F(WifiChipHidlTest, CreateApIface) {
     sp<IWifiApIface> iface;
     EXPECT_EQ(WifiStatusCode::SUCCESS, createApIface(&iface));
     EXPECT_NE(nullptr, iface.get());
+
+    EXPECT_EQ(WifiStatusCode::ERROR_NOT_AVAILABLE, createApIface(&iface));
 }
 
 /*
@@ -441,16 +438,14 @@ TEST_F(WifiChipHidlTest, RemoveApIface) {
 
 /*
  * CreateNanIface
- * Configures the chip in NAN mode and ensures that at least 1 iface creation
- * succeeds.
+ * Configures the chip in NAN mode and ensures that only 1 iface creation
+ * succeeds. The 2nd iface creation should be rejected.
  */
 TEST_F(WifiChipHidlTest, CreateNanIface) {
-    if (!gEnv->isNanOn) return;
-    configureChipForIfaceType(IfaceType::NAN, gEnv->isNanOn);
+    configureChipForIfaceType(IfaceType::NAN, false);
 
     sp<IWifiNanIface> iface;
-    ASSERT_EQ(WifiStatusCode::SUCCESS, createNanIface(&iface));
-    EXPECT_NE(nullptr, iface.get());
+    ASSERT_EQ(WifiStatusCode::ERROR_NOT_AVAILABLE, createNanIface(&iface));
 }
 
 /*
@@ -460,30 +455,12 @@ TEST_F(WifiChipHidlTest, CreateNanIface) {
  * iface name is returned via the list.
  */
 TEST_F(WifiChipHidlTest, GetNanIfaceNames) {
-    if (!gEnv->isNanOn) return;
-    configureChipForIfaceType(IfaceType::NAN, gEnv->isNanOn);
+    configureChipForIfaceType(IfaceType::NAN, false);
 
     const auto& status_and_iface_names1 =
         HIDL_INVOKE(wifi_chip_, getNanIfaceNames);
     ASSERT_EQ(WifiStatusCode::SUCCESS, status_and_iface_names1.first.code);
     EXPECT_EQ(0u, status_and_iface_names1.second.size());
-
-    sp<IWifiNanIface> iface;
-    EXPECT_EQ(WifiStatusCode::SUCCESS, createNanIface(&iface));
-    EXPECT_NE(nullptr, iface.get());
-
-    std::string iface_name = getIfaceName(iface);
-    const auto& status_and_iface_names2 =
-        HIDL_INVOKE(wifi_chip_, getNanIfaceNames);
-    EXPECT_EQ(WifiStatusCode::SUCCESS, status_and_iface_names2.first.code);
-    EXPECT_EQ(1u, status_and_iface_names2.second.size());
-    EXPECT_EQ(iface_name, status_and_iface_names2.second[0]);
-
-    EXPECT_EQ(WifiStatusCode::SUCCESS, removeNanIface(iface_name));
-    const auto& status_and_iface_names3 =
-        HIDL_INVOKE(wifi_chip_, getNanIfaceNames);
-    EXPECT_EQ(WifiStatusCode::SUCCESS, status_and_iface_names3.first.code);
-    EXPECT_EQ(0u, status_and_iface_names3.second.size());
 }
 
 /*
@@ -493,24 +470,10 @@ TEST_F(WifiChipHidlTest, GetNanIfaceNames) {
  * doesn't retrieve an iface object.
  */
 TEST_F(WifiChipHidlTest, GetNanIface) {
-    if (!gEnv->isNanOn) return;
-    configureChipForIfaceType(IfaceType::NAN, gEnv->isNanOn);
+    configureChipForIfaceType(IfaceType::NAN, false);
 
     sp<IWifiNanIface> nan_iface;
-    EXPECT_EQ(WifiStatusCode::SUCCESS, createNanIface(&nan_iface));
-    EXPECT_NE(nullptr, nan_iface.get());
-
-    std::string iface_name = getIfaceName(nan_iface);
-    const auto& status_and_iface1 =
-        HIDL_INVOKE(wifi_chip_, getNanIface, iface_name);
-    EXPECT_EQ(WifiStatusCode::SUCCESS, status_and_iface1.first.code);
-    EXPECT_NE(nullptr, status_and_iface1.second.get());
-
-    std::string invalid_name = iface_name + "0";
-    const auto& status_and_iface2 =
-        HIDL_INVOKE(wifi_chip_, getNanIface, invalid_name);
-    EXPECT_EQ(WifiStatusCode::ERROR_INVALID_ARGS, status_and_iface2.first.code);
-    EXPECT_EQ(nullptr, status_and_iface2.second.get());
+    ASSERT_EQ(WifiStatusCode::ERROR_NOT_AVAILABLE, createNanIface(&nan_iface));
 }
 
 /*
@@ -520,27 +483,16 @@ TEST_F(WifiChipHidlTest, GetNanIface) {
  * doesn't remove the iface.
  */
 TEST_F(WifiChipHidlTest, RemoveNanIface) {
-    if (!gEnv->isNanOn) return;
-    configureChipForIfaceType(IfaceType::NAN, gEnv->isNanOn);
+    configureChipForIfaceType(IfaceType::NAN, false);
 
     sp<IWifiNanIface> nan_iface;
-    EXPECT_EQ(WifiStatusCode::SUCCESS, createNanIface(&nan_iface));
-    EXPECT_NE(nullptr, nan_iface.get());
-
-    std::string iface_name = getIfaceName(nan_iface);
-    std::string invalid_name = iface_name + "0";
-    EXPECT_EQ(WifiStatusCode::ERROR_INVALID_ARGS, removeNanIface(invalid_name));
-
-    EXPECT_EQ(WifiStatusCode::SUCCESS, removeNanIface(iface_name));
-
-    // No such iface exists now. So, this should return failure.
-    EXPECT_EQ(WifiStatusCode::ERROR_INVALID_ARGS, removeNanIface(iface_name));
+    ASSERT_EQ(WifiStatusCode::ERROR_NOT_AVAILABLE, createNanIface(&nan_iface));
 }
 
 /*
  * CreateP2pIface
- * Configures the chip in P2P mode and ensures that at least 1 iface creation
- * succeeds.
+ * Configures the chip in P2P mode and ensures that only 1 iface creation
+ * succeeds. The 2nd iface creation should be rejected.
  */
 TEST_F(WifiChipHidlTest, CreateP2pIface) {
     configureChipForIfaceType(IfaceType::P2P, true);
@@ -548,6 +500,8 @@ TEST_F(WifiChipHidlTest, CreateP2pIface) {
     sp<IWifiP2pIface> iface;
     EXPECT_EQ(WifiStatusCode::SUCCESS, createP2pIface(&iface));
     EXPECT_NE(nullptr, iface.get());
+
+    EXPECT_EQ(WifiStatusCode::ERROR_NOT_AVAILABLE, createP2pIface(&iface));
 }
 
 /*
@@ -632,8 +586,8 @@ TEST_F(WifiChipHidlTest, RemoveP2pIface) {
 
 /*
  * CreateStaIface
- * Configures the chip in STA mode and ensures that at least 1 iface creation
- * succeeds.
+ * Configures the chip in STA mode and ensures that only 1 iface creation
+ * succeeds. The 2nd iface creation should be rejected.
  */
 TEST_F(WifiChipHidlTest, CreateStaIface) {
     configureChipForIfaceType(IfaceType::STA, true);
@@ -641,6 +595,8 @@ TEST_F(WifiChipHidlTest, CreateStaIface) {
     sp<IWifiStaIface> iface;
     EXPECT_EQ(WifiStatusCode::SUCCESS, createStaIface(&iface));
     EXPECT_NE(nullptr, iface.get());
+
+    EXPECT_EQ(WifiStatusCode::ERROR_NOT_AVAILABLE, createStaIface(&iface));
 }
 
 /*
