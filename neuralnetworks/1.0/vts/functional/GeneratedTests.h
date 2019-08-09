@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,18 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define LOG_TAG "VtsHalGnssV2_0TargetTest"
 
-#include <VtsHalHidlTargetTestBase.h>
+#include "1.0/Utils.h"
+#include "GeneratedTestHarness.h"
+#include "TestHarness.h"
+#include "VtsHalNeuralnetworks.h"
 
-#include "gnss_hal_test.h"
+namespace android::hardware::neuralnetworks::V1_0::generated_tests {
 
-int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(GnssHidlEnvironment::Instance());
-    ::testing::InitGoogleTest(&argc, argv);
-    GnssHidlEnvironment::Instance()->init(&argc, argv);
-    // TODO (b/122463165): Expand coverage to include 1.1 and 1.0 VTS tests.
-    int status = RUN_ALL_TESTS();
-    ALOGI("Test result = %d", status);
-    return status;
-}
+using namespace android::hardware::neuralnetworks::V1_0::vts::functional;
+
+}  // namespace android::hardware::neuralnetworks::V1_0::generated_tests
