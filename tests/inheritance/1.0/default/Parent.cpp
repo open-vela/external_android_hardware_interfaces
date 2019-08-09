@@ -1,10 +1,8 @@
 #define LOG_TAG "hidl_test"
 
-#include "Parent.h"
-
 #include <log/log.h>
 
-#include "Child.h"
+#include "Parent.h"
 
 namespace android {
 namespace hardware {
@@ -25,11 +23,8 @@ Return<void> Parent::doParent()  {
     return Void();
 }
 
-IParent* HIDL_FETCH_IParent(const char* name) {
-    if (name == std::string("child")) {
-        return new Child();
-    }
 
+IParent* HIDL_FETCH_IParent(const char* /* name */) {
     return new Parent();
 }
 

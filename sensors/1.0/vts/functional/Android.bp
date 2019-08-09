@@ -16,15 +16,19 @@
 
 cc_test {
     name: "VtsHalSensorsV1_0TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
-    srcs: [
-        "GrallocWrapper.cpp",
-        "VtsHalSensorsV1_0TargetTest.cpp"
-    ],
-    static_libs: [
-        "android.hardware.graphics.allocator@2.0",
-        "android.hardware.graphics.mapper@2.0",
+    defaults: ["hidl_defaults"],
+    srcs: ["VtsHalSensorsV1_0TargetTest.cpp"],
+    shared_libs: [
         "android.hardware.sensors@1.0",
+        "libcutils",
+        "libhidlbase",
+        "liblog",
+        "libutils",
+    ],
+    static_libs: ["VtsHalHidlTargetTestBase"],
+    cflags: [
+        "-O0",
+        "-g",
     ],
 }
 

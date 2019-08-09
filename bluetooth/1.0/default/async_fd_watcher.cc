@@ -24,7 +24,7 @@
 #include <map>
 #include <mutex>
 #include <thread>
-#include <log/log.h>
+#include <utils/Log.h>
 #include <vector>
 #include "fcntl.h"
 #include "sys/select.h"
@@ -104,9 +104,6 @@ int AsyncFdWatcher::stopThread() {
     std::unique_lock<std::mutex> guard(timeout_mutex_);
     timeout_cb_ = nullptr;
   }
-
-  close(notification_listen_fd_);
-  close(notification_write_fd_);
 
   return 0;
 }

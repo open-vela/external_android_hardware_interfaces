@@ -138,7 +138,6 @@ void VehicleEmulator::doSetProperty(VehicleEmulator::EmulatorMessage& rxMsg,
     VehiclePropValue val = {
         .prop = protoVal.prop(),
         .areaId = protoVal.area_id(),
-        .status = (VehiclePropertyStatus)protoVal.status(),
         .timestamp = elapsedRealtimeNano(),
     };
 
@@ -235,6 +234,10 @@ void VehicleEmulator::populateProtoVehicleConfig(emulator::VehiclePropConfig* pr
     protoCfg->set_change_mode(toInt(cfg.changeMode));
     protoCfg->set_value_type(toInt(getPropType(cfg.prop)));
 
+    if (!isGlobalProp(cfg.prop)) {
+        protoCfg->set_supported_areas(cfg.supportedAreas);
+    }
+
     for (auto& configElement : cfg.configArray) {
         protoCfg->add_config_array(configElement);
     }
@@ -248,10 +251,9 @@ void VehicleEmulator::populateProtoVehicleConfig(emulator::VehiclePropConfig* pr
         case VehiclePropertyType::STRING:
         case VehiclePropertyType::BOOLEAN:
         case VehiclePropertyType::INT32_VEC:
-        case VehiclePropertyType::INT64_VEC:
         case VehiclePropertyType::FLOAT_VEC:
         case VehiclePropertyType::BYTES:
-        case VehiclePropertyType::MIXED:
+        case VehiclePropertyType::COMPLEX:
             // Do nothing.  These types don't have min/max values
             break;
         case VehiclePropertyType::INT64:
@@ -289,7 +291,6 @@ void VehicleEmulator::populateProtoVehiclePropValue(emulator::VehiclePropValue* 
     protoVal->set_prop(val->prop);
     protoVal->set_value_type(toInt(getPropType(val->prop)));
     protoVal->set_timestamp(val->timestamp);
-    protoVal->set_status((emulator::VehiclePropStatus)(val->status));
     protoVal->set_area_id(val->areaId);
 
     // Copy value data if it is set.

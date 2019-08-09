@@ -64,26 +64,95 @@ using ::android::sp;
 #include <system/window.h>
 #include <fstream>
 
+// A class for test environment setup
+class ComponentTestEnvironment : public ::testing::Environment {
+   public:
+    virtual void SetUp() {}
+    virtual void TearDown() {}
+
+    ComponentTestEnvironment() : instance("default"), res("/data/local/tmp/media/") {}
+
+    void setInstance(const char* _instance) { instance = _instance; }
+
+    void setComponent(const char* _component) { component = _component; }
+
+    void setRole(const char* _role) { role = _role; }
+
+    void setRes(const char* _res) { res = _res; }
+
+    const hidl_string getInstance() const { return instance; }
+
+    const hidl_string getComponent() const { return component; }
+
+    const hidl_string getRole() const { return role; }
+
+    const hidl_string getRes() const { return res; }
+
+    int initFromOptions(int argc, char** argv) {
+        static struct option options[] = {
+            {"instance", required_argument, 0, 'I'},
+            {"component", required_argument, 0, 'C'},
+            {"role", required_argument, 0, 'R'},
+            {"res", required_argument, 0, 'P'},
+            {0, 0, 0, 0}};
+
+        while (true) {
+            int index = 0;
+            int c = getopt_long(argc, argv, "I:C:R:P:", options, &index);
+            if (c == -1) {
+                break;
+            }
+
+            switch (c) {
+                case 'I':
+                    setInstance(optarg);
+                    break;
+                case 'C':
+                    setComponent(optarg);
+                    break;
+                case 'R':
+                    setRole(optarg);
+                    break;
+                case 'P':
+                    setRes(optarg);
+                    break;
+                case '?':
+                    break;
+            }
+        }
+
+        if (optind < argc) {
+            fprintf(stderr,
+                    "unrecognized option: %s\n\n"
+                    "usage: %s <gtest options> <test options>\n\n"
+                    "test options are:\n\n"
+                    "-I, --instance: HAL instance to test\n"
+                    "-C, --component: OMX component to test\n"
+                    "-R, --role: OMX component Role\n"
+                    "-P, --res: Resource files directory location\n",
+                    argv[optind ?: 1], argv[0]);
+            return 2;
+        }
+        return 0;
+    }
+
+   private:
+    hidl_string instance;
+    hidl_string component;
+    hidl_string role;
+    hidl_string res;
+};
+
 static ComponentTestEnvironment* gEnv = nullptr;
 
 // video encoder test fixture class
 class VideoEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
-   private:
-    typedef ::testing::VtsHalHidlTargetTestBase Super;
    public:
-    ::std::string getTestCaseInfo() const override {
-        return ::std::string() +
-                "Component: " + gEnv->getComponent().c_str() + " | " +
-                "Role: " + gEnv->getRole().c_str() + " | " +
-                "Instance: " + gEnv->getInstance().c_str() + " | " +
-                "Res: " + gEnv->getRes().c_str();
-    }
-
     virtual void SetUp() override {
-        Super::SetUp();
         disableTest = false;
         android::hardware::media::omx::V1_0::Status status;
-        omx = Super::getService<IOmx>(gEnv->getInstance());
+        omx = ::testing::VtsHalHidlTargetTestBase::getService<IOmx>(
+            gEnv->getInstance());
         ASSERT_NE(omx, nullptr);
         observer =
             new CodecObserver([this](Message msg, const BufferInfo* buffer) {
@@ -100,12 +169,6 @@ class VideoEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
                                this->omxNode = _nl;
                            })
                         .isOk());
-        if (status == android::hardware::media::omx::V1_0::Status::NAME_NOT_FOUND) {
-            disableTest = true;
-            std::cout << "[   WARN   ] Test Disabled, component not present\n";
-            return;
-        }
-        ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
         ASSERT_NE(omxNode, nullptr);
         ASSERT_NE(gEnv->getRole().empty(), true) << "Invalid Component Role";
         struct StringToName {
@@ -164,19 +227,14 @@ class VideoEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
                         ".secure");
         }
         if (isSecure) disableTest = true;
-        if (disableTest) std::cout << "[   WARN   ] Test Disabled \n";
+        if (disableTest) std::cerr << "[          ] Warning !  Test Disabled\n";
     }
 
     virtual void TearDown() override {
         if (omxNode != nullptr) {
-            // If you have encountered a fatal failure, it is possible that
-            // freeNode() will not go through. Instead of hanging the app.
-            // let it pass through and report errors
-            if (::testing::Test::HasFatalFailure()) return;
             EXPECT_TRUE((omxNode->freeNode()).isOk());
             omxNode = nullptr;
         }
-        Super::TearDown();
     }
 
     // callback function to process messages received by onMessages() from IL
@@ -209,8 +267,9 @@ class VideoEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
                             EXPECT_EQ(tsHit, true)
                                 << "TimeStamp not recognized";
                         } else {
-                            std::cout << "[   INFO   ] Received non-zero "
-                                         "output / TimeStamp not recognized \n";
+                            std::cerr
+                                << "[          ] Warning ! Received non-zero "
+                                   "output / TimeStamp not recognized \n";
                         }
                     }
                 }
@@ -372,7 +431,7 @@ void requestIDR(sp<IOmxNode> omxNode, OMX_U32 portIndex) {
     status = setPortConfig(omxNode, OMX_IndexConfigVideoIntraVOPRefresh,
                            portIndex, &param);
     if (status != ::android::hardware::media::omx::V1_0::Status::OK)
-        std::cout << "[   INFO   ] unable to request IDR \n";
+        std::cerr << "[          ] Warning ! unable to request IDR \n";
 }
 
 // modify bitrate
@@ -383,7 +442,7 @@ void changeBitrate(sp<IOmxNode> omxNode, OMX_U32 portIndex, uint32_t nBitrate) {
     status =
         setPortConfig(omxNode, OMX_IndexConfigVideoBitrate, portIndex, &param);
     if (status != ::android::hardware::media::omx::V1_0::Status::OK)
-        std::cout << "[   INFO   ] unable to change Bitrate \n";
+        std::cerr << "[          ] Warning ! unable to change Bitrate \n";
 }
 
 // modify framerate
@@ -395,7 +454,7 @@ Return<android::hardware::media::omx::V1_0::Status> changeFrameRate(
     status = setPortConfig(omxNode, OMX_IndexConfigVideoFramerate, portIndex,
                            &param);
     if (status != ::android::hardware::media::omx::V1_0::Status::OK)
-        std::cout << "[   INFO   ] unable to change Framerate \n";
+        std::cerr << "[          ] Warning ! unable to change Framerate \n";
     return status;
 }
 
@@ -409,7 +468,7 @@ void changeRefreshPeriod(sp<IOmxNode> omxNode, OMX_U32 portIndex,
                            (OMX_INDEXTYPE)OMX_IndexConfigAndroidIntraRefresh,
                            portIndex, &param);
     if (status != ::android::hardware::media::omx::V1_0::Status::OK)
-        std::cout << "[   INFO   ] unable to change Refresh Period\n";
+        std::cerr << "[          ] Warning ! unable to change Refresh Period\n";
 }
 
 // set intra refresh interval
@@ -435,7 +494,7 @@ void setRefreshPeriod(sp<IOmxNode> omxNode, OMX_U32 portIndex,
     status = setPortParam(omxNode, OMX_IndexParamVideoIntraRefresh, portIndex,
                           &param);
     if (status != ::android::hardware::media::omx::V1_0::Status::OK)
-        std::cout << "[   INFO   ] unable to set Refresh Period \n";
+        std::cerr << "[          ] Warning ! unable to set Refresh Period \n";
 }
 
 void setLatency(sp<IOmxNode> omxNode, OMX_U32 portIndex, uint32_t latency) {
@@ -445,7 +504,7 @@ void setLatency(sp<IOmxNode> omxNode, OMX_U32 portIndex, uint32_t latency) {
     status = setPortConfig(omxNode, (OMX_INDEXTYPE)OMX_IndexConfigLatency,
                            portIndex, &param);
     if (status != ::android::hardware::media::omx::V1_0::Status::OK)
-        std::cout << "[   INFO   ] unable to set latency\n";
+        std::cerr << "[          ] Warning ! unable to set latency\n";
 }
 
 void getLatency(sp<IOmxNode> omxNode, OMX_U32 portIndex, uint32_t* latency) {
@@ -454,7 +513,7 @@ void getLatency(sp<IOmxNode> omxNode, OMX_U32 portIndex, uint32_t* latency) {
     status = getPortConfig(omxNode, (OMX_INDEXTYPE)OMX_IndexConfigLatency,
                            portIndex, &param);
     if (status != ::android::hardware::media::omx::V1_0::Status::OK)
-        std::cout << "[   INFO   ] unable to get latency\n";
+        std::cerr << "[          ] Warning ! unable to get latency\n";
     else
         *latency = param.nU32;
 }
@@ -462,15 +521,12 @@ void getLatency(sp<IOmxNode> omxNode, OMX_U32 portIndex, uint32_t* latency) {
 // Set Default port param.
 void setDefaultPortParam(sp<IOmxNode> omxNode, OMX_U32 portIndex,
                          OMX_VIDEO_CODINGTYPE eCompressionFormat,
-                         OMX_U32 nFrameWidth, OMX_U32 nFrameHeight,
                          OMX_U32 nBitrate, OMX_U32 xFramerate) {
     android::hardware::media::omx::V1_0::Status status;
     OMX_PARAM_PORTDEFINITIONTYPE portDef;
     status = getPortParam(omxNode, OMX_IndexParamPortDefinition, portIndex,
                           &portDef);
     EXPECT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
-    portDef.format.video.nFrameWidth = nFrameWidth;
-    portDef.format.video.nFrameHeight = nFrameHeight;
     portDef.format.video.nBitrate = nBitrate;
     portDef.format.video.xFramerate = xFramerate;
     portDef.format.video.bFlagErrorConcealment = OMX_TRUE;
@@ -542,13 +598,13 @@ void waitOnInputConsumption(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                             sp<CodecProducerListener> listener = nullptr) {
     android::hardware::media::omx::V1_0::Status status;
     Message msg;
-    int timeOut = TIMEOUT_COUNTER_Q;
+    int timeOut = TIMEOUT_COUNTER;
 
     while (timeOut--) {
         size_t i = 0;
         status =
-            observer->dequeueMessage(&msg, DEFAULT_TIMEOUT_Q, iBuffer, oBuffer);
-        ASSERT_EQ(status,
+            observer->dequeueMessage(&msg, DEFAULT_TIMEOUT, iBuffer, oBuffer);
+        EXPECT_EQ(status,
                   android::hardware::media::omx::V1_0::Status::TIMED_OUT);
         // status == TIMED_OUT, it could be due to process time being large
         // than DEFAULT_TIMEOUT or component needs output buffers to start
@@ -565,9 +621,7 @@ void waitOnInputConsumption(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
         // Dispatch an output buffer assuming outQueue.empty() is true
         size_t index;
         if ((index = getEmptyBufferID(oBuffer)) < oBuffer->size()) {
-            ASSERT_NO_FATAL_FAILURE(
-                dispatchOutputBuffer(omxNode, oBuffer, index));
-            timeOut = TIMEOUT_COUNTER_Q;
+            dispatchOutputBuffer(omxNode, oBuffer, index);
         }
     }
 }
@@ -914,25 +968,57 @@ void encodeNFrames(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                    sp<CodecProducerListener> listener = nullptr) {
     android::hardware::media::omx::V1_0::Status status;
     Message msg;
-    uint64_t timestamp = 0;
-    uint32_t flags = 0;
-    int timeOut = TIMEOUT_COUNTER_Q;
-    bool iQueued, oQueued;
-
     uint32_t ipCount = 0;
+
     if (ipCount == 0) {
         status = changeFrameRate(omxNode, portIndexOutput, (24U << 16));
         if (status == ::android::hardware::media::omx::V1_0::Status::OK)
             xFramerate = (24U << 16);
     }
-    int32_t timestampIncr = (int)((float)1000000 / (xFramerate >> 16));
-    if (inputDataIsMeta) timestampIncr *= 1000;  // timestamp scale: Nano sec
 
+    // dispatch output buffers
+    for (size_t i = 0; i < oBuffer->size(); i++) {
+        dispatchOutputBuffer(omxNode, oBuffer, i);
+    }
+    // dispatch input buffers
+    int32_t timestampIncr = (int)((float)1000000 / (xFramerate >> 16));
+    // timestamp scale = Nano sec
+    if (inputDataIsMeta) timestampIncr *= 1000;
+    uint64_t timestamp = 0;
+    uint32_t flags = 0;
+    for (size_t i = 0; i < iBuffer->size() && nFrames != 0; i++) {
+        if (inputDataIsMeta) {
+            if (listener->freeBuffers > listener->minUnDequeuedCount) {
+                if (dispatchGraphicBuffer(omxNode, producer, listener, iBuffer,
+                                          portIndexInput, eleStream, timestamp))
+                    break;
+                timestamp += timestampIncr;
+                nFrames--;
+                ipCount++;
+            }
+        } else {
+            char* ipBuffer = static_cast<char*>(
+                static_cast<void*>((*iBuffer)[i].mMemory->getPointer()));
+            ASSERT_LE(bytesCount,
+                      static_cast<int>((*iBuffer)[i].mMemory->getSize()));
+            if (fillByteBuffer(omxNode, ipBuffer, portIndexInput, eleStream))
+                break;
+            if (signalEOS && (nFrames == 1)) flags = OMX_BUFFERFLAG_EOS;
+            dispatchInputBuffer(omxNode, iBuffer, i, bytesCount, flags,
+                                timestamp);
+            if (timestampUslist) timestampUslist->push_back(timestamp);
+            timestamp += timestampIncr;
+            nFrames--;
+            ipCount++;
+        }
+    }
+
+    int timeOut = TIMEOUT_COUNTER;
+    bool stall = false;
     while (1) {
-        iQueued = oQueued = false;
         status =
-            observer->dequeueMessage(&msg, DEFAULT_TIMEOUT_Q, iBuffer, oBuffer);
-        // Port Reconfiguration
+            observer->dequeueMessage(&msg, DEFAULT_TIMEOUT, iBuffer, oBuffer);
+
         if (status == android::hardware::media::omx::V1_0::Status::OK) {
             ASSERT_EQ(msg.type, Message::Type::EVENT);
             if (msg.data.eventData.event == OMX_EventPortSettingsChanged) {
@@ -940,10 +1026,8 @@ void encodeNFrames(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                 ASSERT_EQ(msg.data.eventData.data2,
                           OMX_IndexConfigAndroidIntraRefresh);
             } else if (msg.data.eventData.event == OMX_EventError) {
-                ASSERT_TRUE(false) << "Received OMX_EventError, not sure why";
-            } else if (msg.data.eventData.event == OMX_EventDataSpaceChanged) {
-                // TODO: how am i supposed to respond now?
-                std::cout << "[   INFO   ] OMX_EventDataSpaceChanged \n";
+                EXPECT_TRUE(false) << "Received OMX_EventError, not sure why";
+                break;
             } else {
                 ASSERT_TRUE(false);
             }
@@ -956,17 +1040,14 @@ void encodeNFrames(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
         if (inputDataIsMeta) {
             if (listener->freeBuffers > listener->minUnDequeuedCount) {
                 if (dispatchGraphicBuffer(omxNode, producer, listener, iBuffer,
-                                          portIndexInput, eleStream,
-                                          timestamp)) {
-                    if (::testing::Test::HasFailure())
-                        ASSERT_TRUE(false);
-                    else
-                        break;
-                }
+                                          portIndexInput, eleStream, timestamp))
+                    break;
                 timestamp += timestampIncr;
                 nFrames--;
                 ipCount++;
-                iQueued = true;
+                stall = false;
+            } else {
+                stall = true;
             }
         } else {
             if ((index = getEmptyBufferID(iBuffer)) < iBuffer->size()) {
@@ -978,32 +1059,31 @@ void encodeNFrames(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                 if (fillByteBuffer(omxNode, ipBuffer, portIndexInput,
                                    eleStream))
                     break;
-                flags = OMX_BUFFERFLAG_ENDOFFRAME;
-                if (signalEOS && (nFrames == 1)) flags |= OMX_BUFFERFLAG_EOS;
-                ASSERT_NO_FATAL_FAILURE(dispatchInputBuffer(
-                    omxNode, iBuffer, index, bytesCount, flags, timestamp));
+                if (signalEOS && (nFrames == 1)) flags = OMX_BUFFERFLAG_EOS;
+                dispatchInputBuffer(omxNode, iBuffer, index, bytesCount, flags,
+                                    timestamp);
                 if (timestampUslist) timestampUslist->push_back(timestamp);
                 timestamp += timestampIncr;
                 nFrames--;
                 ipCount++;
-                iQueued = true;
+                stall = false;
+            } else {
+                stall = true;
             }
         }
-        // Dispatch output buffer
         if ((index = getEmptyBufferID(oBuffer)) < oBuffer->size()) {
-            ASSERT_NO_FATAL_FAILURE(
-                dispatchOutputBuffer(omxNode, oBuffer, index));
-            oQueued = true;
-        }
-        // Reset Counters when either input or output buffer is dispatched
-        if (iQueued || oQueued)
-            timeOut = TIMEOUT_COUNTER_Q;
-        else
+            dispatchOutputBuffer(omxNode, oBuffer, index);
+            stall = false;
+        } else
+            stall = true;
+        if (stall)
             timeOut--;
+        else
+            timeOut = TIMEOUT_COUNTER;
         if (timeOut == 0) {
-            ASSERT_TRUE(false) << "Wait on Input/Output is found indefinite";
+            EXPECT_TRUE(false) << "Wait on Input/Output is found indefinite";
+            break;
         }
-        // Runtime Param Configuration
         if (ipCount == 15) {
             changeBitrate(omxNode, portIndexOutput, 768000);
             requestIDR(omxNode, portIndexOutput);
@@ -1073,7 +1153,7 @@ TEST_F(VideoEncHidlTest, BufferSourceCallBacks) {
                  xFramerate, eColorFormat);
 
     sp<DummyBufferSource> buffersource = new DummyBufferSource(omxNode);
-    ASSERT_NE(buffersource, nullptr);
+    EXPECT_NE(buffersource, nullptr);
     status = omxNode->setInputSurface(buffersource);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
 
@@ -1087,20 +1167,20 @@ TEST_F(VideoEncHidlTest, BufferSourceCallBacks) {
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
 
     // set state to idle
-    ASSERT_NO_FATAL_FAILURE(changeStateLoadedtoIdle(
-        omxNode, observer, &buffersource->iBuffer, &buffersource->oBuffer,
-        kPortIndexInput, kPortIndexOutput, portMode));
+    changeStateLoadedtoIdle(omxNode, observer, &buffersource->iBuffer,
+                            &buffersource->oBuffer, kPortIndexInput,
+                            kPortIndexOutput, portMode);
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoExecute(omxNode, observer));
-    ASSERT_NO_FATAL_FAILURE(testEOS(omxNode, observer, &buffersource->iBuffer,
-                                    &buffersource->oBuffer, false, eosFlag));
+    changeStateIdletoExecute(omxNode, observer);
+    testEOS(omxNode, observer, &buffersource->iBuffer, &buffersource->oBuffer,
+            false, eosFlag);
     // set state to idle
-    ASSERT_NO_FATAL_FAILURE(changeStateExecutetoIdle(
-        omxNode, observer, &buffersource->iBuffer, &buffersource->oBuffer));
+    changeStateExecutetoIdle(omxNode, observer, &buffersource->iBuffer,
+                             &buffersource->oBuffer);
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(
-        omxNode, observer, &buffersource->iBuffer, &buffersource->oBuffer,
-        kPortIndexInput, kPortIndexOutput));
+    changeStateIdletoLoaded(omxNode, observer, &buffersource->iBuffer,
+                            &buffersource->oBuffer, kPortIndexInput,
+                            kPortIndexOutput);
     // test for callbacks
     EXPECT_EQ(buffersource->callback, 31);
 }
@@ -1154,9 +1234,8 @@ TEST_F(VideoEncHidlTest, EncodeTest) {
 
     // Configure output port
     uint32_t nBitRate = 512000;
-    ASSERT_NO_FATAL_FAILURE(
-        setDefaultPortParam(omxNode, kPortIndexOutput, eCompressionFormat,
-                            nFrameWidth, nFrameHeight, nBitRate, xFramerate));
+    setDefaultPortParam(omxNode, kPortIndexOutput, eCompressionFormat, nBitRate,
+                        xFramerate);
     setRefreshPeriod(omxNode, kPortIndexOutput, 0);
 
     unsigned int index;
@@ -1173,7 +1252,8 @@ TEST_F(VideoEncHidlTest, EncodeTest) {
         status = setParam(omxNode, static_cast<OMX_INDEXTYPE>(index), &param);
     }
     if (status != ::android::hardware::media::omx::V1_0::Status::OK)
-        std::cout << "[   INFO   ] unable to prependSPSPPSToIDRFrames\n";
+        std::cerr
+            << "[          ] Warning ! unable to prependSPSPPSToIDRFrames\n";
     else
         prependSPSPPS = true;
 
@@ -1192,32 +1272,27 @@ TEST_F(VideoEncHidlTest, EncodeTest) {
     android::Vector<BufferInfo> iBuffer, oBuffer;
 
     // set state to idle
-    ASSERT_NO_FATAL_FAILURE(
-        changeStateLoadedtoIdle(omxNode, observer, &iBuffer, &oBuffer,
-                                kPortIndexInput, kPortIndexOutput, portMode));
+    changeStateLoadedtoIdle(omxNode, observer, &iBuffer, &oBuffer,
+                            kPortIndexInput, kPortIndexOutput, portMode);
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoExecute(omxNode, observer));
+    changeStateIdletoExecute(omxNode, observer);
 
     eleStream.open(mURL, std::ifstream::binary);
     ASSERT_EQ(eleStream.is_open(), true);
-    ASSERT_NO_FATAL_FAILURE(encodeNFrames(
-        omxNode, observer, kPortIndexInput, kPortIndexOutput, &iBuffer,
-        &oBuffer, 32, xFramerate, (nFrameWidth * nFrameHeight * 3) >> 1,
-        eleStream, &timestampUslist));
+    encodeNFrames(omxNode, observer, kPortIndexInput, kPortIndexOutput,
+                  &iBuffer, &oBuffer, 32, xFramerate,
+                  (nFrameWidth * nFrameHeight * 3) >> 1, eleStream,
+                  &timestampUslist);
     eleStream.close();
-    ASSERT_NO_FATAL_FAILURE(
-        waitOnInputConsumption(omxNode, observer, &iBuffer, &oBuffer));
-    ASSERT_NO_FATAL_FAILURE(
-        testEOS(omxNode, observer, &iBuffer, &oBuffer, false, eosFlag));
+    waitOnInputConsumption(omxNode, observer, &iBuffer, &oBuffer);
+    testEOS(omxNode, observer, &iBuffer, &oBuffer, false, eosFlag);
     if (timestampDevTest) EXPECT_EQ(timestampUslist.empty(), true);
 
     // set state to idle
-    ASSERT_NO_FATAL_FAILURE(
-        changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
+    changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer);
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
-                                                    &oBuffer, kPortIndexInput,
-                                                    kPortIndexOutput));
+    changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
+                            kPortIndexInput, kPortIndexOutput);
 }
 
 // test raw stream encode (input is ANW buffers)
@@ -1244,11 +1319,6 @@ TEST_F(VideoEncHidlTest, EncodeTestBufferMetaModes) {
     setupRAWPort(omxNode, kPortIndexInput, nFrameWidth, nFrameHeight, 0,
                  xFramerate, eColorFormat);
 
-    // Configure output port
-    uint32_t nBitRate = 512000;
-    ASSERT_NO_FATAL_FAILURE(
-        setDefaultPortParam(omxNode, kPortIndexOutput, eCompressionFormat,
-                            nFrameWidth, nFrameHeight, nBitRate, xFramerate));
     // CreateInputSurface
     EXPECT_TRUE(omx->createInputSurface(
                        [&](android::hardware::media::omx::V1_0::Status _s,
@@ -1355,32 +1425,28 @@ TEST_F(VideoEncHidlTest, EncodeTestBufferMetaModes) {
 
     android::Vector<BufferInfo> iBuffer, oBuffer;
     // set state to idle
-    ASSERT_NO_FATAL_FAILURE(
-        changeStateLoadedtoIdle(omxNode, observer, &iBuffer, &oBuffer,
-                                kPortIndexInput, kPortIndexOutput, portMode));
+    changeStateLoadedtoIdle(omxNode, observer, &iBuffer, &oBuffer,
+                            kPortIndexInput, kPortIndexOutput, portMode);
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoExecute(omxNode, observer));
+    changeStateIdletoExecute(omxNode, observer);
 
     eleStream.open(mURL, std::ifstream::binary);
     ASSERT_EQ(eleStream.is_open(), true);
-    ASSERT_NO_FATAL_FAILURE(encodeNFrames(
-        omxNode, observer, kPortIndexInput, kPortIndexOutput, &iBuffer,
-        &oBuffer, 1024, xFramerate, (nFrameWidth * nFrameHeight * 3) >> 1,
-        eleStream, nullptr, false, true, producer, listener));
+    encodeNFrames(omxNode, observer, kPortIndexInput, kPortIndexOutput,
+                  &iBuffer, &oBuffer, 1024, xFramerate,
+                  (nFrameWidth * nFrameHeight * 3) >> 1, eleStream, nullptr,
+                  false, true, producer, listener);
     eleStream.close();
-    ASSERT_NO_FATAL_FAILURE(waitOnInputConsumption(omxNode, observer, &iBuffer,
-                                                   &oBuffer, true, listener));
-    ASSERT_NO_FATAL_FAILURE(
-        testEOS(omxNode, observer, &iBuffer, &oBuffer, false, eosFlag));
+    waitOnInputConsumption(omxNode, observer, &iBuffer, &oBuffer, true,
+                           listener);
+    testEOS(omxNode, observer, &iBuffer, &oBuffer, false, eosFlag);
 
     // set state to idle
-    ASSERT_NO_FATAL_FAILURE(
-        changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
+    changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer);
     EXPECT_EQ(portDef.nBufferCountActual, listener->freeBuffers);
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
-                                                    &oBuffer, kPortIndexInput,
-                                                    kPortIndexOutput));
+    changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
+                            kPortIndexInput, kPortIndexOutput);
 
     returnval = producer->disconnect(
         NATIVE_WINDOW_API_CPU, IGraphicBufferProducer::DisconnectMode::API);
@@ -1474,28 +1540,24 @@ TEST_F(VideoEncHidlTest, EncodeTestEOS) {
 
     android::Vector<BufferInfo> iBuffer, oBuffer;
     // set state to idle
-    ASSERT_NO_FATAL_FAILURE(
-        changeStateLoadedtoIdle(omxNode, observer, &iBuffer, &oBuffer,
-                                kPortIndexInput, kPortIndexOutput, portMode));
+    changeStateLoadedtoIdle(omxNode, observer, &iBuffer, &oBuffer,
+                            kPortIndexInput, kPortIndexOutput, portMode);
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoExecute(omxNode, observer));
+    changeStateIdletoExecute(omxNode, observer);
 
     // send EOS
     status = source->signalEndOfInputStream();
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
-    ASSERT_NO_FATAL_FAILURE(waitOnInputConsumption(omxNode, observer, &iBuffer,
-                                                   &oBuffer, true, listener));
-    ASSERT_NO_FATAL_FAILURE(
-        testEOS(omxNode, observer, &iBuffer, &oBuffer, false, eosFlag));
+    waitOnInputConsumption(omxNode, observer, &iBuffer, &oBuffer, true,
+                           listener);
+    testEOS(omxNode, observer, &iBuffer, &oBuffer, false, eosFlag);
 
     // set state to idle
-    ASSERT_NO_FATAL_FAILURE(
-        changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
+    changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer);
     EXPECT_EQ(portDef.nBufferCountActual, listener->freeBuffers);
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
-                                                    &oBuffer, kPortIndexInput,
-                                                    kPortIndexOutput));
+    changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
+                            kPortIndexInput, kPortIndexOutput);
 
     returnval = producer->disconnect(
         NATIVE_WINDOW_API_CPU, IGraphicBufferProducer::DisconnectMode::API);
@@ -1506,7 +1568,6 @@ int main(int argc, char** argv) {
     gEnv = new ComponentTestEnvironment();
     ::testing::AddGlobalTestEnvironment(gEnv);
     ::testing::InitGoogleTest(&argc, argv);
-    gEnv->init(&argc, argv);
     int status = gEnv->initFromOptions(argc, argv);
     if (status == 0) {
         status = RUN_ALL_TESTS();

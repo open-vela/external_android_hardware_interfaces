@@ -25,7 +25,6 @@
 
 #include <VtsHalHidlTargetCallbackBase.h>
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 #include <queue>
 
 using ::android::hardware::bluetooth::V1_0::IBluetoothHci;
@@ -127,23 +126,6 @@ class ThroughputLogger {
   size_t total_bytes_;
   std::string task_;
   std::chrono::steady_clock::time_point start_time_;
-};
-
-// Test environment for Bluetooth HIDL HAL.
-class BluetoothHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
- public:
-  // get the test environment singleton
-  static BluetoothHidlEnvironment* Instance() {
-    static BluetoothHidlEnvironment* instance = new BluetoothHidlEnvironment;
-    return instance;
-  }
-
-  virtual void registerTestServices() override {
-    registerTestService<IBluetoothHci>();
-  }
-
- private:
-  BluetoothHidlEnvironment() {}
 };
 
 // The main test class for Bluetooth HIDL HAL.
@@ -272,6 +254,15 @@ class BluetoothHidlTest : public ::testing::VtsHalHidlTargetTestBase {
   int max_sco_data_packet_length;
   int max_acl_data_packets;
   int max_sco_data_packets;
+};
+
+// A class for test environment setup (kept since this file is a template).
+class BluetoothHidlEnvironment : public ::testing::Environment {
+ public:
+  virtual void SetUp() {}
+  virtual void TearDown() {}
+
+ private:
 };
 
 // Discard NO-OPs from the event queue.
@@ -653,26 +644,22 @@ TEST_F(BluetoothHidlTest, LoopbackModeSinglePackets) {
 
   // This should work, but breaks on some current platforms.  Figure out how to
   // grandfather older devices but test new ones.
+  int sco_packets_sent = 0;
   if (0 && sco_connection_handles.size() > 0) {
     EXPECT_LT(0, max_sco_data_packet_length);
     sendAndCheckSCO(1, max_sco_data_packet_length, sco_connection_handles[0]);
-    int sco_packets_sent = 1;
-    int completed_packets = wait_for_completed_packets_event(sco_connection_handles[0]);
-    if (sco_packets_sent != completed_packets) {
-        ALOGW("%s: packets_sent (%d) != completed_packets (%d)", __func__, sco_packets_sent,
-              completed_packets);
-    }
+    sco_packets_sent = 1;
+    EXPECT_EQ(sco_packets_sent,
+              wait_for_completed_packets_event(sco_connection_handles[0]));
   }
 
+  int acl_packets_sent = 0;
   if (acl_connection_handles.size() > 0) {
     EXPECT_LT(0, max_acl_data_packet_length);
     sendAndCheckACL(1, max_acl_data_packet_length, acl_connection_handles[0]);
-    int acl_packets_sent = 1;
-    int completed_packets = wait_for_completed_packets_event(acl_connection_handles[0]);
-    if (acl_packets_sent != completed_packets) {
-        ALOGW("%s: packets_sent (%d) != completed_packets (%d)", __func__, acl_packets_sent,
-              completed_packets);
-    }
+    acl_packets_sent = 1;
+    EXPECT_EQ(acl_packets_sent,
+              wait_for_completed_packets_event(acl_connection_handles[0]));
   }
 }
 
@@ -688,35 +675,30 @@ TEST_F(BluetoothHidlTest, LoopbackModeBandwidth) {
 
   // This should work, but breaks on some current platforms.  Figure out how to
   // grandfather older devices but test new ones.
+  int sco_packets_sent = 0;
   if (0 && sco_connection_handles.size() > 0) {
     EXPECT_LT(0, max_sco_data_packet_length);
     sendAndCheckSCO(NUM_SCO_PACKETS_BANDWIDTH, max_sco_data_packet_length,
                     sco_connection_handles[0]);
-    int sco_packets_sent = NUM_SCO_PACKETS_BANDWIDTH;
-    int completed_packets = wait_for_completed_packets_event(sco_connection_handles[0]);
-    if (sco_packets_sent != completed_packets) {
-        ALOGW("%s: packets_sent (%d) != completed_packets (%d)", __func__, sco_packets_sent,
-              completed_packets);
-    }
+    sco_packets_sent = NUM_SCO_PACKETS_BANDWIDTH;
+    EXPECT_EQ(sco_packets_sent,
+              wait_for_completed_packets_event(sco_connection_handles[0]));
   }
 
+  int acl_packets_sent = 0;
   if (acl_connection_handles.size() > 0) {
     EXPECT_LT(0, max_acl_data_packet_length);
     sendAndCheckACL(NUM_ACL_PACKETS_BANDWIDTH, max_acl_data_packet_length,
                     acl_connection_handles[0]);
-    int acl_packets_sent = NUM_ACL_PACKETS_BANDWIDTH;
-    int completed_packets = wait_for_completed_packets_event(acl_connection_handles[0]);
-    if (acl_packets_sent != completed_packets) {
-        ALOGW("%s: packets_sent (%d) != completed_packets (%d)", __func__, acl_packets_sent,
-              completed_packets);
-    }
+    acl_packets_sent = NUM_ACL_PACKETS_BANDWIDTH;
+    EXPECT_EQ(acl_packets_sent,
+              wait_for_completed_packets_event(acl_connection_handles[0]));
   }
 }
 
 int main(int argc, char** argv) {
-  ::testing::AddGlobalTestEnvironment(BluetoothHidlEnvironment::Instance());
+  ::testing::AddGlobalTestEnvironment(new BluetoothHidlEnvironment);
   ::testing::InitGoogleTest(&argc, argv);
-  BluetoothHidlEnvironment::Instance()->init(&argc, argv);
   int status = RUN_ALL_TESTS();
   ALOGI("Test result = %d", status);
   return status;

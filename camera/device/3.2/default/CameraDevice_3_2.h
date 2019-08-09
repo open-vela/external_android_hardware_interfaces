@@ -80,13 +80,7 @@ struct CameraDevice : public ICameraDevice {
     Return<void> dumpState(const ::android::hardware::hidl_handle& fd) override;
     /* End of Methods from ::android::hardware::camera::device::V3_2::ICameraDevice */
 
-protected:
-
-    // Overridden by child implementations for returning different versions of CameraDeviceSession
-    virtual sp<CameraDeviceSession> createSession(camera3_device_t*,
-            const camera_metadata_t* deviceInfo,
-            const sp<ICameraDeviceCallback>&);
-
+private:
     const sp<CameraModule> mModule;
     const std::string mCameraId;
     // const after ctor

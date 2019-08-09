@@ -18,8 +18,7 @@
 
 // The main test class for RENDERSCRIPT HIDL HAL.
 void RenderscriptHidlTest::SetUp() {
-    device = ::testing::VtsHalHidlTargetTestBase::getService<IDevice>(
-        RenderscriptHidlEnvironment::Instance()->getServiceName<IDevice>());
+    device = ::testing::VtsHalHidlTargetTestBase::getService<IDevice>();
     ASSERT_NE(nullptr, device.get());
 
     uint32_t version = 0;
@@ -29,16 +28,21 @@ void RenderscriptHidlTest::SetUp() {
 }
 
 void RenderscriptHidlTest::TearDown() {
-    if (context.get() != nullptr) {
-        context->contextFinish();
-        context->contextDestroy();
-    }
+    context->contextFinish();
+    context->contextDestroy();
 }
 
+// A class for test environment setup (kept since this file is a template).
+class RenderscriptHidlEnvironment : public ::testing::Environment {
+public:
+    virtual void SetUp() {}
+    virtual void TearDown() {}
+};
+
+
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(RenderscriptHidlEnvironment::Instance());
+    ::testing::AddGlobalTestEnvironment(new RenderscriptHidlEnvironment);
     ::testing::InitGoogleTest(&argc, argv);
-    RenderscriptHidlEnvironment::Instance()->init(&argc, argv);
     int status = RUN_ALL_TESTS();
     LOG(INFO) << "Test result = " << status;
     return status;

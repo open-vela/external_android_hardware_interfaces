@@ -18,6 +18,8 @@
 
 #include "FormatConvert.h"
 
+#include <algorithm>    // std::min
+
 
 // Round up to the nearest multiple of the given alignment value
 template<unsigned alignment>

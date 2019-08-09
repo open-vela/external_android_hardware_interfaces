@@ -20,7 +20,6 @@
 #include <iostream>
 
 #include <openssl/evp.h>
-#include <openssl/mem.h>
 #include <openssl/x509.h>
 
 #include <android/hardware/keymaster/3.0/IKeymasterDevice.h>
@@ -34,16 +33,20 @@
 #include "key_param_output.h"
 
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 
 #include "attestation_record.h"
 #include "openssl_utils.h"
 
 using ::android::sp;
+
 using ::std::string;
 
+// This service_name will be passed to getService when retrieving the keymaster service to test.  To
+// change it from "default" specify the selected service name on the command line.  The first
+// non-gtest argument will be used as the service name.
+string service_name = "default";
+
 static bool arm_deleteAllKeys = false;
-static bool dump_Attestations = false;
 
 namespace android {
 namespace hardware {
@@ -230,19 +233,6 @@ string hex2str(string a) {
     return b;
 }
 
-char nibble2hex[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
-                       '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
-
-string bin2hex(const hidl_vec<uint8_t>& data) {
-    string retval;
-    retval.reserve(data.size() * 2 + 1);
-    for (uint8_t byte : data) {
-        retval.push_back(nibble2hex[0x0F & (byte >> 4)]);
-        retval.push_back(nibble2hex[0x0F & byte]);
-    }
-    return retval;
-}
-
 string rsa_key = hex2str(
     "30820275020100300d06092a864886f70d01010105000482025f3082025b"
     "02010002818100c6095409047d8634812d5a218176e45c41d60a75b13901"
@@ -296,13 +286,11 @@ X509* parse_cert_blob(const hidl_vec<uint8_t>& blob) {
 
 bool verify_chain(const hidl_vec<hidl_vec<uint8_t>>& chain) {
     for (size_t i = 0; i < chain.size() - 1; ++i) {
-        X509_Ptr key_cert(parse_cert_blob(chain[i]));
-        X509_Ptr signing_cert;
-        if (i < chain.size() - 1) {
-            signing_cert.reset(parse_cert_blob(chain[i + 1]));
-        } else {
-            signing_cert.reset(parse_cert_blob(chain[i]));
-        }
+        auto& key_cert_blob = chain[i];
+        auto& signing_cert_blob = chain[i + 1];
+
+        X509_Ptr key_cert(parse_cert_blob(key_cert_blob));
+        X509_Ptr signing_cert(parse_cert_blob(signing_cert_blob));
         EXPECT_TRUE(!!key_cert.get() && !!signing_cert.get());
         if (!key_cert.get() || !signing_cert.get()) return false;
 
@@ -312,24 +300,6 @@ bool verify_chain(const hidl_vec<hidl_vec<uint8_t>>& chain) {
 
         EXPECT_EQ(1, X509_verify(key_cert.get(), signing_pubkey.get()))
             << "Verification of certificate " << i << " failed";
-
-        char* cert_issuer =  //
-            X509_NAME_oneline(X509_get_issuer_name(key_cert.get()), nullptr, 0);
-        char* signer_subj =
-            X509_NAME_oneline(X509_get_subject_name(signing_cert.get()), nullptr, 0);
-        EXPECT_STREQ(cert_issuer, signer_subj) << "Cert " << i
-                                               << " has wrong issuer.  (Possibly b/38394614)";
-        if (i == 0) {
-            char* cert_sub = X509_NAME_oneline(X509_get_subject_name(key_cert.get()), nullptr, 0);
-            EXPECT_STREQ("/CN=Android Keystore Key", cert_sub)
-                << "Cert " << i << " has wrong subject.  (Possibly b/38394614)";
-            OPENSSL_free(cert_sub);
-        }
-
-        OPENSSL_free(cert_issuer);
-        OPENSSL_free(signer_subj);
-
-        if (dump_Attestations) std::cout << bin2hex(chain[i]) << std::endl;
     }
 
     return true;
@@ -413,20 +383,6 @@ constexpr uint64_t kOpHandleSentinel = 0xFFFFFFFFFFFFFFFF;
 
 }  // namespace
 
-// Test environment for Keymaster HIDL HAL.
-class KeymasterHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static KeymasterHidlEnvironment* Instance() {
-        static KeymasterHidlEnvironment* instance = new KeymasterHidlEnvironment;
-        return instance;
-    }
-
-    virtual void registerTestServices() override { registerTestService<IKeymasterDevice>(); }
-   private:
-    KeymasterHidlEnvironment() {}
-};
-
 class KeymasterHidlTest : public ::testing::VtsHalHidlTargetTestBase {
   public:
     void TearDown() override {
@@ -438,8 +394,7 @@ class KeymasterHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 
     // SetUpTestCase runs only once per test case, not once per test.
     static void SetUpTestCase() {
-        keymaster_ = ::testing::VtsHalHidlTargetTestBase::getService<IKeymasterDevice>(
-            KeymasterHidlEnvironment::Instance()->getServiceName<IKeymasterDevice>());
+        keymaster_ = IKeymasterDevice::getService(service_name);
         ASSERT_NE(keymaster_, nullptr);
 
         ASSERT_TRUE(
@@ -549,10 +504,9 @@ class KeymasterHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     }
 
     ErrorCode DeleteKey(HidlBuf* key_blob, bool keep_key_blob = false) {
-        auto rc = keymaster_->deleteKey(*key_blob);
+        ErrorCode error = keymaster_->deleteKey(*key_blob);
         if (!keep_key_blob) *key_blob = HidlBuf();
-        if (!rc.isOk()) return ErrorCode::UNKNOWN_ERROR;
-        return rc;
+        return error;
     }
 
     ErrorCode DeleteKey(bool keep_key_blob = false) {
@@ -573,15 +527,12 @@ class KeymasterHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 
     ErrorCode GetCharacteristics(const HidlBuf& key_blob, const HidlBuf& client_id,
                                  const HidlBuf& app_data, KeyCharacteristics* key_characteristics) {
-        ErrorCode error = ErrorCode::UNKNOWN_ERROR;
-        EXPECT_TRUE(
-            keymaster_
-                ->getKeyCharacteristics(
-                    key_blob, client_id, app_data,
-                    [&](ErrorCode hidl_error, const KeyCharacteristics& hidl_key_characteristics) {
-                        error = hidl_error, *key_characteristics = hidl_key_characteristics;
-                    })
-                .isOk());
+        ErrorCode error;
+        keymaster_->getKeyCharacteristics(
+            key_blob, client_id, app_data,
+            [&](ErrorCode hidl_error, const KeyCharacteristics& hidl_key_characteristics) {
+                error = hidl_error, *key_characteristics = hidl_key_characteristics;
+            });
         return error;
     }
 
@@ -719,16 +670,12 @@ class KeymasterHidlTest : public ::testing::VtsHalHidlTargetTestBase {
                         hidl_vec<hidl_vec<uint8_t>>* cert_chain) {
         SCOPED_TRACE("AttestKey");
         ErrorCode error;
-        auto rc = keymaster_->attestKey(
+        keymaster_->attestKey(
             key_blob, attest_params.hidl_data(),
             [&](ErrorCode hidl_error, const hidl_vec<hidl_vec<uint8_t>>& hidl_cert_chain) {
                 error = hidl_error;
                 *cert_chain = hidl_cert_chain;
             });
-
-        EXPECT_TRUE(rc.isOk()) << rc.description();
-        if (!rc.isOk()) return ErrorCode::UNKNOWN_ERROR;
-
         return error;
     }
 
@@ -909,20 +856,13 @@ class KeymasterHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         }
     }
 
-    void CheckOrigin(bool asymmetric = false) {
+    void CheckOrigin() {
         SCOPED_TRACE("CheckOrigin");
         if (is_secure_ && supports_symmetric_) {
             EXPECT_TRUE(
                 contains(key_characteristics_.teeEnforced, TAG_ORIGIN, KeyOrigin::IMPORTED));
         } else if (is_secure_) {
-            // wrapped KM0
-            if (asymmetric) {
-                EXPECT_TRUE(
-                    contains(key_characteristics_.teeEnforced, TAG_ORIGIN, KeyOrigin::UNKNOWN));
-            } else {
-                EXPECT_TRUE(contains(key_characteristics_.softwareEnforced, TAG_ORIGIN,
-                                     KeyOrigin::IMPORTED));
-            }
+            EXPECT_TRUE(contains(key_characteristics_.teeEnforced, TAG_ORIGIN, KeyOrigin::UNKNOWN));
         } else {
             EXPECT_TRUE(
                 contains(key_characteristics_.softwareEnforced, TAG_ORIGIN, KeyOrigin::IMPORTED));
@@ -1011,8 +951,8 @@ bool verify_attestation_record(const string& challenge, const string& app_id,
                                    HidlBuf(app_id));
 
     if (!KeymasterHidlTest::IsSecure()) {
-        // SW is KM3
-        EXPECT_EQ(att_keymaster_version, 3U);
+        // SW is KM2
+        EXPECT_EQ(att_keymaster_version, 2U);
     }
 
     if (KeymasterHidlTest::SupportsSymmetric()) {
@@ -1035,13 +975,11 @@ bool verify_attestation_record(const string& challenge, const string& app_id,
 
     att_sw_enforced.Sort();
     expected_sw_enforced.Sort();
-    EXPECT_EQ(filter_tags(expected_sw_enforced), filter_tags(att_sw_enforced))
-        << "(Possibly b/38394619)";
+    EXPECT_EQ(filter_tags(expected_sw_enforced), filter_tags(att_sw_enforced));
 
     att_tee_enforced.Sort();
     expected_tee_enforced.Sort();
-    EXPECT_EQ(filter_tags(expected_tee_enforced), filter_tags(att_tee_enforced))
-        << "(Possibly b/38394619)";
+    EXPECT_EQ(filter_tags(expected_tee_enforced), filter_tags(att_tee_enforced));
 
     return true;
 }
@@ -1077,17 +1015,13 @@ TEST_F(KeymasterVersionTest, SensibleFeatures) {
 
 class NewKeyGenerationTest : public KeymasterHidlTest {
   protected:
-    void CheckBaseParams(const KeyCharacteristics& keyCharacteristics, bool asymmetric = false) {
+    void CheckBaseParams(const KeyCharacteristics& keyCharacteristics) {
         // TODO(swillden): Distinguish which params should be in which auth list.
 
         AuthorizationSet auths(keyCharacteristics.teeEnforced);
         auths.push_back(AuthorizationSet(keyCharacteristics.softwareEnforced));
 
-        if (!SupportsSymmetric() && asymmetric) {
-            EXPECT_TRUE(auths.Contains(TAG_ORIGIN, KeyOrigin::UNKNOWN));
-        } else {
-            EXPECT_TRUE(auths.Contains(TAG_ORIGIN, KeyOrigin::GENERATED));
-        }
+        EXPECT_TRUE(auths.Contains(TAG_ORIGIN, KeyOrigin::GENERATED));
 
         EXPECT_TRUE(auths.Contains(TAG_PURPOSE, KeyPurpose::SIGN));
         EXPECT_TRUE(auths.Contains(TAG_PURPOSE, KeyPurpose::VERIFY));
@@ -1136,7 +1070,7 @@ TEST_F(NewKeyGenerationTest, Rsa) {
                                              &key_blob, &key_characteristics));
 
         ASSERT_GT(key_blob.size(), 0U);
-        CheckBaseParams(key_characteristics, true /* asymmetric */);
+        CheckBaseParams(key_characteristics);
 
         AuthorizationSet crypto_params;
         if (IsSecure()) {
@@ -1182,7 +1116,7 @@ TEST_F(NewKeyGenerationTest, Ecdsa) {
                                                  .Authorizations(UserAuths()),
                                              &key_blob, &key_characteristics));
         ASSERT_GT(key_blob.size(), 0U);
-        CheckBaseParams(key_characteristics, true /* asymmetric */);
+        CheckBaseParams(key_characteristics);
 
         AuthorizationSet crypto_params;
         if (IsSecure()) {
@@ -1587,9 +1521,7 @@ TEST_F(SigningOperationsTest, RsaNoPaddingTooLong) {
                                           .Digest(Digest::NONE)
                                           .Padding(PaddingMode::RSA_PKCS1_1_5_SIGN)));
     string result;
-    ErrorCode finish_error_code = Finish(message, &result);
-    EXPECT_TRUE(finish_error_code == ErrorCode::INVALID_INPUT_LENGTH ||
-                finish_error_code == ErrorCode::INVALID_ARGUMENT);
+    EXPECT_EQ(ErrorCode::INVALID_INPUT_LENGTH, Finish(message, &result));
 
     // Very large message that should exceed the transfer buffer size of any reasonable TEE.
     message = string(128 * 1024, 'a');
@@ -1597,9 +1529,7 @@ TEST_F(SigningOperationsTest, RsaNoPaddingTooLong) {
               Begin(KeyPurpose::SIGN, AuthorizationSetBuilder()
                                           .Digest(Digest::NONE)
                                           .Padding(PaddingMode::RSA_PKCS1_1_5_SIGN)));
-    finish_error_code = Finish(message, &result);
-    EXPECT_TRUE(finish_error_code == ErrorCode::INVALID_INPUT_LENGTH ||
-                finish_error_code == ErrorCode::INVALID_ARGUMENT);
+    EXPECT_EQ(ErrorCode::INVALID_INPUT_LENGTH, Finish(message, &result));
 }
 
 /*
@@ -2305,7 +2235,8 @@ TEST_F(ExportKeyTest, RsaUnsupportedKeyFormat) {
  * Verifies that attempting to export RSA keys from corrupted key blobs fails.  This is essentially
  * a poor-man's key blob fuzzer.
  */
-TEST_F(ExportKeyTest, RsaCorruptedKeyBlob) {
+// Disabled due to b/33385206
+TEST_F(ExportKeyTest, DISABLED_RsaCorruptedKeyBlob) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaSigningKey(1024, 3)
@@ -2328,7 +2259,8 @@ TEST_F(ExportKeyTest, RsaCorruptedKeyBlob) {
  * Verifies that attempting to export ECDSA keys from corrupted key blobs fails.  This is
  * essentially a poor-man's key blob fuzzer.
  */
-TEST_F(ExportKeyTest, EcCorruptedKeyBlob) {
+// Disabled due to b/33385206
+TEST_F(ExportKeyTest, DISABLED_EcCorruptedKeyBlob) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .EcdsaSigningKey(EcCurve::P_256)
@@ -2381,7 +2313,7 @@ TEST_F(ImportKeyTest, RsaSuccess) {
     CheckKm0CryptoParam(TAG_RSA_PUBLIC_EXPONENT, 65537U);
     CheckKm1CryptoParam(TAG_DIGEST, Digest::SHA_2_256);
     CheckKm1CryptoParam(TAG_PADDING, PaddingMode::RSA_PSS);
-    CheckOrigin(true /* asymmetric */);
+    CheckOrigin();
 
     string message(1024 / 8, 'a');
     auto params = AuthorizationSetBuilder().Digest(Digest::SHA_2_256).Padding(PaddingMode::RSA_PSS);
@@ -2437,7 +2369,7 @@ TEST_F(ImportKeyTest, EcdsaSuccess) {
     CheckKm1CryptoParam(TAG_DIGEST, Digest::SHA_2_256);
     CheckKm2CryptoParam(TAG_EC_CURVE, EcCurve::P_256);
 
-    CheckOrigin(true /* asymmetric */);
+    CheckOrigin();
 
     string message(32, 'a');
     auto params = AuthorizationSetBuilder().Digest(Digest::SHA_2_256);
@@ -2463,7 +2395,7 @@ TEST_F(ImportKeyTest, Ecdsa521Success) {
     CheckKm1CryptoParam(TAG_DIGEST, Digest::SHA_2_256);
     CheckKm2CryptoParam(TAG_EC_CURVE, EcCurve::P_521);
 
-    CheckOrigin(true /* asymmetric */);
+    CheckOrigin();
 
     string message(32, 'a');
     auto params = AuthorizationSetBuilder().Digest(Digest::SHA_2_256);
@@ -2497,11 +2429,12 @@ TEST_F(ImportKeyTest, EcdsaCurveMismatch) {
         return;
     }
 
-    ASSERT_EQ(ErrorCode::IMPORT_PARAMETER_MISMATCH,
-              ImportKey(AuthorizationSetBuilder()
-                            .EcdsaSigningKey(EcCurve::P_224 /* Doesn't match key */)
-                            .Digest(Digest::NONE),
-                        KeyFormat::PKCS8, ec_256_key))
+    ASSERT_EQ(
+        ErrorCode::IMPORT_PARAMETER_MISMATCH,
+        ImportKey(AuthorizationSetBuilder()
+                      .EcdsaSigningKey(EcCurve::P_224 /* Doesn't match key */)
+                      .Digest(Digest::NONE),
+                  KeyFormat::PKCS8, ec_256_key))
         << "(Possibly b/36233241)";
 }
 
@@ -2786,8 +2719,7 @@ TEST_F(EncryptionOperationsTest, RsaOaepTooLarge) {
               Begin(KeyPurpose::ENCRYPT,
                     AuthorizationSetBuilder().Padding(PaddingMode::RSA_OAEP).Digest(Digest::SHA1)));
     string result;
-    auto error = Finish(message, &result);
-    EXPECT_TRUE(error == ErrorCode::INVALID_INPUT_LENGTH || error == ErrorCode::INVALID_ARGUMENT);
+    EXPECT_EQ(ErrorCode::INVALID_INPUT_LENGTH, Finish(message, &result));
     EXPECT_EQ(0U, result.size());
 }
 
@@ -2845,8 +2777,7 @@ TEST_F(EncryptionOperationsTest, RsaPkcs1TooLarge) {
     auto params = AuthorizationSetBuilder().Padding(PaddingMode::RSA_PKCS1_1_5_ENCRYPT);
     EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, params));
     string result;
-    auto error = Finish(message, &result);
-    EXPECT_TRUE(error == ErrorCode::INVALID_INPUT_LENGTH || error == ErrorCode::INVALID_ARGUMENT);
+    EXPECT_EQ(ErrorCode::INVALID_INPUT_LENGTH, Finish(message, &result));
     EXPECT_EQ(0U, result.size());
 }
 
@@ -3952,11 +3883,13 @@ TEST_F(AttestationTest, RsaAttestation) {
                                              .Authorization(TAG_INCLUDE_UNIQUE_ID)));
 
     hidl_vec<hidl_vec<uint8_t>> cert_chain;
-    ASSERT_EQ(ErrorCode::OK,
-              AttestKey(AuthorizationSetBuilder()
-                            .Authorization(TAG_ATTESTATION_CHALLENGE, HidlBuf("challenge"))
-                            .Authorization(TAG_ATTESTATION_APPLICATION_ID, HidlBuf("foo")),
-                        &cert_chain));
+    EXPECT_EQ(
+        ErrorCode::OK,
+        AttestKey(
+            AuthorizationSetBuilder()
+                .Authorization(TAG_ATTESTATION_CHALLENGE, HidlBuf("challenge"))
+                .Authorization(TAG_ATTESTATION_APPLICATION_ID, HidlBuf("foo")),
+            &cert_chain));
     EXPECT_GE(cert_chain.size(), 2U);
     EXPECT_TRUE(verify_chain(cert_chain));
     EXPECT_TRUE(
@@ -4000,11 +3933,13 @@ TEST_F(AttestationTest, EcAttestation) {
                                              .Authorization(TAG_INCLUDE_UNIQUE_ID)));
 
     hidl_vec<hidl_vec<uint8_t>> cert_chain;
-    ASSERT_EQ(ErrorCode::OK,
-              AttestKey(AuthorizationSetBuilder()
-                            .Authorization(TAG_ATTESTATION_CHALLENGE, HidlBuf("challenge"))
-                            .Authorization(TAG_ATTESTATION_APPLICATION_ID, HidlBuf("foo")),
-                        &cert_chain));
+    EXPECT_EQ(
+        ErrorCode::OK,
+        AttestKey(
+            AuthorizationSetBuilder()
+                .Authorization(TAG_ATTESTATION_CHALLENGE, HidlBuf("challenge"))
+                .Authorization(TAG_ATTESTATION_APPLICATION_ID, HidlBuf("foo")),
+            &cert_chain));
     EXPECT_GE(cert_chain.size(), 2U);
     EXPECT_TRUE(verify_chain(cert_chain));
 
@@ -4214,19 +4149,20 @@ TEST_F(KeyDeletionTest, DeleteAllKeys) {
 }  // namespace android
 
 int main(int argc, char** argv) {
-    using android::hardware::keymaster::V3_0::test::KeymasterHidlEnvironment;
-    ::testing::AddGlobalTestEnvironment(KeymasterHidlEnvironment::Instance());
     ::testing::InitGoogleTest(&argc, argv);
-    KeymasterHidlEnvironment::Instance()->init(&argc, argv);
+    std::vector<std::string> positional_args;
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
             if (std::string(argv[i]) == "--arm_deleteAllKeys") {
                 arm_deleteAllKeys = true;
             }
-            if (std::string(argv[i]) == "--dump_attestations") {
-                dump_Attestations = true;
-            }
+        } else {
+            positional_args.push_back(argv[i]);
         }
+    }
+    if (positional_args.size()) {
+        ALOGI("Running keymaster VTS against service \"%s\"", positional_args[0].c_str());
+        service_name = positional_args[0];
     }
     int status = RUN_ALL_TESTS();
     ALOGI("Test result = %d", status);

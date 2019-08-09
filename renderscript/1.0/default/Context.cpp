@@ -1,3 +1,5 @@
+#define LOG_TAG "android.hardware.renderscript@1.0-impl"
+
 #include "Context.h"
 #include "Device.h"
 

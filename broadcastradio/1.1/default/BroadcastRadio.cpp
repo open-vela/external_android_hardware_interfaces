@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define LOG_TAG "BroadcastRadioDefault.module"
-#define LOG_NDEBUG 0
-
-#include "BroadcastRadio.h"
+#define LOG_TAG "BroadcastRadio"
+//#define LOG_NDEBUG 0
 
 #include <log/log.h>
 
-#include "resources.h"
+#include "BroadcastRadio.h"
+#include "Tuner.h"
+#include "Utils.h"
 
 namespace android {
 namespace hardware {
@@ -28,174 +28,117 @@ namespace broadcastradio {
 namespace V1_1 {
 namespace implementation {
 
-using V1_0::Band;
-using V1_0::BandConfig;
-using V1_0::Class;
-using V1_0::Deemphasis;
-using V1_0::Rds;
-using V1_1::IdentifierType;
-using V1_1::ProgramSelector;
-using V1_1::ProgramType;
-using V1_1::Properties;
-using V1_1::VendorKeyValue;
-
-using std::lock_guard;
-using std::map;
-using std::mutex;
-using std::vector;
-
-// clang-format off
-static const map<Class, ModuleConfig> gModuleConfigs{
-    {Class::AM_FM, ModuleConfig({
-        "Digital radio mock",
-        {  // amFmBands
-            AmFmBandConfig({
-                Band::AM,
-                153,         // lowerLimit
-                26100,       // upperLimit
-                {5, 9, 10},  // spacings
-            }),
-            AmFmBandConfig({
-                Band::FM,
-                65800,           // lowerLimit
-                108000,          // upperLimit
-                {10, 100, 200},  // spacings
-            }),
-            AmFmBandConfig({
-                Band::AM_HD,
-                153,         // lowerLimit
-                26100,       // upperLimit
-                {5, 9, 10},  // spacings
-            }),
-            AmFmBandConfig({
-                Band::FM_HD,
-                87700,   // lowerLimit
-                107900,  // upperLimit
-                {200},   // spacings
-            }),
-        },
-    })},
-
-    {Class::SAT, ModuleConfig({
-        "Satellite radio mock",
-        {},  // amFmBands
-    })},
-};
-// clang-format on
+using ::android::sp;
 
 BroadcastRadio::BroadcastRadio(Class classId)
-    : mClassId(classId), mConfig(gModuleConfigs.at(classId)) {}
-
-bool BroadcastRadio::isSupported(Class classId) {
-    return gModuleConfigs.find(classId) != gModuleConfigs.end();
+        : mStatus(Result::NOT_INITIALIZED), mClassId(classId), mHwDevice(NULL)
+{
 }
 
-Return<void> BroadcastRadio::getProperties(getProperties_cb _hidl_cb) {
-    ALOGV("%s", __func__);
-    return getProperties_1_1(
-        [&](const Properties& properties) { _hidl_cb(Result::OK, properties.base); });
+BroadcastRadio::~BroadcastRadio()
+{
+    if (mHwDevice != NULL) {
+        radio_hw_device_close(mHwDevice);
+    }
 }
 
-Return<void> BroadcastRadio::getProperties_1_1(getProperties_1_1_cb _hidl_cb) {
-    ALOGV("%s", __func__);
-    Properties prop11 = {};
-    auto& prop10 = prop11.base;
+void BroadcastRadio::onFirstRef()
+{
+    const hw_module_t *mod;
+    int rc;
+    ALOGI("%s mClassId %d", __FUNCTION__, mClassId);
 
-    prop10.classId = mClassId;
-    prop10.implementor = "Google";
-    prop10.product = mConfig.productName;
-    prop10.numTuners = 1;
-    prop10.numAudioSources = 1;
-    prop10.supportsCapture = false;
-    prop11.supportsBackgroundScanning = true;
-    prop11.supportedProgramTypes = hidl_vec<uint32_t>({
-        static_cast<uint32_t>(ProgramType::AM), static_cast<uint32_t>(ProgramType::FM),
-        static_cast<uint32_t>(ProgramType::AM_HD), static_cast<uint32_t>(ProgramType::FM_HD),
-    });
-    prop11.supportedIdentifierTypes = hidl_vec<uint32_t>({
-        static_cast<uint32_t>(IdentifierType::AMFM_FREQUENCY),
-        static_cast<uint32_t>(IdentifierType::RDS_PI),
-        static_cast<uint32_t>(IdentifierType::HD_STATION_ID_EXT),
-        static_cast<uint32_t>(IdentifierType::HD_SUBCHANNEL),
-    });
-    prop11.vendorInfo = hidl_vec<VendorKeyValue>({
-        {"com.google.dummy", "dummy"},
-    });
+    mHwDevice = NULL;
+    const char *classString = Utils::getClassString(mClassId);
+    if (classString == NULL) {
+        ALOGE("invalid class ID %d", mClassId);
+        mStatus = Result::INVALID_ARGUMENTS;
+        return;
+    }
 
-    prop10.bands = getAmFmBands();
+    ALOGI("%s RADIO_HARDWARE_MODULE_ID %s %s",
+            __FUNCTION__, RADIO_HARDWARE_MODULE_ID, classString);
 
-    _hidl_cb(prop11);
+    rc = hw_get_module_by_class(RADIO_HARDWARE_MODULE_ID, classString, &mod);
+    if (rc != 0) {
+        ALOGE("couldn't load radio module %s.%s (%s)",
+                RADIO_HARDWARE_MODULE_ID, classString, strerror(-rc));
+        return;
+    }
+    rc = radio_hw_device_open(mod, &mHwDevice);
+    if (rc != 0) {
+        ALOGE("couldn't open radio hw device in %s.%s (%s)",
+                RADIO_HARDWARE_MODULE_ID, "primary", strerror(-rc));
+        mHwDevice = NULL;
+        return;
+    }
+    if (mHwDevice->common.version != RADIO_DEVICE_API_VERSION_CURRENT) {
+        ALOGE("wrong radio hw device version %04x", mHwDevice->common.version);
+        radio_hw_device_close(mHwDevice);
+        mHwDevice = NULL;
+    } else {
+        mStatus = Result::OK;
+    }
+}
+
+int BroadcastRadio::closeHalTuner(const struct radio_tuner *halTuner)
+{
+    ALOGV("%s", __FUNCTION__);
+    if (mHwDevice == NULL) {
+        return -ENODEV;
+    }
+    if (halTuner == 0) {
+        return -EINVAL;
+    }
+    return mHwDevice->close_tuner(mHwDevice, halTuner);
+}
+
+
+// Methods from ::android::hardware::broadcastradio::V1_1::IBroadcastRadio follow.
+Return<void> BroadcastRadio::getProperties(getProperties_cb _hidl_cb)
+{
+    int rc;
+    radio_hal_properties_t halProperties;
+    Properties properties;
+
+    if (mHwDevice == NULL) {
+        rc = -ENODEV;
+        goto exit;
+    }
+    rc = mHwDevice->get_properties(mHwDevice, &halProperties);
+    if (rc == 0) {
+        Utils::convertPropertiesFromHal(&properties, &halProperties);
+    }
+
+exit:
+    _hidl_cb(Utils::convertHalResult(rc), properties);
     return Void();
 }
 
-Return<void> BroadcastRadio::openTuner(const BandConfig& config, bool audio __unused,
-                                       const sp<V1_0::ITunerCallback>& callback,
-                                       openTuner_cb _hidl_cb) {
-    ALOGV("%s(%s)", __func__, toString(config.type).c_str());
-    lock_guard<mutex> lk(mMut);
+Return<void> BroadcastRadio::getProperties_1_1(getProperties_1_1_cb _hidl_cb __unused)
+{
+    return Status::fromExceptionCode(Status::EX_UNSUPPORTED_OPERATION);
+}
 
-    auto oldTuner = mTuner.promote();
-    if (oldTuner != nullptr) {
-        ALOGI("Force-closing previously opened tuner");
-        oldTuner->forceClose();
-        mTuner = nullptr;
+Return<void> BroadcastRadio::openTuner(const BandConfig& config, bool audio,
+    const sp<V1_0::ITunerCallback>& callback, openTuner_cb _hidl_cb)
+{
+    sp<Tuner> tunerImpl = new Tuner(callback, this);
+
+    radio_hal_band_config_t halConfig;
+    const struct radio_tuner *halTuner;
+    Utils::convertBandConfigToHal(&halConfig, &config);
+    int rc = mHwDevice->open_tuner(mHwDevice, &halConfig, audio, Tuner::callback,
+            tunerImpl.get(), &halTuner);
+    if (rc == 0) {
+        tunerImpl->setHalTuner(halTuner);
     }
 
-    sp<Tuner> newTuner = new Tuner(this, mClassId, callback);
-    mTuner = newTuner;
-    if (mClassId == Class::AM_FM) {
-        auto ret = newTuner->setConfiguration(config);
-        if (ret != Result::OK) {
-            _hidl_cb(Result::INVALID_ARGUMENTS, {});
-            return Void();
-        }
-    }
-
-    _hidl_cb(Result::OK, newTuner);
+    _hidl_cb(Utils::convertHalResult(rc), tunerImpl);
     return Void();
 }
 
-Return<void> BroadcastRadio::getImage(int32_t id, getImage_cb _hidl_cb) {
-    ALOGV("%s(%x)", __func__, id);
-
-    if (id == resources::demoPngId) {
-        _hidl_cb(std::vector<uint8_t>(resources::demoPng, std::end(resources::demoPng)));
-        return {};
-    }
-
-    ALOGI("Image %x doesn't exists", id);
-    _hidl_cb({});
-    return Void();
-}
-
-std::vector<V1_0::BandConfig> BroadcastRadio::getAmFmBands() const {
-    std::vector<V1_0::BandConfig> out;
-    for (auto&& src : mConfig.amFmBands) {
-        V1_0::BandConfig dst;
-
-        dst.type = src.type;
-        dst.antennaConnected = true;
-        dst.lowerLimit = src.lowerLimit;
-        dst.upperLimit = src.upperLimit;
-        dst.spacings = src.spacings;
-
-        if (utils::isAm(src.type)) {
-            dst.ext.am.stereo = true;
-        } else if (utils::isFm(src.type)) {
-            dst.ext.fm.deemphasis = static_cast<Deemphasis>(Deemphasis::D50 | Deemphasis::D75);
-            dst.ext.fm.stereo = true;
-            dst.ext.fm.rds = static_cast<Rds>(Rds::WORLD | Rds::US);
-            dst.ext.fm.ta = true;
-            dst.ext.fm.af = true;
-            dst.ext.fm.ea = true;
-        }
-
-        out.push_back(dst);
-    }
-    return out;
-}
-
-}  // namespace implementation
+} // namespace implementation
 }  // namespace V1_1
 }  // namespace broadcastradio
 }  // namespace hardware

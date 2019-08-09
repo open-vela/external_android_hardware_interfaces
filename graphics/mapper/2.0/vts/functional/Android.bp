@@ -14,14 +14,53 @@
 // limitations under the License.
 //
 
+cc_library_static {
+    name: "libVtsHalGraphicsMapperTestUtils",
+    defaults: ["hidl_defaults"],
+    srcs: ["VtsHalGraphicsMapperTestUtils.cpp"],
+    shared_libs: [
+        "android.hardware.graphics.allocator@2.0",
+        "android.hardware.graphics.mapper@2.0",
+    ],
+    static_libs: [
+        "VtsHalHidlTargetTestBase",
+    ],
+    cflags: [
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O0",
+        "-g",
+    ],
+    export_include_dirs: ["."],
+}
+
 cc_test {
     name: "VtsHalGraphicsMapperV2_0TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
+    defaults: ["hidl_defaults"],
     srcs: ["VtsHalGraphicsMapperV2_0TargetTest.cpp"],
-    static_libs: [
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libcutils",
+        "libhidlbase",
+        "libhidltransport",
+        "libnativehelper",
+        "libsync",
+        "libutils",
         "android.hardware.graphics.allocator@2.0",
-        "android.hardware.graphics.common@1.0",
         "android.hardware.graphics.mapper@2.0",
-        "android.hardware.graphics.mapper@2.0-vts",
+        "android.hardware.graphics.common@1.0",
     ],
+    static_libs: [
+        "libVtsHalGraphicsMapperTestUtils",
+        "VtsHalHidlTargetTestBase",
+    ],
+    cflags: [
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-O0",
+        "-g",
+    ]
 }

@@ -17,8 +17,7 @@
 #ifndef ANDROID_HARDWARE_CONFIGSTORE_UTILS_H
 #define ANDROID_HARDWARE_CONFIGSTORE_UTILS_H
 
-#include <android/hardware/configstore/1.0/types.h>
-#include <android/hardware/configstore/1.1/types.h>
+#include <android/hardware/configstore/1.0/ISurfaceFlingerConfigs.h>
 #include <hidl/Status.h>
 
 #include <sstream>
@@ -35,30 +34,7 @@ void logAlwaysError(const std::string& message);
 }  // namespace details
 
 namespace configstore {
-// import types from configstore
-using ::android::hardware::configstore::V1_1::DisplayOrientation;
-using ::android::hardware::configstore::V1_0::OptionalBool;
-using ::android::hardware::configstore::V1_0::OptionalInt32;
-using ::android::hardware::configstore::V1_0::OptionalUInt32;
-using ::android::hardware::configstore::V1_0::OptionalInt64;
-using ::android::hardware::configstore::V1_0::OptionalUInt64;
-using ::android::hardware::configstore::V1_0::OptionalString;
-using ::android::hardware::configstore::V1_1::OptionalDisplayOrientation;
-
-static inline std::ostream& operator<<(std::ostream& os, DisplayOrientation orientation) {
-    os << ::android::hardware::configstore::V1_1::toString(orientation);
-    return os;
-}
-
-// a function to retrieve and cache the service handle
-// for a particular interface
-template <typename I>
-sp<I> getService() {
-    // static initializer used for synchronizations
-    static sp<I> configs = I::getService();
-    return configs;
-}
-
+using namespace android::hardware::configstore::V1_0;
 // arguments V: type for the value (i.e., OptionalXXX)
 //           I: interface class name
 //           func: member function pointer
@@ -66,10 +42,9 @@ template<typename V, typename I, android::hardware::Return<void> (I::* func)
         (std::function<void(const V&)>)>
 decltype(V::value) get(const decltype(V::value) &defValue) {
     using namespace android::hardware::details;
-    // static initializer used for synchronizations
     auto getHelper = []()->V {
         V ret;
-        sp<I> configs = getService<I>();
+        sp<I> configs = I::getService();
 
         if (!configs.get()) {
             // fallback to the default value
@@ -147,12 +122,6 @@ template<typename I, android::hardware::Return<void> (I::* func)
         (std::function<void(const OptionalString&)>)>
 std::string getString(const std::string &defValue) {
     return get<OptionalString, I, func>(defValue);
-}
-
-template <typename I, android::hardware::Return<void> (I::*func)(
-                          std::function<void(const OptionalDisplayOrientation&)>)>
-DisplayOrientation getDisplayOrientation(DisplayOrientation defValue) {
-    return get<OptionalDisplayOrientation, I, func>(defValue);
 }
 
 }  // namespace configstore

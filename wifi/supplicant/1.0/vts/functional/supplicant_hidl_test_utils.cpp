@@ -14,19 +14,18 @@
  * limitations under the License.
  */
 
-#include <VtsHalHidlTargetTestBase.h>
 #include <android-base/logging.h>
-#include <cutils/properties.h>
+#include <VtsHalHidlTargetTestBase.h>
 
 #include <android/hidl/manager/1.0/IServiceManager.h>
 #include <android/hidl/manager/1.0/IServiceNotification.h>
 #include <hidl/HidlTransportSupport.h>
 
+#include <wifi_hal/driver_tool.h>
 #include <wifi_system/interface_tool.h>
 #include <wifi_system/supplicant_manager.h>
 
 #include "supplicant_hidl_test_utils.h"
-#include "wifi_hidl_test_utils.h"
 
 using ::android::sp;
 using ::android::hardware::configureRpcThreadpool;
@@ -35,8 +34,6 @@ using ::android::hardware::hidl_string;
 using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
-using ::android::hardware::wifi::V1_0::ChipModeId;
-using ::android::hardware::wifi::V1_0::IWifiChip;
 using ::android::hardware::wifi::supplicant::V1_0::ISupplicant;
 using ::android::hardware::wifi::supplicant::V1_0::ISupplicantIface;
 using ::android::hardware::wifi::supplicant::V1_0::ISupplicantNetwork;
@@ -47,25 +44,21 @@ using ::android::hardware::wifi::supplicant::V1_0::IfaceType;
 using ::android::hardware::wifi::supplicant::V1_0::SupplicantStatus;
 using ::android::hardware::wifi::supplicant::V1_0::SupplicantStatusCode;
 using ::android::hidl::manager::V1_0::IServiceNotification;
+using ::android::wifi_hal::DriverTool;
 using ::android::wifi_system::InterfaceTool;
 using ::android::wifi_system::SupplicantManager;
 
-extern WifiSupplicantHidlEnvironment* gEnv;
-
 namespace {
+const char kSupplicantServiceName[] = "default";
 
-// Helper function to initialize the driver and firmware to STA mode
-// using the vendor HAL HIDL interface.
+// Helper function to initialize the driver and firmware to STA mode.
 void initilializeDriverAndFirmware() {
-    sp<IWifiChip> wifi_chip = getWifiChip();
-    ChipModeId mode_id;
-    EXPECT_TRUE(configureChipToSupportIfaceType(
-        wifi_chip, ::android::hardware::wifi::V1_0::IfaceType::STA, &mode_id));
+    DriverTool driver_tool;
+    InterfaceTool iface_tool;
+    EXPECT_TRUE(driver_tool.LoadDriver());
+    EXPECT_TRUE(driver_tool.ChangeFirmwareMode(DriverTool::kFirmwareModeSta));
+    EXPECT_TRUE(iface_tool.SetWifiUpState(true));
 }
-
-// Helper function to deinitialize the driver and firmware
-// using the vendor HAL HIDL interface.
-void deInitilializeDriverAndFirmware() { stopWifi(); }
 
 // Helper function to find any iface of the desired type exposed.
 bool findIfaceOfType(sp<ISupplicant> supplicant, IfaceType desired_type,
@@ -90,18 +83,6 @@ bool findIfaceOfType(sp<ISupplicant> supplicant, IfaceType desired_type,
         }
     }
     return false;
-}
-
-std::string getStaIfaceName() {
-    std::array<char, PROPERTY_VALUE_MAX> buffer;
-    property_get("wifi.interface", buffer.data(), "wlan0");
-    return buffer.data();
-}
-
-std::string getP2pIfaceName() {
-    std::array<char, PROPERTY_VALUE_MAX> buffer;
-    property_get("wifi.direct.interface", buffer.data(), "p2p0");
-    return buffer.data();
 }
 }  // namespace
 
@@ -155,10 +136,11 @@ class ServiceNotificationListener : public IServiceNotification {
 };
 
 void stopSupplicant() {
+    DriverTool driver_tool;
     SupplicantManager supplicant_manager;
 
     ASSERT_TRUE(supplicant_manager.StopSupplicant());
-    deInitilializeDriverAndFirmware();
+    ASSERT_TRUE(driver_tool.UnloadDriver());
     ASSERT_FALSE(supplicant_manager.IsSupplicantRunning());
 }
 
@@ -167,67 +149,19 @@ void startSupplicantAndWaitForHidlService() {
 
     android::sp<ServiceNotificationListener> notification_listener =
         new ServiceNotificationListener();
-    string service_name = gEnv->getServiceName<ISupplicant>();
     ASSERT_TRUE(notification_listener->registerForHidlServiceNotifications(
-        service_name));
+        kSupplicantServiceName));
 
     SupplicantManager supplicant_manager;
     ASSERT_TRUE(supplicant_manager.StartSupplicant());
     ASSERT_TRUE(supplicant_manager.IsSupplicantRunning());
 
-    ASSERT_TRUE(notification_listener->waitForHidlService(200, service_name));
-}
-
-bool is_1_1(const sp<ISupplicant>& supplicant) {
-    sp<::android::hardware::wifi::supplicant::V1_1::ISupplicant>
-        supplicant_1_1 =
-            ::android::hardware::wifi::supplicant::V1_1::ISupplicant::castFrom(
-                supplicant);
-    return supplicant_1_1.get() != nullptr;
-}
-
-void addSupplicantStaIface_1_1(const sp<ISupplicant>& supplicant) {
-    sp<::android::hardware::wifi::supplicant::V1_1::ISupplicant>
-        supplicant_1_1 =
-            ::android::hardware::wifi::supplicant::V1_1::ISupplicant::castFrom(
-                supplicant);
-    ASSERT_TRUE(supplicant_1_1.get());
-    ISupplicant::IfaceInfo info = {IfaceType::STA, getStaIfaceName()};
-    supplicant_1_1->addInterface(
-        info, [&](const SupplicantStatus& status,
-                  const sp<ISupplicantIface>& /* iface */) {
-            ASSERT_TRUE(
-                (SupplicantStatusCode::SUCCESS == status.code) ||
-                (SupplicantStatusCode::FAILURE_IFACE_EXISTS == status.code));
-        });
-}
-
-void addSupplicantP2pIface_1_1(const sp<ISupplicant>& supplicant) {
-    sp<::android::hardware::wifi::supplicant::V1_1::ISupplicant>
-        supplicant_1_1 =
-            ::android::hardware::wifi::supplicant::V1_1::ISupplicant::castFrom(
-                supplicant);
-    ASSERT_TRUE(supplicant_1_1.get());
-    ISupplicant::IfaceInfo info = {IfaceType::P2P, getP2pIfaceName()};
-    supplicant_1_1->addInterface(
-        info, [&](const SupplicantStatus& status,
-                  const sp<ISupplicantIface>& /* iface */) {
-            ASSERT_TRUE(
-                (SupplicantStatusCode::SUCCESS == status.code) ||
-                (SupplicantStatusCode::FAILURE_IFACE_EXISTS == status.code));
-        });
+    ASSERT_TRUE(
+        notification_listener->waitForHidlService(200, kSupplicantServiceName));
 }
 
 sp<ISupplicant> getSupplicant() {
-    sp<ISupplicant> supplicant =
-        ::testing::VtsHalHidlTargetTestBase::getService<ISupplicant>(
-            gEnv->getServiceName<ISupplicant>());
-    // For 1.1 supplicant, we need to add interfaces at initialization.
-    if (is_1_1(supplicant)) {
-        addSupplicantStaIface_1_1(supplicant);
-        addSupplicantP2pIface_1_1(supplicant);
-    }
-    return supplicant;
+    return ::testing::VtsHalHidlTargetTestBase::getService<ISupplicant>();
 }
 
 sp<ISupplicantStaIface> getSupplicantStaIface() {
