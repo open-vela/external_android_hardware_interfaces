@@ -21,14 +21,7 @@
 #include <composer-command-buffer/2.2/ComposerCommandBuffer.h>
 #include <composer-vts/2.1/GraphicsComposerCallback.h>
 #include <composer-vts/2.1/TestCommandReader.h>
-#include <composer-vts/2.2/ComposerVts.h>
 #include <composer-vts/2.2/ReadbackVts.h>
-#include <composer-vts/2.2/RenderEngineVts.h>
-#include <ui/GraphicBuffer.h>
-#include <ui/GraphicBufferAllocator.h>
-#include <ui/PixelFormat.h>
-#include <ui/Rect.h>
-#include <ui/Region.h>
 
 namespace android {
 namespace hardware {
@@ -38,17 +31,14 @@ namespace V2_2 {
 namespace vts {
 namespace {
 
-using android::GraphicBuffer;
-using android::Rect;
 using android::hardware::hidl_handle;
 using common::V1_1::BufferUsage;
 using common::V1_1::Dataspace;
 using common::V1_1::PixelFormat;
 using mapper::V2_1::IMapper;
-using V2_1::Config;
 using V2_1::Display;
+using V2_1::Layer;
 using V2_1::vts::TestCommandReader;
-using vts::Gralloc;
 
 // Test environment for graphics.composer
 class GraphicsComposerHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
@@ -65,8 +55,8 @@ class GraphicsComposerHidlEnvironment : public ::testing::VtsHalHidlTargetTestEn
     GTEST_DISALLOW_COPY_AND_ASSIGN_(GraphicsComposerHidlEnvironment);
 };
 
-class GraphicsCompositionTest : public ::testing::VtsHalHidlTargetTestBase {
-  protected:
+class GraphicsComposerReadbackTest : public ::testing::VtsHalHidlTargetTestBase {
+   protected:
     using PowerMode = V2_1::IComposerClient::PowerMode;
     void SetUp() override {
         VtsHalHidlTargetTestBase::SetUp();
@@ -100,22 +90,6 @@ class GraphicsCompositionTest : public ::testing::VtsHalHidlTargetTestBase {
         mGralloc = std::make_shared<Gralloc>();
 
         ASSERT_NO_FATAL_FAILURE(mComposerClient->setPowerMode(mPrimaryDisplay, PowerMode::ON));
-
-        ASSERT_NO_FATAL_FAILURE(
-                mTestRenderEngine = std::unique_ptr<TestRenderEngine>(new TestRenderEngine(
-                        PixelFormat::RGBA_8888,
-                        renderengine::RenderEngine::USE_COLOR_MANAGEMENT |
-                                renderengine::RenderEngine::USE_HIGH_PRIORITY_CONTEXT)));
-
-        renderengine::DisplaySettings clientCompositionDisplay;
-        clientCompositionDisplay.physicalDisplay = Rect(mDisplayWidth, mDisplayHeight);
-        clientCompositionDisplay.clip = clientCompositionDisplay.physicalDisplay;
-        clientCompositionDisplay.clearRegion = Region(clientCompositionDisplay.physicalDisplay);
-
-        mTestRenderEngine->initGraphicBuffer(
-                static_cast<uint32_t>(mDisplayWidth), static_cast<uint32_t>(mDisplayHeight), 1,
-                static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN));
-        mTestRenderEngine->setDisplaySettings(clientCompositionDisplay);
     }
 
     void TearDown() override {
@@ -158,7 +132,6 @@ class GraphicsCompositionTest : public ::testing::VtsHalHidlTargetTestBase {
     std::shared_ptr<CommandWriterBase> mWriter;
     std::unique_ptr<TestCommandReader> mReader;
     std::shared_ptr<Gralloc> mGralloc;
-    std::unique_ptr<TestRenderEngine> mTestRenderEngine;
 
     bool mHasReadbackBuffer;
     PixelFormat mPixelFormat;
@@ -193,7 +166,7 @@ class GraphicsCompositionTest : public ::testing::VtsHalHidlTargetTestBase {
     }
 };
 
-TEST_F(GraphicsCompositionTest, SingleSolidColorLayer) {
+TEST_F(GraphicsComposerReadbackTest, SingleSolidColorLayer) {
     for (ColorMode mode : mTestColorModes) {
         std::cout << "---Testing Color Mode " << ReadbackHelper::getColorModeString(mode) << "---"
                   << std::endl;
@@ -249,13 +222,10 @@ TEST_F(GraphicsCompositionTest, SingleSolidColorLayer) {
         ASSERT_EQ(0, mReader->mErrors.size());
 
         ASSERT_NO_FATAL_FAILURE(readbackBuffer.checkReadbackBuffer(expectedColors));
-        mTestRenderEngine->setRenderLayers(layers);
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->drawLayers());
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->checkColorBuffer(expectedColors));
     }
 }
 
-TEST_F(GraphicsCompositionTest, SetLayerBuffer) {
+TEST_F(GraphicsComposerReadbackTest, SetLayerBuffer) {
     for (ColorMode mode : mTestColorModes) {
         std::cout << "---Testing Color Mode " << ReadbackHelper::getColorModeString(mode) << "---"
                   << std::endl;
@@ -321,13 +291,10 @@ TEST_F(GraphicsCompositionTest, SetLayerBuffer) {
         ASSERT_EQ(0, mReader->mErrors.size());
 
         ASSERT_NO_FATAL_FAILURE(readbackBuffer.checkReadbackBuffer(expectedColors));
-        mTestRenderEngine->setRenderLayers(layers);
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->drawLayers());
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->checkColorBuffer(expectedColors));
     }
 }
 
-TEST_F(GraphicsCompositionTest, SetLayerBufferNoEffect) {
+TEST_F(GraphicsComposerReadbackTest, SetLayerBufferNoEffect) {
     for (ColorMode mode : mTestColorModes) {
         std::cout << "---Testing Color Mode " << ReadbackHelper::getColorModeString(mode) << "---"
                   << std::endl;
@@ -389,7 +356,7 @@ TEST_F(GraphicsCompositionTest, SetLayerBufferNoEffect) {
     }
 }
 
-TEST_F(GraphicsCompositionTest, ClientComposition) {
+TEST_F(GraphicsComposerReadbackTest, ClientComposition) {
     ASSERT_NO_FATAL_FAILURE(
             mComposerClient->setClientTargetSlotCount(mPrimaryDisplay, kClientTargetSlotCount));
 
@@ -506,7 +473,7 @@ TEST_F(GraphicsCompositionTest, ClientComposition) {
     }
 }
 
-TEST_F(GraphicsCompositionTest, DeviceAndClientComposition) {
+TEST_F(GraphicsComposerReadbackTest, DeviceAndClientComposition) {
     ASSERT_NO_FATAL_FAILURE(
             mComposerClient->setClientTargetSlotCount(mPrimaryDisplay, kClientTargetSlotCount));
 
@@ -632,7 +599,7 @@ TEST_F(GraphicsCompositionTest, DeviceAndClientComposition) {
     }
 }
 
-TEST_F(GraphicsCompositionTest, SetLayerDamage) {
+TEST_F(GraphicsComposerReadbackTest, SetLayerDamage) {
     for (ColorMode mode : mTestColorModes) {
         std::cout << "---Testing Color Mode " << ReadbackHelper::getColorModeString(mode) << "---"
                   << std::endl;
@@ -717,7 +684,7 @@ TEST_F(GraphicsCompositionTest, SetLayerDamage) {
     }
 }
 
-TEST_F(GraphicsCompositionTest, SetLayerPlaneAlpha) {
+TEST_F(GraphicsComposerReadbackTest, SetLayerPlaneAlpha) {
     for (ColorMode mode : mTestColorModes) {
         std::cout << "---Testing Color Mode " << ReadbackHelper::getColorModeString(mode) << "---"
                   << std::endl;
@@ -772,13 +739,10 @@ TEST_F(GraphicsCompositionTest, SetLayerPlaneAlpha) {
         std::vector<IComposerClient::Color> expectedColors(mDisplayWidth * mDisplayHeight);
 
         ASSERT_NO_FATAL_FAILURE(readbackBuffer.checkReadbackBuffer(expectedColors));
-        mTestRenderEngine->setRenderLayers(layers);
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->drawLayers());
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->checkColorBuffer(expectedColors));
     }
 }
 
-TEST_F(GraphicsCompositionTest, SetLayerSourceCrop) {
+TEST_F(GraphicsComposerReadbackTest, SetLayerSourceCrop) {
     for (ColorMode mode : mTestColorModes) {
         std::cout << "---Testing Color Mode " << ReadbackHelper::getColorModeString(mode) << "---"
                   << std::endl;
@@ -843,13 +807,10 @@ TEST_F(GraphicsCompositionTest, SetLayerSourceCrop) {
         execute();
         ASSERT_EQ(0, mReader->mErrors.size());
         ASSERT_NO_FATAL_FAILURE(readbackBuffer.checkReadbackBuffer(expectedColors));
-        mTestRenderEngine->setRenderLayers(layers);
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->drawLayers());
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->checkColorBuffer(expectedColors));
     }
 }
 
-TEST_F(GraphicsCompositionTest, SetLayerZOrder) {
+TEST_F(GraphicsComposerReadbackTest, SetLayerZOrder) {
     for (ColorMode mode : mTestColorModes) {
         std::cout << "---Testing Color Mode " << ReadbackHelper::getColorModeString(mode) << "---"
                   << std::endl;
@@ -930,23 +891,20 @@ TEST_F(GraphicsCompositionTest, SetLayerZOrder) {
         ASSERT_EQ(0, mReader->mErrors.size());
 
         ASSERT_NO_FATAL_FAILURE(readbackBuffer.checkReadbackBuffer(expectedColors));
-        mTestRenderEngine->setRenderLayers(layers);
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->drawLayers());
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->checkColorBuffer(expectedColors));
     }
 }
 
-class GraphicsBlendModeCompositionTest : public GraphicsCompositionTest,
-                                         public ::testing::WithParamInterface<float> {
-  public:
+class GraphicsComposerBlendModeReadbackTest : public GraphicsComposerReadbackTest,
+                                              public ::testing::WithParamInterface<float> {
+   public:
     void SetUp() override {
-        GraphicsCompositionTest::SetUp();
+        GraphicsComposerReadbackTest::SetUp();
         mTestColorModes = {ColorMode::SRGB};  // TODO: add more color mode support
         mBackgroundColor = BLACK;
         mTopLayerColor = RED;
     }
 
-    void TearDown() override { GraphicsCompositionTest::TearDown(); }
+    void TearDown() override { GraphicsComposerReadbackTest::TearDown(); }
 
     void setBackgroundColor(IComposerClient::Color color) { mBackgroundColor = color; }
 
@@ -1018,7 +976,7 @@ class GraphicsBlendModeCompositionTest : public GraphicsCompositionTest,
     IComposerClient::Color mTopLayerColor;
 };
 
-TEST_P(GraphicsBlendModeCompositionTest, None) {
+TEST_P(GraphicsComposerBlendModeReadbackTest, None) {
     for (ColorMode mode : mTestColorModes) {
         std::cout << "---Testing Color Mode " << ReadbackHelper::getColorModeString(mode) << "---"
                   << std::endl;
@@ -1068,15 +1026,12 @@ TEST_P(GraphicsBlendModeCompositionTest, None) {
         ASSERT_EQ(0, mReader->mErrors.size());
 
         ASSERT_NO_FATAL_FAILURE(readbackBuffer.checkReadbackBuffer(expectedColors));
-        mTestRenderEngine->setRenderLayers(mLayers);
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->drawLayers());
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->checkColorBuffer(expectedColors));
     }
 }
 
 // TODO: bug 116865056: Readback returns (245, 0, 0) for layer plane
 // alpha of .2, expected 10.2
-TEST_P(GraphicsBlendModeCompositionTest, DISABLED_Coverage) {
+TEST_P(GraphicsComposerBlendModeReadbackTest, DISABLED_Coverage) {
     for (ColorMode mode : mTestColorModes) {
         std::cout << "---Testing Color Mode " << ReadbackHelper::getColorModeString(mode) << "---"
                   << std::endl;
@@ -1129,7 +1084,7 @@ TEST_P(GraphicsBlendModeCompositionTest, DISABLED_Coverage) {
     }
 }
 
-TEST_P(GraphicsBlendModeCompositionTest, Premultiplied) {
+TEST_P(GraphicsComposerBlendModeReadbackTest, Premultiplied) {
     for (ColorMode mode : mTestColorModes) {
         std::cout << "---Testing Color Mode " << ReadbackHelper::getColorModeString(mode) << "---"
                   << std::endl;
@@ -1177,19 +1132,16 @@ TEST_P(GraphicsBlendModeCompositionTest, Premultiplied) {
         execute();
         ASSERT_EQ(0, mReader->mErrors.size());
         ASSERT_NO_FATAL_FAILURE(readbackBuffer.checkReadbackBuffer(expectedColors));
-        mTestRenderEngine->setRenderLayers(mLayers);
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->drawLayers());
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->checkColorBuffer(expectedColors));
     }
 }
 
-INSTANTIATE_TEST_CASE_P(BlendModeTest, GraphicsBlendModeCompositionTest,
+INSTANTIATE_TEST_CASE_P(BlendModeTest, GraphicsComposerBlendModeReadbackTest,
                         ::testing::Values(.2, 1.0));
 
-class GraphicsTransformCompositionTest : public GraphicsCompositionTest {
-  protected:
+class GraphicsComposerTransformReadbackTest : public GraphicsComposerReadbackTest {
+   protected:
     void SetUp() override {
-        GraphicsCompositionTest::SetUp();
+        GraphicsComposerReadbackTest::SetUp();
 
         mWriter->selectDisplay(mPrimaryDisplay);
 
@@ -1224,7 +1176,7 @@ class GraphicsTransformCompositionTest : public GraphicsCompositionTest {
     int mSideLength;
 };
 
-TEST_F(GraphicsTransformCompositionTest, FLIP_H) {
+TEST_F(GraphicsComposerTransformReadbackTest, FLIP_H) {
     for (ColorMode mode : mTestColorModes) {
         std::cout << "---Testing Color Mode " << ReadbackHelper::getColorModeString(mode) << "---"
                   << std::endl;
@@ -1273,13 +1225,10 @@ TEST_F(GraphicsTransformCompositionTest, FLIP_H) {
         ASSERT_EQ(0, mReader->mErrors.size());
 
         ASSERT_NO_FATAL_FAILURE(readbackBuffer.checkReadbackBuffer(expectedColors));
-        mTestRenderEngine->setRenderLayers(mLayers);
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->drawLayers());
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->checkColorBuffer(expectedColors));
     }
 }
 
-TEST_F(GraphicsTransformCompositionTest, FLIP_V) {
+TEST_F(GraphicsComposerTransformReadbackTest, FLIP_V) {
     for (ColorMode mode : mTestColorModes) {
         std::cout << "---Testing Color Mode " << ReadbackHelper::getColorModeString(mode) << "---"
                   << std::endl;
@@ -1328,13 +1277,10 @@ TEST_F(GraphicsTransformCompositionTest, FLIP_V) {
         execute();
         ASSERT_EQ(0, mReader->mErrors.size());
         ASSERT_NO_FATAL_FAILURE(readbackBuffer.checkReadbackBuffer(expectedColors));
-        mTestRenderEngine->setRenderLayers(mLayers);
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->drawLayers());
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->checkColorBuffer(expectedColors));
     }
 }
 
-TEST_F(GraphicsTransformCompositionTest, ROT_180) {
+TEST_F(GraphicsComposerTransformReadbackTest, ROT_180) {
     for (ColorMode mode : mTestColorModes) {
         std::cout << "---Testing Color Mode " << ReadbackHelper::getColorModeString(mode) << "---"
                   << std::endl;
@@ -1384,9 +1330,6 @@ TEST_F(GraphicsTransformCompositionTest, ROT_180) {
         execute();
         ASSERT_EQ(0, mReader->mErrors.size());
         ASSERT_NO_FATAL_FAILURE(readbackBuffer.checkReadbackBuffer(expectedColors));
-        mTestRenderEngine->setRenderLayers(mLayers);
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->drawLayers());
-        ASSERT_NO_FATAL_FAILURE(mTestRenderEngine->checkColorBuffer(expectedColors));
     }
 }
 
