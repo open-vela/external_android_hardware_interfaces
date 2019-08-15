@@ -195,8 +195,8 @@
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.graphics.allocator</name>
+        <version>2.0</version>
         <version>3.0</version>
-        <version>4.0</version>
         <interface>
             <name>IAllocator</name>
             <instance>default</instance>
@@ -212,8 +212,8 @@
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.graphics.mapper</name>
+        <version>2.1</version>
         <version>3.0</version>
-        <version>4.0</version>
         <interface>
             <name>IMapper</name>
             <instance>default</instance>
@@ -365,10 +365,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.radio.config</name>
-        <!--
-        See compatibility_matrix.4.xml on versioning of radio config HAL.
-        -->
-        <version>1.1</version>
+        <version>1.2</version>
         <interface>
             <name>IRadioConfig</name>
             <instance>default</instance>
