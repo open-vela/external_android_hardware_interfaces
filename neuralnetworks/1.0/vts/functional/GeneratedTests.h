@@ -14,10 +14,19 @@
  * limitations under the License.
  */
 
-#include "1.0/Utils.h"
+#include <android/hidl/memory/1.0/IMemory.h>
+#include <hidlmemory/mapping.h>
+
 #include "GeneratedTestHarness.h"
+#include "MemoryUtils.h"
 #include "TestHarness.h"
 #include "VtsHalNeuralnetworks.h"
+
+namespace android::hardware::neuralnetworks::V1_0::vts::functional {
+
+std::vector<Request> createRequests(const std::vector<::test_helper::MixedTypedExample>& examples);
+
+}  // namespace android::hardware::neuralnetworks::V1_0::vts::functional
 
 namespace android::hardware::neuralnetworks::V1_0::generated_tests {
 
