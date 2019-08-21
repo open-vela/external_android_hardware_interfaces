@@ -124,8 +124,8 @@ protected:
 
     sp<IEvsEnumerator>        pEnumerator;    // Every test needs access to the service
     std::vector <CameraDesc>  cameraInfo;     // Empty unless/until loadCameraList() is called
-    bool                        mIsHwModule;    // boolean to tell current module under testing
-                                                // is HW module implementation.
+    bool                      mIsHwModule;    // boolean to tell current module under testing
+                                              // is HW module implementation.
 };
 
 
@@ -513,6 +513,551 @@ TEST_F(EvsHidlTest, MultiCameraStream) {
         pEnumerator->closeCamera(pCam0);
         pEnumerator->closeCamera(pCam1);
     }
+}
+
+
+/*
+ * CameraParameter:
+ * Verify that a client can adjust a camera parameter.
+ */
+TEST_F(EvsHidlTest, CameraParameter) {
+    ALOGI("Starting CameraParameter test");
+
+    // Get the camera list
+    loadCameraList();
+
+    // Test each reported camera
+    for (auto&& cam: cameraInfo) {
+        // Create a camera client
+        sp<IEvsCamera_1_1> pCam =
+            IEvsCamera_1_1::castFrom(pEnumerator->openCamera(cam.cameraId))
+            .withDefault(nullptr);
+        ASSERT_NE(pCam, nullptr);
+
+        // Set up per-client frame receiver objects which will fire up its own thread
+        sp<FrameHandler> frameHandler = new FrameHandler(pCam, cam,
+                                                         nullptr,
+                                                         FrameHandler::eAutoReturn);
+        ASSERT_NE(frameHandler, nullptr);
+
+        // Start the camera's video stream
+        bool startResult = frameHandler->startStream();
+        ASSERT_TRUE(startResult);
+
+        // Ensure the stream starts
+        frameHandler->waitForFrameCount(1);
+
+        // Try to program few parameters
+        EvsResult result = EvsResult::OK;
+        int32_t val0 = 100;
+        int32_t val1 = 0;
+
+        result = pCam->setMaster();
+        ASSERT_TRUE(result == EvsResult::OK);
+
+        pCam->setParameter(CameraParam::BRIGHTNESS, val0,
+                           [&result, &val1](auto status, auto effectiveValue) {
+                               result = status;
+                               val1 = effectiveValue;
+                           });
+        ASSERT_TRUE(result == EvsResult::OK ||
+                    result == EvsResult::INVALID_ARG);
+
+        if (result == EvsResult::OK) {
+            pCam->getParameter(CameraParam::BRIGHTNESS,
+                               [&result, &val1](auto status, auto value) {
+                                   result = status;
+                                   if (status == EvsResult::OK) {
+                                      val1 = value;
+                                   }
+                               });
+            ASSERT_TRUE(result == EvsResult::OK ||
+                        result == EvsResult::INVALID_ARG);
+            ASSERT_EQ(val0, val1) << "Values are not matched.";
+        }
+
+        val0 = 80;
+        val1 = 0;
+        pCam->setParameter(CameraParam::CONTRAST, val0,
+                           [&result, &val1](auto status, auto effectiveValue) {
+                               result = status;
+                               val1 = effectiveValue;
+                           });
+        ASSERT_TRUE(result == EvsResult::OK ||
+                    result == EvsResult::INVALID_ARG);
+
+        if (result == EvsResult::OK) {
+            pCam->getParameter(CameraParam::CONTRAST,
+                               [&result, &val1](auto status, auto value) {
+                                   result = status;
+                                   if (status == EvsResult::OK) {
+                                      val1 = value;
+                                   }
+                               });
+            ASSERT_TRUE(result == EvsResult::OK ||
+                        result == EvsResult::INVALID_ARG);
+            ASSERT_EQ(val0, val1) << "Values are not matched.";
+        }
+
+        val0 = 300;
+        val1 = 0;
+        pCam->setParameter(CameraParam::ABSOLUTE_ZOOM, val0,
+                           [&result, &val1](auto status, auto effectiveValue) {
+                               result = status;
+                               val1 = effectiveValue;
+                           });
+        ASSERT_TRUE(result == EvsResult::OK ||
+                    result == EvsResult::INVALID_ARG);
+
+        if (result == EvsResult::OK) {
+            pCam->getParameter(CameraParam::ABSOLUTE_ZOOM,
+                               [&result, &val1](auto status, auto value) {
+                                   result = status;
+                                   if (status == EvsResult::OK) {
+                                      val1 = value;
+                                   }
+                               });
+            ASSERT_TRUE(result == EvsResult::OK ||
+                        result == EvsResult::INVALID_ARG);
+            ASSERT_EQ(val0, val1) << "Values are not matched.";
+        }
+
+        result = pCam->unsetMaster();
+        ASSERT_TRUE(result == EvsResult::OK);
+
+        // Shutdown
+        frameHandler->shutdown();
+
+        // Explicitly release the camera
+        pEnumerator->closeCamera(pCam);
+    }
+}
+
+
+/*
+ * CameraMasterRelease
+ * Verify that non-master client gets notified when the master client either
+ * terminates or releases a role.
+ */
+TEST_F(EvsHidlTest, CameraMasterRelease) {
+    ALOGI("Starting CameraMasterRelease test");
+
+    if (mIsHwModule) {
+        // This test is not for HW module implementation.
+        return;
+    }
+
+    // Get the camera list
+    loadCameraList();
+
+    // Test each reported camera
+    for (auto&& cam: cameraInfo) {
+        // Create two camera clients.
+        sp<IEvsCamera_1_1> pCamMaster =
+            IEvsCamera_1_1::castFrom(pEnumerator->openCamera(cam.cameraId))
+            .withDefault(nullptr);
+        ASSERT_NE(pCamMaster, nullptr);
+        sp<IEvsCamera_1_1> pCamNonMaster =
+            IEvsCamera_1_1::castFrom(pEnumerator->openCamera(cam.cameraId))
+            .withDefault(nullptr);
+        ASSERT_NE(pCamNonMaster, nullptr);
+
+        // Set up per-client frame receiver objects which will fire up its own thread
+        sp<FrameHandler> frameHandlerMaster =
+            new FrameHandler(pCamMaster, cam,
+                             nullptr,
+                             FrameHandler::eAutoReturn);
+        ASSERT_NE(frameHandlerMaster, nullptr);
+        sp<FrameHandler> frameHandlerNonMaster =
+            new FrameHandler(pCamNonMaster, cam,
+                             nullptr,
+                             FrameHandler::eAutoReturn);
+        ASSERT_NE(frameHandlerNonMaster, nullptr);
+
+        // Set one client as the master
+        EvsResult result = pCamMaster->setMaster();
+        ASSERT_TRUE(result == EvsResult::OK);
+
+        // Try to set another client as the master.
+        result = pCamNonMaster->setMaster();
+        ASSERT_TRUE(result == EvsResult::OWNERSHIP_LOST);
+
+        // Start the camera's video stream via a master client.
+        bool startResult = frameHandlerMaster->startStream();
+        ASSERT_TRUE(startResult);
+
+        // Ensure the stream starts
+        frameHandlerMaster->waitForFrameCount(1);
+
+        // Start the camera's video stream via another client
+        startResult = frameHandlerNonMaster->startStream();
+        ASSERT_TRUE(startResult);
+
+        // Ensure the stream starts
+        frameHandlerNonMaster->waitForFrameCount(1);
+
+        // Non-master client expects to receive a master role relesed
+        // notification.
+        InfoEventDesc aNotification = {};
+
+        // Release a master role.
+        pCamMaster->unsetMaster();
+
+        // Verify a change notification.
+        frameHandlerNonMaster->waitForEvent(InfoEventType::MASTER_RELEASED, aNotification);
+        ASSERT_EQ(InfoEventType::MASTER_RELEASED,
+                  static_cast<InfoEventType>(aNotification.aType));
+
+        // Non-master becomes a master.
+        result = pCamNonMaster->setMaster();
+        ASSERT_TRUE(result == EvsResult::OK);
+
+        // Previous master client fails to become a master.
+        result = pCamMaster->setMaster();
+        ASSERT_TRUE(result == EvsResult::OWNERSHIP_LOST);
+
+        // Closing current master client.
+        frameHandlerNonMaster->shutdown();
+
+        // Verify a change notification.
+        frameHandlerMaster->waitForEvent(InfoEventType::MASTER_RELEASED, aNotification);
+        ASSERT_EQ(InfoEventType::MASTER_RELEASED,
+                  static_cast<InfoEventType>(aNotification.aType));
+
+        // Closing another stream.
+        frameHandlerMaster->shutdown();
+
+        // Explicitly release the camera
+        pEnumerator->closeCamera(pCamMaster);
+        pEnumerator->closeCamera(pCamNonMaster);
+    }
+
+
+}
+
+
+/*
+ * MultiCameraParameter:
+ * Verify that master and non-master clients behave as expected when they try to adjust
+ * camera parameters.
+ */
+TEST_F(EvsHidlTest, MultiCameraParameter) {
+    ALOGI("Starting MultiCameraParameter test");
+
+    if (mIsHwModule) {
+        // This test is not for HW module implementation.
+        return;
+    }
+
+    // Get the camera list
+    loadCameraList();
+
+    // Test each reported camera
+    for (auto&& cam: cameraInfo) {
+        // Create two camera clients.
+        sp<IEvsCamera_1_1> pCamMaster =
+            IEvsCamera_1_1::castFrom(pEnumerator->openCamera(cam.cameraId))
+            .withDefault(nullptr);
+        ASSERT_NE(pCamMaster, nullptr);
+        sp<IEvsCamera_1_1> pCamNonMaster =
+            IEvsCamera_1_1::castFrom(pEnumerator->openCamera(cam.cameraId))
+            .withDefault(nullptr);
+        ASSERT_NE(pCamNonMaster, nullptr);
+
+        // Set up per-client frame receiver objects which will fire up its own thread
+        sp<FrameHandler> frameHandlerMaster =
+            new FrameHandler(pCamMaster, cam,
+                             nullptr,
+                             FrameHandler::eAutoReturn);
+        ASSERT_NE(frameHandlerMaster, nullptr);
+        sp<FrameHandler> frameHandlerNonMaster =
+            new FrameHandler(pCamNonMaster, cam,
+                             nullptr,
+                             FrameHandler::eAutoReturn);
+        ASSERT_NE(frameHandlerNonMaster, nullptr);
+
+        // Set one client as the master
+        EvsResult result = pCamMaster->setMaster();
+        ASSERT_TRUE(result == EvsResult::OK);
+
+        // Try to set another client as the master.
+        result = pCamNonMaster->setMaster();
+        ASSERT_TRUE(result == EvsResult::OWNERSHIP_LOST);
+
+        // Start the camera's video stream via a master client.
+        bool startResult = frameHandlerMaster->startStream();
+        ASSERT_TRUE(startResult);
+
+        // Ensure the stream starts
+        frameHandlerMaster->waitForFrameCount(1);
+
+        // Start the camera's video stream via another client
+        startResult = frameHandlerNonMaster->startStream();
+        ASSERT_TRUE(startResult);
+
+        // Ensure the stream starts
+        frameHandlerNonMaster->waitForFrameCount(1);
+
+        // Try to program CameraParam::BRIGHTNESS
+        int32_t val0 = 100;
+        int32_t val1 = 0;
+
+        pCamMaster->setParameter(CameraParam::BRIGHTNESS, val0,
+                                 [&result, &val1](auto status, auto effectiveValue) {
+                                     result = status;
+                                     val1 = effectiveValue;
+                                 });
+        ASSERT_TRUE(result == EvsResult::OK ||            // Succeeded to program
+                    result == EvsResult::INVALID_ARG);    // Camera parameter is not supported
+
+        // Non-master client expects to receive a parameter change notification
+        // whenever a master client adjusts it.
+        InfoEventDesc aNotification = {};
+
+        pCamMaster->getParameter(CameraParam::BRIGHTNESS,
+                                 [&result, &val1](auto status, auto value) {
+                                     result = status;
+                                     if (status == EvsResult::OK) {
+                                        val1 = value;
+                                     }
+                                 });
+        ASSERT_TRUE(result == EvsResult::OK ||            // Succeeded to program
+                    result == EvsResult::INVALID_ARG);    // Camera parameter is not supported
+        if (result == EvsResult::OK) {
+            ASSERT_EQ(val0, val1) << "Values are not matched.";
+
+            // Verify a change notification
+            frameHandlerNonMaster->waitForEvent(InfoEventType::PARAMETER_CHANGED, aNotification);
+            ASSERT_EQ(InfoEventType::PARAMETER_CHANGED,
+                      static_cast<InfoEventType>(aNotification.aType));
+            ASSERT_EQ(CameraParam::BRIGHTNESS,
+                      static_cast<CameraParam>(aNotification.payload[0]));
+            ASSERT_EQ(val1,
+                      static_cast<int32_t>(aNotification.payload[1]));
+        }
+
+        // Try to program CameraParam::CONTRAST
+        val0 = 80;
+        val1 = 0;
+        pCamMaster->setParameter(CameraParam::CONTRAST, val0,
+                                 [&result, &val1](auto status, auto effectiveValue) {
+                                     result = status;
+                                     val1 = effectiveValue;
+                                 });
+        ASSERT_TRUE(result == EvsResult::OK ||            // Succeeded to program
+                    result == EvsResult::INVALID_ARG);    // Camera parameter is not supported
+
+        if (result == EvsResult::OK) {
+            pCamMaster->getParameter(CameraParam::CONTRAST,
+                                     [&result, &val1](auto status, auto value) {
+                                         result = status;
+                                         if (status == EvsResult::OK) {
+                                            val1 = value;
+                                         }
+                                     });
+            ASSERT_TRUE(result == EvsResult::OK);
+            ASSERT_EQ(val0, val1) << "Values are not matched.";
+
+
+            // Verify a change notification
+            frameHandlerNonMaster->waitForEvent(InfoEventType::PARAMETER_CHANGED, aNotification);
+            ASSERT_EQ(InfoEventType::PARAMETER_CHANGED,
+                      static_cast<InfoEventType>(aNotification.aType));
+            ASSERT_EQ(CameraParam::CONTRAST,
+                      static_cast<CameraParam>(aNotification.payload[0]));
+            ASSERT_EQ(val1,
+                      static_cast<int32_t>(aNotification.payload[1]));
+        }
+
+        // Try to adjust a parameter via non-master client
+        pCamNonMaster->setParameter(CameraParam::CONTRAST, val0,
+                                    [&result, &val1](auto status, auto effectiveValue) {
+                                        result = status;
+                                        val1 = effectiveValue;
+                                    });
+        ASSERT_TRUE(result == EvsResult::INVALID_ARG);
+
+        // Non-master client attemps to be a master
+        result = pCamNonMaster->setMaster();
+        ASSERT_TRUE(result == EvsResult::OWNERSHIP_LOST);
+
+        // Master client retires from a master role
+        result = pCamMaster->unsetMaster();
+        ASSERT_TRUE(result == EvsResult::OK);
+
+        // Try to adjust a parameter after being retired
+        pCamMaster->setParameter(CameraParam::BRIGHTNESS, val0,
+                                 [&result, &val1](auto status, auto effectiveValue) {
+                                     result = status;
+                                     val1 = effectiveValue;
+                                 });
+        ASSERT_TRUE(result == EvsResult::INVALID_ARG);
+
+        // Non-master client becomes a master
+        result = pCamNonMaster->setMaster();
+        ASSERT_TRUE(result == EvsResult::OK);
+
+        // Try to adjust a parameter via new master client
+        pCamNonMaster->setParameter(CameraParam::BRIGHTNESS, val0,
+                                    [&result, &val1](auto status, auto effectiveValue) {
+                                        result = status;
+                                        val1 = effectiveValue;
+                                    });
+        ASSERT_TRUE(result == EvsResult::OK ||            // Succeeded to program
+                    result == EvsResult::INVALID_ARG);    // Camera parameter is not supported
+
+        // Wait a moment
+        sleep(1);
+
+        // Verify a change notification
+        if (result == EvsResult::OK) {
+            frameHandlerMaster->waitForEvent(InfoEventType::PARAMETER_CHANGED, aNotification);
+            ASSERT_EQ(static_cast<InfoEventType>(aNotification.aType),
+                      InfoEventType::PARAMETER_CHANGED);
+            ASSERT_EQ(static_cast<CameraParam>(aNotification.payload[0]),
+                      CameraParam::BRIGHTNESS);
+            ASSERT_EQ(val1,
+                      static_cast<int32_t>(aNotification.payload[1]));
+        }
+
+        // New master retires from a master role
+        result = pCamNonMaster->unsetMaster();
+        ASSERT_TRUE(result == EvsResult::OK);
+
+        // Shutdown
+        frameHandlerMaster->shutdown();
+        frameHandlerNonMaster->shutdown();
+
+        // Explicitly release the camera
+        pEnumerator->closeCamera(pCamMaster);
+        pEnumerator->closeCamera(pCamNonMaster);
+    }
+}
+
+
+/*
+ * HighPriorityCameraClient:
+ * EVS client, which owns the display, is priortized and therefore can take over
+ * a master role from other EVS clients without the display.
+ */
+TEST_F(EvsHidlTest, HighPriorityCameraClient) {
+    ALOGI("Starting HighPriorityCameraClient test");
+
+    // Get the camera list
+    loadCameraList();
+
+    // Request exclusive access to the EVS display
+    sp<IEvsDisplay> pDisplay = pEnumerator->openDisplay();
+    ASSERT_NE(pDisplay, nullptr);
+
+    // Test each reported camera
+    for (auto&& cam: cameraInfo) {
+        // Create two clients
+        sp<IEvsCamera_1_1> pCam0 =
+            IEvsCamera_1_1::castFrom(pEnumerator->openCamera(cam.cameraId))
+            .withDefault(nullptr);
+        ASSERT_NE(pCam0, nullptr);
+
+        sp<IEvsCamera_1_1> pCam1 =
+            IEvsCamera_1_1::castFrom(pEnumerator->openCamera(cam.cameraId))
+            .withDefault(nullptr);
+        ASSERT_NE(pCam1, nullptr);
+
+        // Set up a frame receiver object which will fire up its own thread.
+        sp<FrameHandler> frameHandler0 = new FrameHandler(pCam0, cam,
+                                                          pDisplay,
+                                                          FrameHandler::eAutoReturn);
+        sp<FrameHandler> frameHandler1 = new FrameHandler(pCam1, cam,
+                                                          nullptr,
+                                                          FrameHandler::eAutoReturn);
+
+        // Activate the display
+        pDisplay->setDisplayState(DisplayState::VISIBLE_ON_NEXT_FRAME);
+
+        // Start the camera's video stream
+        ASSERT_TRUE(frameHandler0->startStream());
+        ASSERT_TRUE(frameHandler1->startStream());
+
+        // Ensure the stream starts
+        frameHandler0->waitForFrameCount(1);
+        frameHandler1->waitForFrameCount(1);
+
+        // Client 1 becomes a master and programs a brightness.
+        EvsResult result = EvsResult::OK;
+        int32_t val0 = 100;
+        int32_t val1 = 0;
+
+        result = pCam1->setMaster();
+        ASSERT_TRUE(result == EvsResult::OK);
+
+        pCam1->setParameter(CameraParam::BRIGHTNESS, val0,
+                            [&result, &val1](auto status, auto effectiveValue) {
+                                result = status;
+                                val1 = effectiveValue;
+                            });
+        ASSERT_TRUE(result == EvsResult::OK ||
+                    result == EvsResult::INVALID_ARG);
+
+
+        // Verify a change notification
+        InfoEventDesc aNotification = {};
+        if (result == EvsResult::OK) {
+            bool timeout =
+                frameHandler0->waitForEvent(InfoEventType::PARAMETER_CHANGED, aNotification);
+            ASSERT_FALSE(timeout) << "Expected event does not arrive";
+            ASSERT_EQ(static_cast<InfoEventType>(aNotification.aType),
+                      InfoEventType::PARAMETER_CHANGED);
+            ASSERT_EQ(static_cast<CameraParam>(aNotification.payload[0]),
+                      CameraParam::BRIGHTNESS);
+            ASSERT_EQ(val1,
+                      static_cast<int32_t>(aNotification.payload[1]));
+        }
+
+        // Client 0 steals a master role
+        ASSERT_EQ(EvsResult::OK, pCam0->forceMaster(pDisplay));
+
+        frameHandler1->waitForEvent(InfoEventType::MASTER_RELEASED, aNotification);
+        ASSERT_EQ(static_cast<InfoEventType>(aNotification.aType),
+                  InfoEventType::MASTER_RELEASED);
+
+        // Client 0 programs a brightness
+        val0 = 50;
+        val1 = 0;
+        pCam0->setParameter(CameraParam::BRIGHTNESS, val0,
+                            [&result, &val1](auto status, auto effectiveValue) {
+                                result = status;
+                                val1 = effectiveValue;
+                            });
+        ASSERT_TRUE(result == EvsResult::OK ||
+                    result == EvsResult::INVALID_ARG);
+
+        // Verify a change notification
+        if (result == EvsResult::OK) {
+            bool timeout =
+                frameHandler1->waitForEvent(InfoEventType::PARAMETER_CHANGED, aNotification);
+            ASSERT_FALSE(timeout) << "Expected event does not arrive";
+            ASSERT_EQ(static_cast<InfoEventType>(aNotification.aType),
+                      InfoEventType::PARAMETER_CHANGED);
+            ASSERT_EQ(static_cast<CameraParam>(aNotification.payload[0]),
+                      CameraParam::BRIGHTNESS);
+            ASSERT_EQ(val1,
+                      static_cast<int32_t>(aNotification.payload[1]));
+        }
+
+        // Turn off the display (yes, before the stream stops -- it should be handled)
+        pDisplay->setDisplayState(DisplayState::NOT_VISIBLE);
+
+        // Shut down the streamer
+        frameHandler0->shutdown();
+        frameHandler1->shutdown();
+
+        // Explicitly release the camera
+        pEnumerator->closeCamera(pCam0);
+        pEnumerator->closeCamera(pCam1);
+    }
+
+    // Explicitly release the display
+    pEnumerator->closeDisplay(pDisplay);
 }
 
 
