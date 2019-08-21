@@ -67,6 +67,8 @@ public:
     bool isRunning();
 
     void waitForFrameCount(unsigned frameCount);
+    bool waitForEvent(const InfoEventType aTargetEvent,
+                            InfoEventDesc &eventDesc);
     void getFramesCounters(unsigned* received, unsigned* displayed);
     void getFrameDimension(unsigned* width, unsigned* height);
 
@@ -77,6 +79,7 @@ private:
 
     // Local implementation details
     bool copyBufferContents(const BufferDesc_1_0& tgtBuffer, const BufferDesc_1_1& srcBuffer);
+    const char *eventToString(const InfoEventType aType);
 
     // Values initialized as startup
     android::sp <IEvsCamera>    mCamera;
@@ -88,7 +91,8 @@ private:
     // we need to protect all member variables that may be modified while we're streaming
     // (ie: those below)
     std::mutex                  mLock;
-    std::condition_variable     mSignal;
+    std::condition_variable     mEventSignal;
+    std::condition_variable     mFrameSignal;
 
     std::queue<BufferDesc_1_1>  mHeldBuffers;
     bool                        mRunning = false;
@@ -96,6 +100,7 @@ private:
     unsigned                    mFramesDisplayed = 0;   // Simple counter -- rolls over eventually!
     unsigned                    mFrameWidth = 0;
     unsigned                    mFrameHeight = 0;
+    InfoEventDesc               mLatestEventDesc;
 };
 
 

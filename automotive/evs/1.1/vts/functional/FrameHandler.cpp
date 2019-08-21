@@ -21,10 +21,13 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <chrono>
 
 #include <android/log.h>
 #include <cutils/native_handle.h>
 #include <ui/GraphicBuffer.h>
+
+using namespace std::chrono_literals;
 
 FrameHandler::FrameHandler(android::sp <IEvsCamera> pCamera, CameraDesc cameraInfo,
                            android::sp <IEvsDisplay> pDisplay,
@@ -79,7 +82,7 @@ void FrameHandler::blockingStopStream() {
     // Wait until the stream has actually stopped
     std::unique_lock<std::mutex> lock(mLock);
     if (mRunning) {
-        mSignal.wait(lock, [this]() { return !mRunning; });
+        mEventSignal.wait(lock, [this]() { return !mRunning; });
     }
 }
 
@@ -110,7 +113,9 @@ bool FrameHandler::isRunning() {
 void FrameHandler::waitForFrameCount(unsigned frameCount) {
     // Wait until we've seen at least the requested number of frames (could be more)
     std::unique_lock<std::mutex> lock(mLock);
-    mSignal.wait(lock, [this, frameCount](){ return mFramesReceived >= frameCount; });
+    mFrameSignal.wait(lock, [this, frameCount](){
+                                return mFramesReceived >= frameCount;
+                            });
 }
 
 
@@ -135,16 +140,21 @@ Return<void> FrameHandler::deliverFrame(const BufferDesc_1_0& bufferArg) {
 
 Return<void> FrameHandler::notifyEvent(const EvsEvent& event) {
     // Local flag we use to keep track of when the stream is stopping
-    bool timeToStop = false;
-
     auto type = event.getDiscriminator();
     if (type == EvsEvent::hidl_discriminator::info) {
-        if (event.info() == EvsEventType::STREAM_STOPPED) {
+        mLock.lock();
+        mLatestEventDesc = event.info();
+        if (mLatestEventDesc.aType == InfoEventType::STREAM_STOPPED) {
             // Signal that the last frame has been received and the stream is stopped
-            timeToStop = true;
+            mRunning = false;
+        } else if (mLatestEventDesc.aType == InfoEventType::PARAMETER_CHANGED) {
+            ALOGD("Camera parameter 0x%X is changed to 0x%X",
+                  mLatestEventDesc.payload[0], mLatestEventDesc.payload[1]);
         } else {
-            ALOGD("Received an event 0x%X", event.info());
+            ALOGD("Received an event %s", eventToString(mLatestEventDesc.aType));
         }
+        mLock.unlock();
+        mEventSignal.notify_all();
     } else {
         auto bufDesc = event.buffer();
         const AHardwareBuffer_Desc* pDesc =
@@ -207,20 +217,13 @@ Return<void> FrameHandler::notifyEvent(const EvsEvent& event) {
             mHeldBuffers.push(bufDesc);
         }
 
+        mLock.lock();
+        ++mFramesReceived;
+        mLock.unlock();
+        mFrameSignal.notify_all();
 
         ALOGD("Frame handling complete");
     }
-
-
-    // Update our received frame count and notify anybody who cares that things have changed
-    mLock.lock();
-    if (timeToStop) {
-        mRunning = false;
-    } else {
-        mFramesReceived++;
-    }
-    mLock.unlock();
-    mSignal.notify_all();
 
     return Void();
 }
@@ -336,5 +339,45 @@ void FrameHandler::getFrameDimension(unsigned* width, unsigned* height) {
 
     if (height) {
         *height = mFrameHeight;
+    }
+}
+
+bool FrameHandler::waitForEvent(const InfoEventType aTargetEvent,
+                                InfoEventDesc &eventDesc) {
+    // Wait until we get an expected parameter change event.
+    std::unique_lock<std::mutex> lock(mLock);
+    auto now = std::chrono::system_clock::now();
+    bool result = mEventSignal.wait_until(lock, now + 5s,
+        [this, aTargetEvent, &eventDesc](){
+            bool flag = mLatestEventDesc.aType == aTargetEvent;
+            if (flag) {
+                eventDesc.aType = mLatestEventDesc.aType;
+                eventDesc.payload[0] = mLatestEventDesc.payload[0];
+                eventDesc.payload[1] = mLatestEventDesc.payload[1];
+            }
+
+            return flag;
+        }
+    );
+
+    return !result;
+}
+
+const char *FrameHandler::eventToString(const InfoEventType aType) {
+    switch (aType) {
+        case InfoEventType::STREAM_STARTED:
+            return "STREAM_STARTED";
+        case InfoEventType::STREAM_STOPPED:
+            return "STREAM_STOPPED";
+        case InfoEventType::FRAME_DROPPED:
+            return "FRAME_DROPPED";
+        case InfoEventType::TIMEOUT:
+            return "TIMEOUT";
+        case InfoEventType::PARAMETER_CHANGED:
+            return "PARAMETER_CHANGED";
+        case InfoEventType::MASTER_RELEASED:
+            return "MASTER_RELEASED";
+        default:
+            return "Unknown";
     }
 }
