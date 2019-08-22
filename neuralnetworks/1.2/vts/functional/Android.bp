@@ -14,62 +14,57 @@
 // limitations under the License.
 //
 
-cc_library_static {
-    name: "VtsHalNeuralNetworksV1_2Callbacks",
-    defaults: ["VtsHalTargetTestDefaults"],
-    export_include_dirs: ["include"],
+// Tests for V1_0 models using the V1_2 HAL.
+cc_test {
+    name: "VtsHalNeuralnetworksV1_2CompatV1_0TargetTest",
+    defaults: ["VtsHalNeuralNetworksTargetTestDefaults"],
     srcs: [
-        "Callbacks.cpp",
+        "GeneratedTestsV1_0.cpp",
+        "ValidateBurst.cpp",
     ],
-    static_libs: [
-        "android.hardware.neuralnetworks@1.0",
-        "android.hardware.neuralnetworks@1.1",
-        "android.hardware.neuralnetworks@1.2",
+    cflags: [
+        "-DNN_TEST_DYNAMIC_OUTPUT_SHAPE"
     ],
-    header_libs: [
-        "libbase_headers",
-    ]
 }
 
+// Tests for V1_1 models using the V1_2 HAL.
+cc_test {
+    name: "VtsHalNeuralnetworksV1_2CompatV1_1TargetTest",
+    defaults: ["VtsHalNeuralNetworksTargetTestDefaults"],
+    srcs: [
+        "GeneratedTestsV1_1.cpp",
+        "ValidateBurst.cpp",
+    ],
+    cflags: [
+        "-DNN_TEST_DYNAMIC_OUTPUT_SHAPE"
+    ],
+}
+
+// Tests for V1_2 models.
 cc_test {
     name: "VtsHalNeuralnetworksV1_2TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
+    defaults: ["VtsHalNeuralNetworksTargetTestDefaults"],
     srcs: [
         "BasicTests.cpp",
         "CompilationCachingTests.cpp",
-        "GeneratedTestHarness.cpp",
-        "TestAssertions.cpp",
-        "ValidateModel.cpp",
-        "ValidateRequest.cpp",
+        "GeneratedTests.cpp",
         "ValidateBurst.cpp",
-        "VtsHalNeuralnetworks.cpp",
     ],
-    local_include_dirs: ["include"],
-    shared_libs: [
-        "libfmq",
-        "libnativewindow",
+    cflags: [
+        "-DNN_TEST_DYNAMIC_OUTPUT_SHAPE"
     ],
-    static_libs: [
-        "android.hardware.neuralnetworks@1.0",
-        "android.hardware.neuralnetworks@1.1",
-        "android.hardware.neuralnetworks@1.2",
-        "android.hardware.neuralnetworks@1.3",
-        "android.hidl.allocator@1.0",
-        "android.hidl.memory@1.0",
-        "libgmock",
-        "libhidlmemory",
-        "libneuralnetworks_generated_test_harness",
-        "libneuralnetworks_utils",
-        "VtsHalNeuralNetworksV1_0_utils",
-        "VtsHalNeuralNetworksV1_2Callbacks",
+}
+
+cc_test {
+    name: "PresubmitHalNeuralnetworksV1_2TargetTest",
+    defaults: ["VtsHalNeuralNetworksTargetTestDefaults"],
+    srcs: [
+        "BasicTests.cpp",
+        "GeneratedTests.cpp",
+        "ValidateBurst.cpp",
     ],
-    whole_static_libs: [
-        "neuralnetworks_generated_V1_0_example",
-        "neuralnetworks_generated_V1_1_example",
-        "neuralnetworks_generated_V1_2_example",
+    cflags: [
+        "-DNN_TEST_DYNAMIC_OUTPUT_SHAPE",
+        "-DPRESUBMIT_NOT_VTS",
     ],
-    header_libs: [
-        "libneuralnetworks_headers",
-    ],
-    test_suites: ["general-tests", "vts-core"],
 }
