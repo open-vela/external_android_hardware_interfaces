@@ -14,44 +14,27 @@
  * limitations under the License.
  */
 
-#ifndef VTS_HAL_NEURALNETWORKS_GENERATED_TEST_HARNESS_H
-#define VTS_HAL_NEURALNETWORKS_GENERATED_TEST_HARNESS_H
-
-#include "TestHarness.h"
+#ifndef ANDROID_HARDWARE_NEURALNETWORKS_V1_0_GENERATED_TEST_HARNESS_H
+#define ANDROID_HARDWARE_NEURALNETWORKS_V1_0_GENERATED_TEST_HARNESS_H
 
 #include <android/hardware/neuralnetworks/1.0/IDevice.h>
-#include <android/hardware/neuralnetworks/1.1/IDevice.h>
-#include <android/hardware/neuralnetworks/1.2/IDevice.h>
+#include "TestHarness.h"
 
 namespace android {
 namespace hardware {
 namespace neuralnetworks {
-
+namespace V1_0 {
 namespace generated_tests {
+
 using ::test_helper::MixedTypedExample;
-
-void PrepareModel(const sp<V1_2::IDevice>& device, const V1_2::Model& model,
-                  sp<V1_2::IPreparedModel>* preparedModel);
-
-void EvaluatePreparedModel(sp<V1_2::IPreparedModel>& preparedModel,
-                           std::function<bool(int)> is_ignored,
-                           const std::vector<MixedTypedExample>& examples,
-                           bool hasRelaxedFloat32Model, bool testDynamicOutputShape);
 
 void Execute(const sp<V1_0::IDevice>& device, std::function<V1_0::Model(void)> create_model,
              std::function<bool(int)> is_ignored, const std::vector<MixedTypedExample>& examples);
 
-void Execute(const sp<V1_1::IDevice>& device, std::function<V1_1::Model(void)> create_model,
-             std::function<bool(int)> is_ignored, const std::vector<MixedTypedExample>& examples);
-
-void Execute(const sp<V1_2::IDevice>& device, std::function<V1_2::Model(void)> create_model,
-             std::function<bool(int)> is_ignored, const std::vector<MixedTypedExample>& examples,
-             bool testDynamicOutputShape = false);
-
 }  // namespace generated_tests
-
+}  // namespace V1_0
 }  // namespace neuralnetworks
 }  // namespace hardware
 }  // namespace android
 
-#endif  // VTS_HAL_NEURALNETWORKS_GENERATED_TEST_HARNESS_H
+#endif  // ANDROID_HARDWARE_NEURALNETWORKS_V1_0_GENERATED_TEST_HARNESS_H
