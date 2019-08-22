@@ -408,7 +408,7 @@ class ComponentTestEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
    public:
     virtual void registerTestServices() override { registerTestService<IOmx>(); }
 
-    ComponentTestEnvironment() : res("/data/local/tmp/media/") {}
+    ComponentTestEnvironment() : res("/sdcard/media/") {}
 
     void setComponent(const char* _component) { component = _component; }
 
