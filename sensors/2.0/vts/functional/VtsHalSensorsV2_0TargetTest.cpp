@@ -169,7 +169,6 @@ class SensorsHidlTest : public SensorsHidlTestBase {
     // Helper functions
     void activateAllSensors(bool enable);
     std::vector<SensorInfo> getNonOneShotSensors();
-    std::vector<SensorInfo> getNonOneShotAndNonSpecialSensors();
     std::vector<SensorInfo> getOneShotSensors();
     std::vector<SensorInfo> getInjectEventSensors();
     int32_t getInvalidSensorHandle();
@@ -245,18 +244,6 @@ std::vector<SensorInfo> SensorsHidlTest::getNonOneShotSensors() {
     std::vector<SensorInfo> sensors;
     for (const SensorInfo& info : getSensorsList()) {
         if (extractReportMode(info.flags) != SensorFlagBits::ONE_SHOT_MODE) {
-            sensors.push_back(info);
-        }
-    }
-    return sensors;
-}
-
-std::vector<SensorInfo> SensorsHidlTest::getNonOneShotAndNonSpecialSensors() {
-    std::vector<SensorInfo> sensors;
-    for (const SensorInfo& info : getSensorsList()) {
-        SensorFlagBits reportMode = extractReportMode(info.flags);
-        if (reportMode != SensorFlagBits::ONE_SHOT_MODE &&
-            reportMode != SensorFlagBits::SPECIAL_REPORTING_MODE) {
             sensors.push_back(info);
         }
     }
@@ -774,12 +761,7 @@ TEST_F(SensorsHidlTest, Batch) {
     activateAllSensors(false /* enable */);
     for (const SensorInfo& sensor : getSensorsList()) {
         // Call batch on inactive sensor
-        // One shot sensors have minDelay set to -1 which is an invalid
-        // parameter. Use 0 instead to avoid errors.
-        int64_t samplingPeriodNs = extractReportMode(sensor.flags) == SensorFlagBits::ONE_SHOT_MODE
-                                           ? 0
-                                           : sensor.minDelay;
-        ASSERT_EQ(batch(sensor.sensorHandle, samplingPeriodNs, 0 /* maxReportLatencyNs */),
+        ASSERT_EQ(batch(sensor.sensorHandle, sensor.minDelay, 0 /* maxReportLatencyNs */),
                   Result::OK);
 
         // Activate the sensor
@@ -832,10 +814,9 @@ TEST_F(SensorsHidlTest, NoStaleEvents) {
     EventCallback callback;
     getEnvironment()->registerCallback(&callback);
 
-    // This test is not valid for one-shot or special-report-mode sensors
-    const std::vector<SensorInfo> sensors = getNonOneShotAndNonSpecialSensors();
+    const std::vector<SensorInfo> sensors = getSensorsList();
     int32_t maxMinDelay = 0;
-    for (const SensorInfo& sensor : sensors) {
+    for (const SensorInfo& sensor : getSensorsList()) {
         maxMinDelay = std::max(maxMinDelay, sensor.minDelay);
     }
 
@@ -851,14 +832,9 @@ TEST_F(SensorsHidlTest, NoStaleEvents) {
     // Save the last received event for each sensor
     std::map<int32_t, int64_t> lastEventTimestampMap;
     for (const SensorInfo& sensor : sensors) {
-        // Some on-change sensors may not report an event without stimulus
-        if (extractReportMode(sensor.flags) != SensorFlagBits::ON_CHANGE_MODE) {
-            ASSERT_GE(callback.getEvents(sensor.sensorHandle).size(), 1);
-        }
-        if (callback.getEvents(sensor.sensorHandle).size() >= 1) {
-            lastEventTimestampMap[sensor.sensorHandle] =
-                    callback.getEvents(sensor.sensorHandle).back().timestamp;
-        }
+        ASSERT_GE(callback.getEvents(sensor.sensorHandle).size(), 1);
+        lastEventTimestampMap[sensor.sensorHandle] =
+            callback.getEvents(sensor.sensorHandle).back().timestamp;
     }
 
     // Allow some time to pass, reset the callback, then reactivate the sensors
@@ -869,14 +845,6 @@ TEST_F(SensorsHidlTest, NoStaleEvents) {
     activateAllSensors(false);
 
     for (const SensorInfo& sensor : sensors) {
-        // Skip sensors that did not previously report an event
-        if (lastEventTimestampMap.find(sensor.sensorHandle) == lastEventTimestampMap.end()) {
-            continue;
-        }
-        // Skip on-change sensors that do not consistently report an initial event
-        if (callback.getEvents(sensor.sensorHandle).size() < 1) {
-            continue;
-        }
         // Ensure that the first event received is not stale by ensuring that its timestamp is
         // sufficiently different from the previous event
         const Event newEvent = callback.getEvents(sensor.sensorHandle).front();
