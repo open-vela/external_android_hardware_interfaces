@@ -22,7 +22,6 @@
 #include <composer-vts/2.1/TestCommandReader.h>
 #include <mapper-vts/2.0/MapperVts.h>
 #include <mapper-vts/3.0/MapperVts.h>
-#include <mapper-vts/4.0/MapperVts.h>
 
 #include <VtsHalHidlTargetTestBase.h>
 #include <VtsHalHidlTargetTestEnvBase.h>
@@ -791,7 +790,7 @@ TEST_F(GraphicsComposerHidlCommandTest, PRESENT_DISPLAY) {
 TEST_F(GraphicsComposerHidlCommandTest, PRESENT_DISPLAY_NO_LAYER_STATE_CHANGES) {
     mWriter->selectDisplay(mPrimaryDisplay);
     mComposerClient->setPowerMode(mPrimaryDisplay, IComposerClient::PowerMode::ON);
-    mComposerClient->setColorMode(mPrimaryDisplay, ColorMode::NATIVE);
+    mComposerClient->setColorMode(mPrimaryDisplay, ColorMode::SRGB);
 
     auto handle = allocate();
     ASSERT_NE(nullptr, handle);
