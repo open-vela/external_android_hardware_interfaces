@@ -17,12 +17,16 @@
 #define LOG_TAG "neuralnetworks_hidl_hal_test"
 
 #include "1.0/Callbacks.h"
-#include "GeneratedTestHarness.h"
 #include "VtsHalNeuralnetworks.h"
 
-namespace android::hardware::neuralnetworks::V1_0::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_0 {
+namespace vts {
+namespace functional {
 
-using implementation::ExecutionCallback;
+using ::android::hardware::neuralnetworks::V1_0::implementation::ExecutionCallback;
 
 ///////////////////////// UTILITY FUNCTIONS /////////////////////////
 
@@ -36,6 +40,7 @@ static void validate(const sp<IPreparedModel>& preparedModel, const std::string&
     SCOPED_TRACE(message + " [execute]");
 
     sp<ExecutionCallback> executionCallback = new ExecutionCallback();
+    ASSERT_NE(nullptr, executionCallback.get());
     Return<ErrorStatus> executeLaunchStatus = preparedModel->execute(request, executionCallback);
     ASSERT_TRUE(executeLaunchStatus.isOk());
     ASSERT_EQ(ErrorStatus::INVALID_ARGUMENT, static_cast<ErrorStatus>(executeLaunchStatus));
@@ -93,4 +98,9 @@ void ValidationTest::validateRequest(const sp<IPreparedModel>& preparedModel,
     removeOutputTest(preparedModel, request);
 }
 
-}  // namespace android::hardware::neuralnetworks::V1_0::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_0
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android

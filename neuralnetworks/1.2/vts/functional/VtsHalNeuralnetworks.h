@@ -30,14 +30,24 @@
 #include <vector>
 
 #include "1.2/Callbacks.h"
-#include "TestHarness.h"
 
-namespace android::hardware::neuralnetworks::V1_2::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_2 {
+
+using V1_0::DeviceStatus;
+using V1_0::ErrorStatus;
+using V1_0::Request;
+
+namespace vts {
+namespace functional {
 
 // A class for test environment setup
 class NeuralnetworksHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
     DISALLOW_COPY_AND_ASSIGN(NeuralnetworksHidlEnvironment);
-    NeuralnetworksHidlEnvironment() = default;
+    NeuralnetworksHidlEnvironment();
+    ~NeuralnetworksHidlEnvironment() override;
 
   public:
     static NeuralnetworksHidlEnvironment* getInstance();
@@ -49,19 +59,43 @@ class NeuralnetworksHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     DISALLOW_COPY_AND_ASSIGN(NeuralnetworksHidlTest);
 
   public:
-    NeuralnetworksHidlTest() = default;
+    NeuralnetworksHidlTest();
+    ~NeuralnetworksHidlTest() override;
     void SetUp() override;
     void TearDown() override;
 
   protected:
-    const sp<IDevice> device = ::testing::VtsHalHidlTargetTestBase::getService<IDevice>(
-            NeuralnetworksHidlEnvironment::getInstance());
+    sp<IDevice> device;
 };
 
-// Utility function to get PreparedModel from callback and downcast to V1_2.
-sp<IPreparedModel> getPreparedModel_1_2(const sp<implementation::PreparedModelCallback>& callback);
+class ValidationTest : public NeuralnetworksHidlTest {
+  protected:
+    void validateEverything(const Model& model, const Request& request);
+    void validateFailure(const Model& model, const Request& request);
 
-}  // namespace android::hardware::neuralnetworks::V1_2::vts::functional
+  private:
+    void validateModel(const Model& model);
+    void validateRequest(const sp<IPreparedModel>& preparedModel, const Request& request);
+    void validateRequestFailure(const sp<IPreparedModel>& preparedModel, const Request& request);
+    void validateBurst(const sp<IPreparedModel>& preparedModel, const Request& request);
+};
+
+// Tag for the generated tests
+class GeneratedTest : public NeuralnetworksHidlTest {};
+
+// Tag for the dynamic output shape tests
+class DynamicOutputShapeTest : public NeuralnetworksHidlTest {};
+
+// Utility function to get PreparedModel from callback and downcast to V1_2.
+sp<IPreparedModel> getPreparedModel_1_2(
+        const sp<V1_2::implementation::PreparedModelCallback>& callback);
+
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_2
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
 
 namespace android::hardware::neuralnetworks::V1_0 {
 

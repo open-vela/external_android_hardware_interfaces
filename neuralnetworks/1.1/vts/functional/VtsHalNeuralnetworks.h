@@ -29,16 +29,28 @@
 #include <iostream>
 #include <vector>
 
-#include "TestHarness.h"
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_1 {
 
-namespace android::hardware::neuralnetworks::V1_1::vts::functional {
+using V1_0::DeviceStatus;
+using V1_0::ErrorStatus;
+using V1_0::IPreparedModel;
+using V1_0::Operand;
+using V1_0::OperandType;
+using V1_0::Request;
+
+namespace vts {
+namespace functional {
 
 // A class for test environment setup
 class NeuralnetworksHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
     DISALLOW_COPY_AND_ASSIGN(NeuralnetworksHidlEnvironment);
-    NeuralnetworksHidlEnvironment() = default;
+    NeuralnetworksHidlEnvironment();
+    ~NeuralnetworksHidlEnvironment() override;
 
-  public:
+   public:
     static NeuralnetworksHidlEnvironment* getInstance();
     void registerTestServices() override;
 };
@@ -47,17 +59,35 @@ class NeuralnetworksHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvB
 class NeuralnetworksHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     DISALLOW_COPY_AND_ASSIGN(NeuralnetworksHidlTest);
 
-  public:
-    NeuralnetworksHidlTest() = default;
+   public:
+    NeuralnetworksHidlTest();
+    ~NeuralnetworksHidlTest() override;
     void SetUp() override;
     void TearDown() override;
 
-  protected:
-    const sp<IDevice> device = ::testing::VtsHalHidlTargetTestBase::getService<IDevice>(
-            NeuralnetworksHidlEnvironment::getInstance());
+   protected:
+    sp<IDevice> device;
 };
 
-}  // namespace android::hardware::neuralnetworks::V1_1::vts::functional
+// Tag for the validation tests
+class ValidationTest : public NeuralnetworksHidlTest {
+   protected:
+     void validateEverything(const Model& model, const Request& request);
+
+   private:
+     void validateModel(const Model& model);
+     void validateRequest(const sp<IPreparedModel>& preparedModel, const Request& request);
+};
+
+// Tag for the generated tests
+class GeneratedTest : public NeuralnetworksHidlTest {};
+
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_1
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
 
 namespace android::hardware::neuralnetworks::V1_0 {
 

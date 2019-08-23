@@ -21,21 +21,23 @@
 #include "1.2/Callbacks.h"
 #include "ExecutionBurstController.h"
 #include "ExecutionBurstServer.h"
-#include "GeneratedTestHarness.h"
 #include "TestHarness.h"
 #include "Utils.h"
 
 #include <android-base/logging.h>
 #include <cstring>
 
-namespace android::hardware::neuralnetworks::V1_2::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_2 {
+namespace vts {
+namespace functional {
 
-using nn::ExecutionBurstController;
-using nn::RequestChannelSender;
-using nn::ResultChannelReceiver;
-using V1_0::ErrorStatus;
-using V1_0::Request;
-using ExecutionBurstCallback = ExecutionBurstController::ExecutionBurstCallback;
+using ::android::nn::ExecutionBurstController;
+using ::android::nn::RequestChannelSender;
+using ::android::nn::ResultChannelReceiver;
+using ExecutionBurstCallback = ::android::nn::ExecutionBurstController::ExecutionBurstCallback;
 
 // This constant value represents the length of an FMQ that is large enough to
 // return a result from a burst execution for all of the generated test cases.
@@ -398,4 +400,9 @@ void ValidationTest::validateBurst(const sp<IPreparedModel>& preparedModel,
     ASSERT_NO_FATAL_FAILURE(validateBurstSanitized(preparedModel, request));
 }
 
-}  // namespace android::hardware::neuralnetworks::V1_2::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_2
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android

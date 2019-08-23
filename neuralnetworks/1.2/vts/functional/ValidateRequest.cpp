@@ -19,16 +19,18 @@
 #include "1.0/Utils.h"
 #include "1.2/Callbacks.h"
 #include "ExecutionBurstController.h"
-#include "GeneratedTestHarness.h"
 #include "TestHarness.h"
 #include "Utils.h"
 #include "VtsHalNeuralnetworks.h"
 
-namespace android::hardware::neuralnetworks::V1_2::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_2 {
+namespace vts {
+namespace functional {
 
-using implementation::ExecutionCallback;
-using V1_0::ErrorStatus;
-using V1_0::Request;
+using ::android::hardware::neuralnetworks::V1_2::implementation::ExecutionCallback;
 
 ///////////////////////// UTILITY FUNCTIONS /////////////////////////
 
@@ -59,6 +61,7 @@ static void validate(const sp<IPreparedModel>& preparedModel, const std::string&
         SCOPED_TRACE(message + " [execute_1_2]");
 
         sp<ExecutionCallback> executionCallback = new ExecutionCallback();
+        ASSERT_NE(nullptr, executionCallback.get());
         Return<ErrorStatus> executeLaunchStatus =
                 preparedModel->execute_1_2(request, measure, executionCallback);
         ASSERT_TRUE(executeLaunchStatus.isOk());
@@ -167,4 +170,9 @@ void ValidationTest::validateRequestFailure(const sp<IPreparedModel>& preparedMo
     ASSERT_TRUE(executeStatus.isOk());
 }
 
-}  // namespace android::hardware::neuralnetworks::V1_2::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_2
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
