@@ -90,10 +90,10 @@ enum FrontendAtscModulation : uint32_t {
 };
 
 /**
- *  Signal Settings for an ATSC Frontend.
+ *  Signal Setting for ATSC Frontend.
  */
 struct FrontendAtscSettings {
-    /** Signal frequency in Hertz */
+    /** Signal frequencey in Herhz */
     uint32_t frequency;
     FrontendAtscModulation modulation;
 };
@@ -102,7 +102,7 @@ struct FrontendAtscSettings {
  *  Signal Setting for DVBT Frontend.
  */
 struct FrontendDvbtSettings {
-    /** Signal frequency in Hertz */
+    /** Signal frequencey in Herhz */
     uint32_t frequency;
     FrontendAtscModulation modulation;
     FrontendInnerFec fec;
@@ -137,53 +137,3 @@ enum FrontendEventType : uint32_t {
      */
     LOST_LOCK,
 };
-
-/* Demux ID is used to associate with a hardware demux resource. */
-typedef uint32_t DemuxId;
-
-/* Filter ID is used to associate with a hardware filter resource. */
-typedef uint32_t DemuxFilterId;
-
-/**
- * Filter Type according to ISO/IEC 13818-1
- */
-@export
-enum DemuxFilterType : uint32_t {
-    /**
-     * A filter to filter section data out from input stream.
-     */
-    SECTION,
-    /**
-     * A filter to filter PES data out from input stream.
-     */
-    PES,
-    /**
-     * A filter to filter TS payload out from input stream.
-     */
-    TS,
-    /**
-     * A filter to filter Audio Metadata out from input stream.
-     */
-    AUDIO,
-    /**
-     * A filter to filter Vidoe Metadata out from input stream.
-     */
-    VIDEO,
-    /**
-     * A filter to set PCR channel from input stream.
-     */
-    PCR,
-    /**
-     * A filter to filter data directly to output buffer for record.
-     */
-    RECORD,
-};
-
-/**
- * Filter Event.
- */
-struct DemuxFilterEvent {
-     DemuxFilterId filterId;
-     DemuxFilterType filterType;
-};
-
