@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "sensors_hidl_hal_test"
+
 #include "SensorsHidlEnvironmentV1_0.h"
 #include "sensors-vts-utils/SensorsHidlTestBase.h"
 
