@@ -37,12 +37,19 @@ class Tuner : public ITuner {
     virtual Return<void> openFrontendById(uint32_t frontendId,
                                           openFrontendById_cb _hidl_cb) override;
 
+    virtual Return<void> openDemux(openDemux_cb _hidl_cb) override;
+
+    virtual Return<void> openDescrambler(openDescrambler_cb _hidl_cb) override;
+
   private:
     virtual ~Tuner();
     // Static mFrontends array to maintain local frontends information
     vector<sp<Frontend>> mFrontends;
     // To maintain how many Frontends we have
     int mFrontendSize;
+    // The last used demux id. Initial value is -1.
+    // First used id will be 0.
+    int mLastUsedId = -1;
 };
 
 }  // namespace implementation
