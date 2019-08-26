@@ -18,6 +18,7 @@
 
 #include "1.0/Utils.h"
 #include "1.2/Callbacks.h"
+#include "GeneratedTestHarness.h"
 #include "VtsHalNeuralnetworks.h"
 
 namespace android {
@@ -223,7 +224,7 @@ static std::vector<int32_t> getInvalidZeroPoints(OperandType type) {
         case OperandType::TENSOR_QUANT8_ASYMM:
             return {-1, 256};
         case OperandType::TENSOR_QUANT8_SYMM:
-          return {-129, -1, 1, 128};
+            return {-129, -1, 1, 128};
         case OperandType::TENSOR_QUANT16_ASYMM:
             return {-1, 65536};
         case OperandType::TENSOR_QUANT16_SYMM:
@@ -489,15 +490,15 @@ static bool removeOperandSkip(size_t operand, const Model& model) {
                 }
             }
         }
-        // BIDIRECTIONAL_SEQUENCE_LSTM and BIDIRECTIONAL_SEQUENCE_RNN can have
-        // either one or two outputs depending on their mergeOutputs parameter.
+        // BIDIRECTIONAL_SEQUENCE_LSTM and BIDIRECTIONAL_SEQUENCE_RNN can have either one or two
+        // outputs depending on their mergeOutputs parameter.
         if (operation.type == OperationType::BIDIRECTIONAL_SEQUENCE_LSTM ||
             operation.type == OperationType::BIDIRECTIONAL_SEQUENCE_RNN) {
-          for (const size_t outOprand : operation.outputs) {
-            if (operand == outOprand) {
-              return true;
+            for (const size_t outOprand : operation.outputs) {
+                if (operand == outOprand) {
+                    return true;
+                }
             }
-          }
         }
     }
     return false;
