@@ -24,7 +24,7 @@
 
 #include <composer-command-buffer/2.1/ComposerCommandBuffer.h>
 #include <composer-hal/2.1/ComposerHal.h>
-#include <composer-resources/2.1/ComposerResources.h>
+#include <composer-hal/2.1/ComposerResources.h>
 // TODO remove hwcomposer_defs.h dependency
 #include <hardware/hwcomposer_defs.h>
 #include <log/log.h>
@@ -195,7 +195,7 @@ class ComposerCommandEngine : protected CommandReaderBase {
         bool closeFence = true;
 
         const native_handle_t* clientTarget;
-        ComposerResources::ReplacedHandle replacedClientTarget(true);
+        ComposerResources::ReplacedBufferHandle replacedClientTarget;
         auto err = mResources->getDisplayClientTarget(mCurrentDisplay, slot, useCache, rawHandle,
                                                       &clientTarget, &replacedClientTarget);
         if (err == Error::NONE) {
@@ -226,7 +226,7 @@ class ComposerCommandEngine : protected CommandReaderBase {
         bool closeFence = true;
 
         const native_handle_t* outputBuffer;
-        ComposerResources::ReplacedHandle replacedOutputBuffer(true);
+        ComposerResources::ReplacedBufferHandle replacedOutputBuffer;
         auto err = mResources->getDisplayOutputBuffer(mCurrentDisplay, slot, useCache, rawhandle,
                                                       &outputBuffer, &replacedOutputBuffer);
         if (err == Error::NONE) {
@@ -369,7 +369,7 @@ class ComposerCommandEngine : protected CommandReaderBase {
         bool closeFence = true;
 
         const native_handle_t* buffer;
-        ComposerResources::ReplacedHandle replacedBuffer(true);
+        ComposerResources::ReplacedBufferHandle replacedBuffer;
         auto err = mResources->getLayerBuffer(mCurrentDisplay, mCurrentLayer, slot, useCache,
                                               rawHandle, &buffer, &replacedBuffer);
         if (err == Error::NONE) {
@@ -489,7 +489,7 @@ class ComposerCommandEngine : protected CommandReaderBase {
         auto rawHandle = readHandle();
 
         const native_handle_t* stream;
-        ComposerResources::ReplacedHandle replacedStream(false);
+        ComposerResources::ReplacedStreamHandle replacedStream;
         auto err = mResources->getLayerSidebandStream(mCurrentDisplay, mCurrentLayer, rawHandle,
                                                       &stream, &replacedStream);
         if (err == Error::NONE) {
