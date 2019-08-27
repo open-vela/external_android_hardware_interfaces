@@ -17,12 +17,10 @@
 #define LOG_TAG "neuralnetworks_hidl_hal_test"
 
 #include "VtsHalNeuralnetworks.h"
-#include "1.0/Callbacks.h"
-#include "1.0/Utils.h"
-#include "GeneratedTestHarness.h"
-#include "TestHarness.h"
 
 #include <android-base/logging.h>
+
+#include "1.0/Callbacks.h"
 
 namespace android {
 namespace hardware {
@@ -123,7 +121,7 @@ void NeuralnetworksHidlTest::TearDown() {
     ::testing::VtsHalHidlTargetTestBase::TearDown();
 }
 
-void ValidationTest::validateEverything(const Model& model, const Request& request) {
+void ValidationTest::validateEverything(const Model& model, const std::vector<Request>& requests) {
     validateModel(model);
 
     // create IPreparedModel
@@ -133,17 +131,8 @@ void ValidationTest::validateEverything(const Model& model, const Request& reque
         return;
     }
 
-    validateRequest(preparedModel, request);
+    validateRequests(preparedModel, requests);
 }
-
-TEST_P(ValidationTest, Test) {
-    const Model model = createModel(*mTestModel);
-    const Request request = createRequest(*mTestModel);
-    ASSERT_FALSE(mTestModel->expectFailure);
-    validateEverything(model, request);
-}
-
-INSTANTIATE_GENERATED_TEST(ValidationTest, [](const test_helper::TestModel&) { return true; });
 
 }  // namespace functional
 }  // namespace vts
