@@ -19,7 +19,6 @@
 #include "1.0/Utils.h"
 #include "1.2/Callbacks.h"
 #include "ExecutionBurstController.h"
-#include "GeneratedTestHarness.h"
 #include "TestHarness.h"
 #include "Utils.h"
 #include "VtsHalNeuralnetworks.h"

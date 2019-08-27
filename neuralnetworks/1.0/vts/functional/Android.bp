@@ -44,7 +44,6 @@ cc_defaults {
     name: "VtsHalNeuralNetworksV1_0TargetTestDefaults",
     defaults: ["VtsHalTargetTestDefaults"],
     srcs: [
-        "TestAssertions.cpp",
         "ValidateModel.cpp",
         "ValidateRequest.cpp",
         "VtsHalNeuralnetworks.cpp",
@@ -75,9 +74,7 @@ cc_test {
     defaults: ["VtsHalNeuralNetworksV1_0TargetTestDefaults"],
     srcs: [
         "BasicTests.cpp",
-    ],
-    whole_static_libs: [
-        "neuralnetworks_generated_V1_0_example",
+        ":VtsHalNeuralNetworksV1_0_all_generated_V1_0_tests",
     ],
 }
 
@@ -86,9 +83,7 @@ cc_test {
     defaults: ["VtsHalNeuralNetworksV1_0TargetTestDefaults"],
     srcs: [
         "BasicTests.cpp",
-    ],
-    whole_static_libs: [
-        "neuralnetworks_generated_V1_0_example",
+        ":VtsHalNeuralNetworksV1_0_all_generated_V1_0_tests",
     ],
     cflags: [
         "-DPRESUBMIT_NOT_VTS",
