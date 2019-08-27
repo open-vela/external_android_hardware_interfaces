@@ -18,7 +18,6 @@
 
 #include "1.0/Utils.h"
 #include "1.2/Callbacks.h"
-#include "GeneratedTestHarness.h"
 #include "VtsHalNeuralnetworks.h"
 
 namespace android {
@@ -490,15 +489,15 @@ static bool removeOperandSkip(size_t operand, const Model& model) {
                 }
             }
         }
-        // BIDIRECTIONAL_SEQUENCE_LSTM and BIDIRECTIONAL_SEQUENCE_RNN can have either one or two
-        // outputs depending on their mergeOutputs parameter.
+        // BIDIRECTIONAL_SEQUENCE_LSTM and BIDIRECTIONAL_SEQUENCE_RNN can have
+        // either one or two outputs depending on their mergeOutputs parameter.
         if (operation.type == OperationType::BIDIRECTIONAL_SEQUENCE_LSTM ||
             operation.type == OperationType::BIDIRECTIONAL_SEQUENCE_RNN) {
-            for (const size_t outOprand : operation.outputs) {
-                if (operand == outOprand) {
-                    return true;
-                }
+          for (const size_t outOprand : operation.outputs) {
+            if (operand == outOprand) {
+              return true;
             }
+          }
         }
     }
     return false;

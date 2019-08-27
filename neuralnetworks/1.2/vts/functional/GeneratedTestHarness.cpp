@@ -42,14 +42,12 @@
 #include "MemoryUtils.h"
 #include "TestHarness.h"
 #include "Utils.h"
-#include "VtsHalNeuralnetworks.h"
 
 namespace android {
 namespace hardware {
 namespace neuralnetworks {
 namespace V1_2 {
-namespace vts {
-namespace functional {
+namespace generated_tests {
 
 using namespace test_helper;
 using ::android::hardware::neuralnetworks::V1_0::DataLocation;
@@ -412,43 +410,21 @@ void PrepareModel(const sp<IDevice>& device, const Model& model,
     ASSERT_NE(nullptr, preparedModel->get());
 }
 
-// Tag for the generated tests
-class GeneratedTest : public GeneratedTestBase {
-  protected:
-    void Execute(const TestModel& testModel, bool testDynamicOutputShape) {
-        Model model = createModel(testModel);
-        if (testDynamicOutputShape) {
-            makeOutputDimensionsUnspecified(&model);
-        }
-
-        sp<IPreparedModel> preparedModel = nullptr;
-        PrepareModel(device, model, &preparedModel);
-        if (preparedModel == nullptr) {
-            GTEST_SKIP();
-        }
-        EvaluatePreparedModel(preparedModel, testModel, testDynamicOutputShape);
+void Execute(const sp<IDevice>& device, const TestModel& testModel, bool testDynamicOutputShape) {
+    Model model = createModel(testModel);
+    if (testDynamicOutputShape) {
+        makeOutputDimensionsUnspecified(&model);
     }
-};
 
-// Tag for the dynamic output shape tests
-class DynamicOutputShapeTest : public GeneratedTest {};
-
-TEST_P(GeneratedTest, Test) {
-    Execute(*mTestModel, /*testDynamicOutputShape=*/false);
+    sp<IPreparedModel> preparedModel = nullptr;
+    PrepareModel(device, model, &preparedModel);
+    if (preparedModel == nullptr) {
+        GTEST_SKIP();
+    }
+    EvaluatePreparedModel(preparedModel, testModel, testDynamicOutputShape);
 }
 
-TEST_P(DynamicOutputShapeTest, Test) {
-    Execute(*mTestModel, /*testDynamicOutputShape=*/true);
-}
-
-INSTANTIATE_GENERATED_TEST(GeneratedTest,
-                           [](const TestModel& testModel) { return !testModel.expectFailure; });
-
-INSTANTIATE_GENERATED_TEST(DynamicOutputShapeTest,
-                           [](const TestModel& testModel) { return !testModel.expectFailure; });
-
-}  // namespace functional
-}  // namespace vts
+}  // namespace generated_tests
 }  // namespace V1_2
 }  // namespace neuralnetworks
 }  // namespace hardware
