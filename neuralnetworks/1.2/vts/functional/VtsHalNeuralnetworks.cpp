@@ -126,7 +126,7 @@ void NeuralnetworksHidlTest::TearDown() {
     ::testing::VtsHalHidlTargetTestBase::TearDown();
 }
 
-void ValidationTest::validateEverything(const Model& model, const Request& request) {
+void ValidationTest::validateEverything(const Model& model, const std::vector<Request>& requests) {
     validateModel(model);
 
     // create IPreparedModel
@@ -136,11 +136,11 @@ void ValidationTest::validateEverything(const Model& model, const Request& reque
         return;
     }
 
-    validateRequest(preparedModel, request);
-    validateBurst(preparedModel, request);
+    validateRequests(preparedModel, requests);
+    validateBurst(preparedModel, requests);
 }
 
-void ValidationTest::validateFailure(const Model& model, const Request& request) {
+void ValidationTest::validateFailure(const Model& model, const std::vector<Request>& requests) {
     // TODO: Should this always succeed?
     //       What if the invalid input is part of the model (i.e., a parameter).
     validateModel(model);
@@ -151,7 +151,7 @@ void ValidationTest::validateFailure(const Model& model, const Request& request)
         return;
     }
 
-    validateRequestFailure(preparedModel, request);
+    validateRequestFailure(preparedModel, requests);
 }
 
 sp<IPreparedModel> getPreparedModel_1_2(
