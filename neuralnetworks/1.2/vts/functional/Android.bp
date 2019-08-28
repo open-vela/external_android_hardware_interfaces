@@ -48,18 +48,36 @@ cc_defaults {
     test_suites: ["general-tests"],
 }
 
+// Tests for V1_0 models using the V1_2 HAL.
+cc_test {
+    name: "VtsHalNeuralnetworksV1_2CompatV1_0TargetTest",
+    defaults: ["VtsHalNeuralNetworksV1_2TargetTestDefaults"],
+    srcs: [
+        ":VtsHalNeuralNetworksV1_0_all_generated_tests",
+        "ValidateBurst.cpp",
+    ],
+}
+
+// Tests for V1_1 models using the V1_2 HAL.
+cc_test {
+    name: "VtsHalNeuralnetworksV1_2CompatV1_1TargetTest",
+    defaults: ["VtsHalNeuralNetworksV1_2TargetTestDefaults"],
+    srcs: [
+        ":VtsHalNeuralNetworksV1_1_all_generated_tests",
+        "ValidateBurst.cpp",
+    ],
+}
+
+// Tests for V1_2 models.
 cc_test {
     name: "VtsHalNeuralnetworksV1_2TargetTest",
     defaults: ["VtsHalNeuralNetworksV1_2TargetTestDefaults"],
     srcs: [
         "BasicTests.cpp",
+        ":VtsHalNeuralNetworksV1_2_all_generated_tests",
+        ":VtsHalNeuralNetworksV1_2_mobilenets",
         "CompilationCachingTests.cpp",
         "ValidateBurst.cpp",
-    ],
-    whole_static_libs: [
-        "neuralnetworks_generated_V1_0_example",
-        "neuralnetworks_generated_V1_1_example",
-        "neuralnetworks_generated_V1_2_example",
     ],
 }
 
@@ -68,13 +86,8 @@ cc_test {
     defaults: ["VtsHalNeuralNetworksV1_2TargetTestDefaults"],
     srcs: [
         "BasicTests.cpp",
-        "CompilationCachingTests.cpp",
+        ":VtsHalNeuralNetworksV1_2_all_generated_tests",
         "ValidateBurst.cpp",
-    ],
-    whole_static_libs: [
-        "neuralnetworks_generated_V1_0_example",
-        "neuralnetworks_generated_V1_1_example",
-        "neuralnetworks_generated_V1_2_example",
     ],
     cflags: [
         "-DPRESUBMIT_NOT_VTS",

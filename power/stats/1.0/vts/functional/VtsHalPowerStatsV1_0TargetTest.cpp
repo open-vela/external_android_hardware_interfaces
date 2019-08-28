@@ -566,16 +566,15 @@ TEST_F(PowerStatsHidlTest, StreamEnergyData) {
     thread1.join();
 }
 
-}  // namespace vts
-}  // namespace stats
-}  // namespace power
-}  // namespace android
-
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(android::power::stats::vts::PowerStatsHidlEnv::Instance());
+    ::testing::AddGlobalTestEnvironment(PowerStatsHidlEnv::Instance());
     ::testing::InitGoogleTest(&argc, argv);
-    android::power::stats::vts::PowerStatsHidlEnv::Instance()->init(&argc, argv);
+    PowerStatsHidlEnv::Instance()->init(&argc, argv);
     int status = RUN_ALL_TESTS();
     LOG(INFO) << "Test result = " << status;
     return status;
 }
+}  // namespace vts
+}  // namespace stats
+}  // namespace power
+}  // namespace android
