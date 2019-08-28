@@ -33,19 +33,28 @@
 #include "TestHarness.h"
 #include "VtsHalNeuralnetworks.h"
 
-namespace android::hardware::neuralnetworks::V1_1::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_1 {
+namespace vts {
+namespace functional {
 
 using namespace test_helper;
-using hidl::memory::V1_0::IMemory;
-using V1_0::DataLocation;
-using V1_0::ErrorStatus;
-using V1_0::IPreparedModel;
-using V1_0::Operand;
-using V1_0::OperandLifeTime;
-using V1_0::OperandType;
-using V1_0::Request;
-using V1_0::implementation::ExecutionCallback;
-using V1_0::implementation::PreparedModelCallback;
+using ::android::hardware::neuralnetworks::V1_0::DataLocation;
+using ::android::hardware::neuralnetworks::V1_0::ErrorStatus;
+using ::android::hardware::neuralnetworks::V1_0::IPreparedModel;
+using ::android::hardware::neuralnetworks::V1_0::Operand;
+using ::android::hardware::neuralnetworks::V1_0::OperandLifeTime;
+using ::android::hardware::neuralnetworks::V1_0::OperandType;
+using ::android::hardware::neuralnetworks::V1_0::Request;
+using ::android::hardware::neuralnetworks::V1_0::RequestArgument;
+using ::android::hardware::neuralnetworks::V1_0::implementation::ExecutionCallback;
+using ::android::hardware::neuralnetworks::V1_0::implementation::PreparedModelCallback;
+using ::android::hardware::neuralnetworks::V1_1::ExecutionPreference;
+using ::android::hardware::neuralnetworks::V1_1::IDevice;
+using ::android::hardware::neuralnetworks::V1_1::Model;
+using ::android::hidl::memory::V1_0::IMemory;
 
 Model createModel(const TestModel& testModel) {
     // Model operands.
@@ -203,4 +212,9 @@ TEST_P(GeneratedTest, Test) {
 INSTANTIATE_GENERATED_TEST(GeneratedTest,
                            [](const TestModel& testModel) { return !testModel.expectFailure; });
 
-}  // namespace android::hardware::neuralnetworks::V1_1::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_1
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
