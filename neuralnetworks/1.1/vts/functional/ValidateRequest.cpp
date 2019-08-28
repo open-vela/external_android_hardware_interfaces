@@ -21,12 +21,17 @@
 #include "GeneratedTestHarness.h"
 #include "VtsHalNeuralnetworks.h"
 
-namespace android::hardware::neuralnetworks::V1_1::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_1 {
+namespace vts {
+namespace functional {
 
-using V1_0::ErrorStatus;
-using V1_0::IPreparedModel;
-using V1_0::Request;
-using V1_0::implementation::ExecutionCallback;
+using ::android::hardware::neuralnetworks::V1_0::ErrorStatus;
+using ::android::hardware::neuralnetworks::V1_0::Request;
+using ::android::hardware::neuralnetworks::V1_0::implementation::ExecutionCallback;
+using ::android::hardware::neuralnetworks::V1_1::IPreparedModel;
 
 ///////////////////////// UTILITY FUNCTIONS /////////////////////////
 
@@ -40,6 +45,7 @@ static void validate(const sp<IPreparedModel>& preparedModel, const std::string&
     SCOPED_TRACE(message + " [execute]");
 
     sp<ExecutionCallback> executionCallback = new ExecutionCallback();
+    ASSERT_NE(nullptr, executionCallback.get());
     Return<ErrorStatus> executeLaunchStatus = preparedModel->execute(request, executionCallback);
     ASSERT_TRUE(executeLaunchStatus.isOk());
     ASSERT_EQ(ErrorStatus::INVALID_ARGUMENT, static_cast<ErrorStatus>(executeLaunchStatus));
@@ -77,4 +83,9 @@ void ValidationTest::validateRequest(const sp<IPreparedModel>& preparedModel,
     removeOutputTest(preparedModel, request);
 }
 
-}  // namespace android::hardware::neuralnetworks::V1_1::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_1
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
