@@ -90,10 +90,10 @@ enum FrontendAtscModulation : uint32_t {
 };
 
 /**
- *  Signal Settings for an ATSC Frontend.
+ *  Signal Setting for ATSC Frontend.
  */
 struct FrontendAtscSettings {
-    /** Signal frequency in Hertz */
+    /** Signal frequencey in Herhz */
     uint32_t frequency;
     FrontendAtscModulation modulation;
 };
@@ -102,7 +102,7 @@ struct FrontendAtscSettings {
  *  Signal Setting for DVBT Frontend.
  */
 struct FrontendDvbtSettings {
-    /** Signal frequency in Hertz */
+    /** Signal frequencey in Herhz */
     uint32_t frequency;
     FrontendAtscModulation modulation;
     FrontendInnerFec fec;
