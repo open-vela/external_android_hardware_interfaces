@@ -21,7 +21,12 @@
 #include "TestHarness.h"
 #include "VtsHalNeuralnetworks.h"
 
-namespace android::hardware::neuralnetworks::V1_0::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_0 {
+namespace vts {
+namespace functional {
 
 class GeneratedTestBase
     : public NeuralnetworksHidlTest,
@@ -54,6 +59,11 @@ class ValidationTest : public GeneratedTestBase {
 
 Model createModel(const ::test_helper::TestModel& testModel);
 
-}  // namespace android::hardware::neuralnetworks::V1_0::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_0
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
 
 #endif  // ANDROID_HARDWARE_NEURALNETWORKS_V1_0_GENERATED_TEST_HARNESS_H

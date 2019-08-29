@@ -33,12 +33,23 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
-namespace android::hardware::neuralnetworks::V1_0::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_0 {
+namespace vts {
+namespace functional {
 
 using namespace test_helper;
-using hidl::memory::V1_0::IMemory;
-using implementation::ExecutionCallback;
-using implementation::PreparedModelCallback;
+using ::android::hardware::neuralnetworks::V1_0::ErrorStatus;
+using ::android::hardware::neuralnetworks::V1_0::IDevice;
+using ::android::hardware::neuralnetworks::V1_0::IPreparedModel;
+using ::android::hardware::neuralnetworks::V1_0::Model;
+using ::android::hardware::neuralnetworks::V1_0::Request;
+using ::android::hardware::neuralnetworks::V1_0::RequestArgument;
+using ::android::hardware::neuralnetworks::V1_0::implementation::ExecutionCallback;
+using ::android::hardware::neuralnetworks::V1_0::implementation::PreparedModelCallback;
+using ::android::hidl::memory::V1_0::IMemory;
 
 Model createModel(const TestModel& testModel) {
     // Model operands.
@@ -195,4 +206,9 @@ TEST_P(GeneratedTest, Test) {
 INSTANTIATE_GENERATED_TEST(GeneratedTest,
                            [](const TestModel& testModel) { return !testModel.expectFailure; });
 
-}  // namespace android::hardware::neuralnetworks::V1_0::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_0
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
