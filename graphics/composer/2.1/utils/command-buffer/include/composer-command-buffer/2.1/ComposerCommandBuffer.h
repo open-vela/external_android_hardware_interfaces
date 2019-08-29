@@ -534,9 +534,6 @@ class CommandWriterBase {
 
     static constexpr uint16_t kMaxLength = std::numeric_limits<uint16_t>::max();
 
-    std::unique_ptr<uint32_t[]> mData;
-    uint32_t mDataWritten;
-
    private:
     void growData(uint32_t grow) {
         uint32_t newWritten = mDataWritten + grow;
@@ -561,6 +558,9 @@ class CommandWriterBase {
     }
 
     uint32_t mDataMaxSize;
+    std::unique_ptr<uint32_t[]> mData;
+
+    uint32_t mDataWritten;
     // end offset of the current command
     uint32_t mCommandEnd;
 
@@ -746,14 +746,13 @@ class CommandReaderBase {
         return fd;
     }
 
-    std::unique_ptr<uint32_t[]> mData;
-    uint32_t mDataRead;
-
    private:
     std::unique_ptr<CommandQueueType> mQueue;
     uint32_t mDataMaxSize;
+    std::unique_ptr<uint32_t[]> mData;
 
     uint32_t mDataSize;
+    uint32_t mDataRead;
 
     // begin/end offsets of the current command
     uint32_t mCommandBegin;
