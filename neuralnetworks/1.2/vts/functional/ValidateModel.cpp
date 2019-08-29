@@ -21,19 +21,12 @@
 #include "GeneratedTestHarness.h"
 #include "VtsHalNeuralnetworks.h"
 
-namespace android {
-namespace hardware {
-namespace neuralnetworks {
-namespace V1_2 {
+namespace android::hardware::neuralnetworks::V1_2::vts::functional {
 
+using implementation::PreparedModelCallback;
+using V1_0::ErrorStatus;
 using V1_0::OperandLifeTime;
 using V1_1::ExecutionPreference;
-
-namespace vts {
-namespace functional {
-
-using ::android::hardware::neuralnetworks::V1_2::implementation::ExecutionCallback;
-using ::android::hardware::neuralnetworks::V1_2::implementation::PreparedModelCallback;
 using HidlToken = hidl_array<uint8_t, static_cast<uint32_t>(Constant::BYTE_SIZE_OF_CACHE_TOKEN)>;
 
 ///////////////////////// UTILITY FUNCTIONS /////////////////////////
@@ -54,7 +47,6 @@ static void validatePrepareModel(const sp<IDevice>& device, const std::string& m
     SCOPED_TRACE(message + " [prepareModel_1_2]");
 
     sp<PreparedModelCallback> preparedModelCallback = new PreparedModelCallback();
-    ASSERT_NE(nullptr, preparedModelCallback.get());
     Return<ErrorStatus> prepareLaunchStatus =
             device->prepareModel_1_2(model, preference, hidl_vec<hidl_handle>(),
                                      hidl_vec<hidl_handle>(), HidlToken(), preparedModelCallback);
@@ -224,7 +216,7 @@ static std::vector<int32_t> getInvalidZeroPoints(OperandType type) {
         case OperandType::TENSOR_QUANT8_ASYMM:
             return {-1, 256};
         case OperandType::TENSOR_QUANT8_SYMM:
-          return {-129, -1, 1, 128};
+            return {-129, -1, 1, 128};
         case OperandType::TENSOR_QUANT16_ASYMM:
             return {-1, 65536};
         case OperandType::TENSOR_QUANT16_SYMM:
@@ -490,15 +482,15 @@ static bool removeOperandSkip(size_t operand, const Model& model) {
                 }
             }
         }
-        // BIDIRECTIONAL_SEQUENCE_LSTM and BIDIRECTIONAL_SEQUENCE_RNN can have
-        // either one or two outputs depending on their mergeOutputs parameter.
+        // BIDIRECTIONAL_SEQUENCE_LSTM and BIDIRECTIONAL_SEQUENCE_RNN can have either one or two
+        // outputs depending on their mergeOutputs parameter.
         if (operation.type == OperationType::BIDIRECTIONAL_SEQUENCE_LSTM ||
             operation.type == OperationType::BIDIRECTIONAL_SEQUENCE_RNN) {
-          for (const size_t outOprand : operation.outputs) {
-            if (operand == outOprand) {
-              return true;
+            for (const size_t outOprand : operation.outputs) {
+                if (operand == outOprand) {
+                    return true;
+                }
             }
-          }
         }
     }
     return false;
@@ -692,8 +684,9 @@ static void mutateExecutionPreferenceTest(const sp<IDevice>& device, const Model
     for (int32_t preference : invalidExecutionPreferences) {
         const std::string message =
                 "mutateExecutionPreferenceTest: preference " + std::to_string(preference);
-        validate(device, message, model, [](Model*) {},
-                 static_cast<ExecutionPreference>(preference));
+        validate(
+                device, message, model, [](Model*) {},
+                static_cast<ExecutionPreference>(preference));
     }
 }
 
@@ -717,9 +710,4 @@ void ValidationTest::validateModel(const Model& model) {
     mutateExecutionPreferenceTest(device, model);
 }
 
-}  // namespace functional
-}  // namespace vts
-}  // namespace V1_2
-}  // namespace neuralnetworks
-}  // namespace hardware
-}  // namespace android
+}  // namespace android::hardware::neuralnetworks::V1_2::vts::functional
