@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_HARDWARE_NEURALNETWORKS_V1_1_VTS_HAL_NEURALNETWORKS_H
-#define ANDROID_HARDWARE_NEURALNETWORKS_V1_1_VTS_HAL_NEURALNETWORKS_H
+#ifndef VTS_HAL_NEURALNETWORKS_V1_1_H
+#define VTS_HAL_NEURALNETWORKS_V1_1_H
 
 #include <android/hardware/neuralnetworks/1.0/types.h>
 #include <android/hardware/neuralnetworks/1.1/IDevice.h>
@@ -28,8 +28,6 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include <vector>
-
-#include "TestHarness.h"
 
 namespace android {
 namespace hardware {
@@ -71,6 +69,20 @@ class NeuralnetworksHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     sp<IDevice> device;
 };
 
+// Tag for the validation tests
+class ValidationTest : public NeuralnetworksHidlTest {
+   protected:
+     void validateEverything(const Model& model, const std::vector<Request>& request);
+
+   private:
+     void validateModel(const Model& model);
+     void validateRequests(const sp<IPreparedModel>& preparedModel,
+                           const std::vector<Request>& requests);
+};
+
+// Tag for the generated tests
+class GeneratedTest : public NeuralnetworksHidlTest {};
+
 }  // namespace functional
 }  // namespace vts
 }  // namespace V1_1
@@ -86,4 +98,4 @@ namespace android::hardware::neuralnetworks::V1_0 {
 
 }  // namespace android::hardware::neuralnetworks::V1_0
 
-#endif  // ANDROID_HARDWARE_NEURALNETWORKS_V1_1_VTS_HAL_NEURALNETWORKS_H
+#endif  // VTS_HAL_NEURALNETWORKS_V1_1_H
