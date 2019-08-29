@@ -28,13 +28,15 @@
 #include <algorithm>
 #include <vector>
 
-namespace android::hardware::neuralnetworks {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
 
 using namespace test_helper;
-using hidl::memory::V1_0::IMemory;
-using V1_0::DataLocation;
-using V1_0::Request;
-using V1_0::RequestArgument;
+using ::android::hardware::neuralnetworks::V1_0::DataLocation;
+using ::android::hardware::neuralnetworks::V1_0::Request;
+using ::android::hardware::neuralnetworks::V1_0::RequestArgument;
+using ::android::hidl::memory::V1_0::IMemory;
 
 constexpr uint32_t kInputPoolIndex = 0;
 constexpr uint32_t kOutputPoolIndex = 1;
@@ -116,4 +118,6 @@ std::vector<TestBuffer> getOutputBuffers(const Request& request) {
     return outputBuffers;
 }
 
-}  // namespace android::hardware::neuralnetworks
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android

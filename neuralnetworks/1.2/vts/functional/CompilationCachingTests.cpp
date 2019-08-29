@@ -17,6 +17,7 @@
 #define LOG_TAG "neuralnetworks_hidl_hal_test"
 
 #include <android-base/logging.h>
+#include <android/hidl/memory/1.0/IMemory.h>
 #include <ftw.h>
 #include <gtest/gtest.h>
 #include <hidlmemory/mapping.h>
@@ -44,12 +45,20 @@ namespace generated_tests::mobilenet_quantized {
 const ::test_helper::TestModel& get_test_model();
 }  // namespace generated_tests::mobilenet_quantized
 
-namespace android::hardware::neuralnetworks::V1_2::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_2 {
+namespace vts {
+namespace functional {
 
 using namespace test_helper;
-using implementation::PreparedModelCallback;
-using V1_0::ErrorStatus;
-using V1_1::ExecutionPreference;
+using ::android::hardware::neuralnetworks::V1_0::OperandLifeTime;
+using ::android::hardware::neuralnetworks::V1_1::ExecutionPreference;
+using ::android::hardware::neuralnetworks::V1_2::implementation::ExecutionCallback;
+using ::android::hardware::neuralnetworks::V1_2::implementation::PreparedModelCallback;
+using ::android::hidl::memory::V1_0::IMemory;
+using ::android::nn::allocateSharedMemory;
 
 namespace float32_model {
 
@@ -298,7 +307,7 @@ class CompilationCachingTestBase : public NeuralnetworksHidlTest {
     }
 
     // See if the service can handle the model.
-    bool isModelFullySupported(const Model& model) {
+    bool isModelFullySupported(const V1_2::Model& model) {
         bool fullySupportsModel = false;
         Return<void> supportedCall = device->getSupportedOperations_1_2(
                 model,
@@ -312,13 +321,14 @@ class CompilationCachingTestBase : public NeuralnetworksHidlTest {
         return fullySupportsModel;
     }
 
-    void saveModelToCache(const Model& model, const hidl_vec<hidl_handle>& modelCache,
+    void saveModelToCache(const V1_2::Model& model, const hidl_vec<hidl_handle>& modelCache,
                           const hidl_vec<hidl_handle>& dataCache,
                           sp<IPreparedModel>* preparedModel = nullptr) {
         if (preparedModel != nullptr) *preparedModel = nullptr;
 
         // Launch prepare model.
         sp<PreparedModelCallback> preparedModelCallback = new PreparedModelCallback();
+        ASSERT_NE(nullptr, preparedModelCallback.get());
         hidl_array<uint8_t, sizeof(mToken)> cacheToken(mToken);
         Return<ErrorStatus> prepareLaunchStatus =
                 device->prepareModel_1_2(model, ExecutionPreference::FAST_SINGLE_ANSWER, modelCache,
@@ -330,8 +340,9 @@ class CompilationCachingTestBase : public NeuralnetworksHidlTest {
         preparedModelCallback->wait();
         ASSERT_EQ(preparedModelCallback->getStatus(), ErrorStatus::NONE);
         if (preparedModel != nullptr) {
-            *preparedModel = IPreparedModel::castFrom(preparedModelCallback->getPreparedModel())
-                                     .withDefault(nullptr);
+            *preparedModel =
+                    V1_2::IPreparedModel::castFrom(preparedModelCallback->getPreparedModel())
+                            .withDefault(nullptr);
         }
     }
 
@@ -347,7 +358,7 @@ class CompilationCachingTestBase : public NeuralnetworksHidlTest {
         return false;
     }
 
-    bool checkEarlyTermination(const Model& model) {
+    bool checkEarlyTermination(const V1_2::Model& model) {
         if (!isModelFullySupported(model)) {
             LOG(INFO) << "NN VTS: Early termination of test because vendor service cannot "
                          "prepare model that it does not support.";
@@ -364,6 +375,7 @@ class CompilationCachingTestBase : public NeuralnetworksHidlTest {
                                sp<IPreparedModel>* preparedModel, ErrorStatus* status) {
         // Launch prepare model from cache.
         sp<PreparedModelCallback> preparedModelCallback = new PreparedModelCallback();
+        ASSERT_NE(nullptr, preparedModelCallback.get());
         hidl_array<uint8_t, sizeof(mToken)> cacheToken(mToken);
         Return<ErrorStatus> prepareLaunchStatus = device->prepareModelFromCache(
                 modelCache, dataCache, cacheToken, preparedModelCallback);
@@ -377,7 +389,7 @@ class CompilationCachingTestBase : public NeuralnetworksHidlTest {
         // Retrieve prepared model.
         preparedModelCallback->wait();
         *status = preparedModelCallback->getStatus();
-        *preparedModel = IPreparedModel::castFrom(preparedModelCallback->getPreparedModel())
+        *preparedModel = V1_2::IPreparedModel::castFrom(preparedModelCallback->getPreparedModel())
                                  .withDefault(nullptr);
     }
 
@@ -1341,4 +1353,9 @@ TEST_P(CompilationCachingSecurityTest, WrongToken) {
 INSTANTIATE_TEST_CASE_P(TestCompilationCaching, CompilationCachingSecurityTest,
                         ::testing::Combine(kOperandTypeChoices, ::testing::Range(0U, 10U)));
 
-}  // namespace android::hardware::neuralnetworks::V1_2::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_2
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
