@@ -31,6 +31,8 @@ struct Bar : public IBar {
     Bar();
 
     // Methods from ::android::hardware::tests::foo::V1_0::IFoo follow.
+    virtual Return<void> convertToBoolIfSmall(Discriminator d, const hidl_vec<Union>& u,
+                                              convertToBoolIfSmall_cb _hidl_cb) override;
     virtual Return<void> doThis(float param)  override;
     virtual Return<int32_t> doThatAndReturnSomething(int64_t param)  override;
     virtual Return<double> doQuiteABit(int32_t a, int64_t b, float c, double d)  override;
@@ -54,6 +56,8 @@ struct Bar : public IBar {
     virtual Return<void> createMyHandle(createMyHandle_cb _hidl_cb)  override;
     virtual Return<void> createHandles(uint32_t size, createHandles_cb _hidl_cb)  override;
     virtual Return<void> closeHandles()  override;
+    virtual Return<void> repeatWithFmq(const IFoo::WithFmq& withFmq,
+                                       repeatWithFmq_cb _hidl_cb) override;
 
     Return<void> haveAVectorOfInterfaces(
             const hidl_vec<sp<ISimple> > &in,
