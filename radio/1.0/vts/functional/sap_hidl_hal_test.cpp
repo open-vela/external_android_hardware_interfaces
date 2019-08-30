@@ -17,7 +17,8 @@
 #include <sap_hidl_hal_utils.h>
 
 void SapHidlTest::SetUp() {
-    sap = ::testing::VtsHalHidlTargetTestBase::getService<ISap>(hidl_string(SAP_SERVICE_NAME));
+    sap = ::testing::VtsHalHidlTargetTestBase::getService<ISap>(
+        SapHidlEnvironment::Instance()->getServiceName<ISap>(hidl_string(SAP_SERVICE_NAME)));
     ASSERT_NE(sap, nullptr);
 
     sapCb = new SapCallback(*this);
@@ -30,10 +31,12 @@ void SapHidlTest::SetUp() {
 
 void SapHidlTest::TearDown() {}
 
-void SapHidlTest::notify() {
+void SapHidlTest::notify(int receivedToken) {
     std::unique_lock<std::mutex> lock(mtx);
     count++;
-    cv.notify_one();
+    if (token == receivedToken) {
+        cv.notify_one();
+    }
 }
 
 std::cv_status SapHidlTest::wait() {
