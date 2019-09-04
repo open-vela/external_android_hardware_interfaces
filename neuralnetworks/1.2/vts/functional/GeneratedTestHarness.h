@@ -23,28 +23,34 @@
 #include <functional>
 #include <vector>
 #include "TestHarness.h"
+#include "VtsHalNeuralnetworks.h"
 
-namespace android {
-namespace hardware {
-namespace neuralnetworks {
-namespace V1_2 {
-namespace generated_tests {
+namespace android::hardware::neuralnetworks::V1_2::vts::functional {
+
+class GeneratedTestBase
+    : public NeuralnetworksHidlTest,
+      public testing::WithParamInterface<test_helper::TestModelManager::TestParam> {
+  protected:
+    const test_helper::TestModel& kTestModel = *GetParam().second;
+};
+
+#define INSTANTIATE_GENERATED_TEST(TestSuite, filter)                                        \
+    INSTANTIATE_TEST_SUITE_P(                                                                \
+            TestGenerated, TestSuite,                                                        \
+            testing::ValuesIn(::test_helper::TestModelManager::get().getTestModels(filter)), \
+            [](const auto& info) { return info.param.first; })
+
+// Tag for the validation tests, instantiated in VtsHalNeuralnetworks.cpp.
+// TODO: Clean up the hierarchy for ValidationTest.
+class ValidationTest : public GeneratedTestBase {};
 
 Model createModel(const ::test_helper::TestModel& testModel);
 
-void PrepareModel(const sp<V1_2::IDevice>& device, const V1_2::Model& model,
-                  sp<V1_2::IPreparedModel>* preparedModel);
+void PrepareModel(const sp<IDevice>& device, const Model& model, sp<IPreparedModel>* preparedModel);
 
-void EvaluatePreparedModel(const sp<V1_2::IPreparedModel>& preparedModel,
+void EvaluatePreparedModel(const sp<IPreparedModel>& preparedModel,
                            const ::test_helper::TestModel& testModel, bool testDynamicOutputShape);
 
-void Execute(const sp<V1_2::IDevice>& device, const ::test_helper::TestModel& testModel,
-             bool testDynamicOutputShape = false);
-
-}  // namespace generated_tests
-}  // namespace V1_2
-}  // namespace neuralnetworks
-}  // namespace hardware
-}  // namespace android
+}  // namespace android::hardware::neuralnetworks::V1_2::vts::functional
 
 #endif  // ANDROID_HARDWARE_NEURALNETWORKS_V1_2_GENERATED_TEST_HARNESS_H
