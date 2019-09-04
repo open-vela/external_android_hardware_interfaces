@@ -391,7 +391,8 @@ static void validateBurstSanitized(const sp<IPreparedModel>& preparedModel,
 
 ///////////////////////////// ENTRY POINT //////////////////////////////////
 
-void validateBurst(const sp<IPreparedModel>& preparedModel, const Request& request) {
+void ValidationTest::validateBurst(const sp<IPreparedModel>& preparedModel,
+                                   const Request& request) {
     ASSERT_NO_FATAL_FAILURE(validateBurstSerialization(preparedModel, request));
     ASSERT_NO_FATAL_FAILURE(validateBurstFmqLength(preparedModel, request));
     ASSERT_NO_FATAL_FAILURE(validateBurstSanitized(preparedModel, request));
