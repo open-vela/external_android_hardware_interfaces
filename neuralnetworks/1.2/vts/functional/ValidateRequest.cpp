@@ -148,12 +148,14 @@ static void removeOutputTest(const sp<IPreparedModel>& preparedModel, const Requ
 
 ///////////////////////////// ENTRY POINT //////////////////////////////////
 
-void validateRequest(const sp<IPreparedModel>& preparedModel, const Request& request) {
+void ValidationTest::validateRequest(const sp<IPreparedModel>& preparedModel,
+                                     const Request& request) {
     removeInputTest(preparedModel, request);
     removeOutputTest(preparedModel, request);
 }
 
-void validateRequestFailure(const sp<IPreparedModel>& preparedModel, const Request& request) {
+void ValidationTest::validateRequestFailure(const sp<IPreparedModel>& preparedModel,
+                                            const Request& request) {
     SCOPED_TRACE("Expecting request to fail [executeSynchronously]");
     Return<void> executeStatus = preparedModel->executeSynchronously(
             request, MeasureTiming::NO,
