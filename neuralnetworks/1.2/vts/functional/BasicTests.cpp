@@ -18,10 +18,13 @@
 
 #include "VtsHalNeuralnetworks.h"
 
-namespace android::hardware::neuralnetworks::V1_2::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_2 {
+namespace vts {
+namespace functional {
 
-using V1_0::DeviceStatus;
-using V1_0::ErrorStatus;
 using V1_0::PerformanceInfo;
 
 // create device test
@@ -110,4 +113,9 @@ TEST_F(NeuralnetworksHidlTest, getNumberOfCacheFilesNeeded) {
             });
     EXPECT_TRUE(ret.isOk());
 }
-}  // namespace android::hardware::neuralnetworks::V1_2::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_2
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android

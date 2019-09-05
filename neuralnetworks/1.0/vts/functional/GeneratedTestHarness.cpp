@@ -20,7 +20,6 @@
 #include "1.0/Utils.h"
 #include "MemoryUtils.h"
 #include "TestHarness.h"
-#include "VtsHalNeuralnetworks.h"
 
 #include <android-base/logging.h>
 #include <android/hardware/neuralnetworks/1.0/IDevice.h>
@@ -33,12 +32,22 @@
 #include <gtest/gtest.h>
 #include <iostream>
 
-namespace android::hardware::neuralnetworks::V1_0::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_0 {
+namespace generated_tests {
 
 using namespace test_helper;
-using hidl::memory::V1_0::IMemory;
-using implementation::ExecutionCallback;
-using implementation::PreparedModelCallback;
+using ::android::hardware::neuralnetworks::V1_0::ErrorStatus;
+using ::android::hardware::neuralnetworks::V1_0::IDevice;
+using ::android::hardware::neuralnetworks::V1_0::IPreparedModel;
+using ::android::hardware::neuralnetworks::V1_0::Model;
+using ::android::hardware::neuralnetworks::V1_0::Request;
+using ::android::hardware::neuralnetworks::V1_0::RequestArgument;
+using ::android::hardware::neuralnetworks::V1_0::implementation::ExecutionCallback;
+using ::android::hardware::neuralnetworks::V1_0::implementation::PreparedModelCallback;
+using ::android::hidl::memory::V1_0::IMemory;
 
 Model createModel(const TestModel& testModel) {
     // Model operands.
@@ -142,57 +151,49 @@ void EvaluatePreparedModel(const sp<IPreparedModel>& preparedModel, const TestMo
     checkResults(testModel, outputs);
 }
 
-// Tag for the generated tests
-class GeneratedTest : public GeneratedTestBase {
-  protected:
-    void Execute(const TestModel& testModel) {
-        Model model = createModel(testModel);
+void Execute(const sp<IDevice>& device, const TestModel& testModel) {
+    Model model = createModel(testModel);
 
-        // see if service can handle model
-        bool fullySupportsModel = false;
-        Return<void> supportedCall = device->getSupportedOperations(
-                model, [&fullySupportsModel](ErrorStatus status, const hidl_vec<bool>& supported) {
-                    ASSERT_EQ(ErrorStatus::NONE, status);
-                    ASSERT_NE(0ul, supported.size());
-                    fullySupportsModel = std::all_of(supported.begin(), supported.end(),
-                                                     [](bool valid) { return valid; });
-                });
-        ASSERT_TRUE(supportedCall.isOk());
+    // see if service can handle model
+    bool fullySupportsModel = false;
+    Return<void> supportedCall = device->getSupportedOperations(
+            model, [&fullySupportsModel](ErrorStatus status, const hidl_vec<bool>& supported) {
+                ASSERT_EQ(ErrorStatus::NONE, status);
+                ASSERT_NE(0ul, supported.size());
+                fullySupportsModel = std::all_of(supported.begin(), supported.end(),
+                                                 [](bool valid) { return valid; });
+            });
+    ASSERT_TRUE(supportedCall.isOk());
 
-        // launch prepare model
-        sp<PreparedModelCallback> preparedModelCallback = new PreparedModelCallback();
-        Return<ErrorStatus> prepareLaunchStatus =
-                device->prepareModel(model, preparedModelCallback);
-        ASSERT_TRUE(prepareLaunchStatus.isOk());
-        ASSERT_EQ(ErrorStatus::NONE, static_cast<ErrorStatus>(prepareLaunchStatus));
+    // launch prepare model
+    sp<PreparedModelCallback> preparedModelCallback = new PreparedModelCallback();
+    Return<ErrorStatus> prepareLaunchStatus = device->prepareModel(model, preparedModelCallback);
+    ASSERT_TRUE(prepareLaunchStatus.isOk());
+    ASSERT_EQ(ErrorStatus::NONE, static_cast<ErrorStatus>(prepareLaunchStatus));
 
-        // retrieve prepared model
-        preparedModelCallback->wait();
-        ErrorStatus prepareReturnStatus = preparedModelCallback->getStatus();
-        sp<IPreparedModel> preparedModel = preparedModelCallback->getPreparedModel();
+    // retrieve prepared model
+    preparedModelCallback->wait();
+    ErrorStatus prepareReturnStatus = preparedModelCallback->getStatus();
+    sp<IPreparedModel> preparedModel = preparedModelCallback->getPreparedModel();
 
-        // early termination if vendor service cannot fully prepare model
-        if (!fullySupportsModel && prepareReturnStatus != ErrorStatus::NONE) {
-            ASSERT_EQ(nullptr, preparedModel.get());
-            LOG(INFO) << "NN VTS: Early termination of test because vendor service cannot "
-                         "prepare model that it does not support.";
-            std::cout << "[          ]   Early termination of test because vendor service cannot "
-                         "prepare model that it does not support."
-                      << std::endl;
-            GTEST_SKIP();
-        }
-        EXPECT_EQ(ErrorStatus::NONE, prepareReturnStatus);
-        ASSERT_NE(nullptr, preparedModel.get());
-
-        EvaluatePreparedModel(preparedModel, testModel);
+    // early termination if vendor service cannot fully prepare model
+    if (!fullySupportsModel && prepareReturnStatus != ErrorStatus::NONE) {
+        ASSERT_EQ(nullptr, preparedModel.get());
+        LOG(INFO) << "NN VTS: Early termination of test because vendor service cannot "
+                     "prepare model that it does not support.";
+        std::cout << "[          ]   Early termination of test because vendor service cannot "
+                     "prepare model that it does not support."
+                  << std::endl;
+        GTEST_SKIP();
     }
-};
+    EXPECT_EQ(ErrorStatus::NONE, prepareReturnStatus);
+    ASSERT_NE(nullptr, preparedModel.get());
 
-TEST_P(GeneratedTest, Test) {
-    Execute(*mTestModel);
+    EvaluatePreparedModel(preparedModel, testModel);
 }
 
-INSTANTIATE_GENERATED_TEST(GeneratedTest,
-                           [](const TestModel& testModel) { return !testModel.expectFailure; });
-
-}  // namespace android::hardware::neuralnetworks::V1_0::vts::functional
+}  // namespace generated_tests
+}  // namespace V1_0
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
