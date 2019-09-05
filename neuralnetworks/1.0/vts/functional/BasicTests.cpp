@@ -25,7 +25,7 @@ TEST_F(NeuralnetworksHidlTest, CreateDevice) {}
 
 // status test
 TEST_F(NeuralnetworksHidlTest, StatusTest) {
-    Return<DeviceStatus> status = kDevice->getStatus();
+    Return<DeviceStatus> status = device->getStatus();
     ASSERT_TRUE(status.isOk());
     EXPECT_EQ(DeviceStatus::AVAILABLE, static_cast<DeviceStatus>(status));
 }
@@ -33,7 +33,7 @@ TEST_F(NeuralnetworksHidlTest, StatusTest) {
 // initialization
 TEST_F(NeuralnetworksHidlTest, GetCapabilitiesTest) {
     Return<void> ret =
-            kDevice->getCapabilities([](ErrorStatus status, const Capabilities& capabilities) {
+            device->getCapabilities([](ErrorStatus status, const Capabilities& capabilities) {
                 EXPECT_EQ(ErrorStatus::NONE, status);
                 EXPECT_LT(0.0f, capabilities.float32Performance.execTime);
                 EXPECT_LT(0.0f, capabilities.float32Performance.powerUsage);
