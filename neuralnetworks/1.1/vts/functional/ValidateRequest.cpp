@@ -71,7 +71,8 @@ static void removeOutputTest(const sp<IPreparedModel>& preparedModel, const Requ
 
 ///////////////////////////// ENTRY POINT //////////////////////////////////
 
-void validateRequest(const sp<IPreparedModel>& preparedModel, const Request& request) {
+void ValidationTest::validateRequest(const sp<IPreparedModel>& preparedModel,
+                                     const Request& request) {
     removeInputTest(preparedModel, request);
     removeOutputTest(preparedModel, request);
 }
