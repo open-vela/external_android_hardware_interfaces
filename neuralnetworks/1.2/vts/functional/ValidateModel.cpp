@@ -482,15 +482,15 @@ static bool removeOperandSkip(size_t operand, const Model& model) {
                 }
             }
         }
-        // BIDIRECTIONAL_SEQUENCE_LSTM and BIDIRECTIONAL_SEQUENCE_RNN can have either one or two
-        // outputs depending on their mergeOutputs parameter.
+        // BIDIRECTIONAL_SEQUENCE_LSTM and BIDIRECTIONAL_SEQUENCE_RNN can have
+        // either one or two outputs depending on their mergeOutputs parameter.
         if (operation.type == OperationType::BIDIRECTIONAL_SEQUENCE_LSTM ||
             operation.type == OperationType::BIDIRECTIONAL_SEQUENCE_RNN) {
-            for (const size_t outOprand : operation.outputs) {
-                if (operand == outOprand) {
-                    return true;
-                }
+          for (const size_t outOprand : operation.outputs) {
+            if (operand == outOprand) {
+              return true;
             }
+          }
         }
     }
     return false;
@@ -692,7 +692,7 @@ static void mutateExecutionPreferenceTest(const sp<IDevice>& device, const Model
 
 ////////////////////////// ENTRY POINT //////////////////////////////
 
-void validateModel(const sp<IDevice>& device, const Model& model) {
+void ValidationTest::validateModel(const Model& model) {
     mutateOperandTypeTest(device, model);
     mutateOperandRankTest(device, model);
     mutateOperandScaleTest(device, model);
