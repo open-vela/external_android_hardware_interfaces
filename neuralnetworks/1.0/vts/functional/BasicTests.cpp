@@ -18,7 +18,12 @@
 
 #include "VtsHalNeuralnetworks.h"
 
-namespace android::hardware::neuralnetworks::V1_0::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_0 {
+namespace vts {
+namespace functional {
 
 // create device test
 TEST_F(NeuralnetworksHidlTest, CreateDevice) {}
@@ -33,14 +38,19 @@ TEST_F(NeuralnetworksHidlTest, StatusTest) {
 // initialization
 TEST_F(NeuralnetworksHidlTest, GetCapabilitiesTest) {
     Return<void> ret =
-            device->getCapabilities([](ErrorStatus status, const Capabilities& capabilities) {
-                EXPECT_EQ(ErrorStatus::NONE, status);
-                EXPECT_LT(0.0f, capabilities.float32Performance.execTime);
-                EXPECT_LT(0.0f, capabilities.float32Performance.powerUsage);
-                EXPECT_LT(0.0f, capabilities.quantized8Performance.execTime);
-                EXPECT_LT(0.0f, capabilities.quantized8Performance.powerUsage);
-            });
+        device->getCapabilities([](ErrorStatus status, const Capabilities& capabilities) {
+            EXPECT_EQ(ErrorStatus::NONE, status);
+            EXPECT_LT(0.0f, capabilities.float32Performance.execTime);
+            EXPECT_LT(0.0f, capabilities.float32Performance.powerUsage);
+            EXPECT_LT(0.0f, capabilities.quantized8Performance.execTime);
+            EXPECT_LT(0.0f, capabilities.quantized8Performance.powerUsage);
+        });
     EXPECT_TRUE(ret.isOk());
 }
 
-}  // namespace android::hardware::neuralnetworks::V1_0::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_0
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
