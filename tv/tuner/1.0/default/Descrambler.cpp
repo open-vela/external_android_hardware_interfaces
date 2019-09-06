@@ -44,24 +44,6 @@ Return<Result> Descrambler::setDemuxSource(uint32_t demuxId) {
     return Result::SUCCESS;
 }
 
-Return<Result> Descrambler::setKeyToken(const hidl_vec<uint8_t>& /* keyToken */) {
-    ALOGV("%s", __FUNCTION__);
-
-    return Result::SUCCESS;
-}
-
-Return<Result> Descrambler::addPid(uint16_t /* pid */) {
-    ALOGV("%s", __FUNCTION__);
-
-    return Result::SUCCESS;
-}
-
-Return<Result> Descrambler::removePid(uint16_t /* pid */) {
-    ALOGV("%s", __FUNCTION__);
-
-    return Result::SUCCESS;
-}
-
 Return<Result> Descrambler::close() {
     ALOGV("%s", __FUNCTION__);
     mDemuxSet = false;
