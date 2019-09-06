@@ -47,9 +47,6 @@ class Tuner : public ITuner {
     vector<sp<Frontend>> mFrontends;
     // To maintain how many Frontends we have
     int mFrontendSize;
-    // The last used demux id. Initial value is -1.
-    // First used id will be 0.
-    int mLastUsedId = -1;
 };
 
 }  // namespace implementation
