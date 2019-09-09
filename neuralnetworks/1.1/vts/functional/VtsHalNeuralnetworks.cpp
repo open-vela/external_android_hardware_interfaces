@@ -17,21 +17,21 @@
 #define LOG_TAG "neuralnetworks_hidl_hal_test"
 
 #include "VtsHalNeuralnetworks.h"
+#include "1.0/Callbacks.h"
+#include "1.0/Utils.h"
+#include "GeneratedTestHarness.h"
+#include "TestHarness.h"
 
 #include <android-base/logging.h>
 
-#include "Callbacks.h"
+namespace android::hardware::neuralnetworks::V1_1::vts::functional {
 
-namespace android {
-namespace hardware {
-namespace neuralnetworks {
-namespace V1_1 {
-namespace vts {
-namespace functional {
+using V1_0::ErrorStatus;
+using V1_0::IPreparedModel;
+using V1_0::Request;
+using V1_0::implementation::PreparedModelCallback;
 
-using ::android::hardware::neuralnetworks::V1_2::implementation::PreparedModelCallback;
-
-static void createPreparedModel(const sp<IDevice>& device, const V1_1::Model& model,
+static void createPreparedModel(const sp<IDevice>& device, const Model& model,
                                 sp<IPreparedModel>* preparedModel) {
     ASSERT_NE(nullptr, preparedModel);
 
@@ -48,7 +48,6 @@ static void createPreparedModel(const sp<IDevice>& device, const V1_1::Model& mo
 
     // launch prepare model
     sp<PreparedModelCallback> preparedModelCallback = new PreparedModelCallback();
-    ASSERT_NE(nullptr, preparedModelCallback.get());
     Return<ErrorStatus> prepareLaunchStatus = device->prepareModel_1_1(
             model, ExecutionPreference::FAST_SINGLE_ANSWER, preparedModelCallback);
     ASSERT_TRUE(prepareLaunchStatus.isOk());
@@ -80,10 +79,6 @@ static void createPreparedModel(const sp<IDevice>& device, const V1_1::Model& mo
 }
 
 // A class for test environment setup
-NeuralnetworksHidlEnvironment::NeuralnetworksHidlEnvironment() {}
-
-NeuralnetworksHidlEnvironment::~NeuralnetworksHidlEnvironment() {}
-
 NeuralnetworksHidlEnvironment* NeuralnetworksHidlEnvironment::getInstance() {
     // This has to return a "new" object because it is freed inside
     // ::testing::AddGlobalTestEnvironment when the gtest is being torn down
@@ -96,14 +91,8 @@ void NeuralnetworksHidlEnvironment::registerTestServices() {
 }
 
 // The main test class for NEURALNETWORK HIDL HAL.
-NeuralnetworksHidlTest::NeuralnetworksHidlTest() {}
-
-NeuralnetworksHidlTest::~NeuralnetworksHidlTest() {}
-
 void NeuralnetworksHidlTest::SetUp() {
     ::testing::VtsHalHidlTargetTestBase::SetUp();
-    device = ::testing::VtsHalHidlTargetTestBase::getService<IDevice>(
-            NeuralnetworksHidlEnvironment::getInstance());
 
 #ifdef PRESUBMIT_NOT_VTS
     const std::string name =
@@ -118,11 +107,10 @@ void NeuralnetworksHidlTest::SetUp() {
 }
 
 void NeuralnetworksHidlTest::TearDown() {
-    device = nullptr;
     ::testing::VtsHalHidlTargetTestBase::TearDown();
 }
 
-void ValidationTest::validateEverything(const Model& model, const std::vector<Request>& requests) {
+void ValidationTest::validateEverything(const Model& model, const Request& request) {
     validateModel(model);
 
     // create IPreparedModel
@@ -132,15 +120,19 @@ void ValidationTest::validateEverything(const Model& model, const std::vector<Re
         return;
     }
 
-    validateRequests(preparedModel, requests);
+    validateRequest(preparedModel, request);
 }
 
-}  // namespace functional
-}  // namespace vts
-}  // namespace V1_1
-}  // namespace neuralnetworks
-}  // namespace hardware
-}  // namespace android
+TEST_P(ValidationTest, Test) {
+    const Model model = createModel(*mTestModel);
+    const Request request = createRequest(*mTestModel);
+    ASSERT_FALSE(mTestModel->expectFailure);
+    validateEverything(model, request);
+}
+
+INSTANTIATE_GENERATED_TEST(ValidationTest, [](const test_helper::TestModel&) { return true; });
+
+}  // namespace android::hardware::neuralnetworks::V1_1::vts::functional
 
 namespace android::hardware::neuralnetworks::V1_0 {
 
