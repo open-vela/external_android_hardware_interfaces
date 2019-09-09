@@ -201,7 +201,7 @@ interface IRadioResponse {
      *   RadioError:NO_NETWORK_FOUND
      *   RadioError:INVALID_CALL_ID
      *   RadioError:DEVICE_IN_USE
-     *   RadioError:MODE_NOT_SUPPORTED
+     *   RadioError:OPERATION_NOT_ALLOWED
      *   RadioError:ABORTED
      *   RadioError:SYSTEM_ERR
      *   RadioError:REQUEST_NOT_SUPPORTED
@@ -537,7 +537,6 @@ interface IRadioResponse {
      *   RadioError:INVALID_SMSC_ADDRESS
      *   RadioError:MODEM_ERR
      *   RadioError:NETWORK_ERR
-     *   RadioError:MODE_NOT_SUPPORTED
      *   RadioError:INTERNAL_ERR
      *   RadioError:REQUEST_NOT_SUPPORTED
      *   RadioError:INVALID_MODEM_STATE
@@ -568,7 +567,6 @@ interface IRadioResponse {
      *   RadioError:INVALID_SMSC_ADDRESS
      *   RadioError:MODEM_ERR
      *   RadioError:NETWORK_ERR
-     *   RadioError:MODE_NOT_SUPPORTED
      *   RadioError:INTERNAL_ERR
      *   RadioError:REQUEST_NOT_SUPPORTED
      *   RadioError:INVALID_MODEM_STATE
@@ -1206,7 +1204,7 @@ interface IRadioResponse {
      *   RadioError:NO_MEMORY
      *   RadioError:NO_RESOURCES
      *   RadioError:INVALID_MODEM_STATE
-     *   RadioError:MODE_NOT_SUPPORTED
+     *   RadioError:OPERATION_NOT_ALLOWED
      *   RadioError:INVALID_SMSC_ADDRESS
      *   RadioError:RADIO_NOT_AVAILABLE
      *   RadioError:SYSTEM_ERR
@@ -1572,6 +1570,7 @@ interface IRadioResponse {
      *   RadioError:INVALID_MODEM_STATE
      *   RadioError:NO_RESOURCES
      *   RadioError:CANCELLED
+     *   RadioError:OPERATION_NOT_ALLOWED
      */
     oneway sendCDMAFeatureCodeResponse(RadioResponseInfo info);
 
@@ -1592,7 +1591,7 @@ interface IRadioResponse {
      *   RadioError:NO_RESOURCES
      *   RadioError:CANCELLED
      *   RadioError:INVALID_MODEM_STATE
-     *   RadioError:MODE_NOT_SUPPORTED
+     *   RadioError:OPERATION_NOT_ALLOWED
      */
     oneway sendBurstDtmfResponse(RadioResponseInfo info);
 
@@ -1616,7 +1615,6 @@ interface IRadioResponse {
      *   RadioError:NETWORK_ERR
      *   RadioError:ENCODING_ERR
      *   RadioError:INVALID_SMSC_ADDRESS
-     *   RadioError:MODE_NOT_SUPPORTED
      *   RadioError:INTERNAL_ERR
      *   RadioError:SYSTEM_ERR
      *   RadioError:REQUEST_NOT_SUPPORTED
@@ -1640,7 +1638,6 @@ interface IRadioResponse {
      *   RadioError:REQUEST_RATE_LIMITED
      *   RadioError:SYSTEM_ERR
      *   RadioError:MODEM_ERR
-     *   RadioError:MODE_NOT_SUPPORTED
      *   RadioError:NETWORK_NOT_READY
      *   RadioError:INVALID_MODEM_STATE
      *   RadioError:INTERNAL_ERR
@@ -1823,7 +1820,6 @@ interface IRadioResponse {
      *   RadioError:NO_MEMORY
      *   RadioError:NO_RESOURCES
      *   RadioError:INVALID_MODEM_STATE
-     *   RadioError:MODE_NOT_SUPPORTED
      *   RadioError:INVALID_SMSC_ADDRESS
      *   RadioError:SYSTEM_ERR
      *   RadioError:REQUEST_NOT_SUPPORTED
@@ -2148,7 +2144,7 @@ interface IRadioResponse {
      *   RadioError:MODEM_ERR
      *   RadioError:NETWORK_ERR
      *   RadioError:ENCODING_ERR
-     *   RadioError:MODE_NOT_SUPPORTED
+     *   RadioError:OPERATION_NOT_ALLOWED
      *   RadioError:INTERNAL_ERR
      *   RadioError:REQUEST_NOT_SUPPORTED
      *   RadioError:NETWORK_NOT_READY

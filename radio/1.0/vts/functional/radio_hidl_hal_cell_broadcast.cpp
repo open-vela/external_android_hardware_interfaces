@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <radio_hidl_hal_utils.h>
+#include <radio_hidl_hal_utils_v1_0.h>
 
 using namespace ::android::hardware::radio::V1_0;
 
@@ -122,9 +122,9 @@ TEST_F(RadioHidlTest, setCdmaBroadcastConfig) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(radioRsp->rspInfo.error == RadioError::NONE ||
-                    CheckGeneralError() ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS);
+        ASSERT_TRUE(CheckGeneralError() ||
+                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
+                    radioRsp->rspInfo.error == RadioError::NONE);
     }
 }
 
@@ -141,8 +141,7 @@ TEST_F(RadioHidlTest, getCdmaBroadcastConfig) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(radioRsp->rspInfo.error == RadioError::NONE ||
-                    CheckGeneralError());
+        ASSERT_TRUE(CheckGeneralError() || radioRsp->rspInfo.error == RadioError::NONE);
     }
 }
 
@@ -160,9 +159,9 @@ TEST_F(RadioHidlTest, setCdmaBroadcastActivation) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(radioRsp->rspInfo.error == RadioError::NONE ||
-                    CheckGeneralError() ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS);
+        ASSERT_TRUE(CheckGeneralError() ||
+                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
+                    radioRsp->rspInfo.error == RadioError::NONE);
     }
 }
 

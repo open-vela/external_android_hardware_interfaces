@@ -25,10 +25,17 @@ namespace composer {
 namespace V2_1 {
 namespace tests {
 
-Composer::Composer() { init(); }
+Composer::Composer() {
+  mComposer = ::testing::VtsHalHidlTargetTestBase::getService<IComposer>();
+  init();
+}
+
+Composer::Composer(const std::string& name) {
+  mComposer = ::testing::VtsHalHidlTargetTestBase::getService<IComposer>(name);
+  init();
+}
 
 void Composer::init() {
-  mComposer = ::testing::VtsHalHidlTargetTestBase::getService<IComposer>();
   ASSERT_NE(nullptr, mComposer.get()) << "failed to get composer service";
 
   std::vector<IComposer::Capability> capabilities = getCapabilities();
@@ -295,6 +302,39 @@ void ComposerClient::setVsyncEnabled(Display display, bool enabled) {
   if (!enabled) {
       usleep(5 * 1000);
   }
+}
+
+void ComposerClient::execute(TestCommandReader* reader,
+                             CommandWriterBase* writer) {
+  bool queueChanged = false;
+  uint32_t commandLength = 0;
+  hidl_vec<hidl_handle> commandHandles;
+  ASSERT_TRUE(
+      writer->writeQueue(&queueChanged, &commandLength, &commandHandles));
+
+  if (queueChanged) {
+    auto ret = mClient->setInputCommandQueue(*writer->getMQDescriptor());
+    ASSERT_EQ(Error::NONE, static_cast<Error>(ret));
+    return;
+  }
+
+  mClient->executeCommands(
+      commandLength, commandHandles,
+      [&](const auto& tmpError, const auto& tmpOutQueueChanged,
+          const auto& tmpOutLength, const auto& tmpOutHandles) {
+        ASSERT_EQ(Error::NONE, tmpError);
+
+        if (tmpOutQueueChanged) {
+          mClient->getOutputCommandQueue(
+              [&](const auto& tmpError, const auto& tmpDescriptor) {
+                ASSERT_EQ(Error::NONE, tmpError);
+                reader->setMQDescriptor(tmpDescriptor);
+              });
+        }
+
+        ASSERT_TRUE(reader->readQueue(tmpOutLength, tmpOutHandles));
+        reader->parse();
+      });
 }
 
 }  // namespace tests

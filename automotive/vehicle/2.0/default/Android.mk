@@ -121,6 +121,7 @@ LOCAL_SHARED_LIBRARIES := \
     $(vhal_v2_0) \
 
 LOCAL_STATIC_LIBRARIES := \
+    libqemu_pipe \
     $(vhal_v2_0)-libproto-native \
 
 LOCAL_CFLAGS += -Wall -Wextra -Werror
@@ -144,6 +145,9 @@ LOCAL_SRC_FILES:= \
     tests/VehicleHalManager_test.cpp \
     tests/VehicleObjectPool_test.cpp \
     tests/VehiclePropConfigIndex_test.cpp \
+
+LOCAL_HEADER_LIBRARIES := \
+    libbase_headers
 
 LOCAL_SHARED_LIBRARIES := \
     libhidlbase \
@@ -183,6 +187,7 @@ LOCAL_STATIC_LIBRARIES := \
     $(vhal_v2_0)-manager-lib \
     $(vhal_v2_0)-default-impl-lib \
     $(vhal_v2_0)-libproto-native \
+    libqemu_pipe \
 
 LOCAL_CFLAGS += -Wall -Wextra -Werror
 

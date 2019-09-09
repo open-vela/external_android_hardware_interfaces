@@ -26,6 +26,7 @@ cc_test {
            "radio_hidl_hal_stk.cpp",
            "radio_hidl_hal_test.cpp",
            "radio_hidl_hal_voice.cpp",
+           "radio_indication.cpp",
            "radio_response.cpp",
            "VtsHalRadioV1_0TargetTest.cpp",
            "vts_test_util.cpp"],
@@ -69,4 +70,16 @@ cc_test {
         "-O0",
         "-g",
     ],
+}
+
+cc_library_static {
+    name: "RadioVtsTestUtilBase",
+    srcs : [
+        "vts_test_util.cpp"
+    ],
+}
+
+cc_library_headers {
+    name: "radio.util.header@1.0",
+    export_include_dirs: ["."],
 }

@@ -65,6 +65,7 @@ LOCAL_EXPORT_C_INCLUDE_DIRS := \
 LOCAL_STATIC_LIBRARIES := \
     $(vhal_v2_0)-default-impl-lib \
     $(vhal_v2_0)-manager-lib \
+    libqemu_pipe \
     $(vhal_v2_1)-manager-lib \
     $(vhal_v2_0)-libproto-native
 
@@ -101,6 +102,7 @@ LOCAL_STATIC_LIBRARIES := \
     $(vhal_v2_0)-manager-lib \
     $(vhal_v2_0)-default-impl-lib \
     $(vhal_v2_1)-default-impl-lib \
+    libqemu_pipe \
     $(vhal_v2_1)-manager-lib \
 
 LOCAL_SHARED_LIBRARIES := \
