@@ -25,20 +25,15 @@
 
 #include <VtsHalHidlTargetCallbackBase.h>
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
-
-#include <chrono>
 #include <queue>
-#include <thread>
 
-using ::android::sp;
-using ::android::hardware::hidl_death_recipient;
-using ::android::hardware::hidl_vec;
-using ::android::hardware::Return;
-using ::android::hardware::Void;
 using ::android::hardware::bluetooth::V1_0::IBluetoothHci;
 using ::android::hardware::bluetooth::V1_0::IBluetoothHciCallbacks;
 using ::android::hardware::bluetooth::V1_0::Status;
+using ::android::hardware::hidl_vec;
+using ::android::hardware::Return;
+using ::android::hardware::Void;
+using ::android::sp;
 
 #define HCI_MINIMUM_HCI_VERSION 5  // Bluetooth Core Specification 3.0 + HS
 #define HCI_MINIMUM_LMP_VERSION 5  // Bluetooth Core Specification 3.0 + HS
@@ -49,7 +44,6 @@ using ::android::hardware::bluetooth::V1_0::Status;
 #define WAIT_FOR_HCI_EVENT_TIMEOUT std::chrono::milliseconds(2000)
 #define WAIT_FOR_SCO_DATA_TIMEOUT std::chrono::milliseconds(1000)
 #define WAIT_FOR_ACL_DATA_TIMEOUT std::chrono::milliseconds(1000)
-#define INTERFACE_CLOSE_DELAY_MS std::chrono::milliseconds(200)
 
 #define COMMAND_HCI_SHOULD_BE_UNKNOWN \
   { 0xff, 0x3B, 0x08, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 }
@@ -105,9 +99,6 @@ using ::android::hardware::bluetooth::V1_0::Status;
   (ACL_PACKET_BOUNDARY_FLAG_FIRST_AUTO_FLUSHABLE \
    << ACL_PACKET_BOUNDARY_FLAG_OFFSET)
 
-// To be removed in VTS release builds
-#define ACL_HANDLE_QCA_DEBUG_MESSAGE 0xedc
-
 constexpr char kCallbackNameAclEventReceived[] = "aclDataReceived";
 constexpr char kCallbackNameHciEventReceived[] = "hciEventReceived";
 constexpr char kCallbackNameInitializationComplete[] = "initializationComplete";
@@ -137,23 +128,6 @@ class ThroughputLogger {
   std::chrono::steady_clock::time_point start_time_;
 };
 
-// Test environment for Bluetooth HIDL HAL.
-class BluetoothHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
- public:
-  // get the test environment singleton
-  static BluetoothHidlEnvironment* Instance() {
-    static BluetoothHidlEnvironment* instance = new BluetoothHidlEnvironment;
-    return instance;
-  }
-
-  virtual void registerTestServices() override {
-    registerTestService<IBluetoothHci>();
-  }
-
- private:
-  BluetoothHidlEnvironment() {}
-};
-
 // The main test class for Bluetooth HIDL HAL.
 class BluetoothHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
@@ -164,11 +138,6 @@ class BluetoothHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     ASSERT_NE(bluetooth, nullptr);
     ALOGI("%s: getService() for bluetooth is %s", __func__,
           bluetooth->isRemote() ? "remote" : "local");
-
-    bluetooth_hci_death_recipient = new BluetoothHciDeathRecipient();
-    ASSERT_NE(bluetooth_hci_death_recipient, nullptr);
-    ASSERT_TRUE(
-        bluetooth->linkToDeath(bluetooth_hci_death_recipient, 0).isOk());
 
     bluetooth_cb = new BluetoothHciCallbacks(*this);
     ASSERT_NE(bluetooth_cb, nullptr);
@@ -183,9 +152,8 @@ class BluetoothHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     acl_cb_count = 0;
     sco_cb_count = 0;
 
-    ASSERT_FALSE(initialized);
-    // Should not be checked in production code
-    ASSERT_TRUE(bluetooth->initialize(bluetooth_cb).isOk());
+    ASSERT_EQ(initialized, false);
+    bluetooth->initialize(bluetooth_cb);
 
     bluetooth_cb->SetWaitTimeout(kCallbackNameInitializationComplete,
                                  WAIT_FOR_INIT_TIMEOUT);
@@ -200,14 +168,11 @@ class BluetoothHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         bluetooth_cb->WaitForCallback(kCallbackNameInitializationComplete)
             .no_timeout);
 
-    ASSERT_TRUE(initialized);
+    ASSERT_EQ(initialized, true);
   }
 
   virtual void TearDown() override {
-    ALOGI("TearDown");
-    // Should not be checked in production code
-    ASSERT_TRUE(bluetooth->close().isOk());
-    std::this_thread::sleep_for(INTERFACE_CLOSE_DELAY_MS);
+    bluetooth->close();
     handle_no_ops();
     EXPECT_EQ(static_cast<size_t>(0), event_queue.size());
     EXPECT_EQ(static_cast<size_t>(0), sco_queue.size());
@@ -228,16 +193,6 @@ class BluetoothHidlTest : public ::testing::VtsHalHidlTargetTestBase {
   void wait_for_event(bool timeout_is_error);
   void wait_for_command_complete_event(hidl_vec<uint8_t> cmd);
   int wait_for_completed_packets_event(uint16_t handle);
-
-  class BluetoothHciDeathRecipient : public hidl_death_recipient {
-   public:
-    void serviceDied(
-        uint64_t /*cookie*/,
-        const android::wp<::android::hidl::base::V1_0::IBase>& /*who*/)
-        override {
-      FAIL();
-    }
-  };
 
   // A simple test implementation of BluetoothHciCallbacks.
   class BluetoothHciCallbacks
@@ -285,7 +240,6 @@ class BluetoothHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 
   sp<IBluetoothHci> bluetooth;
   sp<BluetoothHciCallbacks> bluetooth_cb;
-  sp<BluetoothHciDeathRecipient> bluetooth_hci_death_recipient;
   std::queue<hidl_vec<uint8_t>> event_queue;
   std::queue<hidl_vec<uint8_t>> acl_queue;
   std::queue<hidl_vec<uint8_t>> sco_queue;
@@ -300,6 +254,15 @@ class BluetoothHidlTest : public ::testing::VtsHalHidlTargetTestBase {
   int max_sco_data_packet_length;
   int max_acl_data_packets;
   int max_sco_data_packets;
+};
+
+// A class for test environment setup (kept since this file is a template).
+class BluetoothHidlEnvironment : public ::testing::Environment {
+ public:
+  virtual void SetUp() {}
+  virtual void TearDown() {}
+
+ private:
 };
 
 // Discard NO-OPs from the event queue.
@@ -318,20 +281,7 @@ void BluetoothHidlTest::handle_no_ops() {
     if (event_is_no_op) {
       event_queue.pop();
     } else {
-      break;
-    }
-  }
-  // To be removed in VTS release builds
-  while (acl_queue.size() > 0) {
-    hidl_vec<uint8_t> acl_packet = acl_queue.front();
-    uint16_t connection_handle = acl_packet[1] & 0xF;
-    connection_handle <<= 8;
-    connection_handle |= acl_packet[0];
-    bool packet_is_no_op = connection_handle == ACL_HANDLE_QCA_DEBUG_MESSAGE;
-    if (packet_is_no_op) {
-      acl_queue.pop();
-    } else {
-      break;
+      return;
     }
   }
 }
@@ -694,28 +644,22 @@ TEST_F(BluetoothHidlTest, LoopbackModeSinglePackets) {
 
   // This should work, but breaks on some current platforms.  Figure out how to
   // grandfather older devices but test new ones.
+  int sco_packets_sent = 0;
   if (0 && sco_connection_handles.size() > 0) {
     EXPECT_LT(0, max_sco_data_packet_length);
     sendAndCheckSCO(1, max_sco_data_packet_length, sco_connection_handles[0]);
-    int sco_packets_sent = 1;
-    int completed_packets =
-        wait_for_completed_packets_event(sco_connection_handles[0]);
-    if (sco_packets_sent != completed_packets) {
-      ALOGW("%s: packets_sent (%d) != completed_packets (%d)", __func__,
-            sco_packets_sent, completed_packets);
-    }
+    sco_packets_sent = 1;
+    EXPECT_EQ(sco_packets_sent,
+              wait_for_completed_packets_event(sco_connection_handles[0]));
   }
 
+  int acl_packets_sent = 0;
   if (acl_connection_handles.size() > 0) {
     EXPECT_LT(0, max_acl_data_packet_length);
     sendAndCheckACL(1, max_acl_data_packet_length, acl_connection_handles[0]);
-    int acl_packets_sent = 1;
-    int completed_packets =
-        wait_for_completed_packets_event(acl_connection_handles[0]);
-    if (acl_packets_sent != completed_packets) {
-      ALOGW("%s: packets_sent (%d) != completed_packets (%d)", __func__,
-            acl_packets_sent, completed_packets);
-    }
+    acl_packets_sent = 1;
+    EXPECT_EQ(acl_packets_sent,
+              wait_for_completed_packets_event(acl_connection_handles[0]));
   }
 }
 
@@ -731,37 +675,30 @@ TEST_F(BluetoothHidlTest, LoopbackModeBandwidth) {
 
   // This should work, but breaks on some current platforms.  Figure out how to
   // grandfather older devices but test new ones.
+  int sco_packets_sent = 0;
   if (0 && sco_connection_handles.size() > 0) {
     EXPECT_LT(0, max_sco_data_packet_length);
     sendAndCheckSCO(NUM_SCO_PACKETS_BANDWIDTH, max_sco_data_packet_length,
                     sco_connection_handles[0]);
-    int sco_packets_sent = NUM_SCO_PACKETS_BANDWIDTH;
-    int completed_packets =
-        wait_for_completed_packets_event(sco_connection_handles[0]);
-    if (sco_packets_sent != completed_packets) {
-      ALOGW("%s: packets_sent (%d) != completed_packets (%d)", __func__,
-            sco_packets_sent, completed_packets);
-    }
+    sco_packets_sent = NUM_SCO_PACKETS_BANDWIDTH;
+    EXPECT_EQ(sco_packets_sent,
+              wait_for_completed_packets_event(sco_connection_handles[0]));
   }
 
+  int acl_packets_sent = 0;
   if (acl_connection_handles.size() > 0) {
     EXPECT_LT(0, max_acl_data_packet_length);
     sendAndCheckACL(NUM_ACL_PACKETS_BANDWIDTH, max_acl_data_packet_length,
                     acl_connection_handles[0]);
-    int acl_packets_sent = NUM_ACL_PACKETS_BANDWIDTH;
-    int completed_packets =
-        wait_for_completed_packets_event(acl_connection_handles[0]);
-    if (acl_packets_sent != completed_packets) {
-      ALOGW("%s: packets_sent (%d) != completed_packets (%d)", __func__,
-            acl_packets_sent, completed_packets);
-    }
+    acl_packets_sent = NUM_ACL_PACKETS_BANDWIDTH;
+    EXPECT_EQ(acl_packets_sent,
+              wait_for_completed_packets_event(acl_connection_handles[0]));
   }
 }
 
 int main(int argc, char** argv) {
-  ::testing::AddGlobalTestEnvironment(BluetoothHidlEnvironment::Instance());
+  ::testing::AddGlobalTestEnvironment(new BluetoothHidlEnvironment);
   ::testing::InitGoogleTest(&argc, argv);
-  BluetoothHidlEnvironment::Instance()->init(&argc, argv);
   int status = RUN_ALL_TESTS();
   ALOGI("Test result = %d", status);
   return status;

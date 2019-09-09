@@ -30,7 +30,6 @@
 #include <android/hardware/soundtrigger/2.0/types.h>
 
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 
 #define SHORT_TIMEOUT_PERIOD (1)
 
@@ -86,27 +85,12 @@ class Monitor {
   int mCount;
 };
 
-// Test environment for SoundTrigger HIDL HAL.
-class SoundTriggerHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static SoundTriggerHidlEnvironment* Instance() {
-        static SoundTriggerHidlEnvironment* instance = new SoundTriggerHidlEnvironment;
-        return instance;
-    }
-
-    virtual void registerTestServices() override { registerTestService<ISoundTriggerHw>(); }
-
-   private:
-    SoundTriggerHidlEnvironment() {}
-};
-
 // The main test class for Sound Trigger HIDL HAL.
 class SoundTriggerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
-      mSoundTriggerHal = ::testing::VtsHalHidlTargetTestBase::getService<ISoundTriggerHw>(
-          SoundTriggerHidlEnvironment::Instance()->getServiceName<ISoundTriggerHw>());
+      mSoundTriggerHal =
+          ::testing::VtsHalHidlTargetTestBase::getService<ISoundTriggerHw>();
       ASSERT_NE(nullptr, mSoundTriggerHal.get());
       mCallback = new SoundTriggerHwCallback(*this);
       ASSERT_NE(nullptr, mCallback.get());
@@ -156,6 +140,15 @@ class SoundTriggerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  protected:
   sp<ISoundTriggerHw> mSoundTriggerHal;
   sp<SoundTriggerHwCallback> mCallback;
+};
+
+// A class for test environment setup (kept since this file is a template).
+class SoundTriggerHidlEnvironment : public ::testing::Environment {
+ public:
+  virtual void SetUp() {}
+  virtual void TearDown() {}
+
+ private:
 };
 
 /**
@@ -325,11 +318,11 @@ TEST_F(SoundTriggerHidlTest, stopAllRecognitions) {
     EXPECT_TRUE(hidlReturn == 0 || hidlReturn == -ENOSYS);
 }
 
+
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(SoundTriggerHidlEnvironment::Instance());
-    ::testing::InitGoogleTest(&argc, argv);
-    SoundTriggerHidlEnvironment::Instance()->init(&argc, argv);
-    int status = RUN_ALL_TESTS();
-    ALOGI("Test result = %d", status);
-    return status;
+  ::testing::AddGlobalTestEnvironment(new SoundTriggerHidlEnvironment);
+  ::testing::InitGoogleTest(&argc, argv);
+  int status = RUN_ALL_TESTS();
+  ALOGI("Test result = %d", status);
+  return status;
 }

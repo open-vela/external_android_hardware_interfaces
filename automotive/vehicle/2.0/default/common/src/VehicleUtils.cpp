@@ -42,14 +42,13 @@ std::unique_ptr<VehiclePropValue> createVehiclePropValue(
             val->value.floatValues.resize(vecSize);
             break;
         case VehiclePropertyType::INT64:
-        case VehiclePropertyType::INT64_VEC:
             val->value.int64Values.resize(vecSize);
             break;
         case VehiclePropertyType::BYTES:
             val->value.bytes.resize(vecSize);
             break;
         case VehiclePropertyType::STRING:
-        case VehiclePropertyType::MIXED:
+        case VehiclePropertyType::COMPLEX:
             break; // Valid, but nothing to do.
         default:
             ALOGE("createVehiclePropValue: unknown type: %d", type);
@@ -69,7 +68,6 @@ size_t getVehicleRawValueVectorSize(
         case VehiclePropertyType::FLOAT_VEC:
             return value.floatValues.size();
         case VehiclePropertyType::INT64:
-        case VehiclePropertyType::INT64_VEC:
             return value.int64Values.size();
         case VehiclePropertyType::BYTES:
             return value.bytes.size();
@@ -104,17 +102,16 @@ void shallowCopyHidlVec(hidl_vec <T>* dest, const hidl_vec <T>& src) {
 }
 
 void shallowCopyHidlStr(hidl_string* dest, const hidl_string& src) {
-    if (src.empty()) {
-        dest->clear();
-    } else {
+    if (!src.empty()) {
         dest->setToExternal(src.c_str(), src.size());
+    } else if (dest->size() > 0) {
+        dest->setToExternal(0, 0);
     }
 }
 
 void shallowCopy(VehiclePropValue* dest, const VehiclePropValue& src) {
     dest->prop = src.prop;
     dest->areaId = src.areaId;
-    dest->status = src.status;
     dest->timestamp = src.timestamp;
     shallowCopyHidlVec(&dest->value.int32Values, src.value.int32Values);
     shallowCopyHidlVec(&dest->value.int64Values, src.value.int64Values);

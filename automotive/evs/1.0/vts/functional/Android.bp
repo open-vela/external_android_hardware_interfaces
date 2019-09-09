@@ -16,21 +16,31 @@
 
 cc_test {
     name: "VtsHalEvsV1_0TargetTest",
+
     srcs: [
-        "VtsHalEvsV1_0TargetTest.cpp",
+        "VtsEvsV1_0TargetTest.cpp",
         "FrameHandler.cpp",
+        "FormatConvert.cpp"
     ],
-    defaults: ["VtsHalTargetTestDefaults"],
+
+    defaults: [
+        "hidl_defaults",
+    ],
+
     shared_libs: [
-        "libui",
-    ],
-    static_libs: [
         "android.hardware.automotive.evs@1.0",
-        "android.hardware.automotive.evs@common-default-lib",
+        "liblog",
+        "libutils",
+        "libui",
+        "libhidlbase",
+        "libhidltransport",
     ],
-    test_suites: ["general-tests"],
+
+    static_libs: ["VtsHalHidlTargetTestBase"],
+
     cflags: [
         "-O0",
         "-g",
     ],
 }
+

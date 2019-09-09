@@ -16,10 +16,21 @@
 
 cc_test {
     name: "VtsHalNfcV1_0TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
+    defaults: ["hidl_defaults"],
     srcs: ["VtsHalNfcV1_0TargetTest.cpp"],
-    static_libs: [
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libcutils",
+        "libhidlbase",
+        "libhidltransport",
+        "libnativehelper",
+        "libutils",
         "android.hardware.nfc@1.0",
     ],
-    test_suites: ["general-tests"],
+    static_libs: ["VtsHalHidlTargetTestBase"],
+    cflags: [
+        "-O0",
+        "-g",
+    ],
 }

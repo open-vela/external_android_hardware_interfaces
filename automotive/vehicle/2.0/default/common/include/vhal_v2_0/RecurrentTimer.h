@@ -26,7 +26,6 @@
 #include <set>
 #include <thread>
 #include <unordered_map>
-#include <vector>
 
 /**
  * This class allows to specify multiple time intervals to receive
