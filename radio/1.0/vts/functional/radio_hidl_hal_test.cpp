@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <radio_hidl_hal_utils.h>
+#include <radio_hidl_hal_utils_v1_0.h>
 
 void RadioHidlTest::SetUp() {
     radio =
@@ -24,14 +24,16 @@ void RadioHidlTest::SetUp() {
         radio = ::testing::VtsHalHidlTargetTestBase::getService<IRadio>(
             hidl_string(RADIO_SERVICE_NAME));
     }
-    ASSERT_NE(radio, nullptr);
+    ASSERT_NE(nullptr, radio.get());
 
-    radioRsp = new RadioResponse(*this);
-    ASSERT_NE(radioRsp, nullptr);
+    radioRsp = new (std::nothrow) RadioResponse(*this);
+    ASSERT_NE(nullptr, radioRsp.get());
 
     count = 0;
 
-    radioInd = NULL;
+    radioInd = new (std::nothrow) RadioIndication(*this);
+    ASSERT_NE(nullptr, radioInd.get());
+
     radio->setResponseFunctions(radioRsp, radioInd);
 
     int serial = GetRandomSerialNumber();

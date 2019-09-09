@@ -23,7 +23,6 @@
 #include <algorithm>
 
 #include "EmulatedVehicleHal.h"
-#include "VehicleHalProto.pb.h"
 
 #define DEBUG_SOCKET    (33452)
 
@@ -139,6 +138,8 @@ void EmulatedVehicleHal::initObd2FreezeFrame(const V2_0::VehiclePropConfig& prop
     for (auto&& dtc : sampleDtcs) {
         auto freezeFrame = createVehiclePropValue(V2_0::VehiclePropertyType::COMPLEX, 0);
         sensorStore->fillPropValue(dtc, freezeFrame.get());
+        freezeFrame->prop = OBD2_FREEZE_FRAME;
+
         mPropStore->writeValue(*freezeFrame);
     }
 }

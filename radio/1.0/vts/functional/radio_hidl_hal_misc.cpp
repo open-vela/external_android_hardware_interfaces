@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <radio_hidl_hal_utils.h>
+#include <radio_hidl_hal_utils_v1_0.h>
 
 /*
  * Test IRadio.getSignalStrength() for the response returned.
@@ -153,7 +153,7 @@ TEST_F(RadioHidlTest, getAvailableNetworks) {
                     radioRsp->rspInfo.error == RadioError::CANCELLED ||
                     radioRsp->rspInfo.error == RadioError::OPERATION_NOT_ALLOWED ||
                     radioRsp->rspInfo.error == RadioError::MODEM_ERR);
-    }
+  }
 }
 
 /*
@@ -216,7 +216,7 @@ TEST_F(RadioHidlTest, setPreferredNetworkType) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        EXPECT_EQ(radioRsp->rspInfo.error, RadioError::NONE);
+        ASSERT_TRUE(CheckGeneralError() || radioRsp->rspInfo.error == RadioError::NONE);
     }
 }
 
@@ -667,7 +667,6 @@ TEST_F(RadioHidlTest, setRadioCapability) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        std::cout << static_cast<int>(radioRsp->rspInfo.error) << std::endl;
         ASSERT_TRUE(CheckGeneralError() ||
                     radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
                     radioRsp->rspInfo.error == RadioError::INVALID_STATE);
@@ -857,7 +856,6 @@ TEST_F(RadioHidlTest, setSimCardPower) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        std::cout << static_cast<int>(radioRsp->rspInfo.error) << std::endl;
         ASSERT_TRUE(radioRsp->rspInfo.error == RadioError::NONE ||
                     radioRsp->rspInfo.error == RadioError::REQUEST_NOT_SUPPORTED);
     }
