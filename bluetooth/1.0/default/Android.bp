@@ -29,6 +29,7 @@ cc_library_shared {
         "libcutils",
         "libhardware",
         "libhidlbase",
+        "libhidltransport",
         "liblog",
         "libutils",
     ],
@@ -93,7 +94,6 @@ cc_test {
         "android.hardware.bluetooth-hci",
         "libgmock",
     ],
-    test_suites: ["general-tests"],
 }
 
 cc_test_host {
@@ -110,25 +110,5 @@ cc_test_host {
     shared_libs: [
         "libbase",
         "liblog",
-    ],
-}
-
-cc_binary {
-    name: "android.hardware.bluetooth@1.0-service",
-    defaults: ["hidl_defaults"],
-    relative_install_path: "hw",
-    vendor: true,
-    init_rc: ["android.hardware.bluetooth@1.0-service.rc"],
-    srcs: ["service.cpp"],
-
-    shared_libs: [
-        "liblog",
-        "libcutils",
-        "libdl",
-        "libbase",
-        "libutils",
-        "libhardware",
-        "libhidlbase",
-        "android.hardware.bluetooth@1.0",
     ],
 }

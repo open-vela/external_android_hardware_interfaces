@@ -19,7 +19,8 @@
 #include <android/hardware/drm/1.0/ICryptoFactory.h>
 #include <hidl/Status.h>
 #include <media/hardware/CryptoAPI.h>
-#include <PluginLoader.h>
+#include <media/PluginLoader.h>
+#include <media/SharedLibrary.h>
 
 namespace android {
 namespace hardware {
@@ -27,7 +28,6 @@ namespace drm {
 namespace V1_0 {
 namespace implementation {
 
-using ::android::hardware::drm::V1_0::helper::PluginLoader;
 using ::android::hardware::drm::V1_0::ICryptoFactory;
 using ::android::hardware::drm::V1_0::ICryptoPlugin;
 using ::android::hardware::hidl_array;
@@ -51,7 +51,7 @@ struct CryptoFactory : public ICryptoFactory {
             override;
 
 private:
-    PluginLoader<android::CryptoFactory> loader;
+    android::PluginLoader<android::CryptoFactory> loader;
 
     CryptoFactory(const CryptoFactory &) = delete;
     void operator=(const CryptoFactory &) = delete;
