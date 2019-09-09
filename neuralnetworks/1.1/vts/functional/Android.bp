@@ -14,60 +14,38 @@
 // limitations under the License.
 //
 
-cc_defaults {
-    name: "VtsHalNeuralNetworksV1_1TargetTestDefaults",
-    defaults: ["VtsHalTargetTestDefaults"],
+cc_test {
+    name: "VtsHalNeuralnetworksV1_1TargetTest",
     srcs: [
-        "TestAssertions.cpp",
+        "BasicTests.cpp",
+        "GeneratedTests.cpp",
         "ValidateModel.cpp",
         "ValidateRequest.cpp",
+        "ValidationTests.cpp",
         "VtsHalNeuralnetworks.cpp",
-        "GeneratedTestHarness.cpp",
     ],
-    shared_libs: [
-        "libfmq",
-        "libnativewindow",
-    ],
+    defaults: ["VtsHalTargetTestDefaults"],
     static_libs: [
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
-        "libgmock",
         "libhidlmemory",
-        "libneuralnetworks_generated_test_harness",
         "libneuralnetworks_utils",
-        "VtsHalNeuralNetworksV1_0_utils",
+        "VtsHalNeuralnetworksTest_utils",
     ],
     header_libs: [
         "libneuralnetworks_headers",
+        "libneuralnetworks_generated_test_harness_headers",
+        "libneuralnetworks_generated_tests",
     ],
-    test_suites: ["general-tests"],
-}
-
-cc_test {
-    name: "VtsHalNeuralnetworksV1_1TargetTest",
-    defaults: ["VtsHalNeuralNetworksV1_1TargetTestDefaults"],
-    srcs: [
-        "BasicTests.cpp",
-    ],
-    whole_static_libs: [
-        "neuralnetworks_generated_V1_0_example",
-        "neuralnetworks_generated_V1_1_example",
-    ],
-}
-
-cc_test {
-    name: "PresubmitHalNeuralnetworksV1_1TargetTest",
-    defaults: ["VtsHalNeuralNetworksV1_1TargetTestDefaults"],
-    srcs: [
-        "BasicTests.cpp",
-    ],
-    whole_static_libs: [
-        "neuralnetworks_generated_V1_0_example",
-        "neuralnetworks_generated_V1_1_example",
-    ],
-    cflags: [
-        "-DPRESUBMIT_NOT_VTS",
-    ],
+    // Bug: http://b/74200014 - Disable arm32 asan since it triggers internal
+    // error in ld.gold.
+    arch: {
+        arm: {
+            sanitize: {
+                never: true,
+            },
+        },
+    },
 }
