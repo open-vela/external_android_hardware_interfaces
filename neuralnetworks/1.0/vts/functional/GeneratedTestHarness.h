@@ -14,34 +14,44 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_HARDWARE_NEURALNETWORKS_V1_0_GENERATED_TEST_HARNESS_H
-#define ANDROID_HARDWARE_NEURALNETWORKS_V1_0_GENERATED_TEST_HARNESS_H
+#ifndef VTS_HAL_NEURALNETWORKS_GENERATED_TEST_HARNESS_H
+#define VTS_HAL_NEURALNETWORKS_GENERATED_TEST_HARNESS_H
+
+#include "TestHarness.h"
 
 #include <android/hardware/neuralnetworks/1.0/IDevice.h>
-#include "TestHarness.h"
-#include "VtsHalNeuralnetworks.h"
+#include <android/hardware/neuralnetworks/1.1/IDevice.h>
+#include <android/hardware/neuralnetworks/1.2/IDevice.h>
 
-namespace android::hardware::neuralnetworks::V1_0::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
 
-class GeneratedTestBase
-    : public NeuralnetworksHidlTest,
-      public testing::WithParamInterface<test_helper::TestModelManager::TestParam> {
-  protected:
-    const test_helper::TestModel& kTestModel = *GetParam().second;
-};
+namespace generated_tests {
+using ::test_helper::MixedTypedExample;
 
-#define INSTANTIATE_GENERATED_TEST(TestSuite, filter)                                        \
-    INSTANTIATE_TEST_SUITE_P(                                                                \
-            TestGenerated, TestSuite,                                                        \
-            testing::ValuesIn(::test_helper::TestModelManager::get().getTestModels(filter)), \
-            [](const auto& info) { return info.param.first; })
+void PrepareModel(const sp<V1_2::IDevice>& device, const V1_2::Model& model,
+                  sp<V1_2::IPreparedModel>* preparedModel);
 
-// Tag for the validation tests, instantiated in VtsHalNeuralnetworks.cpp.
-// TODO: Clean up the hierarchy for ValidationTest.
-class ValidationTest : public GeneratedTestBase {};
+void EvaluatePreparedModel(sp<V1_2::IPreparedModel>& preparedModel,
+                           std::function<bool(int)> is_ignored,
+                           const std::vector<MixedTypedExample>& examples,
+                           bool hasRelaxedFloat32Model, bool testDynamicOutputShape);
 
-Model createModel(const ::test_helper::TestModel& testModel);
+void Execute(const sp<V1_0::IDevice>& device, std::function<V1_0::Model(void)> create_model,
+             std::function<bool(int)> is_ignored, const std::vector<MixedTypedExample>& examples);
 
-}  // namespace android::hardware::neuralnetworks::V1_0::vts::functional
+void Execute(const sp<V1_1::IDevice>& device, std::function<V1_1::Model(void)> create_model,
+             std::function<bool(int)> is_ignored, const std::vector<MixedTypedExample>& examples);
 
-#endif  // ANDROID_HARDWARE_NEURALNETWORKS_V1_0_GENERATED_TEST_HARNESS_H
+void Execute(const sp<V1_2::IDevice>& device, std::function<V1_2::Model(void)> create_model,
+             std::function<bool(int)> is_ignored, const std::vector<MixedTypedExample>& examples,
+             bool testDynamicOutputShape = false);
+
+}  // namespace generated_tests
+
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
+
+#endif  // VTS_HAL_NEURALNETWORKS_GENERATED_TEST_HARNESS_H
