@@ -16,11 +16,19 @@
 
 cc_test {
     name: "VtsHalPowerV1_1TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
+    defaults: ["hidl_defaults"],
     srcs: ["VtsHalPowerV1_1TargetTest.cpp"],
-    static_libs: [
-        "android.hardware.power@1.0",
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libhidlbase",
+        "libhidltransport",
+        "libutils",
         "android.hardware.power@1.1",
     ],
-    test_suites: ["general-tests"],
+    static_libs: ["VtsHalHidlTargetTestBase"],
+    cflags: [
+        "-O0",
+        "-g",
+    ]
 }

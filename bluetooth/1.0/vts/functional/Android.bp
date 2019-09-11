@@ -16,11 +16,21 @@
 
 cc_test {
     name: "VtsHalBluetoothV1_0TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
+    defaults: ["hidl_defaults"],
     srcs: ["VtsHalBluetoothV1_0TargetTest.cpp"],
-    static_libs: [
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libcutils",
+        "libhidlbase",
+        "libhidltransport",
+        "libnativehelper",
+        "libutils",
         "android.hardware.bluetooth@1.0",
-        "libbluetooth-types",
     ],
-    test_suites: ["general-tests"],
+    static_libs: ["VtsHalHidlTargetTestBase"],
+    cflags: [
+        "-O0",
+        "-g",
+    ],
 }

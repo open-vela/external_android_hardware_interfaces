@@ -22,7 +22,6 @@
 #include <fcntl.h>
 #include <log/log.h>
 #include <sys/uio.h>
-#include <unistd.h>
 
 namespace android {
 namespace hardware {
@@ -34,8 +33,7 @@ size_t H4Protocol::Send(uint8_t type, const uint8_t* data, size_t length) {
                         {const_cast<uint8_t*>(data), length}};
   ssize_t ret = 0;
   do {
-    ret =
-        TEMP_FAILURE_RETRY(writev(uart_fd_, iov, sizeof(iov) / sizeof(iov[0])));
+    ret = TEMP_FAILURE_RETRY(writev(uart_fd_, iov, sizeof(iov) / sizeof(iov[0])));
   } while (-1 == ret && EAGAIN == errno);
 
   if (ret == -1) {
@@ -72,10 +70,8 @@ void H4Protocol::OnDataReady(int fd) {
     ssize_t bytes_read = TEMP_FAILURE_RETRY(read(fd, buffer, 1));
     if (bytes_read != 1) {
       if (bytes_read == 0) {
-        // This is only expected if the UART got closed when shutting down.
-        ALOGE("%s: Unexpected EOF reading the packet type!", __func__);
-        sleep(5);  // Expect to be shut down within 5 seconds.
-        return;
+        LOG_ALWAYS_FATAL("%s: Unexpected EOF reading the packet type!",
+                         __func__);
       } else if (bytes_read < 0) {
         LOG_ALWAYS_FATAL("%s: Read packet type error: %s", __func__,
                          strerror(errno));
@@ -85,12 +81,6 @@ void H4Protocol::OnDataReady(int fd) {
       }
     }
     hci_packet_type_ = static_cast<HciPacketType>(buffer[0]);
-    if (hci_packet_type_ != HCI_PACKET_TYPE_ACL_DATA &&
-        hci_packet_type_ != HCI_PACKET_TYPE_SCO_DATA &&
-        hci_packet_type_ != HCI_PACKET_TYPE_EVENT) {
-      LOG_ALWAYS_FATAL("%s: Unimplemented packet type %d", __func__,
-                       static_cast<int>(hci_packet_type_));
-    }
   } else {
     hci_packetizer_.OnDataReady(fd, hci_packet_type_);
   }

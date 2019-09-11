@@ -35,8 +35,8 @@ static const int INVALID_FD = -1;
 
 namespace {
 
-using android::hardware::hidl_vec;
 using android::hardware::bluetooth::V1_0::implementation::VendorInterface;
+using android::hardware::hidl_vec;
 
 struct {
   tINT_CMD_CBACK cb;
@@ -49,7 +49,6 @@ uint32_t lpm_timeout_ms;
 bool recent_activity_flag;
 
 VendorInterface* g_vendor_interface = nullptr;
-std::mutex wakeup_mutex_;
 
 HC_BT_HDR* WrapPacketAndCopy(uint16_t event, const hidl_vec<uint8_t>& data) {
   size_t packet_size = data.size() + sizeof(HC_BT_HDR);
@@ -163,10 +162,8 @@ bool VendorInterface::Initialize(
     InitializeCompleteCallback initialize_complete_cb,
     PacketReadCallback event_cb, PacketReadCallback acl_cb,
     PacketReadCallback sco_cb) {
-  if (g_vendor_interface) {
-    ALOGE("%s: No previous Shutdown()?", __func__);
-    return false;
-  }
+  LOG_ALWAYS_FATAL_IF(g_vendor_interface, "%s: No previous Shutdown()?",
+                      __func__);
   g_vendor_interface = new VendorInterface();
   return g_vendor_interface->Open(initialize_complete_cb, event_cb, acl_cb,
                                   sco_cb);
@@ -258,7 +255,8 @@ bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
     fd_watcher_.WatchFdForNonBlockingReads(
         fd_list[CH_EVT], [mct_hci](int fd) { mct_hci->OnEventDataReady(fd); });
     fd_watcher_.WatchFdForNonBlockingReads(
-        fd_list[CH_ACL_IN], [mct_hci](int fd) { mct_hci->OnAclDataReady(fd); });
+        fd_list[CH_ACL_IN],
+        [mct_hci](int fd) { mct_hci->OnAclDataReady(fd); });
     hci_ = mct_hci;
   }
 
@@ -294,7 +292,6 @@ void VendorInterface::Close() {
     lib_interface_->op(BT_VND_OP_POWER_CTRL, &power_state);
 
     lib_interface_->cleanup();
-    lib_interface_ = nullptr;
   }
 
   if (lib_handle_ != nullptr) {
@@ -309,7 +306,6 @@ void VendorInterface::Close() {
 }
 
 size_t VendorInterface::Send(uint8_t type, const uint8_t* data, size_t length) {
-  std::unique_lock<std::mutex> lock(wakeup_mutex_);
   recent_activity_flag = true;
 
   if (lpm_wake_deasserted == true) {
@@ -352,7 +348,6 @@ void VendorInterface::OnFirmwareConfigured(uint8_t result) {
 
 void VendorInterface::OnTimeout() {
   ALOGV("%s", __func__);
-  std::unique_lock<std::mutex> lock(wakeup_mutex_);
   if (recent_activity_flag == false) {
     lpm_wake_deasserted = true;
     bt_vendor_lpm_wake_state_t wakeState = BT_VND_LPM_WAKE_DEASSERT;

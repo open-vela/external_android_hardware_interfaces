@@ -23,10 +23,21 @@ cc_test {
         "VtsScriptTests.cpp",
         "bitcode.cpp",
     ],
-    defaults: ["VtsHalTargetTestDefaults"],
-    static_libs: [
-        "android.hardware.renderscript@1.0",
+    defaults: ["hidl_defaults"],
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libcutils",
+        "libhidlbase",
+        "libhidltransport",
+        "libnativehelper",
+        "libutils",
         "libnativewindow",
+        "android.hardware.renderscript@1.0",
     ],
-    test_suites: ["general-tests"],
+    static_libs: ["VtsHalHidlTargetTestBase"],
+    cflags: [
+        "-O0",
+        "-g",
+    ],
 }

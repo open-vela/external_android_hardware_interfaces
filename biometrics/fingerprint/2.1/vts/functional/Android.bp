@@ -16,9 +16,21 @@
 
 cc_test {
     name: "VtsHalBiometricsFingerprintV2_1TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
+    defaults: ["hidl_defaults"],
     srcs: ["VtsHalBiometricsFingerprintV2_1TargetTest.cpp"],
-    static_libs: ["android.hardware.biometrics.fingerprint@2.1"],
-    test_suites: ["general-tests"],
+    shared_libs: [
+        "libbase",
+        "libhidltransport",
+        "libhardware",
+        "libhidlbase",
+        "liblog",
+        "libutils",
+        "android.hardware.biometrics.fingerprint@2.1",
+    ],
+    static_libs: ["VtsHalHidlTargetTestBase"],
+    cflags: [
+        "-O0",
+        "-g",
+    ]
 }
 

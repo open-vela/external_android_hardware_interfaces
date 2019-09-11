@@ -17,7 +17,6 @@
 #define LOG_TAG "VtsOffloadConfigV1_0TargetTest"
 
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/stringprintf.h>
 #include <android-base/unique_fd.h>
 #include <android/hardware/tetheroffload/config/1.0/IOffloadConfig.h>
@@ -44,8 +43,8 @@ using android::sp;
 #define ASSERT_FALSE_CALLBACK \
     [&](bool success, const hidl_string& errMsg) { ASSERT_FALSE(success) << errMsg.c_str(); }
 
-const unsigned kFd1Groups = NF_NETLINK_CONNTRACK_NEW | NF_NETLINK_CONNTRACK_DESTROY;
-const unsigned kFd2Groups = NF_NETLINK_CONNTRACK_UPDATE | NF_NETLINK_CONNTRACK_DESTROY;
+const unsigned kFd1Groups = NFNLGRP_CONNTRACK_NEW | NFNLGRP_CONNTRACK_DESTROY;
+const unsigned kFd2Groups = NFNLGRP_CONNTRACK_UPDATE | NFNLGRP_CONNTRACK_DESTROY;
 
 inline const sockaddr* asSockaddr(const sockaddr_nl* nladdr) {
     return reinterpret_cast<const sockaddr*>(nladdr);
@@ -78,25 +77,10 @@ int netlinkSocket(unsigned groups) {
     return netlinkSocket(NETLINK_NETFILTER, groups);
 }
 
-// Test environment for OffloadConfig HIDL HAL.
-class OffloadConfigHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static OffloadConfigHidlEnvironment* Instance() {
-        static OffloadConfigHidlEnvironment* instance = new OffloadConfigHidlEnvironment;
-        return instance;
-    }
-
-    virtual void registerTestServices() override { registerTestService<IOffloadConfig>(); }
-   private:
-    OffloadConfigHidlEnvironment() {}
-};
-
 class OffloadConfigHidlTest : public testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        config = testing::VtsHalHidlTargetTestBase::getService<IOffloadConfig>(
-            OffloadConfigHidlEnvironment::Instance()->getServiceName<IOffloadConfig>());
+        config = testing::VtsHalHidlTargetTestBase::getService<IOffloadConfig>();
         ASSERT_NE(nullptr, config.get()) << "Could not get HIDL instance";
     }
 
@@ -107,42 +91,35 @@ class OffloadConfigHidlTest : public testing::VtsHalHidlTargetTestBase {
 
 // Ensure handles can be set with correct socket options.
 TEST_F(OffloadConfigHidlTest, TestSetHandles) {
-    // Try multiple times in a row to see if it provokes file descriptor leaks.
-    for (int i = 0; i < 1024; i++) {
-        unique_fd fd1(netlinkSocket(kFd1Groups));
-        if (fd1.get() < 0) {
-            ALOGE("Unable to create conntrack handles: %d/%s", errno, strerror(errno));
-            FAIL();
-        }
-        native_handle_t* const nativeHandle1 = native_handle_create(1, 0);
-        nativeHandle1->data[0] = fd1.release();
-        hidl_handle h1;
-        h1.setTo(nativeHandle1, true);
-
-        unique_fd fd2(netlinkSocket(kFd2Groups));
-        if (fd2.get() < 0) {
-            ALOGE("Unable to create conntrack handles: %d/%s", errno, strerror(errno));
-            FAIL();
-        }
-        native_handle_t* const nativeHandle2 = native_handle_create(1, 0);
-        nativeHandle2->data[0] = fd2.release();
-        hidl_handle h2;
-        h2.setTo(nativeHandle2, true);
-
-        const Return<void> ret = config->setHandles(h1, h2, ASSERT_TRUE_CALLBACK);
-        ASSERT_TRUE(ret.isOk());
+    unique_fd fd1(netlinkSocket(kFd1Groups));
+    if (fd1.get() < 0) {
+        ALOGE("Unable to create conntrack handles: %d/%s", errno, strerror(errno));
+        FAIL();
     }
+    native_handle_t* const nativeHandle1 = native_handle_create(1, 0);
+    nativeHandle1->data[0] = fd1.release();
+    const hidl_handle h1 = hidl_handle(nativeHandle1);
+
+    unique_fd fd2(netlinkSocket(kFd2Groups));
+    if (fd2.get() < 0) {
+        ALOGE("Unable to create conntrack handles: %d/%s", errno, strerror(errno));
+        FAIL();
+    }
+    native_handle_t* const nativeHandle2 = native_handle_create(1, 0);
+    nativeHandle2->data[0] = fd2.release();
+    const hidl_handle h2 = hidl_handle(nativeHandle2);
+
+    const Return<void> ret = config->setHandles(h1, h2, ASSERT_TRUE_CALLBACK);
+    ASSERT_TRUE(ret.isOk());
 }
 
 // Passing a handle without an associated file descriptor should return an error
 // (e.g. "Failed Input Checks"). Check that this occurs when both FDs are empty.
 TEST_F(OffloadConfigHidlTest, TestSetHandleNone) {
     native_handle_t* const nativeHandle1 = native_handle_create(0, 0);
-    hidl_handle h1;
-    h1.setTo(nativeHandle1, true);
+    const hidl_handle h1 = hidl_handle(nativeHandle1);
     native_handle_t* const nativeHandle2 = native_handle_create(0, 0);
-    hidl_handle h2;
-    h2.setTo(nativeHandle2, true);
+    const hidl_handle h2 = hidl_handle(nativeHandle2);
 
     const Return<void> ret = config->setHandles(h1, h2, ASSERT_FALSE_CALLBACK);
     ASSERT_TRUE(ret.isOk());
@@ -158,12 +135,10 @@ TEST_F(OffloadConfigHidlTest, TestSetHandle1Only) {
     }
     native_handle_t* const nativeHandle1 = native_handle_create(1, 0);
     nativeHandle1->data[0] = fd1.release();
-    hidl_handle h1;
-    h1.setTo(nativeHandle1, true);
+    const hidl_handle h1 = hidl_handle(nativeHandle1);
 
     native_handle_t* const nativeHandle2 = native_handle_create(0, 0);
-    hidl_handle h2;
-    h2.setTo(nativeHandle2, true);
+    const hidl_handle h2 = hidl_handle(nativeHandle2);
 
     const Return<void> ret = config->setHandles(h1, h2, ASSERT_FALSE_CALLBACK);
     ASSERT_TRUE(ret.isOk());
@@ -173,8 +148,7 @@ TEST_F(OffloadConfigHidlTest, TestSetHandle1Only) {
 // (e.g. "Failed Input Checks"). Check that this occurs when FD1 is empty.
 TEST_F(OffloadConfigHidlTest, TestSetHandle2OnlyNotOk) {
     native_handle_t* const nativeHandle1 = native_handle_create(0, 0);
-    hidl_handle h1;
-    h1.setTo(nativeHandle1, true);
+    const hidl_handle h1 = hidl_handle(nativeHandle1);
 
     unique_fd fd2(netlinkSocket(kFd2Groups));
     if (fd2.get() < 0) {
@@ -183,17 +157,14 @@ TEST_F(OffloadConfigHidlTest, TestSetHandle2OnlyNotOk) {
     }
     native_handle_t* const nativeHandle2 = native_handle_create(1, 0);
     nativeHandle2->data[0] = fd2.release();
-    hidl_handle h2;
-    h2.setTo(nativeHandle2, true);
+    const hidl_handle h2 = hidl_handle(nativeHandle2);
 
     const Return<void> ret = config->setHandles(h1, h2, ASSERT_FALSE_CALLBACK);
     ASSERT_TRUE(ret.isOk());
 }
 
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(OffloadConfigHidlEnvironment::Instance());
-    ::testing::InitGoogleTest(&argc, argv);
-    OffloadConfigHidlEnvironment::Instance()->init(&argc, argv);
+    testing::InitGoogleTest(&argc, argv);
     int status = RUN_ALL_TESTS();
     ALOGE("Test result with status=%d", status);
     return status;

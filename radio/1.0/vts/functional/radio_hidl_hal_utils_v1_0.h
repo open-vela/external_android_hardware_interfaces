@@ -17,7 +17,6 @@
 #include <android-base/logging.h>
 
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -59,9 +58,6 @@ class RadioResponse : public IRadioResponse {
     hidl_string smscAddress;
     uint32_t writeSmsToSimIndex;
     uint32_t writeSmsToRuimIndex;
-
-    // Data
-    DataRegStateResult dataRegResp;
 
     RadioResponse(RadioHidlTest& parent);
 
@@ -515,20 +511,6 @@ class RadioIndication : public IRadioIndication {
                             const ::android::hardware::hidl_string& reason);
 };
 
-// Test environment for Radio HIDL HAL.
-class RadioHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static RadioHidlEnvironment* Instance() {
-        static RadioHidlEnvironment* instance = new RadioHidlEnvironment;
-        return instance;
-    }
-    virtual void registerTestServices() override { registerTestService<IRadio>(); }
-
-   private:
-    RadioHidlEnvironment() {}
-};
-
 // The main test class for Radio HIDL.
 class RadioHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    protected:
@@ -536,22 +518,31 @@ class RadioHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     std::condition_variable cv;
     int count;
 
-    /* Serial number for radio request */
-    int serial;
-
-    /* Update Sim Card Status */
-    void updateSimCardStatus();
-
    public:
     virtual void SetUp() override;
 
+    virtual void TearDown() override;
+
     /* Used as a mechanism to inform the test about data/event callback */
-    void notify(int receivedSerial);
+    void notify();
 
     /* Test code calls this function to wait for response */
     std::cv_status wait(int sec = TIMEOUT_PERIOD);
 
+    /* Used for checking General Errors */
+    bool CheckGeneralError();
+
+    /* Used for checking OEM Errors */
+    bool CheckOEMError();
+
     sp<IRadio> radio;
     sp<RadioResponse> radioRsp;
     sp<RadioIndication> radioInd;
+};
+
+// A class for test environment setup
+class RadioHidlEnvironment : public ::testing::Environment {
+   public:
+    virtual void SetUp() {}
+    virtual void TearDown() {}
 };

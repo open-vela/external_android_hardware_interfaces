@@ -47,7 +47,6 @@ VehiclePropValuePool::RecyclableType VehiclePropValuePool::obtain(
 
     dest->prop = src.prop;
     dest->areaId = src.areaId;
-    dest->status = src.status;
     dest->timestamp = src.timestamp;
     copyVehicleRawValue(&dest->value, src.value);
 
@@ -83,7 +82,7 @@ VehiclePropValuePool::RecyclableType VehiclePropValuePool::obtainString(
 }
 
 VehiclePropValuePool::RecyclableType VehiclePropValuePool::obtainComplex() {
-    return obtain(VehiclePropertyType::MIXED);
+    return obtain(VehiclePropertyType::COMPLEX);
 }
 
 VehiclePropValuePool::RecyclableType VehiclePropValuePool::obtainRecylable(
@@ -139,14 +138,18 @@ void VehiclePropValuePool::InternalPool::recycle(VehiclePropValue* o) {
 }
 
 bool VehiclePropValuePool::InternalPool::check(VehiclePropValue::RawValue* v) {
-    return check(&v->int32Values, (VehiclePropertyType::INT32 == mPropType ||
-                                   VehiclePropertyType::INT32_VEC == mPropType ||
-                                   VehiclePropertyType::BOOLEAN == mPropType)) &&
-           check(&v->floatValues, (VehiclePropertyType::FLOAT == mPropType ||
-                                   VehiclePropertyType::FLOAT_VEC == mPropType)) &&
-           check(&v->int64Values, (VehiclePropertyType::INT64 == mPropType ||
-                                   VehiclePropertyType::INT64_VEC == mPropType)) &&
-           check(&v->bytes, VehiclePropertyType::BYTES == mPropType) && v->stringValue.size() == 0;
+    return check(&v->int32Values,
+                 (VehiclePropertyType::INT32 == mPropType
+                  || VehiclePropertyType::INT32_VEC == mPropType
+                  || VehiclePropertyType::BOOLEAN == mPropType))
+           && check(&v->floatValues,
+                    (VehiclePropertyType::FLOAT == mPropType
+                     || VehiclePropertyType::FLOAT_VEC == mPropType))
+           && check(&v->int64Values,
+                    VehiclePropertyType::INT64 == mPropType)
+           && check(&v->bytes,
+                    VehiclePropertyType::BYTES == mPropType)
+           && v->stringValue.size() == 0;
 }
 
 VehiclePropValue* VehiclePropValuePool::InternalPool::createObject() {

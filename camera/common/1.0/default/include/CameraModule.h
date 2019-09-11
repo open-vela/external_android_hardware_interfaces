@@ -17,9 +17,6 @@
 #ifndef CAMERA_COMMON_1_0_CAMERAMODULE_H
 #define CAMERA_COMMON_1_0_CAMERAMODULE_H
 
-#include <string>
-#include <unordered_set>
-
 #include <hardware/camera.h>
 #include <utils/Mutex.h>
 #include <utils/KeyedVector.h>
@@ -66,15 +63,6 @@ public:
     const char* getModuleAuthor() const;
     // Only used by CameraModuleFixture native test. Do NOT use elsewhere.
     void *getDso();
-    // Only used by CameraProvider
-    void removeCamera(int cameraId);
-    int getPhysicalCameraInfo(int physicalCameraId, camera_metadata_t **physicalInfo);
-    int isStreamCombinationSupported(int cameraId, camera_stream_combination_t *streams);
-    void notifyDeviceStateChange(uint64_t deviceState);
-
-    static bool isLogicalMultiCamera(
-            const common::V1_0::helper::CameraMetadata& metadata,
-            std::unordered_set<std::string>* physicalCameraIds);
 
 private:
     // Derive camera characteristics keys defined after HAL device version
@@ -84,10 +72,8 @@ private:
             int32_t keyTag, const Vector<int32_t>& appendKeys);
     status_t filterOpenErrorCode(status_t err);
     camera_module_t *mModule;
-    int mNumberOfCameras;
     KeyedVector<int, camera_info> mCameraInfoMap;
     KeyedVector<int, int> mDeviceVersionMap;
-    KeyedVector<int, camera_metadata_t*> mPhysicalCameraInfoMap;
     Mutex mCameraInfoLock;
 };
 
