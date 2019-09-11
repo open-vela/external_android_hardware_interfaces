@@ -16,6 +16,7 @@
 
 package android.hardware.automotive.evs@1.0;
 
+import types;
 import IEvsCamera;
 import IEvsDisplay;
 
@@ -27,8 +28,6 @@ interface IEvsEnumerator {
 
     /**
      * Returns a list of all EVS cameras available to the system
-     *
-     * @return cameras A list of cameras availale for EVS service.
      */
     getCameraList() generates (vec<CameraDesc> cameras);
 
@@ -38,9 +37,9 @@ interface IEvsEnumerator {
      * Given a camera's unique cameraId from CameraDesc, returns the
      * IEvsCamera interface associated with the specified camera. When
      * done using the camera, the caller may release it by calling closeCamera().
-     *
-     * @param  cameraId  A unique identifier of the camera.
-     * @return carCamera EvsCamera object associated with a given cameraId.
+     * Note: Reliance on the sp<> going out of scope is not recommended
+     * because the resources may not be released right away due to asynchronos
+     * behavior in the hardware binder (ref b/36122635).
      */
     openCamera(string cameraId) generates (IEvsCamera carCamera);
 
@@ -49,8 +48,6 @@ interface IEvsEnumerator {
      *
      * When the IEvsCamera object is no longer required, it must be released.
      * NOTE: Video streaming must be cleanly stopped before making this call.
-     *
-     * @param  carCamera EvsCamera object to be closed.
      */
     closeCamera(IEvsCamera carCamera);
 
@@ -63,8 +60,8 @@ interface IEvsEnumerator {
      * the old instance shall be closed and give the new caller exclusive
      * access.
      * When done using the display, the caller may release it by calling closeDisplay().
-     *
-     * @return display EvsDisplay object to be used.
+     * TODO(b/36122635) Reliance on the sp<> going out of scope is not recommended because the
+     * resources may not be released right away due to asynchronos behavior in the hardware binder.
      */
     openDisplay() generates (IEvsDisplay display);
 
@@ -73,8 +70,6 @@ interface IEvsEnumerator {
      *
      * When the IEvsDisplay object is no longer required, it must be released.
      * NOTE: All buffers must have been returned to the display before making this call.
-     *
-     * @param  display EvsDisplay object to be closed.
      */
     closeDisplay(IEvsDisplay display);
 
@@ -85,8 +80,6 @@ interface IEvsEnumerator {
      * the actual state of the active display.  This call is replicated on the IEvsEnumerator
      * interface in order to allow secondary clients to monitor the state of the EVS display
      * without acquiring exclusive ownership of the display.
-     *
-     * @return state Current DisplayState of this Display.
      */
     getDisplayState() generates (DisplayState state);
 };
