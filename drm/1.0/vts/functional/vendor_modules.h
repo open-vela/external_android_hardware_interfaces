@@ -18,12 +18,8 @@
 #define VENDOR_MODULES_H
 
 #include <map>
-#include <vector>
-#include <string>
 
-#include <SharedLibrary.h>
-
-using ::android::hardware::drm::V1_0::helper::SharedLibrary;
+#include "shared_library.h"
 
 class DrmHalVTSVendorModule;
 

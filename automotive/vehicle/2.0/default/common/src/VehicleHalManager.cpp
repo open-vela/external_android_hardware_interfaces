@@ -142,6 +142,15 @@ Return<StatusCode> VehicleHalManager::subscribe(const sp<IVehicleCallback> &call
             return StatusCode::INVALID_ARG;
         }
 
+        int32_t areas = isGlobalProp(prop) ? 0 : ops.vehicleAreas;
+        if (areas != 0 && ((areas & config->supportedAreas) != areas)) {
+            ALOGE("Failed to subscribe property 0x%x. Requested areas 0x%x are "
+                  "out of supported range of 0x%x", prop, ops.vehicleAreas,
+                  config->supportedAreas);
+            return StatusCode::INVALID_ARG;
+        }
+
+        ops.vehicleAreas = areas;
         ops.sampleRate = checkSampleRate(*config, ops.sampleRate);
     }
 
@@ -155,7 +164,7 @@ Return<StatusCode> VehicleHalManager::subscribe(const sp<IVehicleCallback> &call
     }
 
     for (auto opt : updatedOptions) {
-        mHal->subscribe(opt.propId, opt.sampleRate);
+        mHal->subscribe(opt.propId, opt.vehicleAreas, opt.sampleRate);
     }
 
     return StatusCode::OK;
@@ -215,17 +224,17 @@ void VehicleHalManager::onHalEvent(VehiclePropValuePtr v) {
 void VehicleHalManager::onHalPropertySetError(StatusCode errorCode,
                                               int32_t property,
                                               int32_t areaId) {
-    const auto& clients =
-        mSubscriptionManager.getSubscribedClients(property, SubscribeFlags::EVENTS_FROM_CAR);
+    const auto& clients = mSubscriptionManager.getSubscribedClients(
+            property, 0, SubscribeFlags::HAL_EVENT);
 
-    for (const auto& client : clients) {
+    for (auto client : clients) {
         client->getCallback()->onPropertySetError(errorCode, property, areaId);
     }
 }
 
 void VehicleHalManager::onBatchHalEvent(const std::vector<VehiclePropValuePtr>& values) {
-    const auto& clientValues =
-        mSubscriptionManager.distributeValuesToClients(values, SubscribeFlags::EVENTS_FROM_CAR);
+    const auto& clientValues = mSubscriptionManager.distributeValuesToClients(
+            values, SubscribeFlags::HAL_EVENT);
 
     for (const HalClientValues& cv : clientValues) {
         auto vecSize = cv.values.size();
@@ -250,7 +259,8 @@ void VehicleHalManager::onBatchHalEvent(const std::vector<VehiclePropValuePtr>& 
 }
 
 bool VehicleHalManager::isSampleRateFixed(VehiclePropertyChangeMode mode) {
-    return (mode & VehiclePropertyChangeMode::ON_CHANGE);
+    return (mode & VehiclePropertyChangeMode::ON_SET)
+           || (mode & VehiclePropertyChangeMode::ON_CHANGE);
 }
 
 float VehicleHalManager::checkSampleRate(const VehiclePropConfig &config,
@@ -280,12 +290,18 @@ bool VehicleHalManager::isSubscribable(const VehiclePropConfig& config,
                                        SubscribeFlags flags) {
     bool isReadable = config.access & VehiclePropertyAccess::READ;
 
-    if (!isReadable && (SubscribeFlags::EVENTS_FROM_CAR & flags)) {
+    if (!isReadable && (SubscribeFlags::HAL_EVENT & flags)) {
         ALOGW("Cannot subscribe, property 0x%x is not readable", config.prop);
         return false;
     }
     if (config.changeMode == VehiclePropertyChangeMode::STATIC) {
         ALOGW("Cannot subscribe, property 0x%x is static", config.prop);
+        return false;
+    }
+
+    //TODO: extend to support event notification for set from android
+    if (config.changeMode == VehiclePropertyChangeMode::POLL) {
+        ALOGW("Cannot subscribe, property 0x%x is poll only", config.prop);
         return false;
     }
     return true;
@@ -310,9 +326,9 @@ bool VehicleHalManager::checkReadPermission(const VehiclePropConfig &config) con
 }
 
 void VehicleHalManager::handlePropertySetEvent(const VehiclePropValue& value) {
-    auto clients =
-        mSubscriptionManager.getSubscribedClients(value.prop, SubscribeFlags::EVENTS_FROM_ANDROID);
-    for (const auto& client : clients) {
+    auto clients = mSubscriptionManager.getSubscribedClients(
+            value.prop, value.areaId, SubscribeFlags::SET_CALL);
+    for (auto client : clients) {
         client->getCallback()->onPropertySet(value);
     }
 }

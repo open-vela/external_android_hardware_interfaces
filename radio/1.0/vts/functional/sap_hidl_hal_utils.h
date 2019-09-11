@@ -17,7 +17,6 @@
 #include <android-base/logging.h>
 
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -26,7 +25,7 @@
 #include <android/hardware/radio/1.0/ISapCallback.h>
 #include <android/hardware/radio/1.0/types.h>
 
-#include "vts_test_util.h"
+#include <vts_test_util.h>
 
 using namespace ::android::hardware::radio::V1_0;
 
@@ -80,20 +79,6 @@ class SapCallback : public ISapCallback {
     Return<void> transferProtocolResponse(int32_t token, SapResultCode resultCode);
 };
 
-// Test environment for Sap HIDL HAL.
-class SapHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static SapHidlEnvironment* Instance() {
-        static SapHidlEnvironment* instance = new SapHidlEnvironment;
-        return instance;
-    }
-    virtual void registerTestServices() override { registerTestService<ISap>(); }
-
-   private:
-    SapHidlEnvironment() {}
-};
-
 // The main test class for Sap HIDL.
 class SapHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    private:
@@ -107,7 +92,7 @@ class SapHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     virtual void TearDown() override;
 
     /* Used as a mechanism to inform the test about data/event callback */
-    void notify(int receivedToken);
+    void notify();
 
     /* Test code calls this function to wait for response */
     std::cv_status wait();
@@ -117,7 +102,11 @@ class SapHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 
     /* Sap Callback object */
     sp<SapCallback> sapCb;
+};
 
-    /* Token for sap request */
-    int32_t token;
+// A class for test environment setup
+class SapHidlEnvironment : public ::testing::Environment {
+   public:
+    virtual void SetUp() {}
+    virtual void TearDown() {}
 };

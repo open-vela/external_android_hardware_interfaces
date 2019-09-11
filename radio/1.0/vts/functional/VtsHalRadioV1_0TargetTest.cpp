@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-#include <radio_hidl_hal_utils_v1_0.h>
+#include <radio_hidl_hal_utils.h>
 
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(RadioHidlEnvironment::Instance());
+    ::testing::AddGlobalTestEnvironment(new RadioHidlEnvironment);
     ::testing::InitGoogleTest(&argc, argv);
-    RadioHidlEnvironment::Instance()->init(&argc, argv);
 
     // setup seed for rand function
     int seedSrand = time(NULL);
