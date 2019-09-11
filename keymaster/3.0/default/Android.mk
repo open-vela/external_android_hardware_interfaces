@@ -11,9 +11,10 @@ LOCAL_SHARED_LIBRARIES := \
     liblog \
     libsoftkeymasterdevice \
     libcrypto \
-    libkeymaster1 \
+    libkeymaster_portable \
+    libpuresoftkeymasterdevice \
+    libkeymaster3device \
     libhidlbase \
-    libhidltransport \
     libutils \
     libhardware \
     android.hardware.keymaster@3.0
@@ -36,7 +37,6 @@ LOCAL_SHARED_LIBRARIES := \
     libutils \
     libhardware \
     libhidlbase \
-    libhidltransport \
     android.hardware.keymaster@3.0
 
 include $(BUILD_EXECUTABLE)

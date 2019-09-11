@@ -18,8 +18,10 @@
 
 #define LOG_TAG "android.hardware.bluetooth-hci-hci_protocol"
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <log/log.h>
+#include <unistd.h>
 
 namespace android {
 namespace hardware {

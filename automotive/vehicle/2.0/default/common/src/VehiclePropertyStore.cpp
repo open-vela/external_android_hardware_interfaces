@@ -41,7 +41,8 @@ void VehiclePropertyStore::registerProperty(const VehiclePropConfig& config,
     mConfigs.insert({ config.prop, RecordConfig { config, tokenFunc } });
 }
 
-bool VehiclePropertyStore::writeValue(const VehiclePropValue& propValue) {
+bool VehiclePropertyStore::writeValue(const VehiclePropValue& propValue,
+                                        bool updateStatus) {
     MuxGuard g(mLock);
     if (!mConfigs.count(propValue.prop)) return false;
 
@@ -49,9 +50,18 @@ bool VehiclePropertyStore::writeValue(const VehiclePropValue& propValue) {
     VehiclePropValue* valueToUpdate = const_cast<VehiclePropValue*>(getValueOrNullLocked(recId));
     if (valueToUpdate == nullptr) {
         mPropertyValues.insert({ recId, propValue });
-    } else {
-        valueToUpdate->timestamp = propValue.timestamp;
-        valueToUpdate->value = propValue.value;
+        return true;
+    }
+
+    // propValue is outdated and drops it.
+    if (valueToUpdate->timestamp > propValue.timestamp) {
+        return false;
+    }
+    // update the propertyValue.
+    valueToUpdate->timestamp = propValue.timestamp;
+    valueToUpdate->value = propValue.value;
+    if (updateStatus) {
+        valueToUpdate->status = propValue.status;
     }
     return true;
 }

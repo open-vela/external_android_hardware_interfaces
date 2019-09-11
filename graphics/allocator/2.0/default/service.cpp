@@ -20,9 +20,9 @@
 
 #include <hidl/LegacySupport.h>
 
-using android::hardware::graphics::allocator::V2_0::IAllocator;
 using android::hardware::defaultPassthroughServiceImplementation;
+using android::hardware::graphics::allocator::V2_0::IAllocator;
 
 int main() {
-    return defaultPassthroughServiceImplementation<IAllocator>();
+    return defaultPassthroughServiceImplementation<IAllocator>(4);
 }
