@@ -48,75 +48,6 @@ using ::android::sp;
 #include <getopt.h>
 #include <media_hidl_test_common.h>
 
-// A class for test environment setup
-class ComponentTestEnvironment : public ::testing::Environment {
-   public:
-    virtual void SetUp() {}
-    virtual void TearDown() {}
-
-    ComponentTestEnvironment() : instance("default") {}
-
-    void setInstance(const char* _instance) { instance = _instance; }
-
-    void setComponent(const char* _component) { component = _component; }
-
-    void setRole(const char* _role) { role = _role; }
-
-    const hidl_string getInstance() const { return instance; }
-
-    const hidl_string getComponent() const { return component; }
-
-    const hidl_string getRole() const { return role; }
-
-    int initFromOptions(int argc, char** argv) {
-        static struct option options[] = {
-            {"instance", required_argument, 0, 'I'},
-            {"component", required_argument, 0, 'C'},
-            {"role", required_argument, 0, 'R'},
-            {0, 0, 0, 0}};
-
-        while (true) {
-            int index = 0;
-            int c = getopt_long(argc, argv, "I:C:R:", options, &index);
-            if (c == -1) {
-                break;
-            }
-
-            switch (c) {
-                case 'I':
-                    setInstance(optarg);
-                    break;
-                case 'C':
-                    setComponent(optarg);
-                    break;
-                case 'R':
-                    setRole(optarg);
-                    break;
-                case '?':
-                    break;
-            }
-        }
-
-        if (optind < argc) {
-            fprintf(stderr,
-                    "unrecognized option: %s\n\n"
-                    "usage: %s <gtest options> <test options>\n\n"
-                    "test options are:\n\n"
-                    "-I, --instance: HAL instance to test\n"
-                    "-C, --component: OMX component to test\n"
-                    "-R, --Role: OMX component Role\n",
-                    argv[optind ?: 1], argv[0]);
-            return 2;
-        }
-        return 0;
-    }
-
-   private:
-    hidl_string instance;
-    hidl_string component;
-    hidl_string role;
-};
-
 static ComponentTestEnvironment* gEnv = nullptr;
 
 // generic component test fixture class
@@ -149,6 +80,11 @@ class ComponentHidlTest : public ::testing::VtsHalHidlTargetTestBase {
                                this->omxNode = _nl;
                            })
                         .isOk());
+        if (status == android::hardware::media::omx::V1_0::Status::NAME_NOT_FOUND) {
+            disableTest = true;
+            std::cout << "[   WARN   ] Test Disabled, component not present\n";
+            return;
+        }
         ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::OK);
         ASSERT_NE(omxNode, nullptr);
         ASSERT_NE(gEnv->getRole().empty(), true) << "Invalid Component Role";
@@ -179,6 +115,7 @@ class ComponentHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         }
         if (compClass == unknown_class) disableTest = true;
         isSecure = false;
+        mTunnel = false;
         size_t suffixLen = strlen(".secure");
         if (strlen(gEnv->getComponent().c_str()) >= suffixLen) {
             isSecure =
@@ -186,6 +123,18 @@ class ComponentHidlTest : public ::testing::VtsHalHidlTargetTestBase {
                             strlen(gEnv->getComponent().c_str()) - suffixLen,
                         ".secure");
         }
+        if (compClass == video_decoder) {
+            omxNode->configureVideoTunnelMode(
+                1, OMX_TRUE, 0,
+                [&](android::hardware::media::omx::V1_0::Status _s,
+                    const ::android::hardware::hidl_handle& sidebandHandle) {
+                    (void)sidebandHandle;
+                    if (_s == android::hardware::media::omx::V1_0::Status::OK)
+                        this->mTunnel = true;
+                });
+        }
+        // NOTES: secure components are not covered in these tests.
+        // we are disabling tests for them
         if (disableTest) std::cout << "[   WARN   ] Test Disabled \n";
     }
 
@@ -213,6 +162,7 @@ class ComponentHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     sp<CodecObserver> observer;
     sp<IOmxNode> omxNode;
     standardCompClass compClass;
+    bool mTunnel;
     bool isSecure;
     bool disableTest;
 
@@ -1055,7 +1005,8 @@ TEST_F(ComponentHidlTest, PortEnableDisable_Idle) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateLoadedtoIdle(omxNode, observer, &pBuffer[0], &pBuffer[1],
                                 kPortIndexInput, kPortIndexOutput, portMode));
-    for (size_t i = portBase; i < portBase + 2; i++) {
+    int range = mTunnel ? 1 : 2;
+    for (size_t i = portBase; i < portBase + range; i++) {
         status =
             omxNode->sendCommand(toRawCommandType(OMX_CommandPortDisable), i);
         ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::OK);
@@ -1168,7 +1119,8 @@ TEST_F(ComponentHidlTest, PortEnableDisable_Execute) {
             dispatchOutputBuffer(omxNode, &pBuffer[1], i, portMode[1]));
     }
 
-    for (size_t i = portBase; i < portBase + 2; i++) {
+    int range = mTunnel ? 1 : 2;
+    for (size_t i = portBase; i < portBase + range; i++) {
         status =
             omxNode->sendCommand(toRawCommandType(OMX_CommandPortDisable), i);
         ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::OK);
@@ -1321,6 +1273,7 @@ int main(int argc, char** argv) {
     gEnv = new ComponentTestEnvironment();
     ::testing::AddGlobalTestEnvironment(gEnv);
     ::testing::InitGoogleTest(&argc, argv);
+    gEnv->init(&argc, argv);
     int status = gEnv->initFromOptions(argc, argv);
     if (status == 0) {
         status = RUN_ALL_TESTS();
