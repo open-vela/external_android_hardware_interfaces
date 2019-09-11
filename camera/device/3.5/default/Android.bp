@@ -37,6 +37,7 @@ cc_library_shared {
     ],
     shared_libs: [
         "libhidlbase",
+        "libhidltransport",
         "libutils",
         "libcutils",
         "camera.device@3.2-impl",
@@ -70,6 +71,7 @@ cc_library_shared {
     ],
     shared_libs: [
         "libhidlbase",
+        "libhidltransport",
         "libutils",
         "libcutils",
         "camera.device@3.2-impl",
