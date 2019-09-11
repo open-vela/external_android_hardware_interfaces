@@ -19,19 +19,27 @@ cc_test {
     defaults: ["VtsHalTargetTestDefaults"],
     srcs: [
         "VtsHalGraphicsComposerV2_2ReadbackTest.cpp",
-        "VtsHalGraphicsComposerV2_2TargetTest.cpp",
+        "VtsHalGraphicsComposerV2_2TargetTest.cpp"
     ],
 
     // TODO(b/64437680): Assume these libs are always available on the device.
     shared_libs: [
+        "libEGL",
+        "libGLESv1_CM",
+        "libGLESv2",
         "libfmq",
+        "libgui",
         "libhidlbase",
         "libhidltransport",
+        "libhwbinder",
+        "libprocessgroup",
         "libsync",
+        "libui",
     ],
     static_libs: [
         "android.hardware.graphics.allocator@2.0",
         "android.hardware.graphics.allocator@3.0",
+        "android.hardware.graphics.allocator@4.0",
         "android.hardware.graphics.common@1.1",
         "android.hardware.graphics.composer@2.1",
         "android.hardware.graphics.composer@2.1-vts",
@@ -43,6 +51,9 @@ cc_test {
         "android.hardware.graphics.mapper@2.1-vts",
         "android.hardware.graphics.mapper@3.0",
         "android.hardware.graphics.mapper@3.0-vts",
+        "android.hardware.graphics.mapper@4.0",
+        "android.hardware.graphics.mapper@4.0-vts",
+        "librenderengine"
     ],
     header_libs: [
         "android.hardware.graphics.composer@2.1-command-buffer",
