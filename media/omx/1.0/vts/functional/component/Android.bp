@@ -16,8 +16,32 @@
 
 cc_test {
     name: "VtsHalMediaOmxV1_0TargetComponentTest",
-    defaults: ["VtsHalMediaOmxV1_0Defaults"],
+    defaults: ["hidl_defaults"],
     srcs: ["VtsHalMediaOmxV1_0TargetComponentTest.cpp"],
-    test_suites: ["general-tests"],
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libcutils",
+        "libhidlbase",
+        "libhidlmemory",
+        "libhidltransport",
+        "libhwbinder",
+        "libnativehelper",
+        "libutils",
+        "libstagefright_foundation",
+        "android.hidl.allocator@1.0",
+        "android.hidl.memory@1.0",
+        "android.hardware.media.omx@1.0",
+    ],
+    static_libs: ["VtsHalHidlTargetTestBase",
+                  "VtsHalMediaOmxV1_0CommonUtil"],
+    cflags: [
+        "-O0",
+        "-g",
+    ],
+    include_dirs: [
+        "frameworks/native/include/media/openmax/",
+        "hardware/interfaces/media/omx/1.0/vts/functional/common",
+    ],
 }
 

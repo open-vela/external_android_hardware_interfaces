@@ -18,7 +18,6 @@
 
 #include <VtsHalHidlTargetCallbackBase.h>
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/stringprintf.h>
 #include <android-base/unique_fd.h>
 #include <android/hardware/tetheroffload/config/1.0/IOffloadConfig.h>
@@ -26,7 +25,7 @@
 #include <android/hardware/tetheroffload/control/1.0/types.h>
 #include <linux/netfilter/nfnetlink.h>
 #include <linux/netlink.h>
-#include <net/if.h>
+#include <log/log.h>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <set>
@@ -47,25 +46,21 @@ using android::hardware::tetheroffload::control::V1_0::NetworkProtocol;
 using android::hardware::Void;
 using android::sp;
 
-enum class ExpectBoolean {
-    Ignored = -1,
-    False = 0,
-    True = 1,
-};
-
-constexpr const char* TEST_IFACE = "rmnet_data0";
-
 // We use #defines here so as to get local lamba captures and error message line numbers
-#define ASSERT_TRUE_CALLBACK                                                    \
-    [&](bool success, std::string errMsg) {                                     \
-        std::string msg = StringPrintf("unexpected error: %s", errMsg.c_str()); \
-        ASSERT_TRUE(success) << msg;                                            \
+#define ASSERT_TRUE_CALLBACK                            \
+    [&](bool success, std::string errMsg) {             \
+        if (!success) {                                 \
+            ALOGI("Error message: %s", errMsg.c_str()); \
+        }                                               \
+        ASSERT_TRUE(success);                           \
     }
 
-#define ASSERT_FALSE_CALLBACK                                                 \
-    [&](bool success, std::string errMsg) {                                   \
-        std::string msg = StringPrintf("expected error: %s", errMsg.c_str()); \
-        ASSERT_FALSE(success) << msg;                                         \
+#define ASSERT_FALSE_CALLBACK                           \
+    [&](bool success, std::string errMsg) {             \
+        if (!success) {                                 \
+            ALOGI("Error message: %s", errMsg.c_str()); \
+        }                                               \
+        ASSERT_FALSE(success);                          \
     }
 
 #define ASSERT_ZERO_BYTES_CALLBACK            \
@@ -110,23 +105,6 @@ class TetheringOffloadCallbackArgs {
     NatTimeoutUpdate last_params;
 };
 
-// Test environment for OffloadControl HIDL HAL.
-class OffloadControlHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static OffloadControlHidlEnvironment* Instance() {
-        static OffloadControlHidlEnvironment* instance = new OffloadControlHidlEnvironment;
-        return instance;
-    }
-
-    virtual void registerTestServices() override {
-        registerTestService<IOffloadConfig>();
-        registerTestService<IOffloadControl>();
-    }
-   private:
-    OffloadControlHidlEnvironment() {}
-};
-
 class OffloadControlHidlTestBase : public testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
@@ -134,47 +112,38 @@ class OffloadControlHidlTestBase : public testing::VtsHalHidlTargetTestBase {
         prepareControlHal();
     }
 
-    virtual void TearDown() override {
-        // For good measure, we should try stopOffload() once more. Since we
-        // don't know where we are in HAL call test cycle we don't know what
-        // return code to actually expect, so we just ignore it.
-        stopOffload(ExpectBoolean::Ignored);
-    }
+    virtual void TearDown() override { stopOffload(false); }
 
     // The IOffloadConfig HAL is tested more thoroughly elsewhere. He we just
     // setup everything correctly and verify basic readiness.
     void setupConfigHal() {
-        config = testing::VtsHalHidlTargetTestBase::getService<IOffloadConfig>(
-            OffloadControlHidlEnvironment::Instance()->getServiceName<IOffloadConfig>());
+        config = testing::VtsHalHidlTargetTestBase::getService<IOffloadConfig>();
         ASSERT_NE(nullptr, config.get()) << "Could not get HIDL instance";
 
-        unique_fd fd1(conntrackSocket(NF_NETLINK_CONNTRACK_NEW | NF_NETLINK_CONNTRACK_DESTROY));
+        unique_fd fd1(conntrackSocket(NFNLGRP_CONNTRACK_NEW | NFNLGRP_CONNTRACK_DESTROY));
         if (fd1.get() < 0) {
             ALOGE("Unable to create conntrack handles: %d/%s", errno, strerror(errno));
             FAIL();
         }
         native_handle_t* const nativeHandle1 = native_handle_create(1, 0);
         nativeHandle1->data[0] = fd1.release();
-        hidl_handle h1;
-        h1.setTo(nativeHandle1, true);
+        hidl_handle h1 = hidl_handle(nativeHandle1);
 
-        unique_fd fd2(conntrackSocket(NF_NETLINK_CONNTRACK_UPDATE | NF_NETLINK_CONNTRACK_DESTROY));
+        unique_fd fd2(conntrackSocket(NFNLGRP_CONNTRACK_UPDATE | NFNLGRP_CONNTRACK_DESTROY));
         if (fd2.get() < 0) {
             ALOGE("Unable to create conntrack handles: %d/%s", errno, strerror(errno));
             FAIL();
         }
         native_handle_t* const nativeHandle2 = native_handle_create(1, 0);
         nativeHandle2->data[0] = fd2.release();
-        hidl_handle h2;
-        h2.setTo(nativeHandle2, true);
+        hidl_handle h2 = hidl_handle(nativeHandle2);
 
         const Return<void> ret = config->setHandles(h1, h2, ASSERT_TRUE_CALLBACK);
         ASSERT_TRUE(ret.isOk());
     }
 
     void prepareControlHal() {
-        control = testing::VtsHalHidlTargetTestBase::getService<IOffloadControl>(
-            OffloadControlHidlEnvironment::Instance()->getServiceName<IOffloadControl>());
+        control = testing::VtsHalHidlTargetTestBase::getService<IOffloadControl>();
         ASSERT_NE(nullptr, control.get()) << "Could not get HIDL instance";
 
         control_cb = new TetheringOffloadCallback();
@@ -183,9 +152,10 @@ class OffloadControlHidlTestBase : public testing::VtsHalHidlTargetTestBase {
 
     void initOffload(const bool expected_result) {
         auto init_cb = [&](bool success, std::string errMsg) {
-            std::string msg = StringPrintf("Unexpectedly %s to init offload: %s",
-                                           success ? "succeeded" : "failed", errMsg.c_str());
-            ASSERT_EQ(expected_result, success) << msg;
+            if (!success) {
+                ALOGI("Error message: %s", errMsg.c_str());
+            }
+            ASSERT_EQ(expected_result, success);
         };
         const Return<void> ret = control->initOffload(control_cb, init_cb);
         ASSERT_TRUE(ret.isOk());
@@ -196,18 +166,12 @@ class OffloadControlHidlTestBase : public testing::VtsHalHidlTargetTestBase {
         initOffload(true);
     }
 
-    void stopOffload(const ExpectBoolean value) {
+    void stopOffload(const bool expected_result) {
         auto cb = [&](bool success, const hidl_string& errMsg) {
-            switch (value) {
-                case ExpectBoolean::False:
-                    ASSERT_EQ(false, success) << "Unexpectedly able to stop offload: " << errMsg;
-                    break;
-                case ExpectBoolean::True:
-                    ASSERT_EQ(true, success) << "Unexpectedly failed to stop offload: " << errMsg;
-                    break;
-                case ExpectBoolean::Ignored:
-                    break;
+            if (!success) {
+                ALOGI("Error message: %s", errMsg.c_str());
             }
+            ASSERT_EQ(expected_result, success);
         };
         const Return<void> ret = control->stopOffload(cb);
         ASSERT_TRUE(ret.isOk());
@@ -245,47 +209,22 @@ TEST_F(OffloadControlHidlTestBase, AdditionalInitsWithoutStopReturnFalse) {
     initOffload(false);
     initOffload(false);
     initOffload(false);
+    stopOffload(true);  // balance out initOffload(true)
 }
 
 // Check that calling stopOffload() without first having called initOffload() returns false.
 TEST_F(OffloadControlHidlTestBase, MultipleStopsWithoutInitReturnFalse) {
-    stopOffload(ExpectBoolean::False);
-    stopOffload(ExpectBoolean::False);
-    stopOffload(ExpectBoolean::False);
-}
-
-// Check whether the specified interface is up.
-bool interfaceIsUp(const char* name) {
-    if (name == nullptr) return false;
-    struct ifreq ifr = {};
-    strlcpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
-    int sock = socket(AF_INET6, SOCK_DGRAM, 0);
-    if (sock == -1) return false;
-    int ret = ioctl(sock, SIOCGIFFLAGS, &ifr, sizeof(ifr));
-    close(sock);
-    return (ret == 0) && (ifr.ifr_flags & IFF_UP);
+    stopOffload(false);
+    stopOffload(false);
+    stopOffload(false);
 }
 
 // Check that calling stopOffload() after a complete init/stop cycle returns false.
 TEST_F(OffloadControlHidlTestBase, AdditionalStopsWithInitReturnFalse) {
     initOffload(true);
-    // Call setUpstreamParameters() so that "offload" can be reasonably said
-    // to be both requested and operational.
-    const hidl_string v4Addr("192.0.0.2");
-    const hidl_string v4Gw("192.0.0.1");
-    const vector<hidl_string> v6Gws{hidl_string("fe80::db8:1"), hidl_string("fe80::db8:2")};
-    const Return<void> upstream =
-        control->setUpstreamParameters(TEST_IFACE, v4Addr, v4Gw, v6Gws, ASSERT_TRUE_CALLBACK);
-    EXPECT_TRUE(upstream.isOk());
-    if (!interfaceIsUp(TEST_IFACE)) {
-        return;
-    }
-    SCOPED_TRACE("Expecting stopOffload to succeed");
-    stopOffload(ExpectBoolean::Ignored);  // balance out initOffload(true)
-    SCOPED_TRACE("Expecting stopOffload to fail the first time");
-    stopOffload(ExpectBoolean::False);
-    SCOPED_TRACE("Expecting stopOffload to fail the second time");
-    stopOffload(ExpectBoolean::False);
+    stopOffload(true);  // balance out initOffload(true)
+    stopOffload(false);
+    stopOffload(false);
 }
 
 // Check that calling setLocalPrefixes() without first having called initOffload() returns false.
@@ -298,14 +237,14 @@ TEST_F(OffloadControlHidlTestBase, SetLocalPrefixesWithoutInitReturnsFalse) {
 // Check that calling getForwardedStats() without first having called initOffload()
 // returns zero bytes statistics.
 TEST_F(OffloadControlHidlTestBase, GetForwardedStatsWithoutInitReturnsZeroValues) {
-    const hidl_string upstream(TEST_IFACE);
+    const hidl_string upstream("rmnet_data0");
     const Return<void> ret = control->getForwardedStats(upstream, ASSERT_ZERO_BYTES_CALLBACK);
     EXPECT_TRUE(ret.isOk());
 }
 
 // Check that calling setDataLimit() without first having called initOffload() returns false.
 TEST_F(OffloadControlHidlTestBase, SetDataLimitWithoutInitReturnsFalse) {
-    const hidl_string upstream(TEST_IFACE);
+    const hidl_string upstream("rmnet_data0");
     const uint64_t limit = 5000ULL;
     const Return<void> ret = control->setDataLimit(upstream, limit, ASSERT_FALSE_CALLBACK);
     EXPECT_TRUE(ret.isOk());
@@ -314,7 +253,7 @@ TEST_F(OffloadControlHidlTestBase, SetDataLimitWithoutInitReturnsFalse) {
 // Check that calling setUpstreamParameters() without first having called initOffload()
 // returns false.
 TEST_F(OffloadControlHidlTestBase, SetUpstreamParametersWithoutInitReturnsFalse) {
-    const hidl_string iface(TEST_IFACE);
+    const hidl_string iface("rmnet_data0");
     const hidl_string v4Addr("192.0.2.0/24");
     const hidl_string v4Gw("192.0.2.1");
     const vector<hidl_string> v6Gws{hidl_string("fe80::db8:1")};
@@ -326,7 +265,7 @@ TEST_F(OffloadControlHidlTestBase, SetUpstreamParametersWithoutInitReturnsFalse)
 // Check that calling addDownstream() with an IPv4 prefix without first having called
 // initOffload() returns false.
 TEST_F(OffloadControlHidlTestBase, AddIPv4DownstreamWithoutInitReturnsFalse) {
-    const hidl_string iface(TEST_IFACE);
+    const hidl_string iface("rmnet_data0");
     const hidl_string prefix("192.0.2.0/24");
     const Return<void> ret = control->addDownstream(iface, prefix, ASSERT_FALSE_CALLBACK);
     EXPECT_TRUE(ret.isOk());
@@ -335,7 +274,7 @@ TEST_F(OffloadControlHidlTestBase, AddIPv4DownstreamWithoutInitReturnsFalse) {
 // Check that calling addDownstream() with an IPv6 prefix without first having called
 // initOffload() returns false.
 TEST_F(OffloadControlHidlTestBase, AddIPv6DownstreamWithoutInitReturnsFalse) {
-    const hidl_string iface(TEST_IFACE);
+    const hidl_string iface("rmnet_data0");
     const hidl_string prefix("2001:db8::/64");
     const Return<void> ret = control->addDownstream(iface, prefix, ASSERT_FALSE_CALLBACK);
     EXPECT_TRUE(ret.isOk());
@@ -344,7 +283,7 @@ TEST_F(OffloadControlHidlTestBase, AddIPv6DownstreamWithoutInitReturnsFalse) {
 // Check that calling removeDownstream() with an IPv4 prefix without first having called
 // initOffload() returns false.
 TEST_F(OffloadControlHidlTestBase, RemoveIPv4DownstreamWithoutInitReturnsFalse) {
-    const hidl_string iface(TEST_IFACE);
+    const hidl_string iface("rmnet_data0");
     const hidl_string prefix("192.0.2.0/24");
     const Return<void> ret = control->removeDownstream(iface, prefix, ASSERT_FALSE_CALLBACK);
     EXPECT_TRUE(ret.isOk());
@@ -353,7 +292,7 @@ TEST_F(OffloadControlHidlTestBase, RemoveIPv4DownstreamWithoutInitReturnsFalse) 
 // Check that calling removeDownstream() with an IPv6 prefix without first having called
 // initOffload() returns false.
 TEST_F(OffloadControlHidlTestBase, RemoveIPv6DownstreamWithoutInitReturnsFalse) {
-    const hidl_string iface(TEST_IFACE);
+    const hidl_string iface("rmnet_data0");
     const hidl_string prefix("2001:db8::/64");
     const Return<void> ret = control->removeDownstream(iface, prefix, ASSERT_FALSE_CALLBACK);
     EXPECT_TRUE(ret.isOk());
@@ -366,12 +305,7 @@ class OffloadControlHidlTest : public OffloadControlHidlTestBase {
         setupControlHal();
     }
 
-    virtual void TearDown() override {
-        // For good measure, we should try stopOffload() once more. Since we
-        // don't know where we are in HAL call test cycle we don't know what
-        // return code to actually expect, so we just ignore it.
-        stopOffload(ExpectBoolean::Ignored);
-    }
+    virtual void TearDown() override { stopOffload(true); }
 };
 
 /*
@@ -426,10 +360,10 @@ TEST_F(OffloadControlHidlTest, GetForwardedStatsInvalidUpstreamIface) {
     EXPECT_TRUE(ret.isOk());
 }
 
-// TEST_IFACE is presumed to exist on the device and be up. No packets
+// The "rmnet_data0" is presumed to exist on the device and be up. No packets
 // are ever actually caused to be forwarded.
 TEST_F(OffloadControlHidlTest, GetForwardedStatsDummyIface) {
-    const hidl_string upstream(TEST_IFACE);
+    const hidl_string upstream("rmnet_data0");
     const Return<void> ret = control->getForwardedStats(upstream, ASSERT_ZERO_BYTES_CALLBACK);
     EXPECT_TRUE(ret.isOk());
 }
@@ -446,19 +380,19 @@ TEST_F(OffloadControlHidlTest, SetDataLimitEmptyUpstreamIfaceFails) {
     EXPECT_TRUE(ret.isOk());
 }
 
-// TEST_IFACE is presumed to exist on the device and be up. No packets
+// The "rmnet_data0" is presumed to exist on the device and be up. No packets
 // are ever actually caused to be forwarded.
 TEST_F(OffloadControlHidlTest, SetDataLimitNonZeroOk) {
-    const hidl_string upstream(TEST_IFACE);
+    const hidl_string upstream("rmnet_data0");
     const uint64_t limit = 5000ULL;
     const Return<void> ret = control->setDataLimit(upstream, limit, ASSERT_TRUE_CALLBACK);
     EXPECT_TRUE(ret.isOk());
 }
 
-// TEST_IFACE is presumed to exist on the device and be up. No packets
+// The "rmnet_data0" is presumed to exist on the device and be up. No packets
 // are ever actually caused to be forwarded.
 TEST_F(OffloadControlHidlTest, SetDataLimitZeroOk) {
-    const hidl_string upstream(TEST_IFACE);
+    const hidl_string upstream("rmnet_data0");
     const uint64_t limit = 0ULL;
     const Return<void> ret = control->setDataLimit(upstream, limit, ASSERT_TRUE_CALLBACK);
     EXPECT_TRUE(ret.isOk());
@@ -468,10 +402,10 @@ TEST_F(OffloadControlHidlTest, SetDataLimitZeroOk) {
  * Tests for IOffloadControl::setUpstreamParameters().
  */
 
-// TEST_IFACE is presumed to exist on the device and be up. No packets
+// The "rmnet_data0" is presumed to exist on the device and be up. No packets
 // are ever actually caused to be forwarded.
 TEST_F(OffloadControlHidlTest, SetUpstreamParametersIPv6OnlyOk) {
-    const hidl_string iface(TEST_IFACE);
+    const hidl_string iface("rmnet_data0");
     const hidl_string v4Addr("");
     const hidl_string v4Gw("");
     const vector<hidl_string> v6Gws{hidl_string("fe80::db8:1"), hidl_string("fe80::db8:2")};
@@ -480,10 +414,10 @@ TEST_F(OffloadControlHidlTest, SetUpstreamParametersIPv6OnlyOk) {
     EXPECT_TRUE(ret.isOk());
 }
 
-// TEST_IFACE is presumed to exist on the device and be up. No packets
+// The "rmnet_data0" is presumed to exist on the device and be up. No packets
 // are ever actually caused to be forwarded.
 TEST_F(OffloadControlHidlTest, SetUpstreamParametersAlternateIPv6OnlyOk) {
-    const hidl_string iface(TEST_IFACE);
+    const hidl_string iface("rmnet_data0");
     const hidl_string v4Addr;
     const hidl_string v4Gw;
     const vector<hidl_string> v6Gws{hidl_string("fe80::db8:1"), hidl_string("fe80::db8:3")};
@@ -492,10 +426,10 @@ TEST_F(OffloadControlHidlTest, SetUpstreamParametersAlternateIPv6OnlyOk) {
     EXPECT_TRUE(ret.isOk());
 }
 
-// TEST_IFACE is presumed to exist on the device and be up. No packets
+// The "rmnet_data0" is presumed to exist on the device and be up. No packets
 // are ever actually caused to be forwarded.
 TEST_F(OffloadControlHidlTest, SetUpstreamParametersIPv4OnlyOk) {
-    const hidl_string iface(TEST_IFACE);
+    const hidl_string iface("rmnet_data0");
     const hidl_string v4Addr("192.0.2.2");
     const hidl_string v4Gw("192.0.2.1");
     const vector<hidl_string> v6Gws{};
@@ -504,10 +438,10 @@ TEST_F(OffloadControlHidlTest, SetUpstreamParametersIPv4OnlyOk) {
     EXPECT_TRUE(ret.isOk());
 }
 
-// TEST_IFACE is presumed to exist on the device and be up. No packets
+// The "rmnet_data0" is presumed to exist on the device and be up. No packets
 // are ever actually caused to be forwarded.
 TEST_F(OffloadControlHidlTest, SetUpstreamParametersIPv4v6Ok) {
-    const hidl_string iface(TEST_IFACE);
+    const hidl_string iface("rmnet_data0");
     const hidl_string v4Addr("192.0.2.2");
     const hidl_string v4Gw("192.0.2.1");
     const vector<hidl_string> v6Gws{hidl_string("fe80::db8:1"), hidl_string("fe80::db8:2")};
@@ -543,7 +477,7 @@ TEST_F(OffloadControlHidlTest, SetUpstreamParametersBogusIfaceFails) {
 
 // Test that setUpstreamParameters() fails when given unparseable IPv4 addresses.
 TEST_F(OffloadControlHidlTest, SetUpstreamParametersInvalidIPv4AddrFails) {
-    const hidl_string iface(TEST_IFACE);
+    const hidl_string iface("rmnet_data0");
     const hidl_string v4Gw("192.0.2.1");
     const vector<hidl_string> v6Gws{hidl_string("fe80::db8:1")};
     for (const auto& bogus : {"invalid", "192.0.2"}) {
@@ -557,7 +491,7 @@ TEST_F(OffloadControlHidlTest, SetUpstreamParametersInvalidIPv4AddrFails) {
 
 // Test that setUpstreamParameters() fails when given unparseable IPv4 gateways.
 TEST_F(OffloadControlHidlTest, SetUpstreamParametersInvalidIPv4GatewayFails) {
-    const hidl_string iface(TEST_IFACE);
+    const hidl_string iface("rmnet_data0");
     const hidl_string v4Addr("192.0.2.2");
     const vector<hidl_string> v6Gws{hidl_string("fe80::db8:1")};
     for (const auto& bogus : {"invalid", "192.0.2"}) {
@@ -571,7 +505,7 @@ TEST_F(OffloadControlHidlTest, SetUpstreamParametersInvalidIPv4GatewayFails) {
 
 // Test that setUpstreamParameters() fails when given unparseable IPv6 gateways.
 TEST_F(OffloadControlHidlTest, SetUpstreamParametersBadIPv6GatewaysFail) {
-    const hidl_string iface(TEST_IFACE);
+    const hidl_string iface("rmnet_data0");
     const hidl_string v4Addr("192.0.2.2");
     const hidl_string v4Gw("192.0.2.1");
     for (const auto& bogus : {"", "invalid", "fe80::bogus", "192.0.2.66"}) {
@@ -641,24 +575,16 @@ TEST_F(OffloadControlHidlTest, AddDownstreamBogusPrefixFails) {
 TEST_F(OffloadControlHidlTest, RemoveDownstreamIPv4) {
     const hidl_string iface("dummy0");
     const hidl_string prefix("192.0.2.0/24");
-    // First add the downstream, otherwise removeDownstream logic can reasonably
-    // return false for downstreams not previously added.
-    const Return<void> add = control->addDownstream(iface, prefix, ASSERT_TRUE_CALLBACK);
-    EXPECT_TRUE(add.isOk());
-    const Return<void> del = control->removeDownstream(iface, prefix, ASSERT_TRUE_CALLBACK);
-    EXPECT_TRUE(del.isOk());
+    const Return<void> ret = control->removeDownstream(iface, prefix, ASSERT_TRUE_CALLBACK);
+    EXPECT_TRUE(ret.isOk());
 }
 
 // Test removeDownstream() works given an IPv6 prefix.
 TEST_F(OffloadControlHidlTest, RemoveDownstreamIPv6) {
     const hidl_string iface("dummy0");
     const hidl_string prefix("2001:db8::/64");
-    // First add the downstream, otherwise removeDownstream logic can reasonably
-    // return false for downstreams not previously added.
-    const Return<void> add = control->addDownstream(iface, prefix, ASSERT_TRUE_CALLBACK);
-    EXPECT_TRUE(add.isOk());
-    const Return<void> del = control->removeDownstream(iface, prefix, ASSERT_TRUE_CALLBACK);
-    EXPECT_TRUE(del.isOk());
+    const Return<void> ret = control->removeDownstream(iface, prefix, ASSERT_TRUE_CALLBACK);
+    EXPECT_TRUE(ret.isOk());
 }
 
 // Test removeDownstream() fails given all empty parameters.
@@ -692,9 +618,7 @@ TEST_F(OffloadControlHidlTest, RemoveDownstreamBogusPrefixFails) {
 }
 
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(OffloadControlHidlEnvironment::Instance());
-    ::testing::InitGoogleTest(&argc, argv);
-    OffloadControlHidlEnvironment::Instance()->init(&argc, argv);
+    testing::InitGoogleTest(&argc, argv);
     int status = RUN_ALL_TESTS();
     ALOGE("Test result with status=%d", status);
     return status;

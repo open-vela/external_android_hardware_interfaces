@@ -16,12 +16,19 @@
 
 cc_test {
     name: "VtsHalVibratorV1_1TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
+    defaults: ["hidl_defaults"],
     srcs: ["VtsHalVibratorV1_1TargetTest.cpp"],
-    static_libs: [
-        "android.hardware.vibrator@1.0",
+    shared_libs: [
+        "libbase",
+        "libhidlbase",
+        "liblog",
+        "libutils",
         "android.hardware.vibrator@1.1",
     ],
-    test_suites: ["general-tests"],
+    static_libs: ["VtsHalHidlTargetTestBase"],
+    cflags: [
+        "-O0",
+        "-g",
+    ],
 }
 

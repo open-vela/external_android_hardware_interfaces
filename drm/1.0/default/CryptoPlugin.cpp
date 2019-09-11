@@ -51,10 +51,7 @@ namespace implementation {
 
     Return<void> CryptoPlugin::setSharedBufferBase(const hidl_memory& base,
             uint32_t bufferId) {
-        sp<IMemory> hidlMemory = mapMemory(base);
-
-        // allow mapMemory to return nullptr
-        mSharedBufferMap[bufferId] = hidlMemory;
+        mSharedBufferMap[bufferId] = mapMemory(base);
         return Void();
     }
 
@@ -98,8 +95,8 @@ namespace implementation {
         legacyPattern.mEncryptBlocks = pattern.encryptBlocks;
         legacyPattern.mSkipBlocks = pattern.skipBlocks;
 
-        std::unique_ptr<android::CryptoPlugin::SubSample[]> legacySubSamples =
-                std::make_unique<android::CryptoPlugin::SubSample[]>(subSamples.size());
+        android::CryptoPlugin::SubSample *legacySubSamples =
+            new android::CryptoPlugin::SubSample[subSamples.size()];
 
         size_t destSize = 0;
         for (size_t i = 0; i < subSamples.size(); i++) {
@@ -108,10 +105,12 @@ namespace implementation {
             uint32_t numBytesOfEncryptedData = subSamples[i].numBytesOfEncryptedData;
             legacySubSamples[i].mNumBytesOfEncryptedData = numBytesOfEncryptedData;
             if (__builtin_add_overflow(destSize, numBytesOfClearData, &destSize)) {
+                delete[] legacySubSamples;
                 _hidl_cb(Status::BAD_VALUE, 0, "subsample clear size overflow");
                 return Void();
             }
             if (__builtin_add_overflow(destSize, numBytesOfEncryptedData, &destSize)) {
+                delete[] legacySubSamples;
                 _hidl_cb(Status::BAD_VALUE, 0, "subsample encrypted size overflow");
                 return Void();
             }
@@ -119,10 +118,6 @@ namespace implementation {
 
         AString detailMessage;
         sp<IMemory> sourceBase = mSharedBufferMap[source.bufferId];
-        if (sourceBase == nullptr) {
-            _hidl_cb(Status::ERROR_DRM_CANNOT_HANDLE, 0, "source is a nullptr");
-            return Void();
-        }
 
         if (source.offset + offset + source.size > sourceBase->getSize()) {
             _hidl_cb(Status::ERROR_DRM_CANNOT_HANDLE, 0, "invalid buffer size");
@@ -137,17 +132,13 @@ namespace implementation {
         if (destination.type == BufferType::SHARED_MEMORY) {
             const SharedBuffer& destBuffer = destination.nonsecureMemory;
             sp<IMemory> destBase = mSharedBufferMap[destBuffer.bufferId];
-            if (destBase == nullptr) {
-                _hidl_cb(Status::ERROR_DRM_CANNOT_HANDLE, 0, "destination is a nullptr");
-                return Void();
-            }
-
             if (destBuffer.offset + destBuffer.size > destBase->getSize()) {
                 _hidl_cb(Status::ERROR_DRM_CANNOT_HANDLE, 0, "invalid buffer size");
                 return Void();
             }
 
             if (destSize > destBuffer.size) {
+                delete[] legacySubSamples;
                 _hidl_cb(Status::BAD_VALUE, 0, "subsample sum too large");
                 return Void();
             }
@@ -155,6 +146,7 @@ namespace implementation {
             destPtr = static_cast<void *>(base + destination.nonsecureMemory.offset);
         } else if (destination.type == BufferType::NATIVE_HANDLE) {
             if (!secure) {
+                delete[] legacySubSamples;
                 _hidl_cb(Status::BAD_VALUE, 0, "native handle destination must be secure");
                 return Void();
             }
@@ -162,12 +154,15 @@ namespace implementation {
                     destination.secureMemory.getNativeHandle());
             destPtr = static_cast<void *>(handle);
         } else {
+            delete[] legacySubSamples;
             _hidl_cb(Status::BAD_VALUE, 0, "invalid destination type");
             return Void();
         }
         ssize_t result = mLegacyPlugin->decrypt(secure, keyId.data(), iv.data(),
-                legacyMode, legacyPattern, srcPtr, legacySubSamples.get(),
+                legacyMode, legacyPattern, srcPtr, legacySubSamples,
                 subSamples.size(), destPtr, &detailMessage);
+
+        delete[] legacySubSamples;
 
         uint32_t status;
         uint32_t bytesWritten;

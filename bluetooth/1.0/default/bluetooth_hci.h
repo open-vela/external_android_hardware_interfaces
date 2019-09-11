@@ -21,16 +21,14 @@
 
 #include <hidl/MQDescriptor.h>
 
-#include <functional>
-
 namespace android {
 namespace hardware {
 namespace bluetooth {
 namespace V1_0 {
 namespace implementation {
 
-using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
+using ::android::hardware::hidl_vec;
 
 class BluetoothDeathRecipient;
 

@@ -22,7 +22,6 @@
 #include <android/hardware/ir/1.0/types.h>
 
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 #include <algorithm>
 
 using ::android::hardware::ir::V1_0::IConsumerIr;
@@ -31,26 +30,11 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::sp;
 
-// Test environment for Ir
-class ConsumerIrHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
- public:
-  // get the test environment singleton
-  static ConsumerIrHidlEnvironment* Instance() {
-    static ConsumerIrHidlEnvironment* instance = new ConsumerIrHidlEnvironment;
-    return instance;
-  }
-
-  virtual void registerTestServices() override { registerTestService<IConsumerIr>(); }
- private:
-  ConsumerIrHidlEnvironment() {}
-};
-
 // The main test class for IR HIDL HAL.
 class ConsumerIrHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
-    ir = ::testing::VtsHalHidlTargetTestBase::getService<IConsumerIr>(
-      ConsumerIrHidlEnvironment::Instance()->getServiceName<IConsumerIr>());
+    ir = ::testing::VtsHalHidlTargetTestBase::getService<IConsumerIr>();
     ASSERT_NE(ir, nullptr);
   }
 
@@ -93,9 +77,7 @@ TEST_F(ConsumerIrHidlTest, BadFreqTest) {
 }
 
 int main(int argc, char **argv) {
-  ::testing::AddGlobalTestEnvironment(ConsumerIrHidlEnvironment::Instance());
   ::testing::InitGoogleTest(&argc, argv);
-  ConsumerIrHidlEnvironment::Instance()->init(&argc, argv);
   int status = RUN_ALL_TESTS();
   LOG(INFO) << "Test result = " << status;
   return status;

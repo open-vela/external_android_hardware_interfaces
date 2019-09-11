@@ -16,14 +16,22 @@
 
 cc_test {
     name: "VtsHalBroadcastradioV1_1TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
+    defaults: ["hidl_defaults"],
     srcs: ["VtsHalBroadcastradioV1_1TargetTest.cpp"],
-    static_libs: [
+    shared_libs: [
+        "libbase",
+        "liblog",
+        "libcutils",
+        "libhidlbase",
+        "libhidltransport",
+        "libnativehelper",
+        "libutils",
         "android.hardware.broadcastradio@1.0",
         "android.hardware.broadcastradio@1.1",
-        "android.hardware.broadcastradio@common-utils-1x-lib",
-        "android.hardware.broadcastradio@vts-utils-lib",
-        "libgmock",
     ],
-    test_suites: ["general-tests"],
+    static_libs: ["VtsHalHidlTargetTestBase"],
+    cflags: [
+        "-O0",
+        "-g",
+    ],
 }
