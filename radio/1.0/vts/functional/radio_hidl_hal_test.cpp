@@ -14,44 +14,44 @@
  * limitations under the License.
  */
 
-#include <radio_hidl_hal_utils_v1_0.h>
+#include <radio_hidl_hal_utils.h>
 
 void RadioHidlTest::SetUp() {
-    radio = ::testing::VtsHalHidlTargetTestBase::getService<IRadio>(
-        RadioHidlEnvironment::Instance()->getServiceName<IRadio>(hidl_string(RADIO_SERVICE_NAME)));
+    radio =
+        ::testing::VtsHalHidlTargetTestBase::getService<IRadio>(hidl_string(RADIO_SERVICE_NAME));
     if (radio == NULL) {
         sleep(60);
         radio = ::testing::VtsHalHidlTargetTestBase::getService<IRadio>(
-            RadioHidlEnvironment::Instance()->getServiceName<IRadio>(
-                hidl_string(RADIO_SERVICE_NAME)));
+            hidl_string(RADIO_SERVICE_NAME));
     }
-    ASSERT_NE(nullptr, radio.get());
+    ASSERT_NE(radio, nullptr);
 
-    radioRsp = new (std::nothrow) RadioResponse(*this);
-    ASSERT_NE(nullptr, radioRsp.get());
+    radioRsp = new RadioResponse(*this);
+    ASSERT_NE(radioRsp, nullptr);
 
     count = 0;
 
-    radioInd = new (std::nothrow) RadioIndication(*this);
-    ASSERT_NE(nullptr, radioInd.get());
-
+    radioInd = NULL;
     radio->setResponseFunctions(radioRsp, radioInd);
 
-    updateSimCardStatus();
+    int serial = GetRandomSerialNumber();
+    radio->getIccCardStatus(serial);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp->rspInfo.type);
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
     EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
 
-    /* Enforce Vts Testing with Sim Status Present only. */
-    EXPECT_EQ(CardState::PRESENT, cardStatus.cardState);
+    /* Vts Testing with Sim Absent only. This needs to be removed later in P when sim present
+     * scenarios will be tested. */
+    EXPECT_EQ(CardState::ABSENT, cardStatus.cardState);
 }
 
-void RadioHidlTest::notify(int receivedSerial) {
+void RadioHidlTest::TearDown() {}
+
+void RadioHidlTest::notify() {
     std::unique_lock<std::mutex> lock(mtx);
-    if (serial == receivedSerial) {
-        count++;
-        cv.notify_one();
-    }
+    count++;
+    cv.notify_one();
 }
 
 std::cv_status RadioHidlTest::wait(int sec) {
@@ -69,8 +69,16 @@ std::cv_status RadioHidlTest::wait(int sec) {
     return status;
 }
 
-void RadioHidlTest::updateSimCardStatus() {
-    serial = GetRandomSerialNumber();
-    radio->getIccCardStatus(serial);
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
+bool RadioHidlTest::CheckGeneralError() {
+    return (radioRsp->rspInfo.error == RadioError::RADIO_NOT_AVAILABLE ||
+            radioRsp->rspInfo.error == RadioError::NO_MEMORY ||
+            radioRsp->rspInfo.error == RadioError::INTERNAL_ERR ||
+            radioRsp->rspInfo.error == RadioError::SYSTEM_ERR ||
+            radioRsp->rspInfo.error == RadioError::REQUEST_NOT_SUPPORTED ||
+            radioRsp->rspInfo.error == RadioError::CANCELLED);
+}
+
+bool RadioHidlTest::CheckOEMError() {
+    return (radioRsp->rspInfo.error >= RadioError::OEM_ERROR_1 &&
+            radioRsp->rspInfo.error <= RadioError::OEM_ERROR_25);
 }

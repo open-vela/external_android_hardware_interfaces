@@ -48,14 +48,17 @@ public:
 
     /**
      * Subscribe to HAL property events. This method might be called multiple
-     * times for the same vehicle property to update sample rate.
+     * times for the same vehicle property to update subscribed areas or sample
+     * rate.
      *
      * @param property to subscribe
+     * @param areas a bitwise vehicle areas or 0 for all supported areas
      * @param sampleRate sample rate in Hz for properties that support sample
      *                   rate, e.g. for properties with
      *                   VehiclePropertyChangeMode::CONTINUOUS
      */
     virtual StatusCode subscribe(int32_t property,
+                                 int32_t areas,
                                  float sampleRate) = 0;
 
     /**

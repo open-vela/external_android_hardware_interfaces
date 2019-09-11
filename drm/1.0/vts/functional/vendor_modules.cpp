@@ -20,16 +20,13 @@
 #include <dlfcn.h>
 #include <log/log.h>
 #include <memory>
-#include <utils/String8.h>
-#include <SharedLibrary.h>
 
+#include "shared_library.h"
 #include "vendor_modules.h"
 
 using std::string;
 using std::vector;
 using std::unique_ptr;
-using ::android::String8;
-using ::android::hardware::drm::V1_0::helper::SharedLibrary;
 
 namespace drm_vts {
 void VendorModules::scanModules(const std::string &directory) {
@@ -51,7 +48,7 @@ void VendorModules::scanModules(const std::string &directory) {
 
 DrmHalVTSVendorModule* VendorModules::getModule(const string& path) {
     if (mOpenLibraries.find(path) == mOpenLibraries.end()) {
-        auto library = std::make_unique<SharedLibrary>(String8(path.c_str()));
+        auto library = std::make_unique<SharedLibrary>(path);
         if (!library) {
             ALOGE("failed to map shared library %s", path.c_str());
             return NULL;

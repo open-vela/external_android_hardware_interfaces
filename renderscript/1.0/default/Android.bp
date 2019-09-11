@@ -12,10 +12,12 @@ cc_library_shared {
     ],
     shared_libs: [
         "libdl",
-        "libbase",
+        "liblog",
         "libhidlbase",
+        "libhidltransport",
         "libutils",
         "android.hardware.renderscript@1.0",
+        "android.hidl.base@1.0",
     ],
 
     product_variables: {

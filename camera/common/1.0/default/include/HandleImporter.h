@@ -17,13 +17,11 @@
 #ifndef CAMERA_COMMON_1_0_HANDLEIMPORTED_H
 #define CAMERA_COMMON_1_0_HANDLEIMPORTED_H
 
+#include <system/window.h>
 #include <utils/Mutex.h>
 #include <android/hardware/graphics/mapper/2.0/IMapper.h>
-#include <android/hardware/graphics/mapper/3.0/IMapper.h>
-#include <cutils/native_handle.h>
 
 using android::hardware::graphics::mapper::V2_0::IMapper;
-using android::hardware::graphics::mapper::V2_0::YCbCrLayout;
 
 namespace android {
 namespace hardware {
@@ -45,31 +43,14 @@ public:
     bool importFence(const native_handle_t* handle, int& fd) const;
     void closeFence(int fd) const;
 
-    // Assume caller has done waiting for acquire fences
-    void* lock(buffer_handle_t& buf, uint64_t cpuUsage, size_t size);
-
-    // Assume caller has done waiting for acquire fences
-    YCbCrLayout lockYCbCr(buffer_handle_t& buf, uint64_t cpuUsage,
-                          const IMapper::Rect& accessRegion);
-
-    int unlock(buffer_handle_t& buf); // returns release fence
-
 private:
     void initializeLocked();
     void cleanup();
 
-    template<class M, class E>
-    bool importBufferInternal(const sp<M> mapper, buffer_handle_t& handle);
-    template<class M, class E>
-    YCbCrLayout lockYCbCrInternal(const sp<M> mapper, buffer_handle_t& buf, uint64_t cpuUsage,
-            const IMapper::Rect& accessRegion);
-    template<class M, class E>
-    int unlockInternal(const sp<M> mapper, buffer_handle_t& buf);
-
     Mutex mLock;
     bool mInitialized;
-    sp<IMapper> mMapperV2;
-    sp<graphics::mapper::V3_0::IMapper> mMapperV3;
+    sp<IMapper> mMapper;
+
 };
 
 } // namespace helper

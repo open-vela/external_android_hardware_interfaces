@@ -15,10 +15,6 @@
  */
 
 #define LOG_TAG "media_omx_hidl_master_test"
-#ifdef __LP64__
-#define OMX_ANDROID_COMPILE_AS_32BIT_ON_64BIT_PLATFORMS
-#endif
-
 #include <android-base/logging.h>
 
 #include <android/hardware/media/omx/1.0/IOmx.h>
@@ -50,25 +46,68 @@ using ::android::sp;
 #include <getopt.h>
 #include <media_hidl_test_common.h>
 
+// A class for test environment setup
+class ComponentTestEnvironment : public ::testing::Environment {
+   public:
+    virtual void SetUp() {}
+    virtual void TearDown() {}
+
+    ComponentTestEnvironment() : instance("default") {}
+
+    void setInstance(const char* _instance) { instance = _instance; }
+
+    const hidl_string getInstance() const { return instance; }
+
+    int initFromOptions(int argc, char** argv) {
+        static struct option options[] = {
+            {"instance", required_argument, 0, 'I'}, {0, 0, 0, 0}};
+
+        while (true) {
+            int index = 0;
+            int c = getopt_long(argc, argv, "I:", options, &index);
+            if (c == -1) {
+                break;
+            }
+
+            switch (c) {
+                case 'I':
+                    setInstance(optarg);
+                    break;
+                case '?':
+                    break;
+            }
+        }
+
+        if (optind < argc) {
+            fprintf(stderr,
+                    "unrecognized option: %s\n\n"
+                    "usage: %s <gtest options> <test options>\n\n"
+                    "test options are:\n\n"
+                    "-I, --instance: HAL instance to test\n",
+                    argv[optind ?: 1], argv[0]);
+            return 2;
+        }
+        return 0;
+    }
+
+   private:
+    hidl_string instance;
+};
+
 static ComponentTestEnvironment* gEnv = nullptr;
 
 class MasterHidlTest : public ::testing::VtsHalHidlTargetTestBase {
-   private:
-    typedef ::testing::VtsHalHidlTargetTestBase Super;
    public:
     virtual void SetUp() override {
-        Super::SetUp();
         omxStore = nullptr;
-        omxStore = Super::getService<IOmxStore>();
+        omxStore = ::testing::VtsHalHidlTargetTestBase::getService<IOmxStore>();
         ASSERT_NE(omxStore, nullptr);
         omx = nullptr;
         omx = omxStore->getOmx(gEnv->getInstance());
         ASSERT_NE(omx, nullptr);
     }
 
-    virtual void TearDown() override {
-        Super::TearDown();
-    }
+    virtual void TearDown() override {}
 
     sp<IOmxStore> omxStore;
     sp<IOmx> omx;
@@ -102,7 +141,6 @@ TEST_F(MasterHidlTest, ListServiceAttr) {
                         attributes = _nl;
                     })
                     .isOk());
-    ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::OK);
     if (attributes.size() == 0) ALOGV("Warning, Attribute list empty");
 }
 
@@ -139,7 +177,6 @@ TEST_F(MasterHidlTest, ListNodes) {
                nodeList = _nl;
            })
             .isOk());
-    ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::OK);
     if (nodeList.size() == 0)
         ALOGV("Warning, ComponentInfo list empty");
     else {
@@ -158,7 +195,6 @@ TEST_F(MasterHidlTest, ListNodes) {
                            omxNode = _nl;
                        })
                     .isOk());
-            ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::OK);
             if (omxNode == nullptr) {
                 isPass = false;
                 std::cerr << "[    !OK   ] " << nodeList[i].mName.c_str()
@@ -178,7 +214,6 @@ int main(int argc, char** argv) {
     gEnv = new ComponentTestEnvironment();
     ::testing::AddGlobalTestEnvironment(gEnv);
     ::testing::InitGoogleTest(&argc, argv);
-    gEnv->init(&argc, argv);
     int status = gEnv->initFromOptions(argc, argv);
     if (status == 0) {
         status = RUN_ALL_TESTS();

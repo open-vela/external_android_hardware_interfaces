@@ -18,13 +18,13 @@
 
 #include "async_fd_watcher.h"
 
-#include <log/log.h>
 #include <algorithm>
 #include <atomic>
 #include <condition_variable>
 #include <map>
 #include <mutex>
 #include <thread>
+#include <utils/Log.h>
 #include <vector>
 #include "fcntl.h"
 #include "sys/select.h"
@@ -105,9 +105,6 @@ int AsyncFdWatcher::stopThread() {
     timeout_cb_ = nullptr;
   }
 
-  close(notification_listen_fd_);
-  close(notification_write_fd_);
-
   return 0;
 }
 
@@ -159,9 +156,11 @@ void AsyncFdWatcher::ThreadRoutine() {
       TimeoutCallback saved_cb;
       {
         std::unique_lock<std::mutex> guard(timeout_mutex_);
-        if (timeout_ms_ > std::chrono::milliseconds(0)) saved_cb = timeout_cb_;
+        if (timeout_ms_ > std::chrono::milliseconds(0))
+          saved_cb = timeout_cb_;
       }
-      if (saved_cb != nullptr) saved_cb();
+      if (saved_cb != nullptr)
+        saved_cb();
       continue;
     }
 
@@ -178,14 +177,14 @@ void AsyncFdWatcher::ThreadRoutine() {
       std::unique_lock<std::mutex> guard(internal_mutex_);
       for (auto& it : watched_fds_) {
         if (FD_ISSET(it.first, &read_fds)) {
-          it.second(it.first);
+        it.second(it.first);
         }
       }
     }
   }
 }
 
-}  // namespace async
-}  // namespace bluetooth
-}  // namespace hardware
-}  // namespace android
+} // namespace async
+} // namespace bluetooth
+} // namespace hardware
+} // namespace android

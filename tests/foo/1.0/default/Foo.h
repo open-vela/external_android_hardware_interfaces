@@ -22,14 +22,9 @@ using ::android::hardware::Void;
 using ::android::hardware::hidl_vec;
 using ::android::hardware::hidl_string;
 using ::android::sp;
-using ContainsUnion = ::android::hardware::tests::foo::V1_0::IFoo::ContainsUnion;
-using Discriminator = ::android::hardware::tests::foo::V1_0::IFoo::Discriminator;
-using Union = ::android::hardware::tests::foo::V1_0::IFoo::Union;
 
 struct Foo : public IFoo {
     // Methods from ::android::hardware::tests::foo::V1_0::IFoo follow.
-    virtual Return<void> convertToBoolIfSmall(Discriminator d, const hidl_vec<Union>& u,
-                                              convertToBoolIfSmall_cb _hidl_cb) override;
     virtual Return<void> doThis(float param)  override;
     virtual Return<int32_t> doThatAndReturnSomething(int64_t param)  override;
     virtual Return<double> doQuiteABit(int32_t a, int64_t b, float c, double d)  override;
@@ -53,8 +48,6 @@ struct Foo : public IFoo {
     virtual Return<void> createMyHandle(createMyHandle_cb _hidl_cb)  override;
     virtual Return<void> createHandles(uint32_t size, createHandles_cb _hidl_cb)  override;
     virtual Return<void> closeHandles()  override;
-    virtual Return<void> repeatWithFmq(const IFoo::WithFmq& withFmq,
-                                       repeatWithFmq_cb _hidl_cb) override;
 
     Return<void> haveAVectorOfInterfaces(
             const hidl_vec<sp<ISimple> > &in,
@@ -65,7 +58,6 @@ struct Foo : public IFoo {
             haveAVectorOfGenericInterfaces_cb _hidl_cb) override;
 
     Return<void> echoNullInterface(const sp<IFooCallback> &cb, echoNullInterface_cb _hidl_cb) override;
-
 private:
     std::vector<::native_handle_t *> mHandles;
 };

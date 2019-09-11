@@ -16,7 +16,10 @@
 
 #include "vendor_interface.h"
 
+#include <assert.h>
+
 #define LOG_TAG "android.hardware.bluetooth@1.0-impl"
+#include <android-base/logging.h>
 #include <cutils/properties.h>
 #include <utils/Log.h>
 
@@ -35,8 +38,8 @@ static const int INVALID_FD = -1;
 
 namespace {
 
-using android::hardware::hidl_vec;
 using android::hardware::bluetooth::V1_0::implementation::VendorInterface;
+using android::hardware::hidl_vec;
 
 struct {
   tINT_CMD_CBACK cb;
@@ -49,7 +52,6 @@ uint32_t lpm_timeout_ms;
 bool recent_activity_flag;
 
 VendorInterface* g_vendor_interface = nullptr;
-std::mutex wakeup_mutex_;
 
 HC_BT_HDR* WrapPacketAndCopy(uint16_t event, const hidl_vec<uint8_t>& data) {
   size_t packet_size = data.size() + sizeof(HC_BT_HDR);
@@ -163,18 +165,14 @@ bool VendorInterface::Initialize(
     InitializeCompleteCallback initialize_complete_cb,
     PacketReadCallback event_cb, PacketReadCallback acl_cb,
     PacketReadCallback sco_cb) {
-  if (g_vendor_interface) {
-    ALOGE("%s: No previous Shutdown()?", __func__);
-    return false;
-  }
+  assert(!g_vendor_interface);
   g_vendor_interface = new VendorInterface();
   return g_vendor_interface->Open(initialize_complete_cb, event_cb, acl_cb,
                                   sco_cb);
 }
 
 void VendorInterface::Shutdown() {
-  LOG_ALWAYS_FATAL_IF(!g_vendor_interface, "%s: No Vendor interface!",
-                      __func__);
+  CHECK(g_vendor_interface);
   g_vendor_interface->Close();
   delete g_vendor_interface;
   g_vendor_interface = nullptr;
@@ -208,9 +206,7 @@ bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
   // Get the local BD address
 
   uint8_t local_bda[BluetoothAddress::kBytes];
-  if (!BluetoothAddress::get_local_address(local_bda)) {
-    LOG_ALWAYS_FATAL("%s: No Bluetooth Address!", __func__);
-  }
+  CHECK(BluetoothAddress::get_local_address(local_bda));
   int status = lib_interface_->init(&lib_callbacks, (unsigned char*)local_bda);
   if (status) {
     ALOGE("%s unable to initialize vendor library: %d", __func__, status);
@@ -228,11 +224,6 @@ bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
 
   int fd_list[CH_MAX] = {0};
   int fd_count = lib_interface_->op(BT_VND_OP_USERIAL_OPEN, &fd_list);
-
-  if (fd_count < 1 || fd_count > CH_MAX - 1) {
-    ALOGE("%s: fd_count %d is invalid!", __func__, fd_count);
-    return false;
-  }
 
   for (int i = 0; i < fd_count; i++) {
     if (fd_list[i] == INVALID_FD) {
@@ -258,7 +249,8 @@ bool VendorInterface::Open(InitializeCompleteCallback initialize_complete_cb,
     fd_watcher_.WatchFdForNonBlockingReads(
         fd_list[CH_EVT], [mct_hci](int fd) { mct_hci->OnEventDataReady(fd); });
     fd_watcher_.WatchFdForNonBlockingReads(
-        fd_list[CH_ACL_IN], [mct_hci](int fd) { mct_hci->OnAclDataReady(fd); });
+        fd_list[CH_ACL_IN],
+        [mct_hci](int fd) { mct_hci->OnAclDataReady(fd); });
     hci_ = mct_hci;
   }
 
@@ -294,7 +286,6 @@ void VendorInterface::Close() {
     lib_interface_->op(BT_VND_OP_POWER_CTRL, &power_state);
 
     lib_interface_->cleanup();
-    lib_interface_ = nullptr;
   }
 
   if (lib_handle_ != nullptr) {
@@ -309,7 +300,6 @@ void VendorInterface::Close() {
 }
 
 size_t VendorInterface::Send(uint8_t type, const uint8_t* data, size_t length) {
-  std::unique_lock<std::mutex> lock(wakeup_mutex_);
   recent_activity_flag = true;
 
   if (lpm_wake_deasserted == true) {
@@ -352,7 +342,6 @@ void VendorInterface::OnFirmwareConfigured(uint8_t result) {
 
 void VendorInterface::OnTimeout() {
   ALOGV("%s", __func__);
-  std::unique_lock<std::mutex> lock(wakeup_mutex_);
   if (recent_activity_flag == false) {
     lpm_wake_deasserted = true;
     bt_vendor_lpm_wake_state_t wakeState = BT_VND_LPM_WAKE_DEASSERT;
