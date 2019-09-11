@@ -15,6 +15,7 @@
 //
 
 #include <cutils/properties.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <gtest/gtest.h>
 
@@ -55,7 +56,7 @@ class BluetoothAddressTest : public ::testing::Test {
 
 void BluetoothAddressTest::FileWriteString(const char* path,
                                            const char* string) {
-  int fd = open(path, O_CREAT | O_RDWR);
+  int fd = open(path, O_CREAT | O_RDWR, 0600);
   EXPECT_TRUE(fd > 0) << "err = " << strerror(errno);
 
   size_t length = strlen(string);
