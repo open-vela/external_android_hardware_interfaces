@@ -17,7 +17,6 @@
 #define LOG_TAG "neuralnetworks_hidl_hal_test"
 
 #include <android-base/logging.h>
-#include <fcntl.h>
 #include <ftw.h>
 #include <gtest/gtest.h>
 #include <hidlmemory/mapping.h>
@@ -38,11 +37,11 @@
 // Forward declaration of the mobilenet generated test models in
 // frameworks/ml/nn/runtime/test/generated/.
 namespace generated_tests::mobilenet_224_gender_basic_fixed {
-const test_helper::TestModel& get_test_model();
+const ::test_helper::TestModel& get_test_model();
 }  // namespace generated_tests::mobilenet_224_gender_basic_fixed
 
 namespace generated_tests::mobilenet_quantized {
-const test_helper::TestModel& get_test_model();
+const ::test_helper::TestModel& get_test_model();
 }  // namespace generated_tests::mobilenet_quantized
 
 namespace android::hardware::neuralnetworks::V1_2::vts::functional {
@@ -54,13 +53,13 @@ using V1_1::ExecutionPreference;
 
 namespace float32_model {
 
-constexpr auto get_test_model = generated_tests::mobilenet_224_gender_basic_fixed::get_test_model;
+constexpr auto get_test_model = ::generated_tests::mobilenet_224_gender_basic_fixed::get_test_model;
 
 }  // namespace float32_model
 
 namespace quant8_model {
 
-constexpr auto get_test_model = generated_tests::mobilenet_quantized::get_test_model;
+constexpr auto get_test_model = ::generated_tests::mobilenet_quantized::get_test_model;
 
 }  // namespace quant8_model
 
@@ -218,13 +217,12 @@ TestModel createLargeTestModelImpl(TestOperationType op, uint32_t len) {
 }  // namespace
 
 // Tag for the compilation caching tests.
-class CompilationCachingTestBase : public testing::Test {
+class CompilationCachingTestBase : public NeuralnetworksHidlTest {
   protected:
-    CompilationCachingTestBase(sp<IDevice> device, OperandType type)
-        : kDevice(std::move(device)), kOperandType(type) {}
+    CompilationCachingTestBase(OperandType type) : kOperandType(type) {}
 
     void SetUp() override {
-        testing::Test::SetUp();
+        NeuralnetworksHidlTest::SetUp();
         ASSERT_NE(kDevice.get(), nullptr);
 
         // Create cache directory. The cache directory and a temporary cache file is always created
@@ -276,7 +274,7 @@ class CompilationCachingTestBase : public testing::Test {
             };
             nftw(mCacheDir.c_str(), callback, 128, FTW_DEPTH | FTW_MOUNT | FTW_PHYS);
         }
-        testing::Test::TearDown();
+        NeuralnetworksHidlTest::TearDown();
     }
 
     // Model and examples creators. According to kOperandType, the following methods will return
@@ -400,21 +398,16 @@ class CompilationCachingTestBase : public testing::Test {
     uint32_t mNumDataCache;
     uint32_t mIsCachingSupported;
 
-    const sp<IDevice> kDevice;
     // The primary data type of the testModel.
     const OperandType kOperandType;
 };
 
-using CompilationCachingTestParam = std::tuple<NamedDevice, OperandType>;
-
 // A parameterized fixture of CompilationCachingTestBase. Every test will run twice, with the first
 // pass running with float32 models and the second pass running with quant8 models.
 class CompilationCachingTest : public CompilationCachingTestBase,
-                               public testing::WithParamInterface<CompilationCachingTestParam> {
+                               public testing::WithParamInterface<OperandType> {
   protected:
-    CompilationCachingTest()
-        : CompilationCachingTestBase(getData(std::get<NamedDevice>(GetParam())),
-                                     std::get<OperandType>(GetParam())) {}
+    CompilationCachingTest() : CompilationCachingTestBase(GetParam()) {}
 };
 
 TEST_P(CompilationCachingTest, CacheSavingAndRetrieval) {
@@ -1199,30 +1192,16 @@ TEST_P(CompilationCachingTest, ReplaceSecuritySensitiveCache) {
     }
 }
 
-static const auto kNamedDeviceChoices = testing::ValuesIn(getNamedDevices());
 static const auto kOperandTypeChoices =
         testing::Values(OperandType::TENSOR_FLOAT32, OperandType::TENSOR_QUANT8_ASYMM);
 
-std::string printCompilationCachingTest(
-        const testing::TestParamInfo<CompilationCachingTestParam>& info) {
-    const auto& [namedDevice, operandType] = info.param;
-    const std::string type = (operandType == OperandType::TENSOR_FLOAT32 ? "float32" : "quant8");
-    return gtestCompliantName(getName(namedDevice) + "_" + type);
-}
-
-INSTANTIATE_TEST_CASE_P(TestCompilationCaching, CompilationCachingTest,
-                        testing::Combine(kNamedDeviceChoices, kOperandTypeChoices),
-                        printCompilationCachingTest);
-
-using CompilationCachingSecurityTestParam = std::tuple<NamedDevice, OperandType, uint32_t>;
+INSTANTIATE_TEST_CASE_P(TestCompilationCaching, CompilationCachingTest, kOperandTypeChoices);
 
 class CompilationCachingSecurityTest
     : public CompilationCachingTestBase,
-      public testing::WithParamInterface<CompilationCachingSecurityTestParam> {
+      public testing::WithParamInterface<std::tuple<OperandType, uint32_t>> {
   protected:
-    CompilationCachingSecurityTest()
-        : CompilationCachingTestBase(getData(std::get<NamedDevice>(GetParam())),
-                                     std::get<OperandType>(GetParam())) {}
+    CompilationCachingSecurityTest() : CompilationCachingTestBase(std::get<0>(GetParam())) {}
 
     void SetUp() {
         CompilationCachingTestBase::SetUp();
@@ -1312,7 +1291,7 @@ class CompilationCachingSecurityTest
         }
     }
 
-    const uint32_t kSeed = std::get<uint32_t>(GetParam());
+    const uint32_t kSeed = std::get<1>(GetParam());
     std::mt19937 generator;
 };
 
@@ -1359,16 +1338,7 @@ TEST_P(CompilationCachingSecurityTest, WrongToken) {
     });
 }
 
-std::string printCompilationCachingSecurityTest(
-        const testing::TestParamInfo<CompilationCachingSecurityTestParam>& info) {
-    const auto& [namedDevice, operandType, seed] = info.param;
-    const std::string type = (operandType == OperandType::TENSOR_FLOAT32 ? "float32" : "quant8");
-    return gtestCompliantName(getName(namedDevice) + "_" + type + "_" + std::to_string(seed));
-}
-
 INSTANTIATE_TEST_CASE_P(TestCompilationCaching, CompilationCachingSecurityTest,
-                        testing::Combine(kNamedDeviceChoices, kOperandTypeChoices,
-                                         testing::Range(0U, 10U)),
-                        printCompilationCachingSecurityTest);
+                        testing::Combine(kOperandTypeChoices, testing::Range(0U, 10U)));
 
 }  // namespace android::hardware::neuralnetworks::V1_2::vts::functional
