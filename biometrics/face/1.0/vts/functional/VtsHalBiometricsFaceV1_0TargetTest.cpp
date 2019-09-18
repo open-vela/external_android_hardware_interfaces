@@ -64,7 +64,7 @@ struct FaceCallbackArgs {
     // The error passed to the last onError() callback.
     FaceError error;
 
-    // The userId passed to the last callback.
+    // The userId passed to the last onRemoved() callback.
     int32_t userId;
 };
 
@@ -74,32 +74,24 @@ struct FaceCallbackArgs {
 class FaceCallback : public ::testing::VtsHalHidlTargetCallbackBase<FaceCallbackArgs>,
                      public IBiometricsFaceClientCallback {
   public:
-    Return<void> onEnrollResult(uint64_t, uint32_t, int32_t userId, uint32_t) override {
-        FaceCallbackArgs args = {};
-        args.userId = userId;
-        NotifyFromCallback(kCallbackNameOnEnrollResult, args);
+    Return<void> onEnrollResult(uint64_t, uint32_t, int32_t, uint32_t) override {
+        NotifyFromCallback(kCallbackNameOnEnrollResult);
         return Void();
     }
 
-    Return<void> onAuthenticated(uint64_t, uint32_t, int32_t userId,
-                                 const hidl_vec<uint8_t>&) override {
-        FaceCallbackArgs args = {};
-        args.userId = userId;
-        NotifyFromCallback(kCallbackNameOnAuthenticated, args);
+    Return<void> onAuthenticated(uint64_t, uint32_t, int32_t, const hidl_vec<uint8_t>&) override {
+        NotifyFromCallback(kCallbackNameOnAuthenticated);
         return Void();
     }
 
-    Return<void> onAcquired(uint64_t, int32_t userId, FaceAcquiredInfo, int32_t) override {
-        FaceCallbackArgs args = {};
-        args.userId = userId;
-        NotifyFromCallback(kCallbackNameOnAcquired, args);
+    Return<void> onAcquired(uint64_t, int32_t, FaceAcquiredInfo, int32_t) override {
+        NotifyFromCallback(kCallbackNameOnAcquired);
         return Void();
     }
 
-    Return<void> onError(uint64_t, int32_t userId, FaceError error, int32_t) override {
+    Return<void> onError(uint64_t, int32_t, FaceError error, int32_t) override {
         FaceCallbackArgs args = {};
         args.error = error;
-        args.userId = userId;
         NotifyFromCallback(kCallbackNameOnError, args);
         return Void();
     }
@@ -111,10 +103,8 @@ class FaceCallback : public ::testing::VtsHalHidlTargetCallbackBase<FaceCallback
         return Void();
     }
 
-    Return<void> onEnumerate(uint64_t, const hidl_vec<uint32_t>&, int32_t userId) override {
-        FaceCallbackArgs args = {};
-        args.userId = userId;
-        NotifyFromCallback(kCallbackNameOnEnumerate, args);
+    Return<void> onEnumerate(uint64_t, const hidl_vec<uint32_t>&, int32_t) override {
+        NotifyFromCallback(kCallbackNameOnEnumerate);
         return Void();
     }
 
@@ -195,7 +185,6 @@ TEST_F(FaceHidlTest, EnrollZeroHatTest) {
     // onError should be called with a meaningful (nonzero) error.
     auto res = mCallback->WaitForCallback(kCallbackNameOnError);
     EXPECT_TRUE(res.no_timeout);
-    EXPECT_EQ(kUserId, res.args->userId);
     EXPECT_EQ(FaceError::UNABLE_TO_PROCESS, res.args->error);
 }
 
@@ -216,7 +205,6 @@ TEST_F(FaceHidlTest, EnrollGarbageHatTest) {
     // onError should be called with a meaningful (nonzero) error.
     auto res = mCallback->WaitForCallback(kCallbackNameOnError);
     EXPECT_TRUE(res.no_timeout);
-    EXPECT_EQ(kUserId, res.args->userId);
     EXPECT_EQ(FaceError::UNABLE_TO_PROCESS, res.args->error);
 }
 
@@ -283,7 +271,6 @@ TEST_F(FaceHidlTest, EnumerateTest) {
     Return<Status> ret = mService->enumerate();
     ASSERT_EQ(Status::OK, static_cast<Status>(ret));
     auto res = mCallback->WaitForCallback(kCallbackNameOnEnumerate);
-    EXPECT_EQ(kUserId, res.args->userId);
     EXPECT_TRUE(res.no_timeout);
 }
 
@@ -343,7 +330,6 @@ TEST_F(FaceHidlTest, CancelTest) {
     auto res = mCallback->WaitForCallback(kCallbackNameOnError);
     // make sure callback was invoked within kRevokeChallengeTimeout
     EXPECT_TRUE(res.no_timeout);
-    EXPECT_EQ(kUserId, res.args->userId);
     EXPECT_EQ(FaceError::CANCELED, res.args->error);
 }
 
