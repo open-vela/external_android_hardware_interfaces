@@ -21,6 +21,7 @@
 #define LOG_TAG "android.hardware.tv.tuner@1.0-service"
 #endif
 
+#include <binder/ProcessState.h>
 #include <hidl/HidlTransportSupport.h>
 #include <hidl/LegacySupport.h>
 
