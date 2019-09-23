@@ -55,9 +55,6 @@ class Tuner : public ITuner {
 
     virtual Return<void> openLnbById(LnbId lnbId, openLnbById_cb _hidl_cb) override;
 
-    virtual Return<void> openLnbByName(const hidl_string& lnbName,
-                                       openLnbByName_cb _hidl_cb) override;
-
     sp<Frontend> getFrontendById(uint32_t frontendId);
 
     void setFrontendAsDemuxSource(uint32_t frontendId, uint32_t demuxId);
