@@ -8,7 +8,6 @@ cc_defaults {
         "Descrambler.cpp",
         "Demux.cpp",
         "Tuner.cpp",
-        "Lnb.cpp",
         "service.cpp",
     ],
 
