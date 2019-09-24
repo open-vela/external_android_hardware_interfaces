@@ -22,43 +22,34 @@
 #include <android/hardware/neuralnetworks/1.2/types.h>
 #include <functional>
 #include <vector>
-#include "1.0/Utils.h"
 #include "TestHarness.h"
 #include "VtsHalNeuralnetworks.h"
 
 namespace android::hardware::neuralnetworks::V1_2::vts::functional {
 
-using NamedModel = Named<const test_helper::TestModel*>;
-using GeneratedTestParam = std::tuple<NamedDevice, NamedModel>;
-
-class GeneratedTestBase : public testing::TestWithParam<GeneratedTestParam> {
+class GeneratedTestBase
+    : public NeuralnetworksHidlTest,
+      public testing::WithParamInterface<test_helper::TestModelManager::TestParam> {
   protected:
-    void SetUp() override;
-    const sp<IDevice> kDevice = getData(std::get<NamedDevice>(GetParam()));
-    const test_helper::TestModel& kTestModel = *getData(std::get<NamedModel>(GetParam()));
+    const test_helper::TestModel& kTestModel = *GetParam().second;
 };
 
-using FilterFn = std::function<bool(const test_helper::TestModel&)>;
-std::vector<NamedModel> getNamedModels(const FilterFn& filter);
-
-std::string printGeneratedTest(const testing::TestParamInfo<GeneratedTestParam>& info);
-
-#define INSTANTIATE_GENERATED_TEST(TestSuite, filter)                                     \
-    INSTANTIATE_TEST_SUITE_P(TestGenerated, TestSuite,                                    \
-                             testing::Combine(testing::ValuesIn(getNamedDevices()),       \
-                                              testing::ValuesIn(getNamedModels(filter))), \
-                             printGeneratedTest)
+#define INSTANTIATE_GENERATED_TEST(TestSuite, filter)                                        \
+    INSTANTIATE_TEST_SUITE_P(                                                                \
+            TestGenerated, TestSuite,                                                        \
+            testing::ValuesIn(::test_helper::TestModelManager::get().getTestModels(filter)), \
+            [](const auto& info) { return info.param.first; })
 
 // Tag for the validation tests, instantiated in VtsHalNeuralnetworks.cpp.
 // TODO: Clean up the hierarchy for ValidationTest.
 class ValidationTest : public GeneratedTestBase {};
 
-Model createModel(const test_helper::TestModel& testModel);
+Model createModel(const ::test_helper::TestModel& testModel);
 
 void PrepareModel(const sp<IDevice>& device, const Model& model, sp<IPreparedModel>* preparedModel);
 
 void EvaluatePreparedModel(const sp<IPreparedModel>& preparedModel,
-                           const test_helper::TestModel& testModel, bool testDynamicOutputShape);
+                           const ::test_helper::TestModel& testModel, bool testDynamicOutputShape);
 
 }  // namespace android::hardware::neuralnetworks::V1_2::vts::functional
 
