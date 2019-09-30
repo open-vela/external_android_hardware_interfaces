@@ -28,12 +28,10 @@ cc_defaults {
         "libcutils",
         "libfmq",
         "libhidlbase",
+        "libhidltransport",
         "liblog",
         "libpower",
         "libutils",
-    ],
-    static_libs: [
-        "android.hardware.sensors@2.0-HalProxy",
     ],
 }
 
@@ -82,6 +80,7 @@ cc_test {
         "libcutils",
         "libfmq",
         "libhidlbase",
+        "libhidltransport",
         "liblog",
         "libpower",
         "libutils",

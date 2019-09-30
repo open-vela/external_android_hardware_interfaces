@@ -71,16 +71,3 @@ TEST_F(SupplicantStaNetworkHidlTest, SetGetOcsp) {
             EXPECT_EQ(testOcspType, ocspType);
         });
 }
-
-/*
- * SetPmkCacheEntry
- */
-TEST_F(SupplicantStaNetworkHidlTest, SetPmkCache) {
-    uint8_t bytes[128] = {0};
-    std::vector<uint8_t> serializedEntry(bytes, bytes + sizeof(bytes));
-
-    sta_network_->setPmkCache(
-        serializedEntry, [](const SupplicantStatus &status) {
-            EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
-        });
-}
