@@ -24,6 +24,7 @@ cc_defaults {
         "libcutils",
         "libfmq",
         "libhidlbase",
+        "libhidltransport",
         "liblog",
         "libpower",
         "libutils",
@@ -41,7 +42,6 @@ cc_binary {
     srcs: [
         "service.cpp",
         "HalProxy.cpp",
-        "ScopedWakelock.cpp",
     ],
     init_rc: ["android.hardware.sensors@2.0-service-multihal.rc"],
     vintf_fragments: ["android.hardware.sensors@2.0-multihal.xml"],
@@ -61,7 +61,6 @@ cc_test_library {
     vendor_available: true,
     srcs: [
         "HalProxy.cpp",
-        "ScopedWakelock.cpp",
     ],
     export_header_lib_headers: [
         "android.hardware.sensors@2.0-multihal.header",

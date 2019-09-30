@@ -17,33 +17,39 @@
 #ifndef ANDROID_HARDWARE_NEURALNETWORKS_V1_0_VTS_HAL_NEURALNETWORKS_H
 #define ANDROID_HARDWARE_NEURALNETWORKS_V1_0_VTS_HAL_NEURALNETWORKS_H
 
-#include "1.0/Utils.h"
-
 #include <android/hardware/neuralnetworks/1.0/IDevice.h>
 #include <android/hardware/neuralnetworks/1.0/types.h>
-#include <gtest/gtest.h>
 
-#include <vector>
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
+
+#include <android-base/macros.h>
+#include <gtest/gtest.h>
 
 namespace android::hardware::neuralnetworks::V1_0::vts::functional {
 
-using NamedDevice = Named<sp<IDevice>>;
-using NeuralnetworksHidlTestParam = NamedDevice;
+// A class for test environment setup
+class NeuralnetworksHidlEnvironment : public testing::VtsHalHidlTargetTestEnvBase {
+    DISALLOW_COPY_AND_ASSIGN(NeuralnetworksHidlEnvironment);
+    NeuralnetworksHidlEnvironment() = default;
 
-class NeuralnetworksHidlTest : public testing::TestWithParam<NeuralnetworksHidlTestParam> {
-  protected:
-    void SetUp() override;
-    const sp<IDevice> kDevice = getData(GetParam());
+  public:
+    static NeuralnetworksHidlEnvironment* getInstance();
+    void registerTestServices() override;
 };
 
-const std::vector<NamedDevice>& getNamedDevices();
+// The main test class for NEURALNETWORKS HIDL HAL.
+class NeuralnetworksHidlTest : public testing::VtsHalHidlTargetTestBase {
+    DISALLOW_COPY_AND_ASSIGN(NeuralnetworksHidlTest);
 
-std::string printNeuralnetworksHidlTest(
-        const testing::TestParamInfo<NeuralnetworksHidlTestParam>& info);
+  public:
+    NeuralnetworksHidlTest() = default;
+    void SetUp() override;
 
-#define INSTANTIATE_DEVICE_TEST(TestSuite)                                                 \
-    INSTANTIATE_TEST_SUITE_P(PerInstance, TestSuite, testing::ValuesIn(getNamedDevices()), \
-                             printNeuralnetworksHidlTest)
+  protected:
+    const sp<IDevice> kDevice = testing::VtsHalHidlTargetTestBase::getService<IDevice>(
+            NeuralnetworksHidlEnvironment::getInstance());
+};
 
 // Create an IPreparedModel object. If the model cannot be prepared,
 // "preparedModel" will be nullptr instead.

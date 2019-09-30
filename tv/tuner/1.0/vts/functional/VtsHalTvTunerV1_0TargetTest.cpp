@@ -34,9 +34,6 @@
 #include <hidlmemory/FrameworkUtils.h>
 #include <utils/Condition.h>
 #include <utils/Mutex.h>
-#include <fstream>
-#include <iostream>
-#include <map>
 
 #define WAIT_TIMEOUT 3000000000
 
@@ -56,16 +53,11 @@ using android::hardware::MessageQueue;
 using android::hardware::MQDescriptorSync;
 using android::hardware::Return;
 using android::hardware::Void;
-using android::hardware::tv::tuner::V1_0::DemuxDataFormat;
 using android::hardware::tv::tuner::V1_0::DemuxFilterEvent;
 using android::hardware::tv::tuner::V1_0::DemuxFilterPesEvent;
 using android::hardware::tv::tuner::V1_0::DemuxFilterSectionEvent;
-using android::hardware::tv::tuner::V1_0::DemuxFilterSettings;
 using android::hardware::tv::tuner::V1_0::DemuxFilterStatus;
 using android::hardware::tv::tuner::V1_0::DemuxFilterType;
-using android::hardware::tv::tuner::V1_0::DemuxInputSettings;
-using android::hardware::tv::tuner::V1_0::DemuxInputStatus;
-using android::hardware::tv::tuner::V1_0::DemuxOutputStatus;
 using android::hardware::tv::tuner::V1_0::DemuxQueueNotifyBits;
 using android::hardware::tv::tuner::V1_0::FrontendAtscModulation;
 using android::hardware::tv::tuner::V1_0::FrontendAtscSettings;
@@ -73,8 +65,6 @@ using android::hardware::tv::tuner::V1_0::FrontendDvbtSettings;
 using android::hardware::tv::tuner::V1_0::FrontendEventType;
 using android::hardware::tv::tuner::V1_0::FrontendId;
 using android::hardware::tv::tuner::V1_0::FrontendInnerFec;
-using android::hardware::tv::tuner::V1_0::FrontendScanMessage;
-using android::hardware::tv::tuner::V1_0::FrontendScanMessageType;
 using android::hardware::tv::tuner::V1_0::FrontendSettings;
 using android::hardware::tv::tuner::V1_0::IDemux;
 using android::hardware::tv::tuner::V1_0::IDemuxCallback;
@@ -87,9 +77,9 @@ using android::hardware::tv::tuner::V1_0::Result;
 namespace {
 
 using FilterMQ = MessageQueue<uint8_t, kSynchronizedReadWrite>;
-using MQDesc = MQDescriptorSync<uint8_t>;
+using FilterMQDesc = MQDescriptorSync<uint8_t>;
 
-const std::vector<uint8_t> goldenDataOutputBuffer{
+const std::vector<uint8_t> goldenDataInputBuffer{
         0x00, 0x00, 0x00, 0x01, 0x09, 0xf0, 0x00, 0x00, 0x00, 0x01, 0x67, 0x42, 0xc0, 0x1e, 0xdb,
         0x01, 0x40, 0x16, 0xec, 0x04, 0x40, 0x00, 0x00, 0x03, 0x00, 0x40, 0x00, 0x00, 0x0f, 0x03,
         0xc5, 0x8b, 0xb8, 0x00, 0x00, 0x00, 0x01, 0x68, 0xca, 0x8c, 0xb2, 0x00, 0x00, 0x01, 0x06,
@@ -129,20 +119,9 @@ const std::vector<uint8_t> goldenDataOutputBuffer{
 };
 
 const uint16_t FMQ_SIZE_4K = 0x1000;
-const uint32_t FMQ_SIZE_1M = 0x100000;
 // Equal to SECTION_WRITE_COUNT on the HAL impl side
 // The HAL impl will repeatedly write to the FMQ the count times
 const uint16_t SECTION_READ_COUNT = 10;
-
-struct FilterConf {
-    DemuxFilterType type;
-    DemuxFilterSettings setting;
-};
-
-struct InputConf {
-    string inputDataFile;
-    DemuxInputSettings setting;
-};
 
 class FrontendCallback : public IFrontendCallback {
   public:
@@ -162,21 +141,12 @@ class FrontendCallback : public IFrontendCallback {
         return Void();
     }
 
-    virtual Return<void> onScanMessage(FrontendScanMessageType /* type */,
-                                       const FrontendScanMessage& /* message */) override {
-        android::Mutex::Autolock autoLock(mMsgLock);
-        mScanMessageReceived = true;
-        mMsgCondition.signal();
-        return Void();
-    };
-
     void testOnEvent(sp<IFrontend>& frontend, FrontendSettings settings);
     void testOnDiseqcMessage(sp<IFrontend>& frontend, FrontendSettings settings);
 
   private:
     bool mEventReceived = false;
     bool mDiseqcMessageReceived = false;
-    bool mScanMessageReceived = false;
     FrontendEventType mEventType;
     hidl_vec<uint8_t> mEventMessage;
     android::Mutex mMsgLock;
@@ -214,11 +184,9 @@ void FrontendCallback::testOnDiseqcMessage(sp<IFrontend>& frontend, FrontendSett
 class DemuxCallback : public IDemuxCallback {
   public:
     virtual Return<void> onFilterEvent(const DemuxFilterEvent& filterEvent) override {
-        ALOGW("[VTS] FILTER EVENT %d", filterEvent.filterId);
         android::Mutex::Autolock autoLock(mMsgLock);
         mFilterEventReceived = true;
-        mFilterIdToEvent[filterEvent.filterId] = filterEvent;
-        startFilterEventThread(filterEvent);
+        mFilterEvent = filterEvent;
         mMsgCondition.signal();
         return Void();
     }
@@ -228,75 +196,26 @@ class DemuxCallback : public IDemuxCallback {
         return Void();
     }
 
-    virtual Return<void> onOutputStatus(DemuxOutputStatus /*status*/) override { return Void(); }
-
-    virtual Return<void> onInputStatus(DemuxInputStatus status) override {
-        // android::Mutex::Autolock autoLock(mMsgLock);
-        switch (status) {
-            case DemuxInputStatus::SPACE_EMPTY:
-            case DemuxInputStatus::SPACE_ALMOST_EMPTY:
-                mKeepWritingInputFMQ = true;
-                break;
-            case DemuxInputStatus::SPACE_ALMOST_FULL:
-            case DemuxInputStatus::SPACE_FULL:
-                mKeepWritingInputFMQ = false;
-                break;
-        }
-        return Void();
-    }
-
     void testOnFilterEvent(uint32_t filterId);
-    void testOnSectionFilterEvent(sp<IDemux>& demux, uint32_t filterId, MQDesc& filterMQDescriptor,
-                                  MQDesc& inputMQDescriptor);
-    void testFilterDataOutput();
-    // Legacy
-    bool readAndCompareSectionEventData(uint32_t filterId);
-
-    void startPlaybackInputThread(InputConf inputConf, MQDesc& inputMQDescriptor);
-    void startFilterEventThread(DemuxFilterEvent event);
-    static void* __threadLoopInput(void* threadArgs);
-    static void* __threadLoopFilter(void* threadArgs);
-    void inputThreadLoop(InputConf inputConf, bool* keepWritingInputFMQ, MQDesc& inputMQDescriptor);
-    void filterThreadLoop(DemuxFilterEvent& event);
-
-    void updateFilterMQ(uint32_t filterId, MQDesc& filterMQDescriptor);
-    void updateGoldenOutputMap(uint32_t filterId, string goldenOutputFile);
+    void testOnSectionFilterEvent(sp<IDemux>& demux, uint32_t filterId,
+                                  FilterMQDesc& filterMQDescriptor);
+    void testOnPesFilterEvent(sp<IDemux>& demux, uint32_t filterId,
+                              FilterMQDesc& filterMQDescriptor);
+    void readAndCompareSectionEventData();
+    void readAndComparePesEventData();
 
   private:
-    struct InputThreadArgs {
-        DemuxCallback* user;
-        InputConf inputConf;
-        bool* keepWritingInputFMQ;
-        MQDesc& inputMQDesc;
-    };
-    struct FilterThreadArgs {
-        DemuxCallback* user;
-        DemuxFilterEvent& event;
-    };
-    uint16_t mDataLength = 0;
+    bool mFilterEventReceived = false;
     std::vector<uint8_t> mDataOutputBuffer;
-
-    bool mFilterEventReceived;
-    std::map<uint32_t, string> mFilterIdToGoldenOutput;
-    std::map<uint32_t, DemuxFilterEvent> mFilterIdToEvent;
-
-    std::map<uint32_t, std::unique_ptr<FilterMQ>> mFilterIdToMQ;
-    std::unique_ptr<FilterMQ> mInputMQ;
-    std::map<uint32_t, EventFlag*> mFilterIdToMQEventFlag;
-    EventFlag* mInputMQEventFlag;
-
+    std::unique_ptr<FilterMQ> mFilterMQ;
+    uint16_t mDataLength = 0;
+    DemuxFilterEvent mFilterEvent;
     android::Mutex mMsgLock;
-    android::Mutex mFilterOutputLock;
+    android::Mutex mReadLock;
     android::Condition mMsgCondition;
-    android::Condition mFilterOutputCondition;
-
-    bool mKeepWritingInputFMQ;
-    bool mInputThreadRunning;
-    pthread_t mInputThread;
-    pthread_t mFilterThread;
+    EventFlag* mFilterMQEventFlag;
 };
 
-// Legacy
 void DemuxCallback::testOnFilterEvent(uint32_t filterId) {
     android::Mutex::Autolock autoLock(mMsgLock);
     while (!mFilterEventReceived) {
@@ -308,190 +227,86 @@ void DemuxCallback::testOnFilterEvent(uint32_t filterId) {
     // Reset the filter event recieved flag
     mFilterEventReceived = false;
     // Check if filter id match
-    EXPECT_TRUE(filterId == mFilterIdToEvent[filterId].filterId) << "filter id match";
+    EXPECT_TRUE(filterId == mFilterEvent.filterId) << "filter id match";
 }
 
-void DemuxCallback::startPlaybackInputThread(InputConf inputConf, MQDesc& inputMQDescriptor) {
-    struct InputThreadArgs* threadArgs =
-            (struct InputThreadArgs*)malloc(sizeof(struct InputThreadArgs));
-    threadArgs->user = this;
-    threadArgs->inputConf = inputConf;
-    threadArgs->keepWritingInputFMQ = &mKeepWritingInputFMQ;
-    threadArgs->inputMQDesc = inputMQDescriptor;
-
-    pthread_create(&mInputThread, NULL, __threadLoopInput, (void*)threadArgs);
-    pthread_setname_np(mInputThread, "test_playback_input_loop");
-}
-
-void DemuxCallback::startFilterEventThread(DemuxFilterEvent event) {
-    struct FilterThreadArgs* threadArgs =
-            (struct FilterThreadArgs*)malloc(sizeof(struct FilterThreadArgs));
-    threadArgs->user = this;
-    threadArgs->event = event;
-
-    pthread_create(&mFilterThread, NULL, __threadLoopFilter, (void*)threadArgs);
-    pthread_setname_np(mFilterThread, "test_playback_input_loop");
-}
-
-void DemuxCallback::testFilterDataOutput() {
-    android::Mutex::Autolock autoLock(mFilterOutputLock);
-    while (!mFilterIdToMQ.empty()) {
-        if (-ETIMEDOUT == mFilterOutputCondition.waitRelative(mFilterOutputLock, WAIT_TIMEOUT)) {
-            EXPECT_TRUE(false) << "filter output does not match golden output within timeout";
-            return;
-        }
-    }
-}
-
-// Legacy
 void DemuxCallback::testOnSectionFilterEvent(sp<IDemux>& demux, uint32_t filterId,
-                                             MQDesc& filterMQDescriptor,
-                                             MQDesc& inputMQDescriptor) {
+                                             FilterMQDesc& filterMQDescriptor) {
     Result status;
     // Create MQ to read the output into the local buffer
-    mFilterIdToMQ[filterId] =
-            std::make_unique<FilterMQ>(filterMQDescriptor, true /* resetPointers */);
-    EXPECT_TRUE(mFilterIdToMQ[filterId]);
-    // Get the MQ to write the input to the HAL
-    mInputMQ = std::make_unique<FilterMQ>(inputMQDescriptor, true /* resetPointers */);
-    EXPECT_TRUE(mInputMQ);
+    mFilterMQ = std::make_unique<FilterMQ>(filterMQDescriptor, true /* resetPointers */);
+    EXPECT_TRUE(mFilterMQ);
     // Create the EventFlag that is used to signal the HAL impl that data have been
     // read the Filter FMQ
-    EXPECT_TRUE(EventFlag::createEventFlag(mFilterIdToMQ[filterId]->getEventFlagWord(),
-                                           &mFilterIdToMQEventFlag[filterId]) == android::OK);
-    // Create the EventFlag that is used to signal the HAL impl that data have been
-    // written into the Input FMQ
-    EXPECT_TRUE(EventFlag::createEventFlag(mInputMQ->getEventFlagWord(), &mInputMQEventFlag) ==
+    EXPECT_TRUE(EventFlag::createEventFlag(mFilterMQ->getEventFlagWord(), &mFilterMQEventFlag) ==
                 android::OK);
     // Start filter
     status = demux->startFilter(filterId);
-    status = demux->startInput();
-
     EXPECT_EQ(status, Result::SUCCESS);
     // Test start filter and receive callback event
     for (int i = 0; i < SECTION_READ_COUNT; i++) {
-        // Write input FMQ and notify the Tuner Implementation
-        EXPECT_TRUE(mInputMQ->write(goldenDataOutputBuffer.data(), goldenDataOutputBuffer.size()));
-        mInputMQEventFlag->wake(static_cast<uint32_t>(DemuxQueueNotifyBits::DATA_READY));
         testOnFilterEvent(filterId);
         // checksum of mDataOutputBuffer and Input golden input
-        if (readAndCompareSectionEventData(filterId) && i < SECTION_READ_COUNT - 1) {
-            mFilterIdToMQEventFlag[filterId]->wake(
-                    static_cast<uint32_t>(DemuxQueueNotifyBits::DATA_CONSUMED));
-        }
+        readAndCompareSectionEventData();
     }
 }
 
-// Legacy
-bool DemuxCallback::readAndCompareSectionEventData(uint32_t filterId) {
+void DemuxCallback::testOnPesFilterEvent(sp<IDemux>& demux, uint32_t filterId,
+                                         FilterMQDesc& filterMQDescriptor) {
+    Result status;
+    // Create MQ to read the output into the local buffer
+    mFilterMQ = std::make_unique<FilterMQ>(filterMQDescriptor, true /* resetPointers */);
+    EXPECT_TRUE(mFilterMQ);
+    // Create the EventFlag that is used to signal the HAL impl that data have been
+    // read the Filter FMQ
+    EXPECT_TRUE(EventFlag::createEventFlag(mFilterMQ->getEventFlagWord(), &mFilterMQEventFlag) ==
+                android::OK);
+    // Start filter
+    status = demux->startFilter(filterId);
+    EXPECT_EQ(status, Result::SUCCESS);
+    // Test start filter and receive callback event
+    testOnFilterEvent(filterId);
+    // checksum of mDataOutputBuffer and Input golden input
+    readAndComparePesEventData();
+}
+
+void DemuxCallback::readAndCompareSectionEventData() {
     bool result = false;
-    DemuxFilterEvent filterEvent = mFilterIdToEvent[filterId];
-    for (int i = 0; i < filterEvent.events.size(); i++) {
-        DemuxFilterSectionEvent event = filterEvent.events[i].section();
+    for (int i = 0; i < mFilterEvent.events.size(); i++) {
+        DemuxFilterSectionEvent event = mFilterEvent.events[i].section();
         mDataLength = event.dataLength;
-        EXPECT_TRUE(mDataLength == goldenDataOutputBuffer.size()) << "buffer size does not match";
+        EXPECT_TRUE(mDataLength == goldenDataInputBuffer.size()) << "buffer size does not match";
 
         mDataOutputBuffer.resize(mDataLength);
-        result = mFilterIdToMQ[filterId]->read(mDataOutputBuffer.data(), mDataLength);
+        result = mFilterMQ->read(mDataOutputBuffer.data(), mDataLength);
         EXPECT_TRUE(result) << "can't read from Filter MQ";
 
         for (int i = 0; i < mDataLength; i++) {
-            EXPECT_TRUE(goldenDataOutputBuffer[i] == mDataOutputBuffer[i]) << "data does not match";
+            EXPECT_TRUE(goldenDataInputBuffer[i] == mDataOutputBuffer[i]) << "data does not match";
         }
     }
-    return result;
+    if (result) {
+        mFilterMQEventFlag->wake(static_cast<uint32_t>(DemuxQueueNotifyBits::DATA_CONSUMED));
+    }
 }
 
-void DemuxCallback::updateFilterMQ(uint32_t filterId, MQDesc& filterMQDescriptor) {
-    mFilterIdToMQ[filterId] =
-            std::make_unique<FilterMQ>(filterMQDescriptor, true /* resetPointers */);
-    EXPECT_TRUE(mFilterIdToMQ[filterId]);
-    EXPECT_TRUE(EventFlag::createEventFlag(mFilterIdToMQ[filterId]->getEventFlagWord(),
-                                           &mFilterIdToMQEventFlag[filterId]) == android::OK);
-}
+void DemuxCallback::readAndComparePesEventData() {
+    // TODO handle multiple events in one filter callback event
+    DemuxFilterPesEvent event = mFilterEvent.events[0].pes();
+    mDataLength = event.dataLength;
+    EXPECT_TRUE(mDataLength == goldenDataInputBuffer.size()) << "buffer size does not match";
 
-void DemuxCallback::updateGoldenOutputMap(uint32_t filterId, string goldenOutputFile) {
-    mFilterIdToGoldenOutput[filterId] = goldenOutputFile;
-}
+    mDataOutputBuffer.resize(mDataLength);
+    bool result = mFilterMQ->read(mDataOutputBuffer.data(), mDataLength);
+    EXPECT_TRUE(result) << "can't read from Filter MQ";
 
-void* DemuxCallback::__threadLoopInput(void* threadArgs) {
-    DemuxCallback* const self =
-            static_cast<DemuxCallback*>(((struct InputThreadArgs*)threadArgs)->user);
-    self->inputThreadLoop(((struct InputThreadArgs*)threadArgs)->inputConf,
-                          ((struct InputThreadArgs*)threadArgs)->keepWritingInputFMQ,
-                          ((struct InputThreadArgs*)threadArgs)->inputMQDesc);
-    return 0;
-}
-
-void DemuxCallback::inputThreadLoop(InputConf inputConf, bool* keepWritingInputFMQ,
-                                    MQDesc& inputMQDescriptor) {
-    mInputThreadRunning = true;
-
-    std::unique_ptr inputMQ =
-            std::make_unique<FilterMQ>(inputMQDescriptor, true /* resetPointers */);
-    EXPECT_TRUE(inputMQ);
-
-    // Create the EventFlag that is used to signal the HAL impl that data have been
-    // written into the Input FMQ
-    EventFlag* inputMQEventFlag;
-    EXPECT_TRUE(EventFlag::createEventFlag(inputMQ->getEventFlagWord(), &inputMQEventFlag) ==
-                android::OK);
-
-    // open the stream and get its length
-    std::ifstream inputData(inputConf.inputDataFile /*"ts/test1.ts"*/, std::ifstream::binary);
-    int writeSize = inputConf.setting.packetSize * 6;
-    char* buffer = new char[writeSize];
-    if (!inputData) {
-        // log
-        mInputThreadRunning = false;
+    if (result) {
+        mFilterMQEventFlag->wake(static_cast<uint32_t>(DemuxQueueNotifyBits::DATA_CONSUMED));
     }
 
-    while (mInputThreadRunning) {
-        // move the stream pointer for packet size * 2k? every read until end
-        while (*keepWritingInputFMQ) {
-            inputData.read(buffer, writeSize);
-            if (!inputData) {
-                int leftSize = inputData.gcount();
-                inputData.clear();
-                inputData.read(buffer, leftSize);
-                // Write the left over of the input data and quit the thread
-                if (leftSize > 0) {
-                    EXPECT_TRUE(inputMQ->write((unsigned char*)&buffer[0],
-                                               leftSize / inputConf.setting.packetSize));
-                    inputMQEventFlag->wake(static_cast<uint32_t>(DemuxQueueNotifyBits::DATA_READY));
-                }
-                mInputThreadRunning = false;
-                break;
-            }
-            // Write input FMQ and notify the Tuner Implementation
-            EXPECT_TRUE(inputMQ->write((unsigned char*)&buffer[0], 6));
-            inputMQEventFlag->wake(static_cast<uint32_t>(DemuxQueueNotifyBits::DATA_READY));
-            inputData.seekg(writeSize, inputData.cur);
-        }
+    for (int i = 0; i < mDataLength; i++) {
+        EXPECT_TRUE(goldenDataInputBuffer[i] == mDataOutputBuffer[i]) << "data does not match";
     }
-
-    delete[] buffer;
-    inputData.close();
-}
-
-void* DemuxCallback::__threadLoopFilter(void* threadArgs) {
-    DemuxCallback* const self =
-            static_cast<DemuxCallback*>(((struct FilterThreadArgs*)threadArgs)->user);
-    self->filterThreadLoop(((struct FilterThreadArgs*)threadArgs)->event);
-    return 0;
-}
-
-void DemuxCallback::filterThreadLoop(DemuxFilterEvent& /*event*/) {
-    android::Mutex::Autolock autoLock(mFilterOutputLock);
-    // Read from MQ[event.filterId] per event and filter type
-
-    // Assemble to filterOutput[filterId]
-
-    // check if filterOutput[filterId] matches goldenOutput[filterId]
-
-    // If match, remove filterId entry from MQ map
-
-    // end thread
 }
 
 // Test environment for Tuner HIDL HAL.
@@ -526,14 +341,9 @@ class TunerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     sp<IDescrambler> mDescrambler;
     sp<IDemux> mDemux;
     sp<DemuxCallback> mDemuxCallback;
-    MQDesc mFilterMQDescriptor;
-    MQDesc mInputMQDescriptor;
-
+    FilterMQDesc mFilterMQDescriptor;
     uint32_t mDemuxId;
     uint32_t mFilterId;
-
-    pthread_t mInputThread;
-    bool mInputThreadRunning;
 
     ::testing::AssertionResult createFrontend(int32_t frontendId);
     ::testing::AssertionResult tuneFrontend(int32_t frontendId);
@@ -541,21 +351,14 @@ class TunerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     ::testing::AssertionResult closeFrontend(int32_t frontendId);
     ::testing::AssertionResult createDemux();
     ::testing::AssertionResult createDemuxWithFrontend(int32_t frontendId);
-    ::testing::AssertionResult getInputMQDescriptor();
-    ::testing::AssertionResult addInputToDemux(DemuxInputSettings setting);
-    ::testing::AssertionResult addFilterToDemux(DemuxFilterType type, DemuxFilterSettings setting);
-    ::testing::AssertionResult getFilterMQDescriptor(const uint32_t filterId);
+    ::testing::AssertionResult addSectionFilterToDemux();
+    ::testing::AssertionResult addPesFilterToDemux();
+    ::testing::AssertionResult getFilterMQDescriptor(sp<IDemux>& demux, const uint32_t filterId);
+    ::testing::AssertionResult readSectionFilterDataOutput();
+    ::testing::AssertionResult readPesFilterDataOutput();
     ::testing::AssertionResult closeDemux();
     ::testing::AssertionResult createDescrambler();
     ::testing::AssertionResult closeDescrambler();
-
-    ::testing::AssertionResult playbackDataFlowTest(vector<FilterConf> filterConf,
-                                                    InputConf inputConf,
-                                                    vector<string> goldenOutputFiles);
-
-    // Legacy
-    ::testing::AssertionResult addSectionFilterToDemux();
-    ::testing::AssertionResult readSectionFilterDataOutput();
 };
 
 ::testing::AssertionResult TunerHidlTest::createFrontend(int32_t frontendId) {
@@ -591,6 +394,8 @@ class TunerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 
     FrontendDvbtSettings frontendDvbtSettings{
             .frequency = 0,
+            .modulation = FrontendAtscModulation::UNDEFINED,
+            .fec = FrontendInnerFec::FEC_UNDEFINED,
     };
     frontendSettings.dvbt(frontendDvbtSettings);
     mFrontendCallback->testOnEvent(mFrontend, frontendSettings);
@@ -600,7 +405,7 @@ class TunerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 
 ::testing::AssertionResult TunerHidlTest::stopTuneFrontend(int32_t frontendId) {
     Result status;
-    if (!mFrontend && createFrontend(frontendId) == ::testing::AssertionFailure()) {
+    if (createFrontend(frontendId) == ::testing::AssertionFailure()) {
         return ::testing::AssertionFailure();
     }
 
@@ -610,12 +415,11 @@ class TunerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 
 ::testing::AssertionResult TunerHidlTest::closeFrontend(int32_t frontendId) {
     Result status;
-    if (!mFrontend && createFrontend(frontendId) == ::testing::AssertionFailure()) {
+    if (createFrontend(frontendId) == ::testing::AssertionFailure()) {
         return ::testing::AssertionFailure();
     }
 
     status = mFrontend->close();
-    mFrontend = nullptr;
     return ::testing::AssertionResult(status == Result::SUCCESS);
 }
 
@@ -633,11 +437,11 @@ class TunerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 ::testing::AssertionResult TunerHidlTest::createDemuxWithFrontend(int32_t frontendId) {
     Result status;
 
-    if (!mDemux && createDemux() == ::testing::AssertionFailure()) {
+    if (createDemux() == ::testing::AssertionFailure()) {
         return ::testing::AssertionFailure();
     }
 
-    if (!mFrontend && createFrontend(frontendId) == ::testing::AssertionFailure()) {
+    if (createFrontend(frontendId) == ::testing::AssertionFailure()) {
         return ::testing::AssertionFailure();
     }
 
@@ -646,14 +450,111 @@ class TunerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     return ::testing::AssertionResult(status == Result::SUCCESS);
 }
 
+::testing::AssertionResult TunerHidlTest::addSectionFilterToDemux() {
+    Result status;
+
+    if (createDemux() == ::testing::AssertionFailure()) {
+        return ::testing::AssertionFailure();
+    }
+
+    // Create demux callback
+    mDemuxCallback = new DemuxCallback();
+
+    // Add section filter to the local demux
+    mDemux->addFilter(DemuxFilterType::SECTION, FMQ_SIZE_4K, mDemuxCallback,
+                      [&](Result result, uint32_t filterId) {
+                          mFilterId = filterId;
+                          status = result;
+                      });
+
+    // Add another section filter to the local demux
+    mDemux->addFilter(DemuxFilterType::SECTION, FMQ_SIZE_4K, mDemuxCallback,
+                      [&](Result result, uint32_t filterId) {
+                          mFilterId = filterId;
+                          status = result;
+                      });
+
+    // TODO Test configure the filter
+
+    return ::testing::AssertionResult(status == Result::SUCCESS);
+}
+
+::testing::AssertionResult TunerHidlTest::addPesFilterToDemux() {
+    Result status;
+
+    if (createDemux() == ::testing::AssertionFailure()) {
+        return ::testing::AssertionFailure();
+    }
+
+    // Create demux callback
+    mDemuxCallback = new DemuxCallback();
+
+    // Add PES filter to the local demux
+    mDemux->addFilter(DemuxFilterType::PES, FMQ_SIZE_4K, mDemuxCallback,
+                      [&](Result result, uint32_t filterId) {
+                          mFilterId = filterId;
+                          status = result;
+                      });
+
+    // Add another PES filter to the local demux
+    mDemux->addFilter(DemuxFilterType::PES, FMQ_SIZE_4K, mDemuxCallback,
+                      [&](Result result, uint32_t filterId) {
+                          mFilterId = filterId;
+                          status = result;
+                      });
+
+    // TODO Test configure the filter
+
+    return ::testing::AssertionResult(status == Result::SUCCESS);
+}
+
+::testing::AssertionResult TunerHidlTest::getFilterMQDescriptor(sp<IDemux>& demux,
+                                                                const uint32_t filterId) {
+    Result status;
+
+    if (!demux) {
+        return ::testing::AssertionFailure();
+    }
+
+    mDemux->getFilterQueueDesc(filterId, [&](Result result, const FilterMQDesc& filterMQDesc) {
+        mFilterMQDescriptor = filterMQDesc;
+        status = result;
+    });
+
+    return ::testing::AssertionResult(status == Result::SUCCESS);
+}
+
+::testing::AssertionResult TunerHidlTest::readSectionFilterDataOutput() {
+    if (addSectionFilterToDemux() == ::testing::AssertionFailure() ||
+        getFilterMQDescriptor(mDemux, mFilterId) == ::testing::AssertionFailure()) {
+        return ::testing::AssertionFailure();
+    }
+
+    // Test start filter and read the output data
+    mDemuxCallback->testOnSectionFilterEvent(mDemux, mFilterId, mFilterMQDescriptor);
+
+    return ::testing::AssertionResult(true);
+}
+
+::testing::AssertionResult TunerHidlTest::readPesFilterDataOutput() {
+    if (addPesFilterToDemux() == ::testing::AssertionFailure() ||
+        getFilterMQDescriptor(mDemux, mFilterId) == ::testing::AssertionFailure()) {
+        return ::testing::AssertionFailure();
+    }
+
+    // Test start filter and read the output data
+    mDemuxCallback->testOnPesFilterEvent(mDemux, mFilterId, mFilterMQDescriptor);
+
+    return ::testing::AssertionResult(true);
+}
+
 ::testing::AssertionResult TunerHidlTest::closeDemux() {
     Result status;
-    if (!mDemux && createDemux() == ::testing::AssertionFailure()) {
+    if (createDemux() == ::testing::AssertionFailure()) {
         return ::testing::AssertionFailure();
     }
 
     status = mDemux->close();
-    mDemux = nullptr;
     return ::testing::AssertionResult(status == Result::SUCCESS);
 }
 
@@ -668,7 +569,7 @@ class TunerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         return ::testing::AssertionFailure();
     }
 
-    if (!mDemux && createDemux() == ::testing::AssertionFailure()) {
+    if (createDemux() == ::testing::AssertionFailure()) {
         return ::testing::AssertionFailure();
     }
 
@@ -684,190 +585,14 @@ class TunerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 
 ::testing::AssertionResult TunerHidlTest::closeDescrambler() {
     Result status;
-    if (!mDescrambler && createDescrambler() == ::testing::AssertionFailure()) {
+    if (createDescrambler() == ::testing::AssertionFailure()) {
         return ::testing::AssertionFailure();
     }
 
     status = mDescrambler->close();
-    mDescrambler = nullptr;
     return ::testing::AssertionResult(status == Result::SUCCESS);
 }
 
-::testing::AssertionResult TunerHidlTest::addInputToDemux(DemuxInputSettings setting) {
-    Result status;
-
-    if (!mDemux && createDemux() == ::testing::AssertionFailure()) {
-        return ::testing::AssertionFailure();
-    }
-
-    // Create demux callback
-    if (!mDemuxCallback) {
-        mDemuxCallback = new DemuxCallback();
-    }
-
-    // Add section filter to the local demux
-    status = mDemux->addInput(FMQ_SIZE_1M, mDemuxCallback);
-
-    if (status != Result::SUCCESS) {
-        return ::testing::AssertionFailure();
-    }
-
-    status = mDemux->configureInput(setting);
-
-    return ::testing::AssertionResult(status == Result::SUCCESS);
-}
-
-::testing::AssertionResult TunerHidlTest::getInputMQDescriptor() {
-    Result status;
-
-    if (!mDemux && createDemux() == ::testing::AssertionFailure()) {
-        return ::testing::AssertionFailure();
-    }
-
-    mDemux->getInputQueueDesc([&](Result result, const MQDesc& inputMQDesc) {
-        mInputMQDescriptor = inputMQDesc;
-        status = result;
-    });
-
-    return ::testing::AssertionResult(status == Result::SUCCESS);
-}
-
-// Legacy
-::testing::AssertionResult TunerHidlTest::addSectionFilterToDemux() {
-    Result status;
-
-    if (!mDemux && createDemux() == ::testing::AssertionFailure()) {
-        return ::testing::AssertionFailure();
-    }
-
-    // Create demux callback
-    if (!mDemuxCallback) {
-        mDemuxCallback = new DemuxCallback();
-    }
-
-    // Add section filter to the local demux
-    mDemux->addFilter(DemuxFilterType::SECTION, FMQ_SIZE_4K, mDemuxCallback,
-                      [&](Result result, uint32_t filterId) {
-                          mFilterId = filterId;
-                          status = result;
-                      });
-
-    return ::testing::AssertionResult(status == Result::SUCCESS);
-}
-
-::testing::AssertionResult TunerHidlTest::addFilterToDemux(DemuxFilterType type,
-                                                           DemuxFilterSettings setting) {
-    Result status;
-
-    if (!mDemux && createDemux() == ::testing::AssertionFailure()) {
-        return ::testing::AssertionFailure();
-    }
-
-    // Create demux callback
-    if (!mDemuxCallback) {
-        mDemuxCallback = new DemuxCallback();
-    }
-
-    // Add filter to the local demux
-    mDemux->addFilter(type, FMQ_SIZE_4K, mDemuxCallback, [&](Result result, uint32_t filterId) {
-        // TODO use a map to save all the filter id and FMQ
-        mFilterId = filterId;
-        status = result;
-    });
-
-    if (status != Result::SUCCESS) {
-        return ::testing::AssertionFailure();
-    }
-
-    // Configure the filter
-    status = mDemux->configureFilter(mFilterId, setting);
-
-    return ::testing::AssertionResult(status == Result::SUCCESS);
-}
-
-::testing::AssertionResult TunerHidlTest::getFilterMQDescriptor(const uint32_t filterId) {
-    Result status;
-
-    if (!mDemux) {
-        return ::testing::AssertionFailure();
-    }
-
-    mDemux->getFilterQueueDesc(filterId, [&](Result result, const MQDesc& filterMQDesc) {
-        mFilterMQDescriptor = filterMQDesc;
-        status = result;
-    });
-
-    return ::testing::AssertionResult(status == Result::SUCCESS);
-}
-
-// Legacy
-::testing::AssertionResult TunerHidlTest::readSectionFilterDataOutput() {
-    // Filter Configuration Module
-    DemuxInputSettings setting{
-            .statusMask = 0xf,
-            .lowThreshold = 0x1000,
-            .highThreshold = 0x100000,
-            .dataFormat = DemuxDataFormat::TS,
-            .packetSize = 188,
-    };
-    if (addSectionFilterToDemux() == ::testing::AssertionFailure() ||
-        getFilterMQDescriptor(mFilterId) == ::testing::AssertionFailure() ||
-        addInputToDemux(setting) == ::testing::AssertionFailure() ||
-        getInputMQDescriptor() == ::testing::AssertionFailure()) {
-        return ::testing::AssertionFailure();
-    }
-
-    // Data Verify Module
-    // Test start filter and read the output data
-    mDemuxCallback->testOnSectionFilterEvent(mDemux, mFilterId, mFilterMQDescriptor,
-                                             mInputMQDescriptor);
-
-    // Clean Up Module
-    return closeDemux();  //::testing::AssertionSuccess();
-}
-
-::testing::AssertionResult TunerHidlTest::playbackDataFlowTest(vector<FilterConf> filterConf,
-                                                               InputConf inputConf,
-                                                               vector<string> goldenOutputFiles) {
-    Result status;
-    // Filter Configuration Module
-    for (int i = 0; i < filterConf.size(); i++) {
-        if (addFilterToDemux(filterConf[i].type, filterConf[i].setting) ==
-                    ::testing::AssertionFailure() ||
-            // TODO use a map to save the FMQs/EvenFlags and pass to callback
-            getFilterMQDescriptor(mFilterId) == ::testing::AssertionFailure()) {
-            return ::testing::AssertionFailure();
-        }
-        mDemuxCallback->updateFilterMQ(mFilterId, mFilterMQDescriptor);
-        mDemuxCallback->updateGoldenOutputMap(mFilterId, goldenOutputFiles[i]);
-        status = mDemux->startFilter(mFilterId);
-        if (status != Result::SUCCESS) {
-            return ::testing::AssertionFailure();
-        }
-    }
-
-    // Playback Input Module
-    DemuxInputSettings inputSetting = inputConf.setting;
-    if (addInputToDemux(inputSetting) == ::testing::AssertionFailure() ||
-        getInputMQDescriptor() == ::testing::AssertionFailure()) {
-        return ::testing::AssertionFailure();
-    }
-    mDemuxCallback->startPlaybackInputThread(inputConf, mInputMQDescriptor);
-    status = mDemux->startInput();
-    if (status != Result::SUCCESS) {
-        return ::testing::AssertionFailure();
-    }
-
-    // Data Verify Module
-    mDemuxCallback->testFilterDataOutput();
-
-    // Clean Up Module
-    return closeDemux();
-}
-
-/*
- * API STATUS TESTS
- */
 TEST_F(TunerHidlTest, CreateFrontend) {
     Result status;
     hidl_vec<FrontendId> feIds;
@@ -948,6 +673,12 @@ TEST_F(TunerHidlTest, CloseFrontend) {
     }
 }
 
+TEST_F(TunerHidlTest, CreateDemux) {
+    description("Create Demux");
+
+    ASSERT_TRUE(createDemux());
+}
+
 TEST_F(TunerHidlTest, CreateDemuxWithFrontend) {
     Result status;
     hidl_vec<FrontendId> feIds;
@@ -968,32 +699,48 @@ TEST_F(TunerHidlTest, CreateDemuxWithFrontend) {
     }
 }
 
-TEST_F(TunerHidlTest, CreateDemux) {
-    description("Create Demux");
-    ASSERT_TRUE(createDemux());
+TEST_F(TunerHidlTest, AddSectionFilterToDemux) {
+    description("Add a section filter to a created demux");
+    ASSERT_TRUE(addSectionFilterToDemux());
+}
+
+TEST_F(TunerHidlTest, AddPesFilterToDemux) {
+    description("Add a pes filter to a created demux");
+    ASSERT_TRUE(addPesFilterToDemux());
+}
+
+TEST_F(TunerHidlTest, GetFilterMQDescriptor) {
+    description("Get MQ Descriptor from a created filter");
+    ASSERT_TRUE(addSectionFilterToDemux());
+    ASSERT_TRUE(getFilterMQDescriptor(mDemux, mFilterId));
+}
+
+TEST_F(TunerHidlTest, ReadSectionFilterOutput) {
+    description("Read data output from FMQ of a Section Filter");
+    ASSERT_TRUE(readSectionFilterDataOutput());
+}
+
+TEST_F(TunerHidlTest, ReadPesFilterOutput) {
+    description("Read data output from FMQ of a PES Filter");
+    ASSERT_TRUE(readPesFilterDataOutput());
 }
 
 TEST_F(TunerHidlTest, CloseDemux) {
     description("Close Demux");
+
     ASSERT_TRUE(closeDemux());
 }
 
 TEST_F(TunerHidlTest, CreateDescrambler) {
     description("Create Descrambler");
+
     ASSERT_TRUE(createDescrambler());
 }
 
 TEST_F(TunerHidlTest, CloseDescrambler) {
     description("Close Descrambler");
-    ASSERT_TRUE(closeDescrambler());
-}
 
-/*
- * DATA FLOW TESTS
- */
-TEST_F(TunerHidlTest, ReadSectionFilterOutput) {
-    description("Read data output from FMQ of a Section Filter");
-    ASSERT_TRUE(readSectionFilterDataOutput());
+    ASSERT_TRUE(closeDescrambler());
 }
 
 }  // namespace

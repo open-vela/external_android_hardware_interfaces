@@ -24,17 +24,17 @@ using V1_0::DeviceStatus;
 using V1_0::ErrorStatus;
 
 // create device test
-TEST_P(NeuralnetworksHidlTest, CreateDevice) {}
+TEST_F(NeuralnetworksHidlTest, CreateDevice) {}
 
 // status test
-TEST_P(NeuralnetworksHidlTest, StatusTest) {
+TEST_F(NeuralnetworksHidlTest, StatusTest) {
     Return<DeviceStatus> status = kDevice->getStatus();
     ASSERT_TRUE(status.isOk());
     EXPECT_EQ(DeviceStatus::AVAILABLE, static_cast<DeviceStatus>(status));
 }
 
 // initialization
-TEST_P(NeuralnetworksHidlTest, GetCapabilitiesTest) {
+TEST_F(NeuralnetworksHidlTest, GetCapabilitiesTest) {
     Return<void> ret =
             kDevice->getCapabilities_1_1([](ErrorStatus status, const Capabilities& capabilities) {
                 EXPECT_EQ(ErrorStatus::NONE, status);
