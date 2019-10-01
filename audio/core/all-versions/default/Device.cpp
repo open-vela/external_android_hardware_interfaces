@@ -378,7 +378,7 @@ Return<void> Device::getMicrophones(getMicrophones_cb _hidl_cb) {
 }
 
 Return<Result> Device::setConnectedState(const DeviceAddress& address, bool connected) {
-    auto key = connected ? AudioParameter::keyDeviceConnect : AudioParameter::keyDeviceDisconnect;
+    auto key = connected ? AudioParameter::keyStreamConnect : AudioParameter::keyStreamDisconnect;
     return setParam(key, address);
 }
 #endif
