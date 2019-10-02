@@ -169,10 +169,10 @@ enum FrontendAtscModulation : uint32_t {
 };
 
 /**
- *  Signal Setting for ATSC Frontend.
+ *  Signal Settings for an ATSC Frontend.
  */
 struct FrontendAtscSettings {
-    /** Signal frequencey in Herhz */
+    /** Signal frequency in Hertz */
     uint32_t frequency;
     FrontendAtscModulation modulation;
 };
@@ -569,7 +569,7 @@ enum FrontendDvbtStandard : uint8_t {
  *  Signal Setting for DVBT Frontend.
  */
 struct FrontendDvbtSettings {
-    /** Signal frequencey in Herhz */
+    /** Signal frequency in Hertz */
     uint32_t frequency;
     FrontendDvbtTransmissionMode transmissionMode;
     FrontendDvbtBandwidth bandwidth;
