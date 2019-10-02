@@ -10,6 +10,8 @@ cc_defaults {
     shared_libs: [
         "libbase",
         "libhidlbase",
+        "libhidltransport",
+        "libhwbinder",
         "liblog",
         "libutils",
         "libcutils",
@@ -31,11 +33,7 @@ cc_library_static {
     vendor_available: true,
     srcs: [
         "Health.cpp",
-        "healthd_common_adapter.cpp",
-    ],
-
-    whole_static_libs: [
-        "libhealthloop",
+        "healthd_common.cpp",
     ],
 
     export_include_dirs: ["include"],
