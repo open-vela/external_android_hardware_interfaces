@@ -27,10 +27,14 @@ namespace tuner {
 namespace V1_0 {
 namespace implementation {
 
-Frontend::Frontend(FrontendType type, FrontendId id, sp<Tuner> tuner) {
+Frontend::Frontend() {
+    // Init callback to nullptr
+    mCallback = nullptr;
+}
+
+Frontend::Frontend(FrontendType type, FrontendId id) {
     mType = type;
     mId = id;
-    mTunerService = tuner;
     // Init callback to nullptr
     mCallback = nullptr;
 }
@@ -63,17 +67,12 @@ Return<Result> Frontend::tune(const FrontendSettings& /* settings */) {
         return Result::INVALID_STATE;
     }
 
-    // TODO dynamically allocate file to the source file
-    mSourceStreamFile = FRONTEND_STREAM_FILE;
-
-    mCallback->onEvent(FrontendEventType::LOCKED);
+    mCallback->onEvent(FrontendEventType::NO_SIGNAL);
     return Result::SUCCESS;
 }
 
 Return<Result> Frontend::stopTune() {
     ALOGV("%s", __FUNCTION__);
-
-    mTunerService->frontendStopTune(mId);
 
     return Result::SUCCESS;
 }
@@ -106,7 +105,13 @@ Return<Result> Frontend::setLna(bool /* bEnable */) {
     return Result::SUCCESS;
 }
 
-Return<Result> Frontend::setLnb(uint32_t /* lnb */) {
+Return<Result> Frontend::setLnb(const sp<ILnb>& /* lnb */) {
+    ALOGV("%s", __FUNCTION__);
+
+    return Result::SUCCESS;
+}
+
+Return<Result> Frontend::sendDiseqcMessage(const hidl_vec<uint8_t>& /* diseqcMessage */) {
     ALOGV("%s", __FUNCTION__);
 
     return Result::SUCCESS;
@@ -118,10 +123,6 @@ FrontendType Frontend::getFrontendType() {
 
 FrontendId Frontend::getFrontendId() {
     return mId;
-}
-
-string Frontend::getSourceFile() {
-    return mSourceStreamFile;
 }
 
 }  // namespace implementation
