@@ -21,7 +21,6 @@
 #define LOG_TAG "android.hardware.tv.tuner@1.0-service"
 #endif
 
-#include <binder/ProcessState.h>
 #include <hidl/HidlTransportSupport.h>
 #include <hidl/LegacySupport.h>
 
@@ -46,8 +45,8 @@ int main() {
     android::sp<ITuner> service = new Tuner();
     android::status_t status;
     if (kLazyService) {
-        auto serviceRegistrar = std::make_shared<LazyServiceRegistrar>();
-        status = serviceRegistrar->registerService(service);
+        auto serviceRegistrar = LazyServiceRegistrar::getInstance();
+        status = serviceRegistrar.registerService(service);
     } else {
         status = service->registerAsService();
     }
