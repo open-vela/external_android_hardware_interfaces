@@ -178,8 +178,7 @@ TEST_F(HostapdHidlTest, registerCallback) {
 TEST_F(HostapdHidlTest, AddPskAccessPointWithAcs) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithAcs(), getPskNwParams());
-    // TODO: b/140172237, fix this in R.
-    // EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -190,8 +189,7 @@ TEST_F(HostapdHidlTest, AddPskAccessPointWithAcsAndChannelRange) {
     auto status =
         HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                     getIfaceParamsWithAcsAndChannelRange(), getPskNwParams());
-    // TODO: b/140172237, fix this in R
-    // EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -202,8 +200,7 @@ TEST_F(HostapdHidlTest, AddPskAccessPointWithAcsAndInvalidChannelRange) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithAcsAndInvalidChannelRange(),
                               getPskNwParams());
-    // TODO: b/140172237, fix this in R
-    // EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
+    EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -213,8 +210,7 @@ TEST_F(HostapdHidlTest, AddPskAccessPointWithAcsAndInvalidChannelRange) {
 TEST_F(HostapdHidlTest, AddOpenAccessPointWithAcs) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithAcs(), getOpenNwParams());
-    // TODO: b/140172237, fix this in R
-    // EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -244,13 +240,10 @@ TEST_F(HostapdHidlTest, AddOpenAccessPointWithoutAcs) {
 TEST_F(HostapdHidlTest, RemoveAccessPointWithAcs) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithAcs(), getPskNwParams());
-    // TODO: b/140172237, fix this in R
-    /*
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
     status =
         HIDL_INVOKE(hostapd_, removeAccessPoint, getPrimaryWlanIfaceName());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
-    */
 }
 
 /**
