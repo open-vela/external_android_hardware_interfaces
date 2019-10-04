@@ -68,9 +68,9 @@ void convertFromSensorEvent(const sensors_event_t &src, Event *dst) {
     typedef ::android::hardware::sensors::V1_0::MetaDataEventType MetaDataEventType;
 
     *dst = {
-            .timestamp = src.timestamp,
-            .sensorHandle = src.sensor,
-            .sensorType = (SensorType)src.type,
+        .sensorHandle = src.sensor,
+        .sensorType = (SensorType)src.type,
+        .timestamp = src.timestamp
     };
 
     switch (dst->sensorType) {
