@@ -21,11 +21,12 @@ cc_defaults {
       "libbinder",
       "libhidlbase",
       "libhidlmemory",
+      "libhidltransport",
       "liblog",
-      "libstagefright_foundation",
       "libutils",
     ],
     header_libs: [
+      "libstagefright_foundation_headers",
       "media_plugin_headers",
     ],
 }

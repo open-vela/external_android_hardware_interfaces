@@ -17,65 +17,40 @@
 #ifndef ANDROID_HARDWARE_NEURALNETWORKS_V1_0_UTILS_H
 #define ANDROID_HARDWARE_NEURALNETWORKS_V1_0_UTILS_H
 
-#include <android-base/logging.h>
 #include <android/hardware/neuralnetworks/1.0/types.h>
 #include <algorithm>
-#include <iosfwd>
-#include <string>
-#include <utility>
 #include <vector>
 #include "TestHarness.h"
 
-namespace android::hardware::neuralnetworks {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
 
-// Create HIDL Request from the TestModel struct.
-V1_0::Request createRequest(const test_helper::TestModel& testModel);
-
-// After execution, copy out output results from the output memory pool.
-std::vector<::test_helper::TestBuffer> getOutputBuffers(const V1_0::Request& request);
+void copy_back(::test_helper::MixedTyped* dst, const std::vector<V1_0::RequestArgument>& ra,
+               char* src);
 
 // Delete element from hidl_vec. hidl_vec doesn't support a "remove" operation,
 // so this is efficiently accomplished by moving the element to the end and
 // resizing the hidl_vec to one less.
 template <typename Type>
 inline void hidl_vec_removeAt(hidl_vec<Type>* vec, uint32_t index) {
-    CHECK(vec != nullptr);
-    std::rotate(vec->begin() + index, vec->begin() + index + 1, vec->end());
-    vec->resize(vec->size() - 1);
+    if (vec) {
+        std::rotate(vec->begin() + index, vec->begin() + index + 1, vec->end());
+        vec->resize(vec->size() - 1);
+    }
 }
 
 template <typename Type>
 inline uint32_t hidl_vec_push_back(hidl_vec<Type>* vec, const Type& value) {
-    CHECK(vec != nullptr);
+    // assume vec is valid
     const uint32_t index = vec->size();
     vec->resize(index + 1);
     (*vec)[index] = value;
     return index;
 }
 
-template <typename Type>
-using Named = std::pair<std::string, Type>;
-
-template <typename Type>
-const std::string& getName(const Named<Type>& namedData) {
-    return namedData.first;
-}
-
-template <typename Type>
-const Type& getData(const Named<Type>& namedData) {
-    return namedData.second;
-}
-
-std::string gtestCompliantName(std::string name);
-
-}  // namespace android::hardware::neuralnetworks
-
-namespace android::hardware::neuralnetworks::V1_0 {
-
-// pretty-print values for error messages
-::std::ostream& operator<<(::std::ostream& os, ErrorStatus errorStatus);
-::std::ostream& operator<<(::std::ostream& os, DeviceStatus deviceStatus);
-
-}  // namespace android::hardware::neuralnetworks::V1_0
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
 
 #endif  // ANDROID_HARDWARE_NEURALNETWORKS_V1_0_UTILS_H
