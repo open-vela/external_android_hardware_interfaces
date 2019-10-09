@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,14 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define LOG_TAG "android.hardware.boot@1.1-service"
 
-#include <android/hardware/boot/1.1/IBootControl.h>
-#include <hidl/LegacySupport.h>
+package android.hardware.boot@1.1;
 
-using android::hardware::defaultPassthroughServiceImplementation;
-using ::android::hardware::boot::V1_1::IBootControl;
+enum MergeStatus : int32_t {
+    /**
+     * No snapshot or merge is in progress.
+     */
+    NONE = 0,
 
-int main(int /* argc */, char* /* argv */[]) {
-    return defaultPassthroughServiceImplementation<IBootControl>();
-}
+    /**
+     * The merge status could not be determined.
+     */
+    UNKNOWN,
+
+    /**
+     * Partitions are being snapshotted, but no merge has been started.
+     */
+    SNAPSHOTTED,
+
+    /**
+     * At least one partition has merge is in progress.
+     */
+    MERGING,
+
+    /**
+     * A merge was in progress, but it was canceled by the bootloader.
+     */
+    CANCELLED,
+};
