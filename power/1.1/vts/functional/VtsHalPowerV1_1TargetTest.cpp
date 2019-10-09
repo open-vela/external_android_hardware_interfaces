@@ -17,9 +17,9 @@
 #define LOG_TAG "power_hidl_hal_test"
 #include <android-base/logging.h>
 #include <android/hardware/power/1.1/IPower.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 
 using ::android::hardware::power::V1_1::IPower;
 using ::android::hardware::power::V1_1::PowerStateSubsystem;
@@ -29,10 +29,23 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::sp;
 
-class PowerHidlTest : public testing::TestWithParam<std::string> {
+// Test environment for Power HIDL HAL.
+class PowerHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static PowerHidlEnvironment* Instance() {
+        static PowerHidlEnvironment* instance = new PowerHidlEnvironment;
+        return instance;
+    }
+
+    virtual void registerTestServices() override { registerTestService<IPower>(); }
+};
+
+class PowerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
-      power = IPower::getService(GetParam());
+      power = ::testing::VtsHalHidlTargetTestBase::getService<IPower>(
+          PowerHidlEnvironment::Instance()->getServiceName<IPower>());
       ASSERT_NE(power, nullptr);
   }
 
@@ -42,7 +55,7 @@ class PowerHidlTest : public testing::TestWithParam<std::string> {
 };
 
 // Sanity check Power::getSubsystemLowPowerStats().
-TEST_P(PowerHidlTest, GetSubsystemLowPowerStats) {
+TEST_F(PowerHidlTest, GetSubsystemLowPowerStats) {
   hidl_vec<PowerStateSubsystem> vec;
   Status s;
   auto cb = [&vec, &s](hidl_vec<PowerStateSubsystem> subsystems,
@@ -57,7 +70,7 @@ TEST_P(PowerHidlTest, GetSubsystemLowPowerStats) {
 }
 
 // Sanity check Power::powerHintAsync on good and bad inputs.
-TEST_P(PowerHidlTest, PowerHintAsync) {
+TEST_F(PowerHidlTest, PowerHintAsync) {
     PowerHint badHint = static_cast<PowerHint>(0xA);
     auto hints = {PowerHint::VSYNC,        PowerHint::INTERACTION, PowerHint::VIDEO_ENCODE,
                   PowerHint::VIDEO_DECODE, PowerHint::LOW_POWER,   PowerHint::SUSTAINED_PERFORMANCE,
@@ -91,7 +104,11 @@ TEST_P(PowerHidlTest, PowerHintAsync) {
     } while (std::next_permutation(hints2.begin(), hints2.end(), compareHints));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, PowerHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IPower::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char **argv) {
+    ::testing::AddGlobalTestEnvironment(PowerHidlEnvironment::Instance());
+    ::testing::InitGoogleTest(&argc, argv);
+    PowerHidlEnvironment::Instance()->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    LOG(INFO) << "Test result = " << status;
+    return status;
+}
