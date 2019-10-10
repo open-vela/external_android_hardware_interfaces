@@ -20,6 +20,9 @@
 
 #include <android/hardware/keymaster/4.0/IKeymasterDevice.h>
 
+#include <memory>
+#include <vector>
+
 namespace android {
 namespace hardware {
 namespace keymaster {
@@ -36,8 +39,8 @@ namespace support {
  * while still having to use only the latest interface.
  */
 class Keymaster : public IKeymasterDevice {
-   public:
-    using KeymasterSet = std::vector<std::unique_ptr<Keymaster>>;
+  public:
+    using KeymasterSet = std::vector<android::sp<Keymaster>>;
 
     Keymaster(const hidl_string& descriptor, const hidl_string& instanceName)
         : descriptor_(descriptor), instanceName_(instanceName) {}
@@ -62,6 +65,12 @@ class Keymaster : public IKeymasterDevice {
     const hidl_string& instanceName() const { return instanceName_; }
 
     /**
+     * If ec is in the vendor error code range (<-10000), logs the fact to logcat.
+     * There are no side effects otherwise.
+     */
+    void logIfKeymasterVendorError(ErrorCode ec) const;
+
+    /**
      * Returns all available Keymaster3 and Keymaster4 instances, in order of most secure to least
      * secure (as defined by VersionResult::operator<).
      */
@@ -77,7 +86,7 @@ class Keymaster : public IKeymasterDevice {
      */
     static void performHmacKeyAgreement(const KeymasterSet& keymasters);
 
-   private:
+  private:
     hidl_string descriptor_;
     hidl_string instanceName_;
 };
