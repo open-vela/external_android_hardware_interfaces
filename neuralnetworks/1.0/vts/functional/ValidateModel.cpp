@@ -16,32 +16,39 @@
 
 #define LOG_TAG "neuralnetworks_hidl_hal_test"
 
-#include "1.0/Callbacks.h"
-#include "GeneratedTestHarness.h"
 #include "VtsHalNeuralnetworks.h"
 
-namespace android::hardware::neuralnetworks::V1_0::vts::functional {
+#include "Callbacks.h"
 
-using implementation::PreparedModelCallback;
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_0 {
+namespace vts {
+namespace functional {
+
+using ::android::hardware::neuralnetworks::V1_2::implementation::ExecutionCallback;
+using ::android::hardware::neuralnetworks::V1_2::implementation::PreparedModelCallback;
 
 ///////////////////////// UTILITY FUNCTIONS /////////////////////////
 
 static void validateGetSupportedOperations(const sp<IDevice>& device, const std::string& message,
-                                           const Model& model) {
+                                           const V1_0::Model& model) {
     SCOPED_TRACE(message + " [getSupportedOperations]");
 
     Return<void> ret =
-            device->getSupportedOperations(model, [&](ErrorStatus status, const hidl_vec<bool>&) {
-                EXPECT_EQ(ErrorStatus::INVALID_ARGUMENT, status);
-            });
+        device->getSupportedOperations(model, [&](ErrorStatus status, const hidl_vec<bool>&) {
+            EXPECT_EQ(ErrorStatus::INVALID_ARGUMENT, status);
+        });
     EXPECT_TRUE(ret.isOk());
 }
 
 static void validatePrepareModel(const sp<IDevice>& device, const std::string& message,
-                                 const Model& model) {
+                                 const V1_0::Model& model) {
     SCOPED_TRACE(message + " [prepareModel]");
 
     sp<PreparedModelCallback> preparedModelCallback = new PreparedModelCallback();
+    ASSERT_NE(nullptr, preparedModelCallback.get());
     Return<ErrorStatus> prepareLaunchStatus = device->prepareModel(model, preparedModelCallback);
     ASSERT_TRUE(prepareLaunchStatus.isOk());
     ASSERT_EQ(ErrorStatus::INVALID_ARGUMENT, static_cast<ErrorStatus>(prepareLaunchStatus));
@@ -57,7 +64,7 @@ static void validatePrepareModel(const sp<IDevice>& device, const std::string& m
 // mutation to it to invalidate the model, then pass it to interface calls that
 // use the model. Note that the model here is passed by value, and any mutation
 // to the model does not leave this function.
-static void validate(const sp<IDevice>& device, const std::string& message, Model model,
+static void validate(const sp<IDevice>& device, const std::string& message, V1_0::Model model,
                      const std::function<void(Model*)>& mutation) {
     mutation(&model);
     validateGetSupportedOperations(device, message, model);
@@ -87,13 +94,13 @@ static uint32_t hidl_vec_push_back(hidl_vec<Type>* vec, const Type& value) {
 static uint32_t addOperand(Model* model) {
     return hidl_vec_push_back(&model->operands,
                               {
-                                      .type = OperandType::INT32,
-                                      .dimensions = {},
-                                      .numberOfConsumers = 0,
-                                      .scale = 0.0f,
-                                      .zeroPoint = 0,
-                                      .lifetime = OperandLifeTime::MODEL_INPUT,
-                                      .location = {.poolIndex = 0, .offset = 0, .length = 0},
+                                  .type = OperandType::INT32,
+                                  .dimensions = {},
+                                  .numberOfConsumers = 0,
+                                  .scale = 0.0f,
+                                  .zeroPoint = 0,
+                                  .lifetime = OperandLifeTime::MODEL_INPUT,
+                                  .location = {.poolIndex = 0, .offset = 0, .length = 0},
                               });
 }
 
@@ -107,13 +114,13 @@ static uint32_t addOperand(Model* model, OperandLifeTime lifetime) {
 ///////////////////////// VALIDATE MODEL OPERAND TYPE /////////////////////////
 
 static const int32_t invalidOperandTypes[] = {
-        static_cast<int32_t>(OperandType::FLOAT32) - 1,              // lower bound fundamental
-        static_cast<int32_t>(OperandType::TENSOR_QUANT8_ASYMM) + 1,  // upper bound fundamental
-        static_cast<int32_t>(OperandType::OEM) - 1,                  // lower bound OEM
-        static_cast<int32_t>(OperandType::TENSOR_OEM_BYTE) + 1,      // upper bound OEM
+    static_cast<int32_t>(OperandType::FLOAT32) - 1,              // lower bound fundamental
+    static_cast<int32_t>(OperandType::TENSOR_QUANT8_ASYMM) + 1,  // upper bound fundamental
+    static_cast<int32_t>(OperandType::OEM) - 1,                  // lower bound OEM
+    static_cast<int32_t>(OperandType::TENSOR_OEM_BYTE) + 1,      // upper bound OEM
 };
 
-static void mutateOperandTypeTest(const sp<IDevice>& device, const Model& model) {
+static void mutateOperandTypeTest(const sp<IDevice>& device, const V1_0::Model& model) {
     for (size_t operand = 0; operand < model.operands.size(); ++operand) {
         for (int32_t invalidOperandType : invalidOperandTypes) {
             const std::string message = "mutateOperandTypeTest: operand " +
@@ -143,7 +150,7 @@ static uint32_t getInvalidRank(OperandType type) {
     }
 }
 
-static void mutateOperandRankTest(const sp<IDevice>& device, const Model& model) {
+static void mutateOperandRankTest(const sp<IDevice>& device, const V1_0::Model& model) {
     for (size_t operand = 0; operand < model.operands.size(); ++operand) {
         const uint32_t invalidRank = getInvalidRank(model.operands[operand].type);
         const std::string message = "mutateOperandRankTest: operand " + std::to_string(operand) +
@@ -172,7 +179,7 @@ static float getInvalidScale(OperandType type) {
     }
 }
 
-static void mutateOperandScaleTest(const sp<IDevice>& device, const Model& model) {
+static void mutateOperandScaleTest(const sp<IDevice>& device, const V1_0::Model& model) {
     for (size_t operand = 0; operand < model.operands.size(); ++operand) {
         const float invalidScale = getInvalidScale(model.operands[operand].type);
         const std::string message = "mutateOperandScaleTest: operand " + std::to_string(operand) +
@@ -200,10 +207,10 @@ static std::vector<int32_t> getInvalidZeroPoints(OperandType type) {
     }
 }
 
-static void mutateOperandZeroPointTest(const sp<IDevice>& device, const Model& model) {
+static void mutateOperandZeroPointTest(const sp<IDevice>& device, const V1_0::Model& model) {
     for (size_t operand = 0; operand < model.operands.size(); ++operand) {
         const std::vector<int32_t> invalidZeroPoints =
-                getInvalidZeroPoints(model.operands[operand].type);
+            getInvalidZeroPoints(model.operands[operand].type);
         for (int32_t invalidZeroPoint : invalidZeroPoints) {
             const std::string message = "mutateOperandZeroPointTest: operand " +
                                         std::to_string(operand) + " has zero point of " +
@@ -235,18 +242,18 @@ static void mutateOperand(Operand* operand, OperandType type) {
             break;
         case OperandType::TENSOR_FLOAT32:
             newOperand.dimensions =
-                    operand->dimensions.size() > 0 ? operand->dimensions : hidl_vec<uint32_t>({1});
+                operand->dimensions.size() > 0 ? operand->dimensions : hidl_vec<uint32_t>({1});
             newOperand.scale = 0.0f;
             newOperand.zeroPoint = 0;
             break;
         case OperandType::TENSOR_INT32:
             newOperand.dimensions =
-                    operand->dimensions.size() > 0 ? operand->dimensions : hidl_vec<uint32_t>({1});
+                operand->dimensions.size() > 0 ? operand->dimensions : hidl_vec<uint32_t>({1});
             newOperand.zeroPoint = 0;
             break;
         case OperandType::TENSOR_QUANT8_ASYMM:
             newOperand.dimensions =
-                    operand->dimensions.size() > 0 ? operand->dimensions : hidl_vec<uint32_t>({1});
+                operand->dimensions.size() > 0 ? operand->dimensions : hidl_vec<uint32_t>({1});
             newOperand.scale = operand->scale != 0.0f ? operand->scale : 1.0f;
             break;
         case OperandType::OEM:
@@ -257,7 +264,7 @@ static void mutateOperand(Operand* operand, OperandType type) {
     *operand = newOperand;
 }
 
-static bool mutateOperationOperandTypeSkip(size_t operand, const Model& model) {
+static bool mutateOperationOperandTypeSkip(size_t operand, const V1_0::Model& model) {
     // LSH_PROJECTION's second argument is allowed to have any type. This is the
     // only operation that currently has a type that can be anything independent
     // from any other type. Changing the operand type to any other type will
@@ -271,7 +278,7 @@ static bool mutateOperationOperandTypeSkip(size_t operand, const Model& model) {
     return false;
 }
 
-static void mutateOperationOperandTypeTest(const sp<IDevice>& device, const Model& model) {
+static void mutateOperationOperandTypeTest(const sp<IDevice>& device, const V1_0::Model& model) {
     for (size_t operand = 0; operand < model.operands.size(); ++operand) {
         if (mutateOperationOperandTypeSkip(operand, model)) {
             continue;
@@ -296,13 +303,13 @@ static void mutateOperationOperandTypeTest(const sp<IDevice>& device, const Mode
 ///////////////////////// VALIDATE MODEL OPERATION TYPE /////////////////////////
 
 static const int32_t invalidOperationTypes[] = {
-        static_cast<int32_t>(OperationType::ADD) - 1,            // lower bound fundamental
-        static_cast<int32_t>(OperationType::TANH) + 1,           // upper bound fundamental
-        static_cast<int32_t>(OperationType::OEM_OPERATION) - 1,  // lower bound OEM
-        static_cast<int32_t>(OperationType::OEM_OPERATION) + 1,  // upper bound OEM
+    static_cast<int32_t>(OperationType::ADD) - 1,            // lower bound fundamental
+    static_cast<int32_t>(OperationType::TANH) + 1,           // upper bound fundamental
+    static_cast<int32_t>(OperationType::OEM_OPERATION) - 1,  // lower bound OEM
+    static_cast<int32_t>(OperationType::OEM_OPERATION) + 1,  // upper bound OEM
 };
 
-static void mutateOperationTypeTest(const sp<IDevice>& device, const Model& model) {
+static void mutateOperationTypeTest(const sp<IDevice>& device, const V1_0::Model& model) {
     for (size_t operation = 0; operation < model.operations.size(); ++operation) {
         for (int32_t invalidOperationType : invalidOperationTypes) {
             const std::string message = "mutateOperationTypeTest: operation " +
@@ -310,7 +317,7 @@ static void mutateOperationTypeTest(const sp<IDevice>& device, const Model& mode
                                         std::to_string(invalidOperationType);
             validate(device, message, model, [operation, invalidOperationType](Model* model) {
                 model->operations[operation].type =
-                        static_cast<OperationType>(invalidOperationType);
+                    static_cast<OperationType>(invalidOperationType);
             });
         }
     }
@@ -318,7 +325,8 @@ static void mutateOperationTypeTest(const sp<IDevice>& device, const Model& mode
 
 ///////////////////////// VALIDATE MODEL OPERATION INPUT OPERAND INDEX /////////////////////////
 
-static void mutateOperationInputOperandIndexTest(const sp<IDevice>& device, const Model& model) {
+static void mutateOperationInputOperandIndexTest(const sp<IDevice>& device,
+                                                 const V1_0::Model& model) {
     for (size_t operation = 0; operation < model.operations.size(); ++operation) {
         const uint32_t invalidOperand = model.operands.size();
         for (size_t input = 0; input < model.operations[operation].inputs.size(); ++input) {
@@ -334,7 +342,8 @@ static void mutateOperationInputOperandIndexTest(const sp<IDevice>& device, cons
 
 ///////////////////////// VALIDATE MODEL OPERATION OUTPUT OPERAND INDEX /////////////////////////
 
-static void mutateOperationOutputOperandIndexTest(const sp<IDevice>& device, const Model& model) {
+static void mutateOperationOutputOperandIndexTest(const sp<IDevice>& device,
+                                                  const V1_0::Model& model) {
     for (size_t operation = 0; operation < model.operations.size(); ++operation) {
         const uint32_t invalidOperand = model.operands.size();
         for (size_t output = 0; output < model.operations[operation].outputs.size(); ++output) {
@@ -372,7 +381,7 @@ static void removeOperand(Model* model, uint32_t index) {
     removeValueAndDecrementGreaterValues(&model->outputIndexes, index);
 }
 
-static void removeOperandTest(const sp<IDevice>& device, const Model& model) {
+static void removeOperandTest(const sp<IDevice>& device, const V1_0::Model& model) {
     for (size_t operand = 0; operand < model.operands.size(); ++operand) {
         const std::string message = "removeOperandTest: operand " + std::to_string(operand);
         validate(device, message, model,
@@ -389,7 +398,7 @@ static void removeOperation(Model* model, uint32_t index) {
     hidl_vec_removeAt(&model->operations, index);
 }
 
-static void removeOperationTest(const sp<IDevice>& device, const Model& model) {
+static void removeOperationTest(const sp<IDevice>& device, const V1_0::Model& model) {
     for (size_t operation = 0; operation < model.operations.size(); ++operation) {
         const std::string message = "removeOperationTest: operation " + std::to_string(operation);
         validate(device, message, model,
@@ -399,14 +408,14 @@ static void removeOperationTest(const sp<IDevice>& device, const Model& model) {
 
 ///////////////////////// REMOVE OPERATION INPUT /////////////////////////
 
-static void removeOperationInputTest(const sp<IDevice>& device, const Model& model) {
+static void removeOperationInputTest(const sp<IDevice>& device, const V1_0::Model& model) {
     for (size_t operation = 0; operation < model.operations.size(); ++operation) {
         for (size_t input = 0; input < model.operations[operation].inputs.size(); ++input) {
-            const Operation& op = model.operations[operation];
+            const V1_0::Operation& op = model.operations[operation];
             // CONCATENATION has at least 2 inputs, with the last element being
             // INT32. Skip this test if removing one of CONCATENATION's
             // inputs still produces a valid model.
-            if (op.type == OperationType::CONCATENATION && op.inputs.size() > 2 &&
+            if (op.type == V1_0::OperationType::CONCATENATION && op.inputs.size() > 2 &&
                 input != op.inputs.size() - 1) {
                 continue;
             }
@@ -424,7 +433,7 @@ static void removeOperationInputTest(const sp<IDevice>& device, const Model& mod
 
 ///////////////////////// REMOVE OPERATION OUTPUT /////////////////////////
 
-static void removeOperationOutputTest(const sp<IDevice>& device, const Model& model) {
+static void removeOperationOutputTest(const sp<IDevice>& device, const V1_0::Model& model) {
     for (size_t operation = 0; operation < model.operations.size(); ++operation) {
         for (size_t output = 0; output < model.operations[operation].outputs.size(); ++output) {
             const std::string message = "removeOperationOutputTest: operation " +
@@ -445,7 +454,7 @@ static void removeOperationOutputTest(const sp<IDevice>& device, const Model& mo
 
 ///////////////////////// ADD OPERATION INPUT /////////////////////////
 
-static void addOperationInputTest(const sp<IDevice>& device, const Model& model) {
+static void addOperationInputTest(const sp<IDevice>& device, const V1_0::Model& model) {
     for (size_t operation = 0; operation < model.operations.size(); ++operation) {
         const std::string message = "addOperationInputTest: operation " + std::to_string(operation);
         validate(device, message, model, [operation](Model* model) {
@@ -458,10 +467,10 @@ static void addOperationInputTest(const sp<IDevice>& device, const Model& model)
 
 ///////////////////////// ADD OPERATION OUTPUT /////////////////////////
 
-static void addOperationOutputTest(const sp<IDevice>& device, const Model& model) {
+static void addOperationOutputTest(const sp<IDevice>& device, const V1_0::Model& model) {
     for (size_t operation = 0; operation < model.operations.size(); ++operation) {
         const std::string message =
-                "addOperationOutputTest: operation " + std::to_string(operation);
+            "addOperationOutputTest: operation " + std::to_string(operation);
         validate(device, message, model, [operation](Model* model) {
             uint32_t index = addOperand(model, OperandLifeTime::MODEL_OUTPUT);
             hidl_vec_push_back(&model->operations[operation].outputs, index);
@@ -472,7 +481,7 @@ static void addOperationOutputTest(const sp<IDevice>& device, const Model& model
 
 ////////////////////////// ENTRY POINT //////////////////////////////
 
-void validateModel(const sp<IDevice>& device, const Model& model) {
+void ValidationTest::validateModel(const V1_0::Model& model) {
     mutateOperandTypeTest(device, model);
     mutateOperandRankTest(device, model);
     mutateOperandScaleTest(device, model);
@@ -489,4 +498,9 @@ void validateModel(const sp<IDevice>& device, const Model& model) {
     addOperationOutputTest(device, model);
 }
 
-}  // namespace android::hardware::neuralnetworks::V1_0::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_0
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
