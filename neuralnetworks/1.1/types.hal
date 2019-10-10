@@ -26,6 +26,7 @@ import @1.0::PerformanceInfo;
  * The type of an operation in a model.
  */
 enum OperationType : @1.0::OperationType {
+
     /**
      * BatchToSpace for N-dimensional tensors.
      *
@@ -40,8 +41,7 @@ enum OperationType : @1.0::OperationType {
      * * {@link OperandType::TENSOR_FLOAT32}
      * * {@link OperandType::TENSOR_QUANT8_ASYMM}
      *
-     * Supported tensor rank: 4, with "NHWC" (i.e., Num_samples, Height, Width,
-     * and Channels) data layout.
+     * Supported tensor rank: 4
      *
      * Inputs:
      * * 0: An n-D tensor, specifying the tensor to be reshaped
@@ -51,8 +51,8 @@ enum OperationType : @1.0::OperationType {
      *
      * Outputs:
      * * 0: A tensor of the same {@link OperandType} as input0.
-     *      For a {@link OperandType::TENSOR_QUANT8_ASYMM} tensor,
-     *      the scale and zeroPoint must be the same as input0.
+     *
+     * Available since API level 28.
      */
     BATCH_TO_SPACE_ND = 29,
 
@@ -91,6 +91,8 @@ enum OperationType : @1.0::OperationType {
      *
      * Outputs:
      * * 0: A tensor of the same {@link OperandType} as input0.
+     *
+     * Available since API level 28.
      */
     DIV = 30,
 
@@ -124,8 +126,8 @@ enum OperationType : @1.0::OperationType {
      *
      * Outputs:
      * * 0: A tensor of the same {@link OperandType} as input0.
-     *      For a {@link OperandType::TENSOR_QUANT8_ASYMM} tensor,
-     *      the scale and zeroPoint must be same as input0.
+     *
+     * Available since API level 28.
      */
     MEAN = 31,
 
@@ -136,8 +138,7 @@ enum OperationType : @1.0::OperationType {
      *
      * Supported tensor {@link OperandType}:
      * * {@link OperandType::TENSOR_FLOAT32}
-     * * {@link OperandType::TENSOR_QUANT8_ASYMM}
-     *   (the pad value is undefined)
+     * * {@link OperandType::TENSOR_QUANT8_ASYMM} (the pad value is undefined)
      *
      * Supported tensor rank: up to 4
      *
@@ -159,8 +160,11 @@ enum OperationType : @1.0::OperationType {
      *      of the padding:
      *          output0.dimension[i] =
      *              padding[i, 0] + input0.dimension[i] + padding[i, 1]
-     *      For a {@link OperandType::TENSOR_QUANT8_ASYMM} tensor,
-     *      the scale and zeroPoint must be the same as input0.
+     *
+     *      NOTE: The pad value for {@link ANEURALNETWORKS_TENSOR_QUANT8_ASYMM}
+     *      is undefined.
+     *
+     * Available since API level 28.
      */
     PAD = 32,
 
@@ -178,10 +182,8 @@ enum OperationType : @1.0::OperationType {
      * Supported tensor {@link OperandType}:
      * * {@link OperandType::TENSOR_FLOAT32}
      * * {@link OperandType::TENSOR_QUANT8_ASYMM}
-     *   (the pad value is undefined)
      *
-     * Supported tensor rank: 4, with "NHWC" (i.e., Num_samples, Height, Width,
-     * and Channels) data layout.
+     * Supported tensor rank: 4
      *
      * Inputs:
      * * 0: An n-D tensor, specifying the input.
@@ -199,8 +201,8 @@ enum OperationType : @1.0::OperationType {
      *
      * Outputs:
      * * 0: A tensor of the same {@link OperandType} as input0.
-     *      For a {@link OperandType::TENSOR_QUANT8_ASYMM} tensor,
-     *      the scale and zeroPoint must be the same as input0.
+     *
+     * Available since API level 28.
      */
     SPACE_TO_BATCH_ND = 33,
 
@@ -230,8 +232,8 @@ enum OperationType : @1.0::OperationType {
      * * 0: A tensor of the same {@link OperandType} as input0. Contains the
      *      same data as input, but has one or more dimensions of size 1
      *      removed.
-     *      For a {@link OperandType::TENSOR_QUANT8_ASYMM} tensor,
-     *      the scale and zeroPoint must be the same as input0.
+     *
+     * Available since API level 28.
      */
     SQUEEZE = 34,
 
@@ -276,8 +278,8 @@ enum OperationType : @1.0::OperationType {
      * Outputs:
      * * 0: A tensor of the same {@link OperandType} as input0 and rank (n - k),
      *      where k is the number of bits set in shrink_axis_mask.
-     *      For a {@link OperandType::TENSOR_QUANT8_ASYMM} tensor,
-     *      the scale and zeroPoint must be the same as input0.
+     *
+     * Available since API level 28.
      */
     STRIDED_SLICE = 35,
 
@@ -316,6 +318,8 @@ enum OperationType : @1.0::OperationType {
      *
      * Outputs:
      * * 0: A tensor of the same {@link OperandType} as input0.
+     *
+     * Available since API level 28.
      */
     SUB = 36,
 
@@ -341,10 +345,11 @@ enum OperationType : @1.0::OperationType {
      *
      * Outputs:
      * * 0: A tensor of the same {@link OperandType} as input0.
-     *      For a {@link OperandType::TENSOR_QUANT8_ASYMM} tensor,
-     *      the scale and zeroPoint must be the same as input0.
+     *
+     * Available since API level 28.
      */
     TRANSPOSE = 37,
+
 };
 
 /**
