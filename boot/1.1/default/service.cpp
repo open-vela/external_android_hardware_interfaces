@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,18 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define LOG_TAG "VtsHalGnssV2_0TargetTest"
+#define LOG_TAG "android.hardware.boot@1.1-service"
 
-#include <VtsHalHidlTargetTestBase.h>
+#include <android/hardware/boot/1.1/IBootControl.h>
+#include <hidl/LegacySupport.h>
 
-#include "gnss_hal_test.h"
+using android::hardware::defaultPassthroughServiceImplementation;
+using ::android::hardware::boot::V1_1::IBootControl;
 
-int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(GnssHidlEnvironment::Instance());
-    ::testing::InitGoogleTest(&argc, argv);
-    GnssHidlEnvironment::Instance()->init(&argc, argv);
-    // TODO (b/122463165): Expand coverage to include 1.1 and 1.0 VTS tests.
-    int status = RUN_ALL_TESTS();
-    ALOGI("Test result = %d", status);
-    return status;
+int main(int /* argc */, char* /* argv */[]) {
+    return defaultPassthroughServiceImplementation<IBootControl>();
 }
