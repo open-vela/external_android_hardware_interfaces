@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2018 The Android Open Source Project
+// Copyright (C) 2019 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,19 +15,14 @@
 //
 
 cc_test {
-    name: "VtsHalSensorsV2_0TargetTest",
+    name: "VtsHalBootV1_1TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
-    srcs: [
-        "SensorsHidlEnvironmentV2_0.cpp",
-        "VtsHalSensorsV2_0TargetTest.cpp"
-    ],
+    srcs: ["VtsHalBootV1_1TargetTest.cpp"],
     static_libs: [
-        "android.hardware.graphics.allocator@2.0",
-        "android.hardware.graphics.mapper@2.0",
-        "android.hardware.sensors@1.0",
-        "android.hardware.sensors@2.0",
-        "libfmq",
-        "VtsHalSensorsTargetTestUtils",
+        "android.hardware.boot@1.0",
+        "android.hardware.boot@1.1",
+        "libgmock",
     ],
+    test_suites: ["device-tests"],
 }
 
