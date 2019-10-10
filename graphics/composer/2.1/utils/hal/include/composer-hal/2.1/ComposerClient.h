@@ -27,7 +27,7 @@
 #include <android/hardware/graphics/composer/2.1/IComposerClient.h>
 #include <composer-hal/2.1/ComposerCommandEngine.h>
 #include <composer-hal/2.1/ComposerHal.h>
-#include <composer-hal/2.1/ComposerResources.h>
+#include <composer-resources/2.1/ComposerResources.h>
 #include <log/log.h>
 
 namespace android {
@@ -102,6 +102,7 @@ class ComposerClientImpl : public Interface {
         }
 
         void onRefresh(Display display) {
+            mResources->setDisplayMustValidateState(display, true);
             auto ret = mCallback->onRefresh(display);
             ALOGE_IF(!ret.isOk(), "failed to send onRefresh: %s", ret.description().c_str());
         }
