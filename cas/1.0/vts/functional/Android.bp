@@ -29,6 +29,5 @@ cc_test {
     shared_libs: [
         "libbinder",
     ],
-    test_suites: ["general-tests"],
 }
 
