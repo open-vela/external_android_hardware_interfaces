@@ -148,14 +148,7 @@ Return<Result> Health::update() {
 
     // Retrieve all information and call healthd_mode_ops->battery_update, which calls
     // notifyListeners.
-    battery_monitor_->updateValues();
-    struct BatteryProperties props = getBatteryProperties(battery_monitor_.get());
-    bool log = healthd_board_battery_update(&props);
-    if (log) {
-        battery_monitor_->logValues();
-    }
-    healthd_mode_ops->battery_update(&props);
-    bool chargerOnline = battery_monitor_->isChargerOnline();
+    bool chargerOnline = battery_monitor_->update();
 
     // adjust uevent / wakealarm periods
     healthd_battery_update_internal(chargerOnline);
