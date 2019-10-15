@@ -16,6 +16,7 @@
 
 #include "KeymasterHidlTest.h"
 
+#include <chrono>
 #include <vector>
 
 #include <android-base/logging.h>
@@ -47,10 +48,11 @@ uint32_t KeymasterHidlTest::os_patch_level_;
 SecurityLevel KeymasterHidlTest::securityLevel_;
 hidl_string KeymasterHidlTest::name_;
 hidl_string KeymasterHidlTest::author_;
+string KeymasterHidlTest::service_name_;
 
-void KeymasterHidlTest::SetUpTestCase() {
-    string service_name = KeymasterHidlEnvironment::Instance()->getServiceName<IKeymasterDevice>();
-    keymaster_ = ::testing::VtsHalHidlTargetTestBase::getService<IKeymasterDevice>(service_name);
+void KeymasterHidlTest::InitializeKeymaster() {
+    service_name_ = KeymasterHidlEnvironment::Instance()->getServiceName<IKeymasterDevice>();
+    keymaster_ = ::testing::VtsHalHidlTargetTestBase::getService<IKeymasterDevice>(service_name_);
     ASSERT_NE(keymaster_, nullptr);
 
     ASSERT_TRUE(keymaster_
@@ -61,18 +63,22 @@ void KeymasterHidlTest::SetUpTestCase() {
                         author_ = author;
                     })
                     .isOk());
+}
+
+void KeymasterHidlTest::SetUpTestCase() {
+
+    InitializeKeymaster();
 
     os_version_ = ::keymaster::GetOsVersion();
     os_patch_level_ = ::keymaster::GetOsPatchlevel();
 
     auto service_manager = android::hidl::manager::V1_0::IServiceManager::getService();
     ASSERT_NE(nullptr, service_manager.get());
-
     all_keymasters_.push_back(keymaster_);
     service_manager->listByInterface(
         IKeymasterDevice::descriptor, [&](const hidl_vec<hidl_string>& names) {
             for (auto& name : names) {
-                if (name == service_name) continue;
+                if (name == service_name_) continue;
                 auto keymaster =
                     ::testing::VtsHalHidlTargetTestBase::getService<IKeymasterDevice>(name);
                 ASSERT_NE(keymaster, nullptr);
@@ -206,6 +212,47 @@ void KeymasterHidlTest::CheckedDeleteKey() {
     CheckedDeleteKey(&key_blob_);
 }
 
+void KeymasterHidlTest::CheckCreationDateTime(
+        const AuthorizationSet& sw_enforced,
+        std::chrono::time_point<std::chrono::system_clock> creation) {
+    for (int i = 0; i < sw_enforced.size(); i++) {
+        if (sw_enforced[i].tag == TAG_CREATION_DATETIME) {
+            std::chrono::time_point<std::chrono::system_clock> now =
+                    std::chrono::system_clock::now();
+            std::chrono::time_point<std::chrono::system_clock> reported_time{
+                    std::chrono::milliseconds(sw_enforced[i].f.dateTime)};
+            // The test is flaky for EC keys, so a buffer time of 120 seconds will be added.
+            EXPECT_LE(creation - 120s, reported_time);
+            EXPECT_LE(reported_time, now + 1s);
+        }
+    }
+}
+
+void KeymasterHidlTest::CheckGetCharacteristics(const HidlBuf& key_blob, const HidlBuf& client_id,
+                                                const HidlBuf& app_data,
+                                                KeyCharacteristics* key_characteristics) {
+    HidlBuf empty_buf = {};
+    EXPECT_EQ(ErrorCode::OK,
+              GetCharacteristics(key_blob, client_id, app_data, key_characteristics));
+    EXPECT_GT(key_characteristics->hardwareEnforced.size(), 0);
+    EXPECT_GT(key_characteristics->softwareEnforced.size(), 0);
+
+    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
+              GetCharacteristics(key_blob, empty_buf, app_data, key_characteristics));
+    EXPECT_EQ(key_characteristics->hardwareEnforced.size(), 0);
+    EXPECT_EQ(key_characteristics->softwareEnforced.size(), 0);
+
+    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
+              GetCharacteristics(key_blob, client_id, empty_buf, key_characteristics));
+    EXPECT_EQ(key_characteristics->hardwareEnforced.size(), 0);
+    EXPECT_EQ(key_characteristics->softwareEnforced.size(), 0);
+
+    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
+              GetCharacteristics(key_blob, empty_buf, empty_buf, key_characteristics));
+    EXPECT_EQ(key_characteristics->hardwareEnforced.size(), 0);
+    EXPECT_EQ(key_characteristics->softwareEnforced.size(), 0);
+}
+
 ErrorCode KeymasterHidlTest::GetCharacteristics(const HidlBuf& key_blob, const HidlBuf& client_id,
                                                 const HidlBuf& app_data,
                                                 KeyCharacteristics* key_characteristics) {
@@ -225,6 +272,13 @@ ErrorCode KeymasterHidlTest::GetCharacteristics(const HidlBuf& key_blob,
                                                 KeyCharacteristics* key_characteristics) {
     HidlBuf client_id, app_data;
     return GetCharacteristics(key_blob, client_id, app_data, key_characteristics);
+}
+
+ErrorCode KeymasterHidlTest::GetDebugInfo(DebugInfo* debug_info) {
+    EXPECT_TRUE(keymaster_->getDebugInfo([&](const DebugInfo& hidl_debug_info) {
+      *debug_info = hidl_debug_info;
+    }).isOk());
+    return ErrorCode::OK;
 }
 
 ErrorCode KeymasterHidlTest::Begin(KeyPurpose purpose, const HidlBuf& key_blob,
@@ -564,6 +618,20 @@ string KeymasterHidlTest::EncryptMessage(const string& message, BlockMode block_
                       .BlockMode(block_mode)
                       .Padding(padding)
                       .Authorization(TAG_NONCE, iv_in);
+    AuthorizationSet out_params;
+    string ciphertext = EncryptMessage(message, params, &out_params);
+    return ciphertext;
+}
+
+string KeymasterHidlTest::EncryptMessage(const string& message, BlockMode block_mode,
+                                         PaddingMode padding, uint8_t mac_length_bits,
+                                         const HidlBuf& iv_in) {
+    SCOPED_TRACE("EncryptMessage");
+    auto params = AuthorizationSetBuilder()
+                          .BlockMode(block_mode)
+                          .Padding(padding)
+                          .Authorization(TAG_MAC_LENGTH, mac_length_bits)
+                          .Authorization(TAG_NONCE, iv_in);
     AuthorizationSet out_params;
     string ciphertext = EncryptMessage(message, params, &out_params);
     return ciphertext;

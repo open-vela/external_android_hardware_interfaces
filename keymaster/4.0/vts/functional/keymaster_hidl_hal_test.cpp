@@ -18,6 +18,7 @@
 #include <cutils/log.h>
 
 #include <iostream>
+#include <signal.h>
 
 #include <openssl/evp.h>
 #include <openssl/mem.h>
@@ -195,7 +196,35 @@ X509* parse_cert_blob(const hidl_vec<uint8_t>& blob) {
     return d2i_X509(nullptr, &p, blob.size());
 }
 
-bool verify_chain(const hidl_vec<hidl_vec<uint8_t>>& chain) {
+bool verify_chain(const hidl_vec<hidl_vec<uint8_t>>& chain, const std::string& msg,
+                  const std::string& signature) {
+    {
+        EVP_MD_CTX md_ctx_verify;
+        X509_Ptr signing_cert(parse_cert_blob(chain[0]));
+        EVP_PKEY_Ptr signing_pubkey(X509_get_pubkey(signing_cert.get()));
+        EXPECT_TRUE(signing_pubkey);
+        ERR_print_errors_cb(
+            [](const char* str, size_t len, void* ctx) -> int {
+                (void)ctx;
+                std::cerr << std::string(str, len) << std::endl;
+                return 1;
+            },
+            nullptr);
+
+        EVP_MD_CTX_init(&md_ctx_verify);
+
+        bool result = false;
+        EXPECT_TRUE((result = EVP_DigestVerifyInit(&md_ctx_verify, NULL, EVP_sha256(), NULL,
+                                                   signing_pubkey.get())));
+        EXPECT_TRUE(
+            (result = result && EVP_DigestVerifyUpdate(&md_ctx_verify, msg.c_str(), msg.size())));
+        EXPECT_TRUE((result = result && EVP_DigestVerifyFinal(
+                                            &md_ctx_verify,
+                                            reinterpret_cast<const uint8_t*>(signature.c_str()),
+                                            signature.size())));
+        EVP_MD_CTX_cleanup(&md_ctx_verify);
+        if (!result) return false;
+    }
     for (size_t i = 0; i < chain.size(); ++i) {
         X509_Ptr key_cert(parse_cert_blob(chain[i]));
         X509_Ptr signing_cert;
@@ -281,12 +310,18 @@ std::string make_string(const uint8_t (&a)[N]) {
     return make_string(a, N);
 }
 
+bool avb_verification_enabled() {
+    char value[PROPERTY_VALUE_MAX];
+    return property_get("ro.boot.vbmeta.device_state", value, "") != 0;
+}
+
 }  // namespace
 
 bool verify_attestation_record(const string& challenge, const string& app_id,
                                AuthorizationSet expected_sw_enforced,
-                               AuthorizationSet expected_tee_enforced, SecurityLevel security_level,
-                               const hidl_vec<uint8_t>& attestation_cert) {
+                               AuthorizationSet expected_hw_enforced, SecurityLevel security_level,
+                               const hidl_vec<uint8_t>& attestation_cert,
+                               std::chrono::time_point<std::chrono::system_clock> creation_time) {
     X509_Ptr cert(parse_cert_blob(attestation_cert));
     EXPECT_TRUE(!!cert.get());
     if (!cert.get()) return false;
@@ -296,7 +331,7 @@ bool verify_attestation_record(const string& challenge, const string& app_id,
     if (!attest_rec) return false;
 
     AuthorizationSet att_sw_enforced;
-    AuthorizationSet att_tee_enforced;
+    AuthorizationSet att_hw_enforced;
     uint32_t att_attestation_version;
     uint32_t att_keymaster_version;
     SecurityLevel att_attestation_security_level;
@@ -313,7 +348,7 @@ bool verify_attestation_record(const string& challenge, const string& app_id,
                                           &att_keymaster_security_level,    //
                                           &att_challenge,                   //
                                           &att_sw_enforced,                 //
-                                          &att_tee_enforced,                //
+                                          &att_hw_enforced,                 //
                                           &att_unique_id);
     EXPECT_EQ(ErrorCode::OK, error);
     if (error != ErrorCode::OK) return false;
@@ -329,13 +364,113 @@ bool verify_attestation_record(const string& challenge, const string& app_id,
     EXPECT_EQ(challenge.length(), att_challenge.size());
     EXPECT_EQ(0, memcmp(challenge.data(), att_challenge.data(), challenge.length()));
 
+    char property_value[PROPERTY_VALUE_MAX] = {};
+    // TODO(b/136282179): When running under VTS-on-GSI the TEE-backed
+    // keymaster implementation will report YYYYMM dates instead of YYYYMMDD
+    // for the BOOT_PATCH_LEVEL.
+    if (avb_verification_enabled()) {
+        for (int i = 0; i < att_hw_enforced.size(); i++) {
+            if (att_hw_enforced[i].tag == TAG_BOOT_PATCHLEVEL ||
+                att_hw_enforced[i].tag == TAG_VENDOR_PATCHLEVEL) {
+                std::string date = std::to_string(att_hw_enforced[i].f.integer);
+                // strptime seems to require delimiters, but the tag value will
+                // be YYYYMMDD
+                date.insert(6, "-");
+                date.insert(4, "-");
+                EXPECT_EQ(date.size(), 10);
+                struct tm time;
+                strptime(date.c_str(), "%Y-%m-%d", &time);
+
+                // Day of the month (0-31)
+                EXPECT_GE(time.tm_mday, 0);
+                EXPECT_LT(time.tm_mday, 32);
+                // Months since Jan (0-11)
+                EXPECT_GE(time.tm_mon, 0);
+                EXPECT_LT(time.tm_mon, 12);
+                // Years since 1900
+                EXPECT_GT(time.tm_year, 110);
+                EXPECT_LT(time.tm_year, 200);
+            }
+        }
+    }
+
+    // Check to make sure boolean values are properly encoded. Presence of a boolean tag indicates
+    // true. A provided boolean tag that can be pulled back out of the certificate indicates correct
+    // encoding. No need to check if it's in both lists, since the AuthorizationSet compare below
+    // will handle mismatches of tags.
+    EXPECT_TRUE(expected_hw_enforced.Contains(TAG_NO_AUTH_REQUIRED));
+
+    // Alternatively this checks the opposite - a false boolean tag (one that isn't provided in
+    // the authorization list during key generation) isn't being attested to in the certificate.
+    EXPECT_FALSE(expected_hw_enforced.Contains(TAG_TRUSTED_USER_PRESENCE_REQUIRED));
+    EXPECT_FALSE(att_hw_enforced.Contains(TAG_TRUSTED_USER_PRESENCE_REQUIRED));
+
+    KeymasterHidlTest::CheckCreationDateTime(att_sw_enforced, creation_time);
+
+    if (att_hw_enforced.Contains(TAG_ALGORITHM, Algorithm::EC)) {
+        // For ECDSA keys, either an EC_CURVE or a KEY_SIZE can be specified, but one must be.
+        EXPECT_TRUE(att_hw_enforced.Contains(TAG_EC_CURVE) ||
+                    att_hw_enforced.Contains(TAG_KEY_SIZE));
+    }
+
+    // Test root of trust elements
+    HidlBuf verified_boot_key;
+    keymaster_verified_boot_t verified_boot_state;
+    bool device_locked;
+    HidlBuf verified_boot_hash;
+    error = parse_root_of_trust(attest_rec->data, attest_rec->length, &verified_boot_key,
+                                &verified_boot_state, &device_locked, &verified_boot_hash);
+    EXPECT_EQ(ErrorCode::OK, error);
+
+    if (avb_verification_enabled()) {
+        property_get("ro.boot.vbmeta.digest", property_value, "nogood");
+        EXPECT_NE(strcmp(property_value, "nogood"), 0);
+        string prop_string(property_value);
+        EXPECT_EQ(prop_string.size(), 64);
+        EXPECT_EQ(prop_string, bin2hex(verified_boot_hash));
+
+        property_get("ro.boot.vbmeta.device_state", property_value, "nogood");
+        EXPECT_NE(strcmp(property_value, "nogood"), 0);
+        if (!strcmp(property_value, "unlocked")) {
+            EXPECT_FALSE(device_locked);
+        } else {
+            EXPECT_TRUE(device_locked);
+        }
+    }
+
+    // Verified boot key should be all 0's if the boot state is not verified or self signed
+    std::string empty_boot_key(32, '\0');
+    std::string verified_boot_key_str((const char*)verified_boot_key.data(),
+                                      verified_boot_key.size());
+    property_get("ro.boot.verifiedbootstate", property_value, "nogood");
+    EXPECT_NE(property_value, "nogood");
+    if (!strcmp(property_value, "green")) {
+        EXPECT_EQ(verified_boot_state, KM_VERIFIED_BOOT_VERIFIED);
+        EXPECT_NE(0, memcmp(verified_boot_key.data(), empty_boot_key.data(),
+                            verified_boot_key.size()));
+    } else if (!strcmp(property_value, "yellow")) {
+        EXPECT_EQ(verified_boot_state, KM_VERIFIED_BOOT_SELF_SIGNED);
+        EXPECT_NE(0, memcmp(verified_boot_key.data(), empty_boot_key.data(),
+                            verified_boot_key.size()));
+    } else if (!strcmp(property_value, "orange")) {
+        EXPECT_EQ(verified_boot_state, KM_VERIFIED_BOOT_UNVERIFIED);
+        EXPECT_EQ(0, memcmp(verified_boot_key.data(), empty_boot_key.data(),
+                            verified_boot_key.size()));
+    } else if (!strcmp(property_value, "red")) {
+        EXPECT_EQ(verified_boot_state, KM_VERIFIED_BOOT_FAILED);
+        EXPECT_EQ(0, memcmp(verified_boot_key.data(), empty_boot_key.data(),
+                            verified_boot_key.size()));
+    } else {
+        EXPECT_TRUE(false);
+    }
+
     att_sw_enforced.Sort();
     expected_sw_enforced.Sort();
     EXPECT_EQ(filter_tags(expected_sw_enforced), filter_tags(att_sw_enforced));
 
-    att_tee_enforced.Sort();
-    expected_tee_enforced.Sort();
-    EXPECT_EQ(filter_tags(expected_tee_enforced), filter_tags(att_tee_enforced));
+    att_hw_enforced.Sort();
+    expected_hw_enforced.Sort();
+    EXPECT_EQ(filter_tags(expected_hw_enforced), filter_tags(att_hw_enforced));
 
     return true;
 }
@@ -418,6 +553,24 @@ TEST_F(NewKeyGenerationTest, Rsa) {
 }
 
 /*
+ * NewKeyGenerationTest.RsaCheckCreationDateTime
+ *
+ * Verifies that creation date time is correct.
+ */
+TEST_F(NewKeyGenerationTest, RsaCheckCreationDateTime) {
+    KeyCharacteristics key_characteristics;
+    auto creation_time = std::chrono::system_clock::now();
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .RsaSigningKey(2048, 3)
+                                                 .Digest(Digest::NONE)
+                                                 .Padding(PaddingMode::NONE)));
+    GetCharacteristics(key_blob_, &key_characteristics);
+    AuthorizationSet sw_enforced = key_characteristics.softwareEnforced;
+    CheckCreationDateTime(sw_enforced, creation_time);
+}
+
+/*
  * NewKeyGenerationTest.NoInvalidRsaSizes
  *
  * Verifies that keymaster cannot generate any RSA key sizes that are designated as invalid.
@@ -478,6 +631,23 @@ TEST_F(NewKeyGenerationTest, Ecdsa) {
 
         CheckedDeleteKey(&key_blob);
     }
+}
+
+/*
+ * NewKeyGenerationTest.EcCheckCreationDateTime
+ *
+ * Verifies that creation date time is correct.
+ */
+TEST_F(NewKeyGenerationTest, EcCheckCreationDateTime) {
+    KeyCharacteristics key_characteristics;
+    auto creation_time = std::chrono::system_clock::now();
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .EcdsaSigningKey(256)
+                                                 .Digest(Digest::NONE)));
+    GetCharacteristics(key_blob_, &key_characteristics);
+    AuthorizationSet sw_enforced = key_characteristics.softwareEnforced;
+    CheckCreationDateTime(sw_enforced, creation_time);
 }
 
 /*
@@ -717,6 +887,69 @@ TEST_F(SigningOperationsTest, RsaSuccess) {
     string message = "12345678901234567890123456789012";
     string signature = SignMessage(
         message, AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE));
+}
+
+/*
+ * SigningOperationsTest.RsaGetKeyCharacteristicsRequiresCorrectAppIdAppData
+ *
+ * Verifies that getting RSA key characteristics requires the correct app ID/data.
+ */
+TEST_F(SigningOperationsTest, RsaGetKeyCharacteristicsRequiresCorrectAppIdAppData) {
+    HidlBuf key_blob;
+    KeyCharacteristics key_characteristics;
+    ASSERT_EQ(ErrorCode::OK,
+              GenerateKey(AuthorizationSetBuilder()
+                                  .Authorization(TAG_NO_AUTH_REQUIRED)
+                                  .RsaSigningKey(2048, 65537)
+                                  .Digest(Digest::NONE)
+                                  .Padding(PaddingMode::NONE)
+                                  .Authorization(TAG_APPLICATION_ID, HidlBuf("clientid"))
+                                  .Authorization(TAG_APPLICATION_DATA, HidlBuf("appdata")),
+                          &key_blob, &key_characteristics));
+    CheckGetCharacteristics(key_blob, HidlBuf("clientid"), HidlBuf("appdata"),
+                            &key_characteristics);
+}
+
+/*
+ * SigningOperationsTest.RsaUseRequiresCorrectAppIdAppData
+ *
+ * Verifies that using an RSA key requires the correct app ID/data.
+ */
+TEST_F(SigningOperationsTest, RsaUseRequiresCorrectAppIdAppData) {
+    ASSERT_EQ(ErrorCode::OK,
+              GenerateKey(AuthorizationSetBuilder()
+                                  .Authorization(TAG_NO_AUTH_REQUIRED)
+                                  .RsaSigningKey(2048, 65537)
+                                  .Digest(Digest::NONE)
+                                  .Padding(PaddingMode::NONE)
+                                  .Authorization(TAG_APPLICATION_ID, HidlBuf("clientid"))
+                                  .Authorization(TAG_APPLICATION_DATA, HidlBuf("appdata"))));
+    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
+              Begin(KeyPurpose::SIGN,
+                    AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE)));
+    AbortIfNeeded();
+    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
+              Begin(KeyPurpose::SIGN,
+                    AuthorizationSetBuilder()
+                            .Digest(Digest::NONE)
+                            .Padding(PaddingMode::NONE)
+                            .Authorization(TAG_APPLICATION_ID, HidlBuf("clientid"))));
+    AbortIfNeeded();
+    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
+              Begin(KeyPurpose::SIGN,
+                    AuthorizationSetBuilder()
+                            .Digest(Digest::NONE)
+                            .Padding(PaddingMode::NONE)
+                            .Authorization(TAG_APPLICATION_DATA, HidlBuf("appdata"))));
+    AbortIfNeeded();
+    EXPECT_EQ(ErrorCode::OK,
+              Begin(KeyPurpose::SIGN,
+                    AuthorizationSetBuilder()
+                            .Digest(Digest::NONE)
+                            .Padding(PaddingMode::NONE)
+                            .Authorization(TAG_APPLICATION_DATA, HidlBuf("appdata"))
+                            .Authorization(TAG_APPLICATION_ID, HidlBuf("clientid"))));
+    AbortIfNeeded();
 }
 
 /*
@@ -1093,6 +1326,63 @@ TEST_F(SigningOperationsTest, EcdsaNoDigestHugeData) {
                                              .Digest(Digest::NONE)));
     string message(1 * 1024, 'a');
     SignMessage(message, AuthorizationSetBuilder().Digest(Digest::NONE));
+}
+
+/*
+ * SigningOperationsTest.EcGetKeyCharacteristicsRequiresCorrectAppIdAppData
+ *
+ * Verifies that getting EC key characteristics requires the correct app ID/data.
+ */
+TEST_F(SigningOperationsTest, EcGetKeyCharacteristicsRequiresCorrectAppIdAppData) {
+    HidlBuf key_blob;
+    KeyCharacteristics key_characteristics;
+    ASSERT_EQ(ErrorCode::OK,
+              GenerateKey(AuthorizationSetBuilder()
+                                  .Authorization(TAG_NO_AUTH_REQUIRED)
+                                  .EcdsaSigningKey(256)
+                                  .Digest(Digest::NONE)
+                                  .Authorization(TAG_APPLICATION_ID, HidlBuf("clientid"))
+                                  .Authorization(TAG_APPLICATION_DATA, HidlBuf("appdata")),
+                          &key_blob, &key_characteristics));
+    CheckGetCharacteristics(key_blob, HidlBuf("clientid"), HidlBuf("appdata"),
+                            &key_characteristics);
+}
+
+/*
+ * SigningOperationsTest.EcUseRequiresCorrectAppIdAppData
+ *
+ * Verifies that using an EC key requires the correct app ID/data.
+ */
+TEST_F(SigningOperationsTest, EcUseRequiresCorrectAppIdAppData) {
+    ASSERT_EQ(ErrorCode::OK,
+              GenerateKey(AuthorizationSetBuilder()
+                                  .Authorization(TAG_NO_AUTH_REQUIRED)
+                                  .EcdsaSigningKey(256)
+                                  .Digest(Digest::NONE)
+                                  .Authorization(TAG_APPLICATION_ID, HidlBuf("clientid"))
+                                  .Authorization(TAG_APPLICATION_DATA, HidlBuf("appdata"))));
+    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
+              Begin(KeyPurpose::SIGN, AuthorizationSetBuilder().Digest(Digest::NONE)));
+    AbortIfNeeded();
+    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
+              Begin(KeyPurpose::SIGN,
+                    AuthorizationSetBuilder()
+                            .Digest(Digest::NONE)
+                            .Authorization(TAG_APPLICATION_ID, HidlBuf("clientid"))));
+    AbortIfNeeded();
+    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
+              Begin(KeyPurpose::SIGN,
+                    AuthorizationSetBuilder()
+                            .Digest(Digest::NONE)
+                            .Authorization(TAG_APPLICATION_DATA, HidlBuf("appdata"))));
+    AbortIfNeeded();
+    EXPECT_EQ(ErrorCode::OK,
+              Begin(KeyPurpose::SIGN,
+                    AuthorizationSetBuilder()
+                            .Digest(Digest::NONE)
+                            .Authorization(TAG_APPLICATION_DATA, HidlBuf("appdata"))
+                            .Authorization(TAG_APPLICATION_ID, HidlBuf("clientid"))));
+    AbortIfNeeded();
 }
 
 /*
@@ -2417,6 +2707,40 @@ TEST_F(EncryptionOperationsTest, AesWrongMode) {
 }
 
 /*
+ * EncryptionOperationsTest.AesWrongPurpose
+ *
+ * Verifies that AES encryption fails in the correct way when an unauthorized purpose is specified.
+ */
+TEST_F(EncryptionOperationsTest, AesWrongPurpose) {
+    auto err = GenerateKey(AuthorizationSetBuilder()
+                                   .Authorization(TAG_NO_AUTH_REQUIRED)
+                                   .AesKey(128)
+                                   .Authorization(TAG_PURPOSE, KeyPurpose::ENCRYPT)
+                                   .Authorization(TAG_BLOCK_MODE, BlockMode::GCM)
+                                   .Authorization(TAG_MIN_MAC_LENGTH, 128)
+                                   .Padding(PaddingMode::NONE));
+    ASSERT_EQ(ErrorCode::OK, err) << "Got " << err;
+
+    err = Begin(KeyPurpose::DECRYPT,
+                AuthorizationSetBuilder().BlockMode(BlockMode::GCM).Padding(PaddingMode::NONE));
+    EXPECT_EQ(ErrorCode::INCOMPATIBLE_PURPOSE, err) << "Got " << err;
+
+    CheckedDeleteKey();
+
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .AesKey(128)
+                                                 .Authorization(TAG_PURPOSE, KeyPurpose::DECRYPT)
+                                                 .Authorization(TAG_BLOCK_MODE, BlockMode::GCM)
+                                                 .Authorization(TAG_MIN_MAC_LENGTH, 128)
+                                                 .Padding(PaddingMode::NONE)));
+
+    err = Begin(KeyPurpose::ENCRYPT,
+                AuthorizationSetBuilder().BlockMode(BlockMode::GCM).Padding(PaddingMode::NONE));
+    EXPECT_EQ(ErrorCode::INCOMPATIBLE_PURPOSE, err) << "Got " << err;
+}
+
+/*
  * EncryptionOperationsTest.AesEcbNoPaddingWrongInputSize
  *
  * Verifies that AES encryption fails in the correct way when provided an input that is not a
@@ -2933,6 +3257,92 @@ TEST_F(EncryptionOperationsTest, AesGcmRoundTripSuccess) {
     EXPECT_EQ(ErrorCode::OK, Finish("", &plaintext));
     EXPECT_EQ(message.length(), plaintext.length());
     EXPECT_EQ(message, plaintext);
+}
+
+/*
+ * EncryptionOperationsTest.AesGcmRoundTripWithDelaySuccess
+ *
+ * Verifies that AES GCM mode works, even when there's a long delay
+ * between operations.
+ */
+TEST_F(EncryptionOperationsTest, AesGcmRoundTripWithDelaySuccess) {
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                             .Authorization(TAG_NO_AUTH_REQUIRED)
+                                             .AesEncryptionKey(128)
+                                             .Authorization(TAG_BLOCK_MODE, BlockMode::GCM)
+                                             .Padding(PaddingMode::NONE)
+                                             .Authorization(TAG_MIN_MAC_LENGTH, 128)));
+
+    string aad = "foobar";
+    string message = "123456789012345678901234567890123456";
+
+    auto begin_params = AuthorizationSetBuilder()
+                            .BlockMode(BlockMode::GCM)
+                            .Padding(PaddingMode::NONE)
+                            .Authorization(TAG_MAC_LENGTH, 128);
+
+    auto update_params =
+        AuthorizationSetBuilder().Authorization(TAG_ASSOCIATED_DATA, aad.data(), aad.size());
+
+    // Encrypt
+    AuthorizationSet begin_out_params;
+    ASSERT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, begin_params, &begin_out_params))
+        << "Begin encrypt";
+    string ciphertext;
+    AuthorizationSet update_out_params;
+    sleep(5);
+    ASSERT_EQ(ErrorCode::OK,
+              Finish(op_handle_, update_params, message, "", &update_out_params, &ciphertext));
+
+    ASSERT_EQ(ciphertext.length(), message.length() + 16);
+
+    // Grab nonce
+    begin_params.push_back(begin_out_params);
+
+    // Decrypt.
+    ASSERT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params)) << "Begin decrypt";
+    string plaintext;
+    size_t input_consumed;
+    sleep(5);
+    ASSERT_EQ(ErrorCode::OK, Update(op_handle_, update_params, ciphertext, &update_out_params,
+                                    &plaintext, &input_consumed));
+    EXPECT_EQ(ciphertext.size(), input_consumed);
+    sleep(5);
+    EXPECT_EQ(ErrorCode::OK, Finish("", &plaintext));
+    EXPECT_EQ(message.length(), plaintext.length());
+    EXPECT_EQ(message, plaintext);
+}
+
+/*
+ * EncryptionOperationsTest.AesGcmDifferentNonces
+ *
+ * Verifies that encrypting the same data with different nonces produces different outputs.
+ */
+TEST_F(EncryptionOperationsTest, AesGcmDifferentNonces) {
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .AesEncryptionKey(128)
+                                                 .Authorization(TAG_BLOCK_MODE, BlockMode::GCM)
+                                                 .Padding(PaddingMode::NONE)
+                                                 .Authorization(TAG_MIN_MAC_LENGTH, 128)
+                                                 .Authorization(TAG_CALLER_NONCE)));
+
+    string aad = "foobar";
+    string message = "123456789012345678901234567890123456";
+    string nonce1 = "000000000000";
+    string nonce2 = "111111111111";
+    string nonce3 = "222222222222";
+
+    string ciphertext1 =
+            EncryptMessage(message, BlockMode::GCM, PaddingMode::NONE, 128, HidlBuf(nonce1));
+    string ciphertext2 =
+            EncryptMessage(message, BlockMode::GCM, PaddingMode::NONE, 128, HidlBuf(nonce2));
+    string ciphertext3 =
+            EncryptMessage(message, BlockMode::GCM, PaddingMode::NONE, 128, HidlBuf(nonce3));
+
+    ASSERT_NE(ciphertext1, ciphertext2);
+    ASSERT_NE(ciphertext1, ciphertext3);
+    ASSERT_NE(ciphertext2, ciphertext3);
 }
 
 /*
@@ -3904,11 +4314,12 @@ typedef KeymasterHidlTest AttestationTest;
  * Verifies that attesting to RSA keys works and generates the expected output.
  */
 TEST_F(AttestationTest, RsaAttestation) {
+    auto creation_time = std::chrono::system_clock::now();
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaSigningKey(2048, 65537)
-                                             .Digest(Digest::NONE)
-                                             .Padding(PaddingMode::NONE)
+                                             .Digest(Digest::SHA_2_256)
+                                             .Padding(PaddingMode::RSA_PKCS1_1_5_SIGN)
                                              .Authorization(TAG_INCLUDE_UNIQUE_ID)));
 
     hidl_vec<hidl_vec<uint8_t>> cert_chain;
@@ -3918,11 +4329,17 @@ TEST_F(AttestationTest, RsaAttestation) {
                             .Authorization(TAG_ATTESTATION_APPLICATION_ID, HidlBuf("foo")),
                         &cert_chain));
     EXPECT_GE(cert_chain.size(), 2U);
-    EXPECT_TRUE(verify_chain(cert_chain));
+
+    string message = "12345678901234567890123456789012";
+    string signature = SignMessage(message, AuthorizationSetBuilder()
+                                                .Digest(Digest::SHA_2_256)
+                                                .Padding(PaddingMode::RSA_PKCS1_1_5_SIGN));
+
+    EXPECT_TRUE(verify_chain(cert_chain, message, signature));
     EXPECT_TRUE(verify_attestation_record("challenge", "foo",                     //
                                           key_characteristics_.softwareEnforced,  //
                                           key_characteristics_.hardwareEnforced,  //
-                                          SecLevel(), cert_chain[0]));
+                                          SecLevel(), cert_chain[0], creation_time));
 }
 
 /*
@@ -3951,6 +4368,7 @@ TEST_F(AttestationTest, RsaAttestationRequiresAppId) {
  * Verifies that attesting to EC keys works and generates the expected output.
  */
 TEST_F(AttestationTest, EcAttestation) {
+    auto creation_time = std::chrono::system_clock::now();
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .EcdsaSigningKey(EcCurve::P_256)
@@ -3964,39 +4382,15 @@ TEST_F(AttestationTest, EcAttestation) {
                             .Authorization(TAG_ATTESTATION_APPLICATION_ID, HidlBuf("foo")),
                         &cert_chain));
     EXPECT_GE(cert_chain.size(), 2U);
-    EXPECT_TRUE(verify_chain(cert_chain));
 
+    string message(1024, 'a');
+    string signature = SignMessage(message, AuthorizationSetBuilder().Digest(Digest::SHA_2_256));
+
+    EXPECT_TRUE(verify_chain(cert_chain, message, signature));
     EXPECT_TRUE(verify_attestation_record("challenge", "foo",                     //
                                           key_characteristics_.softwareEnforced,  //
                                           key_characteristics_.hardwareEnforced,  //
-                                          SecLevel(), cert_chain[0]));
-}
-
-/*
- * AttestationTest.EcAttestationByKeySize
- *
- * Verifies that attesting to EC keys works and generates the expected output.
- */
-TEST_F(AttestationTest, EcAttestationByKeySize) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                             .Authorization(TAG_NO_AUTH_REQUIRED)
-                                             .EcdsaSigningKey(256)
-                                             .Digest(Digest::SHA_2_256)
-                                             .Authorization(TAG_INCLUDE_UNIQUE_ID)));
-
-    hidl_vec<hidl_vec<uint8_t>> cert_chain;
-    ASSERT_EQ(ErrorCode::OK,
-              AttestKey(AuthorizationSetBuilder()
-                            .Authorization(TAG_ATTESTATION_CHALLENGE, HidlBuf("challenge"))
-                            .Authorization(TAG_ATTESTATION_APPLICATION_ID, HidlBuf("foo")),
-                        &cert_chain));
-    EXPECT_GE(cert_chain.size(), 2U);
-    EXPECT_TRUE(verify_chain(cert_chain));
-
-    EXPECT_TRUE(verify_attestation_record("challenge", "foo",                     //
-                                          key_characteristics_.softwareEnforced,  //
-                                          key_characteristics_.hardwareEnforced,  //
-                                          SecLevel(), cert_chain[0]));
+                                          SecLevel(), cert_chain[0], creation_time));
 }
 
 /*
@@ -4182,6 +4576,84 @@ TEST_F(UpgradeKeyTest, UpgradeKey) {
     // Key doesn't need upgrading.  Should get okay, but no new key blob.
     EXPECT_EQ(result, std::make_pair(ErrorCode::OK, HidlBuf()));
 }
+
+
+using ClearOperationsTest = KeymasterHidlTest;
+
+/*
+ * ClearSlotsTest.TooManyOperations
+ *
+ * Verifies that TOO_MANY_OPERATIONS is returned after the max number of
+ * operations are started without being finished or aborted. Also verifies
+ * that aborting the operations clears the operations.
+ *
+ */
+TEST_F(ClearOperationsTest, TooManyOperations) {
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                             .Authorization(TAG_NO_AUTH_REQUIRED)
+                                             .RsaEncryptionKey(2048, 65537)
+                                             .Padding(PaddingMode::NONE)));
+
+    auto params = AuthorizationSetBuilder().Padding(PaddingMode::NONE);
+    int max_operations = SecLevel() == SecurityLevel::STRONGBOX ? 4 : 16;
+    OperationHandle op_handles[max_operations];
+    AuthorizationSet out_params;
+    for(int i=0; i<max_operations; i++) {
+        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &(op_handles[i])));
+    }
+    EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
+         Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &op_handle_));
+    // Try again just in case there's a weird overflow bug
+    EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
+         Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &op_handle_));
+    for(int i=0; i<max_operations; i++) {
+        EXPECT_EQ(ErrorCode::OK, Abort(op_handles[i]));
+    }
+    EXPECT_EQ(ErrorCode::OK,
+         Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &op_handle_));
+    AbortIfNeeded();
+}
+
+/*
+ * ClearSlotsTest.ServiceDeath
+ *
+ * Verifies that the service is restarted after death and the ongoing
+ * operations are cleared.
+ */
+TEST_F(ClearOperationsTest, ServiceDeath) {
+
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                             .Authorization(TAG_NO_AUTH_REQUIRED)
+                                             .RsaEncryptionKey(2048, 65537)
+                                             .Padding(PaddingMode::NONE)));
+
+    auto params = AuthorizationSetBuilder().Padding(PaddingMode::NONE);
+    int max_operations = SecLevel() == SecurityLevel::STRONGBOX ? 4 : 16;
+    OperationHandle op_handles[max_operations];
+    AuthorizationSet out_params;
+    for(int i=0; i<max_operations; i++) {
+        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &(op_handles[i])));
+    }
+    EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
+         Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &op_handle_));
+
+    DebugInfo debug_info;
+    GetDebugInfo(&debug_info);
+    kill(debug_info.pid, SIGKILL);
+    // wait 1 second for keymaster to restart
+    sleep(1);
+    InitializeKeymaster();
+
+    for(int i=0; i<max_operations; i++) {
+        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &(op_handles[i])));
+    }
+    EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
+         Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &op_handle_));
+    for(int i=0; i<max_operations; i++) {
+        EXPECT_EQ(ErrorCode::OK, Abort(op_handles[i]));
+    }
+}
+
 
 }  // namespace test
 }  // namespace V4_0
