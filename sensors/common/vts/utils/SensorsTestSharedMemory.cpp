@@ -119,13 +119,32 @@ SensorsTestSharedMemory::SensorsTestSharedMemory(SharedMemType type, size_t size
         }
         case SharedMemType::GRALLOC: {
             mGrallocWrapper = std::make_unique<::android::GrallocWrapper>();
-            if (!mGrallocWrapper->isInitialized()) {
+            if (mGrallocWrapper->getAllocator() == nullptr ||
+                mGrallocWrapper->getMapper() == nullptr) {
                 break;
             }
+            using android::hardware::graphics::common::V1_0::BufferUsage;
+            using android::hardware::graphics::common::V1_0::PixelFormat;
+            mapper2::IMapper::BufferDescriptorInfo buf_desc_info = {
+                .width = static_cast<uint32_t>(size),
+                .height = 1,
+                .layerCount = 1,
+                .usage = static_cast<uint64_t>(BufferUsage::SENSOR_DIRECT_DATA |
+                                               BufferUsage::CPU_READ_OFTEN),
+                .format = PixelFormat::BLOB};
 
-            std::pair<native_handle_t*, void*> buf = mGrallocWrapper->allocate(size);
-            handle = buf.first;
-            buffer = static_cast<char*>(buf.second);
+            handle = const_cast<native_handle_t*>(mGrallocWrapper->allocate(buf_desc_info));
+            if (handle != nullptr) {
+                mapper2::IMapper::Rect region{0, 0, static_cast<int32_t>(buf_desc_info.width),
+                                              static_cast<int32_t>(buf_desc_info.height)};
+                buffer = static_cast<char*>(
+                    mGrallocWrapper->lock(handle, buf_desc_info.usage, region, /*fence=*/-1));
+                if (buffer != nullptr) {
+                    break;
+                }
+                mGrallocWrapper->freeBuffer(handle);
+                handle = nullptr;
+            }
             break;
         }
         default:
@@ -156,7 +175,9 @@ SensorsTestSharedMemory::~SensorsTestSharedMemory() {
         }
         case SharedMemType::GRALLOC: {
             if (mSize != 0) {
+                mGrallocWrapper->unlock(mNativeHandle);
                 mGrallocWrapper->freeBuffer(mNativeHandle);
+
                 mNativeHandle = nullptr;
                 mSize = 0;
             }

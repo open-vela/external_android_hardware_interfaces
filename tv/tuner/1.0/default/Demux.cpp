@@ -769,7 +769,7 @@ void Demux::inputThreadLoop() {
             ALOGD("[Demux] wait for data ready on the input FMQ");
             continue;
         }
-        // Our current implementation filter the data and write it into the filter FMQ immediately
+        // Our current implementation filter the data and write it into the filter FMQ immedaitely
         // after the DATA_READY from the VTS/framework
         if (!readInputFMQ() || !startFilterDispatcher()) {
             ALOGD("[Demux] input data failed to be filtered. Ending thread");
