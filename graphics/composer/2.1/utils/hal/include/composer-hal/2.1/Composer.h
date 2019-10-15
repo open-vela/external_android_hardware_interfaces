@@ -67,6 +67,14 @@ class ComposerImpl : public Interface {
             }
         }
 
+        // we do not have HWC2_CAPABILITY_SKIP_VALIDATE defined in
+        // IComposer::Capability.  However, this is defined in hwcomposer2.h,
+        // so if the device returns it, add it manually to be returned to the
+        // client
+        if (mHal->hasCapability(HWC2_CAPABILITY_SKIP_VALIDATE)) {
+            caps.push_back(static_cast<IComposer::Capability>(HWC2_CAPABILITY_SKIP_VALIDATE));
+        }
+
         hidl_vec<IComposer::Capability> caps_reply;
         caps_reply.setToExternal(caps.data(), caps.size());
         hidl_cb(caps_reply);
@@ -108,12 +116,10 @@ class ComposerImpl : public Interface {
             // inverted (create and then destroy). Wait for a brief period to
             // see if the existing client is destroyed.
             ALOGD("waiting for previous client to be destroyed");
-            mClientDestroyedCondition.wait_for(
-                lock, 1s, [this]() -> bool { return mClient.promote() == nullptr; });
-            if (mClient.promote() != nullptr) {
+            mClientDestroyedCondition.wait_for(lock, 1s,
+                                               [this]() -> bool { return mClient == nullptr; });
+            if (mClient != nullptr) {
                 ALOGD("previous client was not destroyed");
-            } else {
-                mClient.clear();
             }
         }
 

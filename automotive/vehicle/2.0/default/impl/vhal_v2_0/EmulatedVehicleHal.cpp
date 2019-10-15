@@ -92,10 +92,8 @@ EmulatedVehicleHal::EmulatedVehicleHal(VehiclePropertyStore* propStore)
       mHvacPowerProps(std::begin(kHvacPowerProperties), std::end(kHvacPowerProperties)),
       mRecurrentTimer(
           std::bind(&EmulatedVehicleHal::onContinuousPropertyTimer, this, std::placeholders::_1)),
-      mLinearFakeValueGenerator(std::make_unique<LinearFakeValueGenerator>(
-          std::bind(&EmulatedVehicleHal::onFakeValueGenerated, this, std::placeholders::_1))),
-      mJsonFakeValueGenerator(std::make_unique<JsonFakeValueGenerator>(
-          std::bind(&EmulatedVehicleHal::onFakeValueGenerated, this, std::placeholders::_1))) {
+      mGeneratorHub(
+          std::bind(&EmulatedVehicleHal::onFakeValueGenerated, this, std::placeholders::_1)) {
     initStaticConfig();
     for (size_t i = 0; i < arraysize(kVehicleProperties); i++) {
         mPropStore->registerProperty(kVehicleProperties[i].config);
@@ -133,6 +131,36 @@ VehicleHal::VehiclePropValuePtr EmulatedVehicleHal::get(
 StatusCode EmulatedVehicleHal::set(const VehiclePropValue& propValue) {
     static constexpr bool shouldUpdateStatus = false;
 
+    // set the value from vehcile side, used in end to end test.
+    if (propValue.prop == kSetIntPropertyFromVehcileForTest) {
+        auto mockValue = createVehiclePropValue(VehiclePropertyType::INT32, 1);
+        mockValue->prop = propValue.value.int32Values[0];
+        mockValue->value.int32Values[0] = propValue.value.int32Values[1];
+        mockValue->timestamp = propValue.value.int64Values[0];
+        mockValue->areaId = propValue.areaId;
+        setPropertyFromVehicle(*mockValue);
+        return StatusCode::OK;
+    }
+
+    if (propValue.prop == kSetFloatPropertyFromVehcileForTest) {
+        auto mockValue = createVehiclePropValue(VehiclePropertyType::FLOAT, 1);
+        mockValue->prop = propValue.value.int32Values[0];
+        mockValue->value.floatValues[0] = propValue.value.floatValues[0];
+        mockValue->timestamp = propValue.value.int64Values[0];
+        mockValue->areaId = propValue.areaId;
+        setPropertyFromVehicle(*mockValue);
+        return StatusCode::OK;
+    }
+    if (propValue.prop == kSetBooleanPropertyFromVehcileForTest) {
+        auto mockValue = createVehiclePropValue(VehiclePropertyType::BOOLEAN, 1);
+        mockValue->prop = propValue.value.int32Values[1];
+        mockValue->value.int32Values[0] = propValue.value.int32Values[0];
+        mockValue->timestamp = propValue.value.int64Values[0];
+        mockValue->areaId = propValue.areaId;
+        setPropertyFromVehicle(*mockValue);
+        return StatusCode::OK;
+    }
+
     if (propValue.prop == kGenerateFakeDataControllingProperty) {
         StatusCode status = handleGenerateFakeDataRequest(propValue);
         if (status != StatusCode::OK) {
@@ -159,12 +187,28 @@ StatusCode EmulatedVehicleHal::set(const VehiclePropValue& propValue) {
                 // now, just returns OK; otherwise, hal clients crash with property not supported.
                 return StatusCode::OK;
             case AP_POWER_STATE_REPORT:
-                // This property has different behavior between get/set.  When it is set, the value
-                //  goes to the vehicle but is NOT updated in the property store back to Android.
-                // Commented out for now, because it may mess up automated testing that use the
-                //  emulator interface.
-                // getEmulatorOrDie()->doSetValueFromClient(propValue);
-                return StatusCode::OK;
+                switch (propValue.value.int32Values[0]) {
+                    case toInt(VehicleApPowerStateReport::DEEP_SLEEP_EXIT):
+                    case toInt(VehicleApPowerStateReport::SHUTDOWN_CANCELLED):
+                    case toInt(VehicleApPowerStateReport::WAIT_FOR_VHAL):
+                        // CPMS is in WAIT_FOR_VHAL state, simply move to ON
+                        doHalEvent(createApPowerStateReq(VehicleApPowerStateReq::ON, 0));
+                        break;
+                    case toInt(VehicleApPowerStateReport::DEEP_SLEEP_ENTRY):
+                    case toInt(VehicleApPowerStateReport::SHUTDOWN_START):
+                        // CPMS is in WAIT_FOR_FINISH state, send the FINISHED command
+                        doHalEvent(createApPowerStateReq(VehicleApPowerStateReq::FINISHED, 0));
+                        break;
+                    case toInt(VehicleApPowerStateReport::ON):
+                    case toInt(VehicleApPowerStateReport::SHUTDOWN_POSTPONE):
+                    case toInt(VehicleApPowerStateReport::SHUTDOWN_PREPARE):
+                        // Do nothing
+                        break;
+                    default:
+                        // Unknown state
+                        break;
+                }
+                break;
         }
     }
 
@@ -184,11 +228,19 @@ StatusCode EmulatedVehicleHal::set(const VehiclePropValue& propValue) {
         return StatusCode::NOT_AVAILABLE;
     }
 
-    if (!mPropStore->writeValue(propValue, shouldUpdateStatus)) {
-        return StatusCode::INVALID_ARG;
+    /**
+     * After checking all conditions, such as the property is available, a real vhal will
+     * sent the events to Car ECU to take actions.
+     * Google HAL will just add a timestamp for the value and triggle the callback to android.
+     */
+    VehiclePropValuePtr updatedPropValue = getValuePool()->obtain(propValue);
+    updatedPropValue->timestamp = elapsedRealtimeNano();
+    if (!mPropStore->writeValue(*updatedPropValue, shouldUpdateStatus)) {
+        return StatusCode::INTERNAL_ERROR;
     }
 
-    getEmulatorOrDie()->doSetValueFromClient(propValue);
+    getEmulatorOrDie()->doSetValueFromClient(*updatedPropValue);
+    doHalEvent(std::move(updatedPropValue));
 
     return StatusCode::OK;
 }
@@ -343,19 +395,54 @@ StatusCode EmulatedVehicleHal::handleGenerateFakeDataRequest(const VehiclePropVa
     switch (command) {
         case FakeDataCommand::StartLinear: {
             ALOGI("%s, FakeDataCommand::StartLinear", __func__);
-            return mLinearFakeValueGenerator->start(request);
+            if (v.int32Values.size() < 2) {
+                ALOGE("%s: expected property ID in int32Values", __func__);
+                return StatusCode::INVALID_ARG;
+            }
+            if (!v.int64Values.size()) {
+                ALOGE("%s: interval is not provided in int64Values", __func__);
+                return StatusCode::INVALID_ARG;
+            }
+            if (v.floatValues.size() < 3) {
+                ALOGE("%s: expected at least 3 elements in floatValues, got: %zu", __func__,
+                      v.floatValues.size());
+                return StatusCode::INVALID_ARG;
+            }
+            int32_t cookie = v.int32Values[1];
+            mGeneratorHub.registerGenerator(cookie,
+                                            std::make_unique<LinearFakeValueGenerator>(request));
+            break;
         }
         case FakeDataCommand::StartJson: {
             ALOGI("%s, FakeDataCommand::StartJson", __func__);
-            return mJsonFakeValueGenerator->start(request);
+            if (v.stringValue.empty()) {
+                ALOGE("%s: path to JSON file is missing", __func__);
+                return StatusCode::INVALID_ARG;
+            }
+            int32_t cookie = std::hash<std::string>()(v.stringValue);
+            mGeneratorHub.registerGenerator(cookie,
+                                            std::make_unique<JsonFakeValueGenerator>(request));
+            break;
         }
         case FakeDataCommand::StopLinear: {
             ALOGI("%s, FakeDataCommand::StopLinear", __func__);
-            return mLinearFakeValueGenerator->stop(request);
+            if (v.int32Values.size() < 2) {
+                ALOGE("%s: expected property ID in int32Values", __func__);
+                return StatusCode::INVALID_ARG;
+            }
+            int32_t cookie = v.int32Values[1];
+            mGeneratorHub.unregisterGenerator(cookie);
+            break;
         }
         case FakeDataCommand::StopJson: {
             ALOGI("%s, FakeDataCommand::StopJson", __func__);
-            return mJsonFakeValueGenerator->stop(request);
+            if (v.stringValue.empty()) {
+                ALOGE("%s: path to JSON file is missing", __func__);
+                return StatusCode::INVALID_ARG;
+            }
+            int32_t cookie = std::hash<std::string>()(v.stringValue);
+            mGeneratorHub.unregisterGenerator(cookie);
+            break;
         }
         case FakeDataCommand::KeyPress: {
             ALOGI("%s, FakeDataCommand::KeyPress", __func__);
@@ -372,6 +459,18 @@ StatusCode EmulatedVehicleHal::handleGenerateFakeDataRequest(const VehiclePropVa
         }
     }
     return StatusCode::OK;
+}
+
+VehicleHal::VehiclePropValuePtr EmulatedVehicleHal::createApPowerStateReq(
+    VehicleApPowerStateReq state, int32_t param) {
+    auto req = getValuePool()->obtain(VehiclePropertyType::INT32_VEC, 2);
+    req->prop = toInt(VehicleProperty::AP_POWER_STATE_REQ);
+    req->areaId = 0;
+    req->timestamp = elapsedRealtimeNano();
+    req->status = VehiclePropertyStatus::AVAILABLE;
+    req->value.int32Values[0] = toInt(state);
+    req->value.int32Values[1] = param;
+    return req;
 }
 
 VehicleHal::VehiclePropValuePtr EmulatedVehicleHal::createHwInputKeyProp(
@@ -393,12 +492,12 @@ void EmulatedVehicleHal::onFakeValueGenerated(const VehiclePropValue& value) {
 
     VehiclePropValuePtr updatedPropValue = getValuePool()->obtain(value);
     if (updatedPropValue) {
-        updatedPropValue->timestamp = elapsedRealtimeNano();
+        updatedPropValue->timestamp = value.timestamp;
         updatedPropValue->status = VehiclePropertyStatus::AVAILABLE;
         mPropStore->writeValue(*updatedPropValue, shouldUpdateStatus);
         auto changeMode = mPropStore->getConfigOrDie(value.prop)->changeMode;
         if (VehiclePropertyChangeMode::ON_CHANGE == changeMode) {
-            doHalEvent(move(updatedPropValue));
+            doHalEvent(std::move(updatedPropValue));
         }
     }
 }

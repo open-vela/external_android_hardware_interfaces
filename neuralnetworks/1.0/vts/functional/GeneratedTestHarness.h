@@ -18,23 +18,39 @@
 #define ANDROID_HARDWARE_NEURALNETWORKS_V1_0_GENERATED_TEST_HARNESS_H
 
 #include <android/hardware/neuralnetworks/1.0/IDevice.h>
+#include <functional>
 #include "TestHarness.h"
+#include "VtsHalNeuralnetworks.h"
 
-namespace android {
-namespace hardware {
-namespace neuralnetworks {
-namespace V1_0 {
-namespace generated_tests {
+namespace android::hardware::neuralnetworks::V1_0::vts::functional {
 
-using ::test_helper::MixedTypedExample;
+using NamedModel = Named<const test_helper::TestModel*>;
+using GeneratedTestParam = std::tuple<NamedDevice, NamedModel>;
 
-void Execute(const sp<V1_0::IDevice>& device, std::function<V1_0::Model(void)> create_model,
-             std::function<bool(int)> is_ignored, const std::vector<MixedTypedExample>& examples);
+class GeneratedTestBase : public testing::TestWithParam<GeneratedTestParam> {
+  protected:
+    void SetUp() override;
+    const sp<IDevice> kDevice = getData(std::get<NamedDevice>(GetParam()));
+    const test_helper::TestModel& kTestModel = *getData(std::get<NamedModel>(GetParam()));
+};
 
-}  // namespace generated_tests
-}  // namespace V1_0
-}  // namespace neuralnetworks
-}  // namespace hardware
-}  // namespace android
+using FilterFn = std::function<bool(const test_helper::TestModel&)>;
+std::vector<NamedModel> getNamedModels(const FilterFn& filter);
+
+std::string printGeneratedTest(const testing::TestParamInfo<GeneratedTestParam>& info);
+
+#define INSTANTIATE_GENERATED_TEST(TestSuite, filter)                                     \
+    INSTANTIATE_TEST_SUITE_P(TestGenerated, TestSuite,                                    \
+                             testing::Combine(testing::ValuesIn(getNamedDevices()),       \
+                                              testing::ValuesIn(getNamedModels(filter))), \
+                             printGeneratedTest)
+
+// Tag for the validation tests, instantiated in VtsHalNeuralnetworks.cpp.
+// TODO: Clean up the hierarchy for ValidationTest.
+class ValidationTest : public GeneratedTestBase {};
+
+Model createModel(const test_helper::TestModel& testModel);
+
+}  // namespace android::hardware::neuralnetworks::V1_0::vts::functional
 
 #endif  // ANDROID_HARDWARE_NEURALNETWORKS_V1_0_GENERATED_TEST_HARNESS_H
