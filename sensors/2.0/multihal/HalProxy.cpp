@@ -24,7 +24,6 @@
 
 #include <dlfcn.h>
 
-#include <cinttypes>
 #include <fstream>
 #include <functional>
 #include <thread>
@@ -36,9 +35,6 @@ namespace V2_0 {
 namespace implementation {
 
 using ::android::hardware::sensors::V2_0::EventQueueFlagBits;
-using ::android::hardware::sensors::V2_0::WakeLockQueueFlagBits;
-using ::android::hardware::sensors::V2_0::implementation::getTimeNow;
-using ::android::hardware::sensors::V2_0::implementation::kWakelockTimeoutNs;
 
 typedef ISensorsSubHal*(SensorsHalGetSubHalFunc)(uint32_t*);
 
@@ -57,23 +53,23 @@ uint32_t setSubHalIndex(uint32_t sensorHandle, size_t subHalIndex) {
 HalProxy::HalProxy() {
     const char* kMultiHalConfigFile = "/vendor/etc/sensors/hals.conf";
     initializeSubHalListFromConfigFile(kMultiHalConfigFile);
-    init();
+    initializeSubHalCallbacksAndSensorList();
 }
 
 HalProxy::HalProxy(std::vector<ISensorsSubHal*>& subHalList) : mSubHalList(subHalList) {
-    init();
+    initializeSubHalCallbacksAndSensorList();
 }
 
 HalProxy::~HalProxy() {
-    mThreadsRun.store(false);
-    mWakelockCV.notify_one();
-    mEventQueueWriteCV.notify_one();
+    {
+        std::lock_guard<std::mutex> lockGuard(mEventQueueWriteMutex);
+        mPendingWritesRun = false;
+        mEventQueueWriteCV.notify_one();
+    }
     if (mPendingWritesThread.joinable()) {
         mPendingWritesThread.join();
     }
-    if (mWakelockThread.joinable()) {
-        mWakelockThread.join();
-    }
+    // TODO: Cleanup wakeup thread once it is implemented
 }
 
 Return<void> HalProxy::getSensorsList(getSensorsList_cb _hidl_cb) {
@@ -144,7 +140,7 @@ Return<Result> HalProxy::initialize(
     }
 
     mPendingWritesThread = std::thread(startPendingWritesThread, this);
-    mWakelockThread = std::thread(startWakelockThread, this);
+    // TODO: start threads to read wake locks.
 
     for (size_t i = 0; i < mSubHalList.size(); i++) {
         auto subHal = mSubHalList[i];
@@ -326,7 +322,7 @@ void HalProxy::initializeSensorList() {
     }
 }
 
-void HalProxy::init() {
+void HalProxy::initializeSubHalCallbacksAndSensorList() {
     initializeSubHalCallbacks();
     initializeSensorList();
 }
@@ -338,12 +334,11 @@ void HalProxy::startPendingWritesThread(HalProxy* halProxy) {
 void HalProxy::handlePendingWrites() {
     // TODO: Find a way to optimize locking strategy maybe using two mutexes instead of one.
     std::unique_lock<std::mutex> lock(mEventQueueWriteMutex);
-    while (mThreadsRun.load()) {
+    while (mPendingWritesRun) {
         mEventQueueWriteCV.wait(
-                lock, [&] { return !mPendingWriteEventsQueue.empty() || !mThreadsRun.load(); });
-        if (mThreadsRun.load()) {
-            std::vector<Event>& pendingWriteEvents = mPendingWriteEventsQueue.front().first;
-            size_t numWakeupEvents = mPendingWriteEventsQueue.front().second;
+                lock, [&] { return !mPendingWriteEventsQueue.empty() || !mPendingWritesRun; });
+        if (!mPendingWriteEventsQueue.empty() && mPendingWritesRun) {
+            std::vector<Event>& pendingWriteEvents = mPendingWriteEventsQueue.front();
             size_t eventQueueSize = mEventQueue->getQuantumCount();
             size_t numToWrite = std::min(pendingWriteEvents.size(), eventQueueSize);
             lock.unlock();
@@ -353,16 +348,10 @@ void HalProxy::handlePendingWrites() {
                         pendingWriteEvents.data(), numToWrite,
                         static_cast<uint32_t>(EventQueueFlagBits::EVENTS_READ),
                         static_cast<uint32_t>(EventQueueFlagBits::READ_AND_PROCESS),
-                        kPendingWriteTimeoutNs, mEventQueueFlag)) {
+                        kWakelockTimeoutNs, mEventQueueFlag)) {
                 ALOGE("Dropping %zu events after blockingWrite failed.", numToWrite);
-                if (numWakeupEvents > 0) {
-                    if (pendingWriteEvents.size() > eventQueueSize) {
-                        decrementRefCountAndMaybeReleaseWakelock(
-                                countNumWakeupEvents(pendingWriteEvents, eventQueueSize));
-                    } else {
-                        decrementRefCountAndMaybeReleaseWakelock(numWakeupEvents);
-                    }
-                }
+            } else {
+                mEventQueueFlag->wake(static_cast<uint32_t>(EventQueueFlagBits::READ_AND_PROCESS));
             }
             lock.lock();
             if (pendingWriteEvents.size() > eventQueueSize) {
@@ -377,60 +366,9 @@ void HalProxy::handlePendingWrites() {
     }
 }
 
-void HalProxy::startWakelockThread(HalProxy* halProxy) {
-    halProxy->handleWakelocks();
-}
-
-void HalProxy::handleWakelocks() {
-    std::unique_lock<std::recursive_mutex> lock(mWakelockMutex);
-    while (mThreadsRun.load()) {
-        mWakelockCV.wait(lock, [&] { return mWakelockRefCount > 0 || !mThreadsRun.load(); });
-        if (mThreadsRun.load()) {
-            int64_t timeLeft;
-            if (sharedWakelockDidTimeout(&timeLeft)) {
-                resetSharedWakelock();
-            } else {
-                uint32_t numWakeLocksProcessed;
-                lock.unlock();
-                bool success = mWakeLockQueue->readBlocking(
-                        &numWakeLocksProcessed, 1, 0,
-                        static_cast<uint32_t>(WakeLockQueueFlagBits::DATA_WRITTEN), timeLeft);
-                lock.lock();
-                if (success) {
-                    decrementRefCountAndMaybeReleaseWakelock(
-                            static_cast<size_t>(numWakeLocksProcessed));
-                }
-            }
-        }
-    }
-    resetSharedWakelock();
-}
-
-bool HalProxy::sharedWakelockDidTimeout(int64_t* timeLeft) {
-    bool didTimeout;
-    int64_t duration = getTimeNow() - mWakelockTimeoutStartTime;
-    if (duration > kWakelockTimeoutNs) {
-        didTimeout = true;
-    } else {
-        didTimeout = false;
-        *timeLeft = kWakelockTimeoutNs - duration;
-    }
-    return didTimeout;
-}
-
-void HalProxy::resetSharedWakelock() {
-    std::lock_guard<std::recursive_mutex> lockGuard(mWakelockMutex);
-    decrementRefCountAndMaybeReleaseWakelock(mWakelockRefCount);
-    mWakelockTimeoutResetTime = getTimeNow();
-}
-
-void HalProxy::postEventsToMessageQueue(const std::vector<Event>& events, size_t numWakeupEvents,
-                                        ScopedWakelock wakelock) {
+void HalProxy::postEventsToMessageQueue(const std::vector<Event>& events) {
     size_t numToWrite = 0;
     std::lock_guard<std::mutex> lock(mEventQueueWriteMutex);
-    if (wakelock.isLocked()) {
-        incrementRefCountAndMaybeAcquireWakelock(numWakeupEvents);
-    }
     if (mPendingWriteEventsQueue.empty()) {
         numToWrite = std::min(events.size(), mEventQueue->availableToWrite());
         if (numToWrite > 0) {
@@ -446,37 +384,28 @@ void HalProxy::postEventsToMessageQueue(const std::vector<Event>& events, size_t
     if (numToWrite < events.size()) {
         // TODO: Bound the mPendingWriteEventsQueue so that we do not trigger OOMs if framework
         // stalls
-        std::vector<Event> eventsLeft(events.begin() + numToWrite, events.end());
-        mPendingWriteEventsQueue.push({eventsLeft, numWakeupEvents});
+        mPendingWriteEventsQueue.push(
+                std::vector<Event>(events.begin() + numToWrite, events.end()));
         mEventQueueWriteCV.notify_one();
     }
 }
 
-bool HalProxy::incrementRefCountAndMaybeAcquireWakelock(size_t delta,
-                                                        int64_t* timeoutStart /* = nullptr */) {
-    if (!mThreadsRun.load()) return false;
-    std::lock_guard<std::recursive_mutex> lockGuard(mWakelockMutex);
+// TODO: Implement the wakelock timeout in these next two methods. Also pass in the subhal
+// index for better tracking.
+
+void HalProxy::incrementRefCountAndMaybeAcquireWakelock() {
+    std::lock_guard<std::mutex> lockGuard(mWakelockRefCountMutex);
     if (mWakelockRefCount == 0) {
-        acquire_wake_lock(PARTIAL_WAKE_LOCK, kWakelockName);
-        mWakelockCV.notify_one();
+        acquire_wake_lock(PARTIAL_WAKE_LOCK, kWakeLockName);
     }
-    mWakelockTimeoutStartTime = getTimeNow();
-    mWakelockRefCount += delta;
-    if (timeoutStart != nullptr) {
-        *timeoutStart = mWakelockTimeoutStartTime;
-    }
-    return true;
+    mWakelockRefCount++;
 }
 
-void HalProxy::decrementRefCountAndMaybeReleaseWakelock(size_t delta,
-                                                        int64_t timeoutStart /* = -1 */) {
-    if (!mThreadsRun.load()) return;
-    std::lock_guard<std::recursive_mutex> lockGuard(mWakelockMutex);
-    if (timeoutStart == -1) timeoutStart = mWakelockTimeoutResetTime;
-    if (mWakelockRefCount == 0 || timeoutStart < mWakelockTimeoutResetTime) return;
-    mWakelockRefCount -= std::min(mWakelockRefCount, delta);
+void HalProxy::decrementRefCountAndMaybeReleaseWakelock() {
+    std::lock_guard<std::mutex> lockGuard(mWakelockRefCountMutex);
+    mWakelockRefCount--;
     if (mWakelockRefCount == 0) {
-        release_wake_lock(kWakelockName);
+        release_wake_lock(kWakeLockName);
     }
 }
 
@@ -498,17 +427,6 @@ ISensorsSubHal* HalProxy::getSubHalForSensorHandle(uint32_t sensorHandle) {
     return mSubHalList[static_cast<size_t>(sensorHandle >> 24)];
 }
 
-size_t HalProxy::countNumWakeupEvents(const std::vector<Event>& events, size_t n) {
-    size_t numWakeupEvents = 0;
-    for (size_t i = 0; i < n; i++) {
-        int32_t sensorHandle = events[i].sensorHandle;
-        if (mSensors[sensorHandle].flags & static_cast<uint32_t>(V1_0::SensorFlagBits::WAKE_UP)) {
-            numWakeupEvents++;
-        }
-    }
-    return numWakeupEvents;
-}
-
 uint32_t HalProxy::clearSubHalIndex(uint32_t sensorHandle) {
     return sensorHandle & (~kSensorHandleSubHalIndexMask);
 }
@@ -518,7 +436,7 @@ bool HalProxy::subHalIndexIsClear(uint32_t sensorHandle) {
 }
 
 void HalProxyCallback::postEvents(const std::vector<Event>& events, ScopedWakelock wakelock) {
-    if (events.empty() || !mHalProxy->areThreadsRunning()) return;
+    (void)wakelock;
     size_t numWakeupEvents;
     std::vector<Event> processedEvents = processEvents(events, &numWakeupEvents);
     if (numWakeupEvents > 0) {
@@ -532,7 +450,8 @@ void HalProxyCallback::postEvents(const std::vector<Event>& events, ScopedWakelo
                     " w/ index %zu.",
                     mSubHalIndex);
     }
-    mHalProxy->postEventsToMessageQueue(events, numWakeupEvents, std::move(wakelock));
+
+    mHalProxy->postEventsToMessageQueue(processedEvents);
 }
 
 ScopedWakelock HalProxyCallback::createScopedWakelock(bool lock) {
@@ -542,13 +461,13 @@ ScopedWakelock HalProxyCallback::createScopedWakelock(bool lock) {
 
 std::vector<Event> HalProxyCallback::processEvents(const std::vector<Event>& events,
                                                    size_t* numWakeupEvents) const {
-    *numWakeupEvents = 0;
     std::vector<Event> eventsOut;
+    *numWakeupEvents = 0;
     for (Event event : events) {
         event.sensorHandle = setSubHalIndex(event.sensorHandle, mSubHalIndex);
         eventsOut.push_back(event);
-        const SensorInfo& sensor = mHalProxy->getSensorInfo(event.sensorHandle);
-        if ((sensor.flags & V1_0::SensorFlagBits::WAKE_UP) != 0) {
+        if ((mHalProxy->getSensorInfo(event.sensorHandle).flags & V1_0::SensorFlagBits::WAKE_UP) !=
+            0) {
             (*numWakeupEvents)++;
         }
     }
