@@ -29,21 +29,18 @@ static void waitForDeviceDestruction() {
 
 TEST_F(AudioHidlTest, OpenPrimaryDeviceUsingGetDevice) {
     doc::test("Calling openDevice(\"primary\") should return the primary device.");
-    struct WaitExecutor {
-        ~WaitExecutor() { waitForDeviceDestruction(); }
-    } waitExecutor;  // Make sure we wait for the device destruction on exiting from the test.
-    Result result;
-    sp<IDevice> baseDevice;
-    ASSERT_OK(devicesFactory->openDevice("primary", returnIn(result, baseDevice)));
-    if (result != Result::OK && isPrimaryDeviceOptional()) {
-        GTEST_SKIP() << "No primary device on this factory";  // returns
-    }
-    ASSERT_OK(result);
-    ASSERT_TRUE(baseDevice != nullptr);
+    {
+        Result result;
+        sp<IDevice> baseDevice;
+        ASSERT_OK(devicesFactory->openDevice("primary", returnIn(result, baseDevice)));
+        ASSERT_OK(result);
+        ASSERT_TRUE(baseDevice != nullptr);
 
-    Return<sp<IPrimaryDevice>> primaryDevice = IPrimaryDevice::castFrom(baseDevice);
-    ASSERT_TRUE(primaryDevice.isOk());
-    ASSERT_TRUE(sp<IPrimaryDevice>(primaryDevice) != nullptr);
+        Return<sp<IPrimaryDevice>> primaryDevice = IPrimaryDevice::castFrom(baseDevice);
+        ASSERT_TRUE(primaryDevice.isOk());
+        ASSERT_TRUE(sp<IPrimaryDevice>(primaryDevice) != nullptr);
+    }  // Destroy local IDevice proxy
+    waitForDeviceDestruction();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -155,7 +152,6 @@ TEST_F(AudioPrimaryHidlTest, SetConnectedState) {
     // initial state. To workaround this, destroy the HAL at the end of this test.
     device.clear();
     waitForDeviceDestruction();
-    ASSERT_NO_FATAL_FAILURE(initPrimaryDevice());
 }
 
 static void testGetDevices(IStream* stream, AudioDevice expectedDevice) {
