@@ -16,11 +16,9 @@
 
 #pragma once
 
-#include "ScopedWakelock.h"
 #include "SubHal.h"
 
 #include <android/hardware/sensors/2.0/ISensors.h>
-#include <android/hardware/sensors/2.0/types.h>
 #include <fmq/MessageQueue.h>
 #include <hardware_legacy/power.h>
 #include <hidl/MQDescriptor.h>
@@ -32,7 +30,6 @@
 #include <mutex>
 #include <queue>
 #include <thread>
-#include <utility>
 
 namespace android {
 namespace hardware {
@@ -103,40 +100,44 @@ class HalProxy : public ISensors, public IScopedWakelockRefCounter {
     Return<void> onDynamicSensorsDisconnected(const hidl_vec<int32_t>& dynamicSensorHandlesRemoved,
                                               int32_t subHalIndex);
 
+    // Below methods follow IScopedWakelockRefCounter
+
+    /**
+     * Increment ref count and maybe acquire wakelock.
+     */
+    void incrementRefCountAndMaybeAcquireWakelock() override;
+
+    /**
+     * Decrement ref count and maybe release wakelock.
+     */
+    void decrementRefCountAndMaybeReleaseWakelock() override;
+
     // Below methods are for HalProxyCallback
 
     /**
      * Post events to the event message queue if there is room to write them. Otherwise post the
-     * remaining events to a background thread for a blocking write with a kPendingWriteTimeoutNs
-     * timeout.
+     * remaining events to a background thread for a blocking write with a 5 second timeout.
      *
      * @param events The list of events to post to the message queue.
-     * @param numWakeupEvents The number of wakeup events in events.
-     * @param wakelock The wakelock associated with this post of events.
      */
-    void postEventsToMessageQueue(const std::vector<Event>& events, size_t numWakeupEvents,
-                                  ScopedWakelock wakelock);
+    void postEventsToMessageQueue(const std::vector<Event>& events);
 
     /**
-     * Get the sensor info associated with that sensorHandle.
+     * Get the SensorInfo object associated with the sensorHandle.
      *
-     * @param sensorHandle The sensor handle.
+     * @param sensorHandle The sensorHandle for the sensor.
      *
-     * @return The sensor info object in the mapping.
+     * @return The sensor info for the sensor.
      */
-    const SensorInfo& getSensorInfo(uint32_t sensorHandle) { return mSensors[sensorHandle]; }
-
-    bool areThreadsRunning() { return mThreadsRun.load(); }
-
-    // Below methods are from IScopedWakelockRefCounter interface
-    bool incrementRefCountAndMaybeAcquireWakelock(size_t delta,
-                                                  int64_t* timeoutStart = nullptr) override;
-
-    void decrementRefCountAndMaybeReleaseWakelock(size_t delta, int64_t timeoutStart = -1) override;
+    const SensorInfo& getSensorInfo(uint32_t sensorHandle) const {
+        return mSensors.at(sensorHandle);
+    }
 
   private:
     using EventMessageQueue = MessageQueue<Event, kSynchronizedReadWrite>;
     using WakeLockMessageQueue = MessageQueue<uint32_t, kSynchronizedReadWrite>;
+
+    const char* kWakeLockName = "SensorsHAL_WAKEUP";
 
     /**
      * The Event FMQ where sensor events are written
@@ -184,17 +185,23 @@ class HalProxy : public ISensors, public IScopedWakelockRefCounter {
     //! The single subHal that supports directChannel reporting.
     ISensorsSubHal* mDirectChannelSubHal = nullptr;
 
+    //! The mutex for the event queue.
+    std::mutex mEventQueueMutex;
+
     //! The timeout for each pending write on background thread for events.
-    static const int64_t kPendingWriteTimeoutNs = 5 * INT64_C(1000000000) /* 5 seconds */;
+    static const int64_t kWakelockTimeoutNs = 5 * INT64_C(1000000000) /* 5 seconds */;
+
+    //! The scoped wakelock ref count.
+    size_t mWakelockRefCount = 0;
+
+    //! The mutex guarding the mWakelockRefCount variable
+    std::mutex mWakelockRefCountMutex;
 
     //! The bit mask used to get the subhal index from a sensor handle.
     static constexpr uint32_t kSensorHandleSubHalIndexMask = 0xFF000000;
 
-    /**
-     * A FIFO queue of pairs of vector of events and the number of wakeup events in that vector
-     * which are waiting to be written to the events fmq in the background thread.
-     */
-    std::queue<std::pair<std::vector<Event>, size_t>> mPendingWriteEventsQueue;
+    //! The events that were not able to be written to fmq right away
+    std::queue<std::vector<Event>> mPendingWriteEventsQueue;
 
     //! The mutex protecting writing to the fmq and the pending events queue
     std::mutex mEventQueueWriteMutex;
@@ -205,31 +212,11 @@ class HalProxy : public ISensors, public IScopedWakelockRefCounter {
     //! The thread object ptr that handles pending writes
     std::thread mPendingWritesThread;
 
-    //! The thread object that handles wakelocks
-    std::thread mWakelockThread;
-
-    //! The bool indicating whether to end the threads started in initialize
-    std::atomic_bool mThreadsRun = true;
+    //! The bool indicating whether to end the pending writes background thread or not
+    bool mPendingWritesRun = true;
 
     //! The mutex protecting access to the dynamic sensors added and removed methods.
     std::mutex mDynamicSensorsMutex;
-
-    // WakelockRefCount membar vars below
-
-    //! The mutex protecting the wakelock refcount and subsequent wakelock releases and
-    //! acquisitions
-    std::recursive_mutex mWakelockMutex;
-
-    std::condition_variable_any mWakelockCV;
-
-    //! The refcount of how many ScopedWakelocks and pending wakeup events are active
-    size_t mWakelockRefCount = 0;
-
-    int64_t mWakelockTimeoutStartTime = getTimeNow();
-
-    int64_t mWakelockTimeoutResetTime = getTimeNow();
-
-    const char* kWakelockName = "SensorsMultiHal";
 
     /**
      * Initialize the list of SubHal objects in mSubHalList by reading from dynamic libraries
@@ -249,9 +236,9 @@ class HalProxy : public ISensors, public IScopedWakelockRefCounter {
     void initializeSensorList();
 
     /**
-     * Calls the helper methods that all ctors use.
+     * Calls the above two helper methods which are shared in both ctors.
      */
-    void init();
+    void initializeSubHalCallbacksAndSensorList();
 
     /**
      * Starts the thread that handles pending writes to event fmq.
@@ -262,31 +249,6 @@ class HalProxy : public ISensors, public IScopedWakelockRefCounter {
 
     //! Handles the pending writes on events to eventqueue.
     void handlePendingWrites();
-
-    /**
-     * Starts the thread that handles decrementing the ref count on wakeup events processed by the
-     * framework and timing out wakelocks.
-     *
-     * @param halProxy The HalProxy object pointer.
-     */
-    static void startWakelockThread(HalProxy* halProxy);
-
-    //! Handles the wakelocks.
-    void handleWakelocks();
-
-    /**
-     * @param timeLeft The variable that should be set to the timeleft before timeout will occur or
-     * unmodified if timeout occurred.
-     *
-     * @return true if the shared wakelock has been held passed the timeout and should be released
-     */
-    bool sharedWakelockDidTimeout(int64_t* timeLeft);
-
-    /**
-     * Reset all the member variables associated with the wakelock ref count and maybe release
-     * the shared wakelock.
-     */
-    void resetSharedWakelock();
 
     /**
      * Clear direct channel flags if the HalProxy has already chosen a subhal as its direct channel
@@ -306,16 +268,6 @@ class HalProxy : public ISensors, public IScopedWakelockRefCounter {
      * @param sensorHandle The handle used to identify a sensor in one of the subhals.
      */
     ISensorsSubHal* getSubHalForSensorHandle(uint32_t sensorHandle);
-
-    /**
-     * Count the number of wakeup events in the first n events of the vector.
-     *
-     * @param events The vector of Event objects.
-     * @param n The end index not inclusive of events to consider.
-     *
-     * @return The number of wakeup events of the considered events.
-     */
-    size_t countNumWakeupEvents(const std::vector<Event>& events, size_t n);
 
     /*
      * Clear out the subhal index bytes from a sensorHandle.
