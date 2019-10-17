@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.wifi.supplicant@1.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "ISupplicant.hal",
@@ -23,3 +26,4 @@ hidl_interface {
     ],
     gen_java: true,
 }
+

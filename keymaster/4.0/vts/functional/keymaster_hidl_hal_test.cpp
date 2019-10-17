@@ -17,8 +17,6 @@
 #define LOG_TAG "keymaster_hidl_hal_test"
 #include <cutils/log.h>
 
-#include <signal.h>
-
 #include <functional>
 #include <iostream>
 #include <string>
@@ -331,7 +329,8 @@ bool is_gsi() {
 bool verify_attestation_record(const string& challenge, const string& app_id,
                                AuthorizationSet expected_sw_enforced,
                                AuthorizationSet expected_hw_enforced, SecurityLevel security_level,
-                               const hidl_vec<uint8_t>& attestation_cert) {
+                               const hidl_vec<uint8_t>& attestation_cert,
+                               std::chrono::time_point<std::chrono::system_clock> creation_time) {
     X509_Ptr cert(parse_cert_blob(attestation_cert));
     EXPECT_TRUE(!!cert.get());
     if (!cert.get()) return false;
@@ -363,11 +362,11 @@ bool verify_attestation_record(const string& challenge, const string& app_id,
     EXPECT_EQ(ErrorCode::OK, error);
     if (error != ErrorCode::OK) return false;
 
-    EXPECT_GE(att_attestation_version, 3U);
+    EXPECT_TRUE(att_attestation_version == 3);
 
     expected_sw_enforced.push_back(TAG_ATTESTATION_APPLICATION_ID, HidlBuf(app_id));
 
-    EXPECT_GE(att_keymaster_version, 4U);
+    EXPECT_EQ(att_keymaster_version, 4U);
     EXPECT_EQ(security_level, att_keymaster_security_level);
     EXPECT_EQ(security_level, att_attestation_security_level);
 
@@ -408,18 +407,14 @@ bool verify_attestation_record(const string& challenge, const string& app_id,
     // true. A provided boolean tag that can be pulled back out of the certificate indicates correct
     // encoding. No need to check if it's in both lists, since the AuthorizationSet compare below
     // will handle mismatches of tags.
-    if (security_level == SecurityLevel::SOFTWARE) {
-        EXPECT_TRUE(expected_sw_enforced.Contains(TAG_NO_AUTH_REQUIRED));
-    } else {
-        EXPECT_TRUE(expected_hw_enforced.Contains(TAG_NO_AUTH_REQUIRED));
-    }
+    EXPECT_TRUE(expected_hw_enforced.Contains(TAG_NO_AUTH_REQUIRED));
 
     // Alternatively this checks the opposite - a false boolean tag (one that isn't provided in
     // the authorization list during key generation) isn't being attested to in the certificate.
-    EXPECT_FALSE(expected_sw_enforced.Contains(TAG_TRUSTED_USER_PRESENCE_REQUIRED));
-    EXPECT_FALSE(att_sw_enforced.Contains(TAG_TRUSTED_USER_PRESENCE_REQUIRED));
     EXPECT_FALSE(expected_hw_enforced.Contains(TAG_TRUSTED_USER_PRESENCE_REQUIRED));
     EXPECT_FALSE(att_hw_enforced.Contains(TAG_TRUSTED_USER_PRESENCE_REQUIRED));
+
+    KeymasterHidlTest::CheckCreationDateTime(att_sw_enforced, creation_time);
 
     if (att_hw_enforced.Contains(TAG_ALGORITHM, Algorithm::EC)) {
         // For ECDSA keys, either an EC_CURVE or a KEY_SIZE can be specified, but one must be.
@@ -437,25 +432,18 @@ bool verify_attestation_record(const string& challenge, const string& app_id,
     EXPECT_EQ(ErrorCode::OK, error);
 
     if (avb_verification_enabled()) {
-        EXPECT_NE(property_get("ro.boot.vbmeta.digest", property_value, ""), 0);
+        property_get("ro.boot.vbmeta.digest", property_value, "nogood");
+        EXPECT_NE(strcmp(property_value, "nogood"), 0);
         string prop_string(property_value);
         EXPECT_EQ(prop_string.size(), 64);
         EXPECT_EQ(prop_string, bin2hex(verified_boot_hash));
 
-        EXPECT_NE(property_get("ro.boot.vbmeta.device_state", property_value, ""), 0);
+        property_get("ro.boot.vbmeta.device_state", property_value, "nogood");
+        EXPECT_NE(strcmp(property_value, "nogood"), 0);
         if (!strcmp(property_value, "unlocked")) {
             EXPECT_FALSE(device_locked);
         } else {
             EXPECT_TRUE(device_locked);
-        }
-
-        // Check that the device is locked if not debuggable, e.g., user build
-        // images in CTS. For VTS, debuggable images are used to allow adb root
-        // and the device is unlocked.
-        if (!property_get_bool("ro.debuggable", false)) {
-            EXPECT_TRUE(device_locked);
-        } else {
-            EXPECT_FALSE(device_locked);
         }
     }
 
@@ -463,7 +451,8 @@ bool verify_attestation_record(const string& challenge, const string& app_id,
     std::string empty_boot_key(32, '\0');
     std::string verified_boot_key_str((const char*)verified_boot_key.data(),
                                       verified_boot_key.size());
-    EXPECT_NE(property_get("ro.boot.verifiedbootstate", property_value, ""), 0);
+    property_get("ro.boot.verifiedbootstate", property_value, "nogood");
+    EXPECT_NE(property_value, "nogood");
     if (!strcmp(property_value, "green")) {
         EXPECT_EQ(verified_boot_state, KM_VERIFIED_BOOT_VERIFIED);
         EXPECT_NE(0, memcmp(verified_boot_key.data(), empty_boot_key.data(),
@@ -478,10 +467,10 @@ bool verify_attestation_record(const string& challenge, const string& app_id,
                             verified_boot_key.size()));
     } else if (!strcmp(property_value, "red")) {
         EXPECT_EQ(verified_boot_state, KM_VERIFIED_BOOT_FAILED);
-    } else {
-        EXPECT_EQ(verified_boot_state, KM_VERIFIED_BOOT_UNVERIFIED);
-        EXPECT_NE(0, memcmp(verified_boot_key.data(), empty_boot_key.data(),
+        EXPECT_EQ(0, memcmp(verified_boot_key.data(), empty_boot_key.data(),
                             verified_boot_key.size()));
+    } else {
+        EXPECT_TRUE(false);
     }
 
     att_sw_enforced.Sort();
@@ -558,14 +547,14 @@ class NewKeyGenerationTest : public KeymasterHidlTest {
  * Verifies that keymaster can generate all required RSA key sizes, and that the resulting keys have
  * correct characteristics.
  */
-TEST_P(NewKeyGenerationTest, Rsa) {
+TEST_F(NewKeyGenerationTest, Rsa) {
     for (auto key_size : ValidKeySizes(Algorithm::RSA)) {
         HidlBuf key_blob;
         KeyCharacteristics key_characteristics;
         ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                     .RsaSigningKey(key_size, 65537)
-                                                     .Digest(Digest::NONE)
-                                                     .Padding(PaddingMode::NONE),
+                                                 .RsaSigningKey(key_size, 3)
+                                                 .Digest(Digest::NONE)
+                                                 .Padding(PaddingMode::NONE),
                                              &key_blob, &key_characteristics));
 
         ASSERT_GT(key_blob.size(), 0U);
@@ -582,10 +571,28 @@ TEST_P(NewKeyGenerationTest, Rsa) {
         EXPECT_TRUE(crypto_params.Contains(TAG_ALGORITHM, Algorithm::RSA));
         EXPECT_TRUE(crypto_params.Contains(TAG_KEY_SIZE, key_size))
             << "Key size " << key_size << "missing";
-        EXPECT_TRUE(crypto_params.Contains(TAG_RSA_PUBLIC_EXPONENT, 65537U));
+        EXPECT_TRUE(crypto_params.Contains(TAG_RSA_PUBLIC_EXPONENT, 3U));
 
         CheckedDeleteKey(&key_blob);
     }
+}
+
+/*
+ * NewKeyGenerationTest.RsaCheckCreationDateTime
+ *
+ * Verifies that creation date time is correct.
+ */
+TEST_F(NewKeyGenerationTest, RsaCheckCreationDateTime) {
+    KeyCharacteristics key_characteristics;
+    auto creation_time = std::chrono::system_clock::now();
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .RsaSigningKey(2048, 3)
+                                                 .Digest(Digest::NONE)
+                                                 .Padding(PaddingMode::NONE)));
+    GetCharacteristics(key_blob_, &key_characteristics);
+    AuthorizationSet sw_enforced = key_characteristics.softwareEnforced;
+    CheckCreationDateTime(sw_enforced, creation_time);
 }
 
 /*
@@ -593,16 +600,15 @@ TEST_P(NewKeyGenerationTest, Rsa) {
  *
  * Verifies that keymaster cannot generate any RSA key sizes that are designated as invalid.
  */
-TEST_P(NewKeyGenerationTest, NoInvalidRsaSizes) {
+TEST_F(NewKeyGenerationTest, NoInvalidRsaSizes) {
     for (auto key_size : InvalidKeySizes(Algorithm::RSA)) {
         HidlBuf key_blob;
         KeyCharacteristics key_characteristics;
-        ASSERT_EQ(ErrorCode::UNSUPPORTED_KEY_SIZE,
-                  GenerateKey(AuthorizationSetBuilder()
-                                      .RsaSigningKey(key_size, 65537)
-                                      .Digest(Digest::NONE)
-                                      .Padding(PaddingMode::NONE),
-                              &key_blob, &key_characteristics));
+        ASSERT_EQ(ErrorCode::UNSUPPORTED_KEY_SIZE, GenerateKey(AuthorizationSetBuilder()
+                                                                   .RsaSigningKey(key_size, 3)
+                                                                   .Digest(Digest::NONE)
+                                                                   .Padding(PaddingMode::NONE),
+                                                               &key_blob, &key_characteristics));
     }
 }
 
@@ -611,7 +617,7 @@ TEST_P(NewKeyGenerationTest, NoInvalidRsaSizes) {
  *
  * Verifies that failing to specify a key size for RSA key generation returns UNSUPPORTED_KEY_SIZE.
  */
-TEST_P(NewKeyGenerationTest, RsaNoDefaultSize) {
+TEST_F(NewKeyGenerationTest, RsaNoDefaultSize) {
     ASSERT_EQ(ErrorCode::UNSUPPORTED_KEY_SIZE,
               GenerateKey(AuthorizationSetBuilder()
                               .Authorization(TAG_ALGORITHM, Algorithm::RSA)
@@ -625,7 +631,7 @@ TEST_P(NewKeyGenerationTest, RsaNoDefaultSize) {
  * Verifies that keymaster can generate all required EC key sizes, and that the resulting keys have
  * correct characteristics.
  */
-TEST_P(NewKeyGenerationTest, Ecdsa) {
+TEST_F(NewKeyGenerationTest, Ecdsa) {
     for (auto key_size : ValidKeySizes(Algorithm::EC)) {
         HidlBuf key_blob;
         KeyCharacteristics key_characteristics;
@@ -653,11 +659,28 @@ TEST_P(NewKeyGenerationTest, Ecdsa) {
 }
 
 /*
+ * NewKeyGenerationTest.EcCheckCreationDateTime
+ *
+ * Verifies that creation date time is correct.
+ */
+TEST_F(NewKeyGenerationTest, EcCheckCreationDateTime) {
+    KeyCharacteristics key_characteristics;
+    auto creation_time = std::chrono::system_clock::now();
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .EcdsaSigningKey(256)
+                                                 .Digest(Digest::NONE)));
+    GetCharacteristics(key_blob_, &key_characteristics);
+    AuthorizationSet sw_enforced = key_characteristics.softwareEnforced;
+    CheckCreationDateTime(sw_enforced, creation_time);
+}
+
+/*
  * NewKeyGenerationTest.EcdsaDefaultSize
  *
  * Verifies that failing to specify a key size for EC key generation returns UNSUPPORTED_KEY_SIZE.
  */
-TEST_P(NewKeyGenerationTest, EcdsaDefaultSize) {
+TEST_F(NewKeyGenerationTest, EcdsaDefaultSize) {
     ASSERT_EQ(ErrorCode::UNSUPPORTED_KEY_SIZE,
               GenerateKey(AuthorizationSetBuilder()
                               .Authorization(TAG_ALGORITHM, Algorithm::EC)
@@ -670,7 +693,7 @@ TEST_P(NewKeyGenerationTest, EcdsaDefaultSize) {
  *
  * Verifies that specifying an invalid key size for EC key generation returns UNSUPPORTED_KEY_SIZE.
  */
-TEST_P(NewKeyGenerationTest, EcdsaInvalidSize) {
+TEST_F(NewKeyGenerationTest, EcdsaInvalidSize) {
     for (auto key_size : InvalidKeySizes(Algorithm::EC)) {
         HidlBuf key_blob;
         KeyCharacteristics key_characteristics;
@@ -690,7 +713,7 @@ TEST_P(NewKeyGenerationTest, EcdsaInvalidSize) {
  * Verifies that specifying mismatched key size and curve for EC key generation returns
  * INVALID_ARGUMENT.
  */
-TEST_P(NewKeyGenerationTest, EcdsaMismatchKeySize) {
+TEST_F(NewKeyGenerationTest, EcdsaMismatchKeySize) {
     if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     ASSERT_EQ(ErrorCode::INVALID_ARGUMENT,
@@ -705,7 +728,7 @@ TEST_P(NewKeyGenerationTest, EcdsaMismatchKeySize) {
  *
  * Verifies that keymaster supports all required EC key sizes.
  */
-TEST_P(NewKeyGenerationTest, EcdsaAllValidSizes) {
+TEST_F(NewKeyGenerationTest, EcdsaAllValidSizes) {
     auto valid_sizes = ValidKeySizes(Algorithm::EC);
     for (size_t size : valid_sizes) {
         EXPECT_EQ(ErrorCode::OK,
@@ -721,7 +744,7 @@ TEST_P(NewKeyGenerationTest, EcdsaAllValidSizes) {
  *
  * Verifies that keymaster does not support any curve designated as unsupported.
  */
-TEST_P(NewKeyGenerationTest, EcdsaAllValidCurves) {
+TEST_F(NewKeyGenerationTest, EcdsaAllValidCurves) {
     Digest digest;
     if (SecLevel() == SecurityLevel::STRONGBOX) {
         digest = Digest::SHA_2_256;
@@ -744,7 +767,7 @@ TEST_P(NewKeyGenerationTest, EcdsaAllValidCurves) {
  * Verifies that keymaster supports all required digests, and that the resulting keys have correct
  * characteristics.
  */
-TEST_P(NewKeyGenerationTest, Hmac) {
+TEST_F(NewKeyGenerationTest, Hmac) {
     for (auto digest : ValidDigests(false /* withNone */, true /* withMD5 */)) {
         HidlBuf key_blob;
         KeyCharacteristics key_characteristics;
@@ -780,7 +803,7 @@ TEST_P(NewKeyGenerationTest, Hmac) {
  *
  * Verifies that keymaster supports all key sizes, and rejects all invalid key sizes.
  */
-TEST_P(NewKeyGenerationTest, HmacCheckKeySizes) {
+TEST_F(NewKeyGenerationTest, HmacCheckKeySizes) {
     for (size_t key_size = 0; key_size <= 512; ++key_size) {
         if (key_size < 64 || key_size % 8 != 0) {
             // To keep this test from being very slow, we only test a random fraction of non-byte
@@ -813,7 +836,7 @@ TEST_P(NewKeyGenerationTest, HmacCheckKeySizes) {
  * test is probabilistic in order to keep the runtime down, but any failure prints out the specific
  * MAC length that failed, so reproducing a failed run will be easy.
  */
-TEST_P(NewKeyGenerationTest, HmacCheckMinMacLengths) {
+TEST_F(NewKeyGenerationTest, HmacCheckMinMacLengths) {
     for (size_t min_mac_length = 0; min_mac_length <= 256; ++min_mac_length) {
         if (min_mac_length < 64 || min_mac_length % 8 != 0) {
             // To keep this test from being very long, we only test a random fraction of non-byte
@@ -845,7 +868,7 @@ TEST_P(NewKeyGenerationTest, HmacCheckMinMacLengths) {
  *
  * Verifies that keymaster rejects HMAC key generation with multiple specified digest algorithms.
  */
-TEST_P(NewKeyGenerationTest, HmacMultipleDigests) {
+TEST_F(NewKeyGenerationTest, HmacMultipleDigests) {
     if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     ASSERT_EQ(ErrorCode::UNSUPPORTED_DIGEST,
@@ -861,7 +884,7 @@ TEST_P(NewKeyGenerationTest, HmacMultipleDigests) {
  *
  * Verifies that keymaster rejects HMAC key generation with no digest or Digest::NONE
  */
-TEST_P(NewKeyGenerationTest, HmacDigestNone) {
+TEST_F(NewKeyGenerationTest, HmacDigestNone) {
     ASSERT_EQ(
         ErrorCode::UNSUPPORTED_DIGEST,
         GenerateKey(AuthorizationSetBuilder().HmacKey(128).Authorization(TAG_MIN_MAC_LENGTH, 128)));
@@ -873,8 +896,6 @@ TEST_P(NewKeyGenerationTest, HmacDigestNone) {
                               .Authorization(TAG_MIN_MAC_LENGTH, 128)));
 }
 
-INSTANTIATE_KEYMASTER_HIDL_TEST(NewKeyGenerationTest);
-
 typedef KeymasterHidlTest SigningOperationsTest;
 
 /*
@@ -882,7 +903,7 @@ typedef KeymasterHidlTest SigningOperationsTest;
  *
  * Verifies that raw RSA signature operations succeed.
  */
-TEST_P(SigningOperationsTest, RsaSuccess) {
+TEST_F(SigningOperationsTest, RsaSuccess) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(2048, 65537)
                                              .Digest(Digest::NONE)
@@ -898,7 +919,7 @@ TEST_P(SigningOperationsTest, RsaSuccess) {
  *
  * Verifies that getting RSA key characteristics requires the correct app ID/data.
  */
-TEST_P(SigningOperationsTest, RsaGetKeyCharacteristicsRequiresCorrectAppIdAppData) {
+TEST_F(SigningOperationsTest, RsaGetKeyCharacteristicsRequiresCorrectAppIdAppData) {
     HidlBuf key_blob;
     KeyCharacteristics key_characteristics;
     ASSERT_EQ(ErrorCode::OK,
@@ -919,7 +940,7 @@ TEST_P(SigningOperationsTest, RsaGetKeyCharacteristicsRequiresCorrectAppIdAppDat
  *
  * Verifies that using an RSA key requires the correct app ID/data.
  */
-TEST_P(SigningOperationsTest, RsaUseRequiresCorrectAppIdAppData) {
+TEST_F(SigningOperationsTest, RsaUseRequiresCorrectAppIdAppData) {
     ASSERT_EQ(ErrorCode::OK,
               GenerateKey(AuthorizationSetBuilder()
                                   .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -961,7 +982,7 @@ TEST_P(SigningOperationsTest, RsaUseRequiresCorrectAppIdAppData) {
  *
  * Verifies that RSA-PSS signature operations succeed.
  */
-TEST_P(SigningOperationsTest, RsaPssSha256Success) {
+TEST_F(SigningOperationsTest, RsaPssSha256Success) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(2048, 65537)
                                              .Digest(Digest::SHA_2_256)
@@ -979,7 +1000,7 @@ TEST_P(SigningOperationsTest, RsaPssSha256Success) {
  * Verifies that keymaster rejects signature operations that specify a padding mode when the key
  * supports only unpadded operations.
  */
-TEST_P(SigningOperationsTest, RsaPaddingNoneDoesNotAllowOther) {
+TEST_F(SigningOperationsTest, RsaPaddingNoneDoesNotAllowOther) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(2048, 65537)
                                              .Digest(Digest::NONE)
@@ -1001,7 +1022,7 @@ TEST_P(SigningOperationsTest, RsaPaddingNoneDoesNotAllowOther) {
  * TRUSTED_CONFIRMATION_REQUIRED and no valid confirmation token
  * presented.
  */
-TEST_P(SigningOperationsTest, NoUserConfirmation) {
+TEST_F(SigningOperationsTest, NoUserConfirmation) {
     if (SecLevel() == SecurityLevel::STRONGBOX) return;
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(1024, 65537)
@@ -1023,7 +1044,7 @@ TEST_P(SigningOperationsTest, NoUserConfirmation) {
  *
  * Verifies that digested RSA-PKCS1 signature operations succeed.
  */
-TEST_P(SigningOperationsTest, RsaPkcs1Sha256Success) {
+TEST_F(SigningOperationsTest, RsaPkcs1Sha256Success) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(2048, 65537)
                                              .Digest(Digest::SHA_2_256)
@@ -1040,7 +1061,7 @@ TEST_P(SigningOperationsTest, RsaPkcs1Sha256Success) {
  *
  * Verifies that undigested RSA-PKCS1 signature operations succeed.
  */
-TEST_P(SigningOperationsTest, RsaPkcs1NoDigestSuccess) {
+TEST_F(SigningOperationsTest, RsaPkcs1NoDigestSuccess) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(2048, 65537)
                                              .Digest(Digest::NONE)
@@ -1058,7 +1079,7 @@ TEST_P(SigningOperationsTest, RsaPkcs1NoDigestSuccess) {
  * Verifies that undigested RSA-PKCS1 signature operations fail with the correct error code when
  * given a too-long message.
  */
-TEST_P(SigningOperationsTest, RsaPkcs1NoDigestTooLong) {
+TEST_F(SigningOperationsTest, RsaPkcs1NoDigestTooLong) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(2048, 65537)
                                              .Digest(Digest::NONE)
@@ -1086,7 +1107,7 @@ TEST_P(SigningOperationsTest, RsaPkcs1NoDigestTooLong) {
  * uses SHA512, which has a digest_size == 512, so the message size is 1040 bits, too large for a
  * 1024-bit key.
  */
-TEST_P(SigningOperationsTest, RsaPssSha512TooSmallKey) {
+TEST_F(SigningOperationsTest, RsaPssSha512TooSmallKey) {
     if (SecLevel() == SecurityLevel::STRONGBOX) return;
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(1024, 65537)
@@ -1105,7 +1126,7 @@ TEST_P(SigningOperationsTest, RsaPssSha512TooSmallKey) {
  * Verifies that raw RSA signature operations fail with the correct error code when
  * given a too-long message.
  */
-TEST_P(SigningOperationsTest, RsaNoPaddingTooLong) {
+TEST_F(SigningOperationsTest, RsaNoPaddingTooLong) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(2048, 65537)
                                              .Digest(Digest::NONE)
@@ -1139,7 +1160,7 @@ TEST_P(SigningOperationsTest, RsaNoPaddingTooLong) {
  * Verifies that operations can be aborted correctly.  Uses an RSA signing operation for the test,
  * but the behavior should be algorithm and purpose-independent.
  */
-TEST_P(SigningOperationsTest, RsaAbort) {
+TEST_F(SigningOperationsTest, RsaAbort) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(2048, 65537)
                                              .Digest(Digest::NONE)
@@ -1164,7 +1185,7 @@ TEST_P(SigningOperationsTest, RsaAbort) {
  * Verifies that RSA operations fail with the correct error (but key gen succeeds) when used with a
  * padding mode inappropriate for RSA.
  */
-TEST_P(SigningOperationsTest, RsaUnsupportedPadding) {
+TEST_F(SigningOperationsTest, RsaUnsupportedPadding) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(2048, 65537)
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -1181,7 +1202,7 @@ TEST_P(SigningOperationsTest, RsaUnsupportedPadding) {
  *
  * Verifies that RSA PSS operations fail when no digest is used.  PSS requires a digest.
  */
-TEST_P(SigningOperationsTest, RsaNoDigest) {
+TEST_F(SigningOperationsTest, RsaNoDigest) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(2048, 65537)
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -1201,7 +1222,7 @@ TEST_P(SigningOperationsTest, RsaNoDigest) {
  * Verifies that RSA operations fail when no padding mode is specified.  PaddingMode::NONE is
  * supported in some cases (as validated in other tests), but a mode must be specified.
  */
-TEST_P(SigningOperationsTest, RsaNoPadding) {
+TEST_F(SigningOperationsTest, RsaNoPadding) {
     // Padding must be specified
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaKey(2048, 65537)
@@ -1217,7 +1238,7 @@ TEST_P(SigningOperationsTest, RsaNoPadding) {
  *
  * Verifies that raw RSA signatures succeed with a message shorter than the key size.
  */
-TEST_P(SigningOperationsTest, RsaTooShortMessage) {
+TEST_F(SigningOperationsTest, RsaTooShortMessage) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaSigningKey(2048, 65537)
@@ -1238,7 +1259,7 @@ TEST_P(SigningOperationsTest, RsaTooShortMessage) {
  *
  * Verifies that RSA encryption keys cannot be used to sign.
  */
-TEST_P(SigningOperationsTest, RsaSignWithEncryptionKey) {
+TEST_F(SigningOperationsTest, RsaSignWithEncryptionKey) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaEncryptionKey(2048, 65537)
@@ -1255,7 +1276,7 @@ TEST_P(SigningOperationsTest, RsaSignWithEncryptionKey) {
  * Verifies that attempting a raw signature of a message which is the same length as the key, but
  * numerically larger than the public modulus, fails with the correct error.
  */
-TEST_P(SigningOperationsTest, RsaSignTooLargeMessage) {
+TEST_F(SigningOperationsTest, RsaSignTooLargeMessage) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaSigningKey(2048, 65537)
@@ -1277,7 +1298,7 @@ TEST_P(SigningOperationsTest, RsaSignTooLargeMessage) {
  *
  * Verifies that ECDSA operations succeed with all possible key sizes and hashes.
  */
-TEST_P(SigningOperationsTest, EcdsaAllSizesAndHashes) {
+TEST_F(SigningOperationsTest, EcdsaAllSizesAndHashes) {
     for (auto key_size : ValidKeySizes(Algorithm::EC)) {
         for (auto digest : ValidDigests(false /* withNone */, false /* withMD5 */)) {
             ErrorCode error = GenerateKey(AuthorizationSetBuilder()
@@ -1301,7 +1322,7 @@ TEST_P(SigningOperationsTest, EcdsaAllSizesAndHashes) {
  *
  * Verifies that ECDSA operations succeed with all possible curves.
  */
-TEST_P(SigningOperationsTest, EcdsaAllCurves) {
+TEST_F(SigningOperationsTest, EcdsaAllCurves) {
     for (auto curve : ValidCurves()) {
         ErrorCode error = GenerateKey(AuthorizationSetBuilder()
                                           .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -1323,7 +1344,7 @@ TEST_P(SigningOperationsTest, EcdsaAllCurves) {
  * work because ECDSA actually only signs the leftmost L_n bits of the message, however large it may
  * be.  Not using digesting is a bad idea, but in some cases digesting is done by the framework.
  */
-TEST_P(SigningOperationsTest, EcdsaNoDigestHugeData) {
+TEST_F(SigningOperationsTest, EcdsaNoDigestHugeData) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .EcdsaSigningKey(256)
@@ -1337,7 +1358,7 @@ TEST_P(SigningOperationsTest, EcdsaNoDigestHugeData) {
  *
  * Verifies that getting EC key characteristics requires the correct app ID/data.
  */
-TEST_P(SigningOperationsTest, EcGetKeyCharacteristicsRequiresCorrectAppIdAppData) {
+TEST_F(SigningOperationsTest, EcGetKeyCharacteristicsRequiresCorrectAppIdAppData) {
     HidlBuf key_blob;
     KeyCharacteristics key_characteristics;
     ASSERT_EQ(ErrorCode::OK,
@@ -1357,7 +1378,7 @@ TEST_P(SigningOperationsTest, EcGetKeyCharacteristicsRequiresCorrectAppIdAppData
  *
  * Verifies that using an EC key requires the correct app ID/data.
  */
-TEST_P(SigningOperationsTest, EcUseRequiresCorrectAppIdAppData) {
+TEST_F(SigningOperationsTest, EcUseRequiresCorrectAppIdAppData) {
     ASSERT_EQ(ErrorCode::OK,
               GenerateKey(AuthorizationSetBuilder()
                                   .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -1394,7 +1415,7 @@ TEST_P(SigningOperationsTest, EcUseRequiresCorrectAppIdAppData) {
  *
  * Verifies that attempts to use AES keys to sign fail in the correct way.
  */
-TEST_P(SigningOperationsTest, AesEcbSign) {
+TEST_F(SigningOperationsTest, AesEcbSign) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .SigningKey()
@@ -1413,7 +1434,7 @@ TEST_P(SigningOperationsTest, AesEcbSign) {
  *
  * Verifies that HMAC works with all digests.
  */
-TEST_P(SigningOperationsTest, HmacAllDigests) {
+TEST_F(SigningOperationsTest, HmacAllDigests) {
     for (auto digest : ValidDigests(false /* withNone */, false /* withMD5 */)) {
         ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -1435,7 +1456,7 @@ TEST_P(SigningOperationsTest, HmacAllDigests) {
  * Verifies that HMAC fails in the correct way when asked to generate a MAC larger than the digest
  * size.
  */
-TEST_P(SigningOperationsTest, HmacSha256TooLargeMacLength) {
+TEST_F(SigningOperationsTest, HmacSha256TooLargeMacLength) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .HmacKey(128)
@@ -1456,7 +1477,7 @@ TEST_P(SigningOperationsTest, HmacSha256TooLargeMacLength) {
  * Verifies that HMAC fails in the correct way when asked to generate a MAC smaller than the
  * specified minimum MAC length.
  */
-TEST_P(SigningOperationsTest, HmacSha256TooSmallMacLength) {
+TEST_F(SigningOperationsTest, HmacSha256TooSmallMacLength) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .HmacKey(128)
@@ -1476,7 +1497,7 @@ TEST_P(SigningOperationsTest, HmacSha256TooSmallMacLength) {
  *
  * Validates against the test vectors from RFC 4231 test case 3.
  */
-TEST_P(SigningOperationsTest, HmacRfc4231TestCase3) {
+TEST_F(SigningOperationsTest, HmacRfc4231TestCase3) {
     string key(20, 0xaa);
     string message(50, 0xdd);
     uint8_t sha_224_expected[] = {
@@ -1515,7 +1536,7 @@ TEST_P(SigningOperationsTest, HmacRfc4231TestCase3) {
  *
  * Validates against the test vectors from RFC 4231 test case 5.
  */
-TEST_P(SigningOperationsTest, HmacRfc4231TestCase5) {
+TEST_F(SigningOperationsTest, HmacRfc4231TestCase5) {
     string key(20, 0x0c);
     string message = "Test With Truncation";
 
@@ -1544,7 +1565,88 @@ TEST_P(SigningOperationsTest, HmacRfc4231TestCase5) {
     }
 }
 
-INSTANTIATE_KEYMASTER_HIDL_TEST(SigningOperationsTest);
+/*
+ * SigningOperationsTest.HmacRfc4231TestCase6
+ *
+ * Validates against the test vectors from RFC 4231 test case 6.
+ */
+TEST_F(SigningOperationsTest, HmacRfc4231TestCase6) {
+    string key(131, 0xaa);
+    string message = "Test Using Larger Than Block-Size Key - Hash Key First";
+
+    uint8_t sha_224_expected[] = {
+        0x95, 0xe9, 0xa0, 0xdb, 0x96, 0x20, 0x95, 0xad, 0xae, 0xbe, 0x9b, 0x2d, 0x6f, 0x0d,
+        0xbc, 0xe2, 0xd4, 0x99, 0xf1, 0x12, 0xf2, 0xd2, 0xb7, 0x27, 0x3f, 0xa6, 0x87, 0x0e,
+    };
+    uint8_t sha_256_expected[] = {
+        0x60, 0xe4, 0x31, 0x59, 0x1e, 0xe0, 0xb6, 0x7f, 0x0d, 0x8a, 0x26,
+        0xaa, 0xcb, 0xf5, 0xb7, 0x7f, 0x8e, 0x0b, 0xc6, 0x21, 0x37, 0x28,
+        0xc5, 0x14, 0x05, 0x46, 0x04, 0x0f, 0x0e, 0xe3, 0x7f, 0x54,
+    };
+    uint8_t sha_384_expected[] = {
+        0x4e, 0xce, 0x08, 0x44, 0x85, 0x81, 0x3e, 0x90, 0x88, 0xd2, 0xc6, 0x3a,
+        0x04, 0x1b, 0xc5, 0xb4, 0x4f, 0x9e, 0xf1, 0x01, 0x2a, 0x2b, 0x58, 0x8f,
+        0x3c, 0xd1, 0x1f, 0x05, 0x03, 0x3a, 0xc4, 0xc6, 0x0c, 0x2e, 0xf6, 0xab,
+        0x40, 0x30, 0xfe, 0x82, 0x96, 0x24, 0x8d, 0xf1, 0x63, 0xf4, 0x49, 0x52,
+    };
+    uint8_t sha_512_expected[] = {
+        0x80, 0xb2, 0x42, 0x63, 0xc7, 0xc1, 0xa3, 0xeb, 0xb7, 0x14, 0x93, 0xc1, 0xdd,
+        0x7b, 0xe8, 0xb4, 0x9b, 0x46, 0xd1, 0xf4, 0x1b, 0x4a, 0xee, 0xc1, 0x12, 0x1b,
+        0x01, 0x37, 0x83, 0xf8, 0xf3, 0x52, 0x6b, 0x56, 0xd0, 0x37, 0xe0, 0x5f, 0x25,
+        0x98, 0xbd, 0x0f, 0xd2, 0x21, 0x5d, 0x6a, 0x1e, 0x52, 0x95, 0xe6, 0x4f, 0x73,
+        0xf6, 0x3f, 0x0a, 0xec, 0x8b, 0x91, 0x5a, 0x98, 0x5d, 0x78, 0x65, 0x98,
+    };
+
+    CheckHmacTestVector(key, message, Digest::SHA_2_256, make_string(sha_256_expected));
+    if (SecLevel() != SecurityLevel::STRONGBOX) {
+        CheckHmacTestVector(key, message, Digest::SHA_2_224, make_string(sha_224_expected));
+        CheckHmacTestVector(key, message, Digest::SHA_2_384, make_string(sha_384_expected));
+        CheckHmacTestVector(key, message, Digest::SHA_2_512, make_string(sha_512_expected));
+    }
+}
+
+/*
+ * SigningOperationsTest.HmacRfc4231TestCase7
+ *
+ * Validates against the test vectors from RFC 4231 test case 7.
+ */
+TEST_F(SigningOperationsTest, HmacRfc4231TestCase7) {
+    string key(131, 0xaa);
+    string message =
+        "This is a test using a larger than block-size key and a larger than "
+        "block-size data. The key needs to be hashed before being used by the HMAC "
+        "algorithm.";
+
+    uint8_t sha_224_expected[] = {
+        0x3a, 0x85, 0x41, 0x66, 0xac, 0x5d, 0x9f, 0x02, 0x3f, 0x54, 0xd5, 0x17, 0xd0, 0xb3,
+        0x9d, 0xbd, 0x94, 0x67, 0x70, 0xdb, 0x9c, 0x2b, 0x95, 0xc9, 0xf6, 0xf5, 0x65, 0xd1,
+    };
+    uint8_t sha_256_expected[] = {
+        0x9b, 0x09, 0xff, 0xa7, 0x1b, 0x94, 0x2f, 0xcb, 0x27, 0x63, 0x5f,
+        0xbc, 0xd5, 0xb0, 0xe9, 0x44, 0xbf, 0xdc, 0x63, 0x64, 0x4f, 0x07,
+        0x13, 0x93, 0x8a, 0x7f, 0x51, 0x53, 0x5c, 0x3a, 0x35, 0xe2,
+    };
+    uint8_t sha_384_expected[] = {
+        0x66, 0x17, 0x17, 0x8e, 0x94, 0x1f, 0x02, 0x0d, 0x35, 0x1e, 0x2f, 0x25,
+        0x4e, 0x8f, 0xd3, 0x2c, 0x60, 0x24, 0x20, 0xfe, 0xb0, 0xb8, 0xfb, 0x9a,
+        0xdc, 0xce, 0xbb, 0x82, 0x46, 0x1e, 0x99, 0xc5, 0xa6, 0x78, 0xcc, 0x31,
+        0xe7, 0x99, 0x17, 0x6d, 0x38, 0x60, 0xe6, 0x11, 0x0c, 0x46, 0x52, 0x3e,
+    };
+    uint8_t sha_512_expected[] = {
+        0xe3, 0x7b, 0x6a, 0x77, 0x5d, 0xc8, 0x7d, 0xba, 0xa4, 0xdf, 0xa9, 0xf9, 0x6e,
+        0x5e, 0x3f, 0xfd, 0xde, 0xbd, 0x71, 0xf8, 0x86, 0x72, 0x89, 0x86, 0x5d, 0xf5,
+        0xa3, 0x2d, 0x20, 0xcd, 0xc9, 0x44, 0xb6, 0x02, 0x2c, 0xac, 0x3c, 0x49, 0x82,
+        0xb1, 0x0d, 0x5e, 0xeb, 0x55, 0xc3, 0xe4, 0xde, 0x15, 0x13, 0x46, 0x76, 0xfb,
+        0x6d, 0xe0, 0x44, 0x60, 0x65, 0xc9, 0x74, 0x40, 0xfa, 0x8c, 0x6a, 0x58,
+    };
+
+    CheckHmacTestVector(key, message, Digest::SHA_2_256, make_string(sha_256_expected));
+    if (SecLevel() != SecurityLevel::STRONGBOX) {
+        CheckHmacTestVector(key, message, Digest::SHA_2_224, make_string(sha_224_expected));
+        CheckHmacTestVector(key, message, Digest::SHA_2_384, make_string(sha_384_expected));
+        CheckHmacTestVector(key, message, Digest::SHA_2_512, make_string(sha_512_expected));
+    }
+}
 
 typedef KeymasterHidlTest VerificationOperationsTest;
 
@@ -1553,7 +1655,7 @@ typedef KeymasterHidlTest VerificationOperationsTest;
  *
  * Verifies that a simple RSA signature/verification sequence succeeds.
  */
-TEST_P(VerificationOperationsTest, RsaSuccess) {
+TEST_F(VerificationOperationsTest, RsaSuccess) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaSigningKey(2048, 65537)
@@ -1571,7 +1673,7 @@ TEST_P(VerificationOperationsTest, RsaSuccess) {
  *
  * Verifies RSA signature/verification for all padding modes and digests.
  */
-TEST_P(VerificationOperationsTest, RsaAllPaddingsAndDigests) {
+TEST_F(VerificationOperationsTest, RsaAllPaddingsAndDigests) {
     auto authorizations = AuthorizationSetBuilder()
                               .Authorization(TAG_NO_AUTH_REQUIRED)
                               .RsaSigningKey(2048, 65537)
@@ -1665,7 +1767,7 @@ TEST_P(VerificationOperationsTest, RsaAllPaddingsAndDigests) {
  *
  * Verifies ECDSA signature/verification for all digests and curves.
  */
-TEST_P(VerificationOperationsTest, EcdsaAllDigestsAndCurves) {
+TEST_F(VerificationOperationsTest, EcdsaAllDigestsAndCurves) {
     auto digests = ValidDigests(true /* withNone */, false /* withMD5 */);
 
     string message = "1234567890";
@@ -1745,7 +1847,7 @@ TEST_P(VerificationOperationsTest, EcdsaAllDigestsAndCurves) {
  *
  * Verifies HMAC signing and verification, but that a signing key cannot be used to verify.
  */
-TEST_P(VerificationOperationsTest, HmacSigningKeyCannotVerify) {
+TEST_F(VerificationOperationsTest, HmacSigningKeyCannotVerify) {
     string key_material = "HelloThisIsAKey";
 
     HidlBuf signing_key, verification_key;
@@ -1786,8 +1888,6 @@ TEST_P(VerificationOperationsTest, HmacSigningKeyCannotVerify) {
     CheckedDeleteKey(&verification_key);
 }
 
-INSTANTIATE_KEYMASTER_HIDL_TEST(VerificationOperationsTest);
-
 typedef KeymasterHidlTest ExportKeyTest;
 
 /*
@@ -1795,7 +1895,7 @@ typedef KeymasterHidlTest ExportKeyTest;
  *
  * Verifies that attempting to export RSA keys in PKCS#8 format fails with the correct error.
  */
-TEST_P(ExportKeyTest, RsaUnsupportedKeyFormat) {
+TEST_F(ExportKeyTest, RsaUnsupportedKeyFormat) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .RsaSigningKey(2048, 65537)
                                              .Digest(Digest::NONE)
@@ -1810,7 +1910,7 @@ TEST_P(ExportKeyTest, RsaUnsupportedKeyFormat) {
  * Verifies that attempting to export RSA keys from corrupted key blobs fails.  This is essentially
  * a poor-man's key blob fuzzer.
  */
-TEST_P(ExportKeyTest, RsaCorruptedKeyBlob) {
+TEST_F(ExportKeyTest, RsaCorruptedKeyBlob) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaSigningKey(2048, 65537)
@@ -1833,7 +1933,7 @@ TEST_P(ExportKeyTest, RsaCorruptedKeyBlob) {
  * Verifies that attempting to export ECDSA keys from corrupted key blobs fails.  This is
  * essentially a poor-man's key blob fuzzer.
  */
-TEST_P(ExportKeyTest, EcCorruptedKeyBlob) {
+TEST_F(ExportKeyTest, EcCorruptedKeyBlob) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .EcdsaSigningKey(EcCurve::P_256)
@@ -1854,7 +1954,7 @@ TEST_P(ExportKeyTest, EcCorruptedKeyBlob) {
  *
  * Verifies that attempting to export AES keys fails in the expected way.
  */
-TEST_P(ExportKeyTest, AesKeyUnexportable) {
+TEST_F(ExportKeyTest, AesKeyUnexportable) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -1866,8 +1966,6 @@ TEST_P(ExportKeyTest, AesKeyUnexportable) {
     EXPECT_EQ(ErrorCode::UNSUPPORTED_KEY_FORMAT, ExportKey(KeyFormat::PKCS8, &export_data));
     EXPECT_EQ(ErrorCode::UNSUPPORTED_KEY_FORMAT, ExportKey(KeyFormat::RAW, &export_data));
 }
-
-INSTANTIATE_KEYMASTER_HIDL_TEST(ExportKeyTest);
 
 class ImportKeyTest : public KeymasterHidlTest {
    public:
@@ -1904,7 +2002,7 @@ class ImportKeyTest : public KeymasterHidlTest {
  *
  * Verifies that importing and using an RSA key pair works correctly.
  */
-TEST_P(ImportKeyTest, RsaSuccess) {
+TEST_F(ImportKeyTest, RsaSuccess) {
     ASSERT_EQ(ErrorCode::OK, ImportKey(AuthorizationSetBuilder()
                                            .Authorization(TAG_NO_AUTH_REQUIRED)
                                            .RsaSigningKey(1024, 65537)
@@ -1931,7 +2029,7 @@ TEST_P(ImportKeyTest, RsaSuccess) {
  * Verifies that importing an RSA key pair with a size that doesn't match the key fails in the
  * correct way.
  */
-TEST_P(ImportKeyTest, RsaKeySizeMismatch) {
+TEST_F(ImportKeyTest, RsaKeySizeMismatch) {
     ASSERT_EQ(ErrorCode::IMPORT_PARAMETER_MISMATCH,
               ImportKey(AuthorizationSetBuilder()
                             .RsaSigningKey(2048 /* Doesn't match key */, 65537)
@@ -1946,7 +2044,7 @@ TEST_P(ImportKeyTest, RsaKeySizeMismatch) {
  * Verifies that importing an RSA key pair with a public exponent that doesn't match the key fails
  * in the correct way.
  */
-TEST_P(ImportKeyTest, RsaPublicExponentMismatch) {
+TEST_F(ImportKeyTest, RsaPublicExponentMismatch) {
     ASSERT_EQ(ErrorCode::IMPORT_PARAMETER_MISMATCH,
               ImportKey(AuthorizationSetBuilder()
                             .RsaSigningKey(1024, 3 /* Doesn't match key */)
@@ -1960,7 +2058,7 @@ TEST_P(ImportKeyTest, RsaPublicExponentMismatch) {
  *
  * Verifies that importing and using an ECDSA P-256 key pair works correctly.
  */
-TEST_P(ImportKeyTest, EcdsaSuccess) {
+TEST_F(ImportKeyTest, EcdsaSuccess) {
     ASSERT_EQ(ErrorCode::OK, ImportKey(AuthorizationSetBuilder()
                                            .Authorization(TAG_NO_AUTH_REQUIRED)
                                            .EcdsaSigningKey(256)
@@ -1985,7 +2083,7 @@ TEST_P(ImportKeyTest, EcdsaSuccess) {
  *
  * Verifies that importing and using an ECDSA P-256 key pair encoded using RFC5915 works correctly.
  */
-TEST_P(ImportKeyTest, EcdsaP256RFC5915Success) {
+TEST_F(ImportKeyTest, EcdsaP256RFC5915Success) {
     ASSERT_EQ(ErrorCode::OK, ImportKey(AuthorizationSetBuilder()
                                                .Authorization(TAG_NO_AUTH_REQUIRED)
                                                .EcdsaSigningKey(256)
@@ -2010,7 +2108,7 @@ TEST_P(ImportKeyTest, EcdsaP256RFC5915Success) {
  *
  * Verifies that importing and using an ECDSA P-256 key pair encoded using SEC1 works correctly.
  */
-TEST_P(ImportKeyTest, EcdsaP256SEC1Success) {
+TEST_F(ImportKeyTest, EcdsaP256SEC1Success) {
     ASSERT_EQ(ErrorCode::OK, ImportKey(AuthorizationSetBuilder()
                                                .Authorization(TAG_NO_AUTH_REQUIRED)
                                                .EcdsaSigningKey(256)
@@ -2035,7 +2133,7 @@ TEST_P(ImportKeyTest, EcdsaP256SEC1Success) {
  *
  * Verifies that importing and using an ECDSA P-521 key pair works correctly.
  */
-TEST_P(ImportKeyTest, Ecdsa521Success) {
+TEST_F(ImportKeyTest, Ecdsa521Success) {
     if (SecLevel() == SecurityLevel::STRONGBOX) return;
     ASSERT_EQ(ErrorCode::OK, ImportKey(AuthorizationSetBuilder()
                                            .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -2061,7 +2159,7 @@ TEST_P(ImportKeyTest, Ecdsa521Success) {
  * Verifies that importing an ECDSA key pair with a size that doesn't match the key fails in the
  * correct way.
  */
-TEST_P(ImportKeyTest, EcdsaSizeMismatch) {
+TEST_F(ImportKeyTest, EcdsaSizeMismatch) {
     ASSERT_EQ(ErrorCode::IMPORT_PARAMETER_MISMATCH,
               ImportKey(AuthorizationSetBuilder()
                             .EcdsaSigningKey(224 /* Doesn't match key */)
@@ -2075,7 +2173,7 @@ TEST_P(ImportKeyTest, EcdsaSizeMismatch) {
  * Verifies that importing an ECDSA key pair with a curve that doesn't match the key fails in the
  * correct way.
  */
-TEST_P(ImportKeyTest, EcdsaCurveMismatch) {
+TEST_F(ImportKeyTest, EcdsaCurveMismatch) {
     ASSERT_EQ(ErrorCode::IMPORT_PARAMETER_MISMATCH,
               ImportKey(AuthorizationSetBuilder()
                             .EcdsaSigningKey(EcCurve::P_224 /* Doesn't match key */)
@@ -2088,7 +2186,7 @@ TEST_P(ImportKeyTest, EcdsaCurveMismatch) {
  *
  * Verifies that importing and using an AES key works.
  */
-TEST_P(ImportKeyTest, AesSuccess) {
+TEST_F(ImportKeyTest, AesSuccess) {
     string key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     ASSERT_EQ(ErrorCode::OK, ImportKey(AuthorizationSetBuilder()
                                            .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -2115,7 +2213,7 @@ TEST_P(ImportKeyTest, AesSuccess) {
  *
  * Verifies that importing and using an HMAC key works.
  */
-TEST_P(ImportKeyTest, HmacKeySuccess) {
+TEST_F(ImportKeyTest, HmacKeySuccess) {
     string key = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
     ASSERT_EQ(ErrorCode::OK, ImportKey(AuthorizationSetBuilder()
                                            .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -2133,8 +2231,6 @@ TEST_P(ImportKeyTest, HmacKeySuccess) {
     string signature = MacMessage(message, Digest::SHA_2_256, 256);
     VerifyMessage(message, signature, AuthorizationSetBuilder().Digest(Digest::SHA_2_256));
 }
-
-INSTANTIATE_KEYMASTER_HIDL_TEST(ImportKeyTest);
 
 auto wrapped_key = hex2str(
     "3082017902010004820100934bf94e2aa28a3f83c9f79297250262fbe3276b5a1c91159bbfa3ef8957aac84b59b30b"
@@ -2192,7 +2288,7 @@ string masking_key = hex2str("D796B02C370F1FA4CC0124F14EC8CBEBE987E825246265050F
 
 class ImportWrappedKeyTest : public KeymasterHidlTest {};
 
-TEST_P(ImportWrappedKeyTest, Success) {
+TEST_F(ImportWrappedKeyTest, Success) {
     auto wrapping_key_desc = AuthorizationSetBuilder()
                                  .RsaEncryptionKey(2048, 65537)
                                  .Digest(Digest::SHA_2_256)
@@ -2213,7 +2309,7 @@ TEST_P(ImportWrappedKeyTest, Success) {
     EXPECT_EQ(message, plaintext);
 }
 
-TEST_P(ImportWrappedKeyTest, SuccessMasked) {
+TEST_F(ImportWrappedKeyTest, SuccessMasked) {
     auto wrapping_key_desc = AuthorizationSetBuilder()
                                  .RsaEncryptionKey(2048, 65537)
                                  .Digest(Digest::SHA_2_256)
@@ -2228,7 +2324,7 @@ TEST_P(ImportWrappedKeyTest, SuccessMasked) {
                       .Padding(PaddingMode::RSA_OAEP)));
 }
 
-TEST_P(ImportWrappedKeyTest, WrongMask) {
+TEST_F(ImportWrappedKeyTest, WrongMask) {
     auto wrapping_key_desc = AuthorizationSetBuilder()
                                  .RsaEncryptionKey(2048, 65537)
                                  .Digest(Digest::SHA_2_256)
@@ -2243,7 +2339,7 @@ TEST_P(ImportWrappedKeyTest, WrongMask) {
                       .Padding(PaddingMode::RSA_OAEP)));
 }
 
-TEST_P(ImportWrappedKeyTest, WrongPurpose) {
+TEST_F(ImportWrappedKeyTest, WrongPurpose) {
     auto wrapping_key_desc = AuthorizationSetBuilder()
                                  .RsaEncryptionKey(2048, 65537)
                                  .Digest(Digest::SHA_2_256)
@@ -2257,8 +2353,6 @@ TEST_P(ImportWrappedKeyTest, WrongPurpose) {
                       .Padding(PaddingMode::RSA_OAEP)));
 }
 
-INSTANTIATE_KEYMASTER_HIDL_TEST(ImportWrappedKeyTest);
-
 typedef KeymasterHidlTest EncryptionOperationsTest;
 
 /*
@@ -2266,7 +2360,7 @@ typedef KeymasterHidlTest EncryptionOperationsTest;
  *
  * Verifies that raw RSA encryption works.
  */
-TEST_P(EncryptionOperationsTest, RsaNoPaddingSuccess) {
+TEST_F(EncryptionOperationsTest, RsaNoPaddingSuccess) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaEncryptionKey(2048, 65537)
@@ -2289,7 +2383,7 @@ TEST_P(EncryptionOperationsTest, RsaNoPaddingSuccess) {
  *
  * Verifies that raw RSA encryption of short messages works.
  */
-TEST_P(EncryptionOperationsTest, RsaNoPaddingShortMessage) {
+TEST_F(EncryptionOperationsTest, RsaNoPaddingShortMessage) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaEncryptionKey(2048, 65537)
@@ -2318,7 +2412,7 @@ TEST_P(EncryptionOperationsTest, RsaNoPaddingShortMessage) {
  *
  * Verifies that raw RSA encryption of too-long messages fails in the expected way.
  */
-TEST_P(EncryptionOperationsTest, RsaNoPaddingTooLong) {
+TEST_F(EncryptionOperationsTest, RsaNoPaddingTooLong) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaEncryptionKey(2048, 65537)
@@ -2338,7 +2432,7 @@ TEST_P(EncryptionOperationsTest, RsaNoPaddingTooLong) {
  *
  * Verifies that raw RSA encryption of too-large (numerically) messages fails in the expected way.
  */
-TEST_P(EncryptionOperationsTest, RsaNoPaddingTooLarge) {
+TEST_F(EncryptionOperationsTest, RsaNoPaddingTooLarge) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaEncryptionKey(2048, 65537)
@@ -2380,7 +2474,7 @@ TEST_P(EncryptionOperationsTest, RsaNoPaddingTooLarge) {
  *
  * Verifies that RSA-OAEP encryption operations work, with all digests.
  */
-TEST_P(EncryptionOperationsTest, RsaOaepSuccess) {
+TEST_F(EncryptionOperationsTest, RsaOaepSuccess) {
     auto digests = ValidDigests(false /* withNone */, true /* withMD5 */);
 
     size_t key_size = 2048;  // Need largish key for SHA-512 test.
@@ -2431,7 +2525,7 @@ TEST_P(EncryptionOperationsTest, RsaOaepSuccess) {
  * Verifies that RSA-OAEP encryption operations fail in the correct way when asked to operate
  * without a digest.
  */
-TEST_P(EncryptionOperationsTest, RsaOaepInvalidDigest) {
+TEST_F(EncryptionOperationsTest, RsaOaepInvalidDigest) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaEncryptionKey(2048, 65537)
@@ -2449,7 +2543,7 @@ TEST_P(EncryptionOperationsTest, RsaOaepInvalidDigest) {
  * Verifies that RSA-OAEP encryption operations fail in the correct way when asked to decrypt with a
  * different digest than was used to encrypt.
  */
-TEST_P(EncryptionOperationsTest, RsaOaepDecryptWithWrongDigest) {
+TEST_F(EncryptionOperationsTest, RsaOaepDecryptWithWrongDigest) {
     if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
@@ -2477,7 +2571,7 @@ TEST_P(EncryptionOperationsTest, RsaOaepDecryptWithWrongDigest) {
  * Verifies that RSA-OAEP encryption operations fail in the correct way when asked to encrypt a
  * too-large message.
  */
-TEST_P(EncryptionOperationsTest, RsaOaepTooLarge) {
+TEST_F(EncryptionOperationsTest, RsaOaepTooLarge) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaEncryptionKey(2048, 65537)
@@ -2500,7 +2594,7 @@ TEST_P(EncryptionOperationsTest, RsaOaepTooLarge) {
  *
  * Verifies that RSA PKCS encryption/decrypts works.
  */
-TEST_P(EncryptionOperationsTest, RsaPkcs1Success) {
+TEST_F(EncryptionOperationsTest, RsaPkcs1Success) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaEncryptionKey(2048, 65537)
@@ -2539,7 +2633,7 @@ TEST_P(EncryptionOperationsTest, RsaPkcs1Success) {
  *
  * Verifies that RSA PKCS encryption fails in the correct way when the mssage is too large.
  */
-TEST_P(EncryptionOperationsTest, RsaPkcs1TooLarge) {
+TEST_F(EncryptionOperationsTest, RsaPkcs1TooLarge) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaEncryptionKey(2048, 65537)
@@ -2559,7 +2653,7 @@ TEST_P(EncryptionOperationsTest, RsaPkcs1TooLarge) {
  *
  * Verifies that attempting to use ECDSA keys to encrypt fails in the correct way.
  */
-TEST_P(EncryptionOperationsTest, EcdsaEncrypt) {
+TEST_F(EncryptionOperationsTest, EcdsaEncrypt) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .EcdsaSigningKey(256)
@@ -2574,7 +2668,7 @@ TEST_P(EncryptionOperationsTest, EcdsaEncrypt) {
  *
  * Verifies that attempting to use HMAC keys to encrypt fails in the correct way.
  */
-TEST_P(EncryptionOperationsTest, HmacEncrypt) {
+TEST_F(EncryptionOperationsTest, HmacEncrypt) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .HmacKey(128)
@@ -2594,7 +2688,7 @@ TEST_P(EncryptionOperationsTest, HmacEncrypt) {
  *
  * Verifies that AES ECB mode works.
  */
-TEST_P(EncryptionOperationsTest, AesEcbRoundTripSuccess) {
+TEST_F(EncryptionOperationsTest, AesEcbRoundTripSuccess) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -2623,7 +2717,7 @@ TEST_P(EncryptionOperationsTest, AesEcbRoundTripSuccess) {
  *
  * Verifies that AES encryption fails in the correct way when an unauthorized mode is specified.
  */
-TEST_P(EncryptionOperationsTest, AesWrongMode) {
+TEST_F(EncryptionOperationsTest, AesWrongMode) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -2638,50 +2732,12 @@ TEST_P(EncryptionOperationsTest, AesWrongMode) {
 }
 
 /*
- * EncryptionOperationsTest.AesWrongPurpose
- *
- * Verifies that AES encryption fails in the correct way when an unauthorized purpose is specified.
- */
-TEST_P(EncryptionOperationsTest, AesWrongPurpose) {
-    auto err = GenerateKey(AuthorizationSetBuilder()
-                                   .Authorization(TAG_NO_AUTH_REQUIRED)
-                                   .AesKey(128)
-                                   .Authorization(TAG_PURPOSE, KeyPurpose::ENCRYPT)
-                                   .Authorization(TAG_BLOCK_MODE, BlockMode::GCM)
-                                   .Authorization(TAG_MIN_MAC_LENGTH, 128)
-                                   .Padding(PaddingMode::NONE));
-    ASSERT_EQ(ErrorCode::OK, err) << "Got " << err;
-
-    err = Begin(KeyPurpose::DECRYPT, AuthorizationSetBuilder()
-                                             .BlockMode(BlockMode::GCM)
-                                             .Padding(PaddingMode::NONE)
-                                             .Authorization(TAG_MAC_LENGTH, 128));
-    EXPECT_EQ(ErrorCode::INCOMPATIBLE_PURPOSE, err) << "Got " << err;
-
-    CheckedDeleteKey();
-
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                 .AesKey(128)
-                                                 .Authorization(TAG_PURPOSE, KeyPurpose::DECRYPT)
-                                                 .Authorization(TAG_BLOCK_MODE, BlockMode::GCM)
-                                                 .Authorization(TAG_MIN_MAC_LENGTH, 128)
-                                                 .Padding(PaddingMode::NONE)));
-
-    err = Begin(KeyPurpose::ENCRYPT, AuthorizationSetBuilder()
-                                             .BlockMode(BlockMode::GCM)
-                                             .Padding(PaddingMode::NONE)
-                                             .Authorization(TAG_MAC_LENGTH, 128));
-    EXPECT_EQ(ErrorCode::INCOMPATIBLE_PURPOSE, err) << "Got " << err;
-}
-
-/*
  * EncryptionOperationsTest.AesEcbNoPaddingWrongInputSize
  *
  * Verifies that AES encryption fails in the correct way when provided an input that is not a
  * multiple of the block size and no padding is specified.
  */
-TEST_P(EncryptionOperationsTest, AesEcbNoPaddingWrongInputSize) {
+TEST_F(EncryptionOperationsTest, AesEcbNoPaddingWrongInputSize) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -2702,7 +2758,7 @@ TEST_P(EncryptionOperationsTest, AesEcbNoPaddingWrongInputSize) {
  *
  * Verifies that AES PKCS7 padding works for any message length.
  */
-TEST_P(EncryptionOperationsTest, AesEcbPkcs7Padding) {
+TEST_F(EncryptionOperationsTest, AesEcbPkcs7Padding) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -2727,7 +2783,7 @@ TEST_P(EncryptionOperationsTest, AesEcbPkcs7Padding) {
  * Verifies that AES enryption fails in the correct way when an unauthorized padding mode is
  * specified.
  */
-TEST_P(EncryptionOperationsTest, AesEcbWrongPadding) {
+TEST_F(EncryptionOperationsTest, AesEcbWrongPadding) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -2748,7 +2804,7 @@ TEST_P(EncryptionOperationsTest, AesEcbWrongPadding) {
  *
  * Verifies that AES decryption fails in the correct way when the padding is corrupted.
  */
-TEST_P(EncryptionOperationsTest, AesEcbPkcs7PaddingCorrupted) {
+TEST_F(EncryptionOperationsTest, AesEcbPkcs7PaddingCorrupted) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -2779,7 +2835,7 @@ HidlBuf CopyIv(const AuthorizationSet& set) {
  *
  * Verifies that AES CTR mode works.
  */
-TEST_P(EncryptionOperationsTest, AesCtrRoundTripSuccess) {
+TEST_F(EncryptionOperationsTest, AesCtrRoundTripSuccess) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -2826,7 +2882,7 @@ TEST_P(EncryptionOperationsTest, AesCtrRoundTripSuccess) {
  *
  * Verifies that AES works, all modes, when provided data in various size increments.
  */
-TEST_P(EncryptionOperationsTest, AesIncremental) {
+TEST_F(EncryptionOperationsTest, AesIncremental) {
     auto block_modes = {
         BlockMode::ECB, BlockMode::CBC, BlockMode::CTR, BlockMode::GCM,
     };
@@ -2965,7 +3021,7 @@ static const AesCtrSp80038aTestVector kAesCtrSp80038aTestVectors[] = {
  *
  * Verifies AES CTR implementation against SP800-38A test vectors.
  */
-TEST_P(EncryptionOperationsTest, AesCtrSp80038aTestVector) {
+TEST_F(EncryptionOperationsTest, AesCtrSp80038aTestVector) {
     std::vector<uint32_t> InvalidSizes = InvalidKeySizes(Algorithm::AES);
     for (size_t i = 0; i < 3; i++) {
         const AesCtrSp80038aTestVector& test(kAesCtrSp80038aTestVectors[i]);
@@ -2985,7 +3041,7 @@ TEST_P(EncryptionOperationsTest, AesCtrSp80038aTestVector) {
  *
  * Verifies that keymaster rejects use of CTR mode with PKCS7 padding in the correct way.
  */
-TEST_P(EncryptionOperationsTest, AesCtrIncompatiblePaddingMode) {
+TEST_F(EncryptionOperationsTest, AesCtrIncompatiblePaddingMode) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -3000,7 +3056,7 @@ TEST_P(EncryptionOperationsTest, AesCtrIncompatiblePaddingMode) {
  *
  * Verifies that keymaster fails correctly when the user supplies an incorrect-size nonce.
  */
-TEST_P(EncryptionOperationsTest, AesCtrInvalidCallerNonce) {
+TEST_F(EncryptionOperationsTest, AesCtrInvalidCallerNonce) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -3032,7 +3088,7 @@ TEST_P(EncryptionOperationsTest, AesCtrInvalidCallerNonce) {
  *
  * Verifies that keymaster fails correctly when the user supplies an incorrect-size nonce.
  */
-TEST_P(EncryptionOperationsTest, AesCbcRoundTripSuccess) {
+TEST_F(EncryptionOperationsTest, AesCbcRoundTripSuccess) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -3065,7 +3121,7 @@ TEST_P(EncryptionOperationsTest, AesCbcRoundTripSuccess) {
  *
  * Verifies that AES caller-provided nonces work correctly.
  */
-TEST_P(EncryptionOperationsTest, AesCallerNonce) {
+TEST_F(EncryptionOperationsTest, AesCallerNonce) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -3114,7 +3170,7 @@ TEST_P(EncryptionOperationsTest, AesCallerNonce) {
  * Verifies that caller-provided nonces are not permitted when not specified in the key
  * authorizations.
  */
-TEST_P(EncryptionOperationsTest, AesCallerNonceProhibited) {
+TEST_F(EncryptionOperationsTest, AesCallerNonceProhibited) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -3149,7 +3205,7 @@ TEST_P(EncryptionOperationsTest, AesCallerNonceProhibited) {
  *
  * Verifies that AES GCM mode works.
  */
-TEST_P(EncryptionOperationsTest, AesGcmRoundTripSuccess) {
+TEST_F(EncryptionOperationsTest, AesGcmRoundTripSuccess) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -3192,92 +3248,6 @@ TEST_P(EncryptionOperationsTest, AesGcmRoundTripSuccess) {
     EXPECT_EQ(ErrorCode::OK, Finish("", &plaintext));
     EXPECT_EQ(message.length(), plaintext.length());
     EXPECT_EQ(message, plaintext);
-}
-
-/*
- * EncryptionOperationsTest.AesGcmRoundTripWithDelaySuccess
- *
- * Verifies that AES GCM mode works, even when there's a long delay
- * between operations.
- */
-TEST_P(EncryptionOperationsTest, AesGcmRoundTripWithDelaySuccess) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                             .Authorization(TAG_NO_AUTH_REQUIRED)
-                                             .AesEncryptionKey(128)
-                                             .Authorization(TAG_BLOCK_MODE, BlockMode::GCM)
-                                             .Padding(PaddingMode::NONE)
-                                             .Authorization(TAG_MIN_MAC_LENGTH, 128)));
-
-    string aad = "foobar";
-    string message = "123456789012345678901234567890123456";
-
-    auto begin_params = AuthorizationSetBuilder()
-                            .BlockMode(BlockMode::GCM)
-                            .Padding(PaddingMode::NONE)
-                            .Authorization(TAG_MAC_LENGTH, 128);
-
-    auto update_params =
-        AuthorizationSetBuilder().Authorization(TAG_ASSOCIATED_DATA, aad.data(), aad.size());
-
-    // Encrypt
-    AuthorizationSet begin_out_params;
-    ASSERT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, begin_params, &begin_out_params))
-        << "Begin encrypt";
-    string ciphertext;
-    AuthorizationSet update_out_params;
-    sleep(5);
-    ASSERT_EQ(ErrorCode::OK,
-              Finish(op_handle_, update_params, message, "", &update_out_params, &ciphertext));
-
-    ASSERT_EQ(ciphertext.length(), message.length() + 16);
-
-    // Grab nonce
-    begin_params.push_back(begin_out_params);
-
-    // Decrypt.
-    ASSERT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params)) << "Begin decrypt";
-    string plaintext;
-    size_t input_consumed;
-    sleep(5);
-    ASSERT_EQ(ErrorCode::OK, Update(op_handle_, update_params, ciphertext, &update_out_params,
-                                    &plaintext, &input_consumed));
-    EXPECT_EQ(ciphertext.size(), input_consumed);
-    sleep(5);
-    EXPECT_EQ(ErrorCode::OK, Finish("", &plaintext));
-    EXPECT_EQ(message.length(), plaintext.length());
-    EXPECT_EQ(message, plaintext);
-}
-
-/*
- * EncryptionOperationsTest.AesGcmDifferentNonces
- *
- * Verifies that encrypting the same data with different nonces produces different outputs.
- */
-TEST_P(EncryptionOperationsTest, AesGcmDifferentNonces) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                 .AesEncryptionKey(128)
-                                                 .Authorization(TAG_BLOCK_MODE, BlockMode::GCM)
-                                                 .Padding(PaddingMode::NONE)
-                                                 .Authorization(TAG_MIN_MAC_LENGTH, 128)
-                                                 .Authorization(TAG_CALLER_NONCE)));
-
-    string aad = "foobar";
-    string message = "123456789012345678901234567890123456";
-    string nonce1 = "000000000000";
-    string nonce2 = "111111111111";
-    string nonce3 = "222222222222";
-
-    string ciphertext1 =
-            EncryptMessage(message, BlockMode::GCM, PaddingMode::NONE, 128, HidlBuf(nonce1));
-    string ciphertext2 =
-            EncryptMessage(message, BlockMode::GCM, PaddingMode::NONE, 128, HidlBuf(nonce2));
-    string ciphertext3 =
-            EncryptMessage(message, BlockMode::GCM, PaddingMode::NONE, 128, HidlBuf(nonce3));
-
-    ASSERT_NE(ciphertext1, ciphertext2);
-    ASSERT_NE(ciphertext1, ciphertext3);
-    ASSERT_NE(ciphertext2, ciphertext3);
 }
 
 /*
@@ -3285,7 +3255,7 @@ TEST_P(EncryptionOperationsTest, AesGcmDifferentNonces) {
  *
  * Verifies that AES GCM mode fails correctly when a too-short tag length is specified.
  */
-TEST_P(EncryptionOperationsTest, AesGcmTooShortTag) {
+TEST_F(EncryptionOperationsTest, AesGcmTooShortTag) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -3306,7 +3276,7 @@ TEST_P(EncryptionOperationsTest, AesGcmTooShortTag) {
  *
  * Verifies that AES GCM mode fails correctly when a too-short tag is provided to decryption.
  */
-TEST_P(EncryptionOperationsTest, AesGcmTooShortTagOnDecrypt) {
+TEST_F(EncryptionOperationsTest, AesGcmTooShortTagOnDecrypt) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -3349,7 +3319,7 @@ TEST_P(EncryptionOperationsTest, AesGcmTooShortTagOnDecrypt) {
  *
  * Verifies that AES GCM mode fails correctly when the decryption key is incorrect.
  */
-TEST_P(EncryptionOperationsTest, AesGcmCorruptKey) {
+TEST_F(EncryptionOperationsTest, AesGcmCorruptKey) {
     const uint8_t nonce_bytes[] = {
         0xb7, 0x94, 0x37, 0xae, 0x08, 0xff, 0x35, 0x5d, 0x7d, 0x8a, 0x4d, 0x0f,
     };
@@ -3401,7 +3371,7 @@ TEST_P(EncryptionOperationsTest, AesGcmCorruptKey) {
  * Verifies that AES GCM mode works when provided additional authenticated data, but no data to
  * encrypt.
  */
-TEST_P(EncryptionOperationsTest, AesGcmAadNoData) {
+TEST_F(EncryptionOperationsTest, AesGcmAadNoData) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -3446,7 +3416,7 @@ TEST_P(EncryptionOperationsTest, AesGcmAadNoData) {
  *
  * Verifies that AES GCM mode works when provided additional authenticated data in multiple chunks.
  */
-TEST_P(EncryptionOperationsTest, AesGcmMultiPartAad) {
+TEST_F(EncryptionOperationsTest, AesGcmMultiPartAad) {
     const size_t tag_bits = 128;
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -3507,7 +3477,7 @@ TEST_P(EncryptionOperationsTest, AesGcmMultiPartAad) {
  *
  * Verifies that AES GCM mode fails correctly when given AAD after data to encipher.
  */
-TEST_P(EncryptionOperationsTest, AesGcmAadOutOfOrder) {
+TEST_F(EncryptionOperationsTest, AesGcmAadOutOfOrder) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -3555,7 +3525,7 @@ TEST_P(EncryptionOperationsTest, AesGcmAadOutOfOrder) {
  *
  * Verifies that AES GCM decryption fails correctly when additional authenticated date is wrong.
  */
-TEST_P(EncryptionOperationsTest, AesGcmBadAad) {
+TEST_F(EncryptionOperationsTest, AesGcmBadAad) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -3599,7 +3569,7 @@ TEST_P(EncryptionOperationsTest, AesGcmBadAad) {
  *
  * Verifies that AES GCM decryption fails correctly when the nonce is incorrect.
  */
-TEST_P(EncryptionOperationsTest, AesGcmWrongNonce) {
+TEST_F(EncryptionOperationsTest, AesGcmWrongNonce) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -3643,7 +3613,7 @@ TEST_P(EncryptionOperationsTest, AesGcmWrongNonce) {
  *
  * Verifies that AES GCM decryption fails correctly when the tag is wrong.
  */
-TEST_P(EncryptionOperationsTest, AesGcmCorruptTag) {
+TEST_F(EncryptionOperationsTest, AesGcmCorruptTag) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -3691,7 +3661,7 @@ TEST_P(EncryptionOperationsTest, AesGcmCorruptTag) {
  *
  * Verifies that 3DES is basically functional.
  */
-TEST_P(EncryptionOperationsTest, TripleDesEcbRoundTripSuccess) {
+TEST_F(EncryptionOperationsTest, TripleDesEcbRoundTripSuccess) {
     auto auths = AuthorizationSetBuilder()
                      .TripleDesEncryptionKey(168)
                      .BlockMode(BlockMode::ECB)
@@ -3720,7 +3690,7 @@ TEST_P(EncryptionOperationsTest, TripleDesEcbRoundTripSuccess) {
  *
  * Verifies that CBC keys reject ECB usage.
  */
-TEST_P(EncryptionOperationsTest, TripleDesEcbNotAuthorized) {
+TEST_F(EncryptionOperationsTest, TripleDesEcbNotAuthorized) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .TripleDesEncryptionKey(168)
                                              .BlockMode(BlockMode::CBC)
@@ -3736,7 +3706,7 @@ TEST_P(EncryptionOperationsTest, TripleDesEcbNotAuthorized) {
  *
  * Tests ECB mode with PKCS#7 padding, various message sizes.
  */
-TEST_P(EncryptionOperationsTest, TripleDesEcbPkcs7Padding) {
+TEST_F(EncryptionOperationsTest, TripleDesEcbPkcs7Padding) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .TripleDesEncryptionKey(168)
                                              .BlockMode(BlockMode::ECB)
@@ -3759,7 +3729,7 @@ TEST_P(EncryptionOperationsTest, TripleDesEcbPkcs7Padding) {
  *
  * Verifies that keys configured for no padding reject PKCS7 padding
  */
-TEST_P(EncryptionOperationsTest, TripleDesEcbNoPaddingKeyWithPkcs7Padding) {
+TEST_F(EncryptionOperationsTest, TripleDesEcbNoPaddingKeyWithPkcs7Padding) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .TripleDesEncryptionKey(168)
                                              .BlockMode(BlockMode::ECB)
@@ -3777,7 +3747,7 @@ TEST_P(EncryptionOperationsTest, TripleDesEcbNoPaddingKeyWithPkcs7Padding) {
  *
  * Verifies that corrupted padding is detected.
  */
-TEST_P(EncryptionOperationsTest, TripleDesEcbPkcs7PaddingCorrupted) {
+TEST_F(EncryptionOperationsTest, TripleDesEcbPkcs7PaddingCorrupted) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .TripleDesEncryptionKey(168)
                                              .BlockMode(BlockMode::ECB)
@@ -3893,7 +3863,7 @@ static const TripleDesTestVector kTripleDesTestVectors[] = {
  *
  * Verifies that NIST (plus a few extra) test vectors produce the correct results.
  */
-TEST_P(EncryptionOperationsTest, TripleDesTestVector) {
+TEST_F(EncryptionOperationsTest, TripleDesTestVector) {
     constexpr size_t num_tests = sizeof(kTripleDesTestVectors) / sizeof(TripleDesTestVector);
     for (auto* test = kTripleDesTestVectors; test < kTripleDesTestVectors + num_tests; ++test) {
         SCOPED_TRACE(test->name);
@@ -3908,7 +3878,7 @@ TEST_P(EncryptionOperationsTest, TripleDesTestVector) {
  *
  * Validates CBC mode functionality.
  */
-TEST_P(EncryptionOperationsTest, TripleDesCbcRoundTripSuccess) {
+TEST_F(EncryptionOperationsTest, TripleDesCbcRoundTripSuccess) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .TripleDesEncryptionKey(168)
                                              .BlockMode(BlockMode::CBC)
@@ -3937,7 +3907,7 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcRoundTripSuccess) {
  *
  * Validates that 3DES keys can allow caller-specified IVs, and use them correctly.
  */
-TEST_P(EncryptionOperationsTest, TripleDesCallerIv) {
+TEST_F(EncryptionOperationsTest, TripleDesCallerIv) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .TripleDesEncryptionKey(168)
                                              .BlockMode(BlockMode::CBC)
@@ -3972,7 +3942,7 @@ TEST_P(EncryptionOperationsTest, TripleDesCallerIv) {
  *
  * Verifies that 3DES keys without TAG_CALLER_NONCE do not allow caller-specified IVS.
  */
-TEST_P(EncryptionOperationsTest, TripleDesCallerNonceProhibited) {
+TEST_F(EncryptionOperationsTest, TripleDesCallerNonceProhibited) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .TripleDesEncryptionKey(168)
                                              .BlockMode(BlockMode::CBC)
@@ -4004,7 +3974,7 @@ TEST_P(EncryptionOperationsTest, TripleDesCallerNonceProhibited) {
  *
  * Verifies that 3DES ECB-only keys do not allow CBC usage.
  */
-TEST_P(EncryptionOperationsTest, TripleDesCbcNotAuthorized) {
+TEST_F(EncryptionOperationsTest, TripleDesCbcNotAuthorized) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .TripleDesEncryptionKey(168)
                                              .BlockMode(BlockMode::ECB)
@@ -4022,7 +3992,7 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcNotAuthorized) {
  *
  * Verifies that unpadded CBC operations reject inputs that are not a multiple of block size.
  */
-TEST_P(EncryptionOperationsTest, TripleDesCbcNoPaddingWrongInputSize) {
+TEST_F(EncryptionOperationsTest, TripleDesCbcNoPaddingWrongInputSize) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .TripleDesEncryptionKey(168)
                                              .BlockMode(BlockMode::CBC)
@@ -4044,7 +4014,7 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcNoPaddingWrongInputSize) {
  *
  * Verifies that PKCS7 padding works correctly in CBC mode.
  */
-TEST_P(EncryptionOperationsTest, TripleDesCbcPkcs7Padding) {
+TEST_F(EncryptionOperationsTest, TripleDesCbcPkcs7Padding) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .TripleDesEncryptionKey(168)
                                              .BlockMode(BlockMode::CBC)
@@ -4067,7 +4037,7 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcPkcs7Padding) {
  *
  * Verifies that a key that requires PKCS7 padding cannot be used in unpadded mode.
  */
-TEST_P(EncryptionOperationsTest, TripleDesCbcNoPaddingKeyWithPkcs7Padding) {
+TEST_F(EncryptionOperationsTest, TripleDesCbcNoPaddingKeyWithPkcs7Padding) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .TripleDesEncryptionKey(168)
                                              .BlockMode(BlockMode::CBC)
@@ -4087,7 +4057,7 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcNoPaddingKeyWithPkcs7Padding) {
  *
  * Verifies that corrupted PKCS7 padding is rejected during decryption.
  */
-TEST_P(EncryptionOperationsTest, TripleDesCbcPkcs7PaddingCorrupted) {
+TEST_F(EncryptionOperationsTest, TripleDesCbcPkcs7PaddingCorrupted) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .TripleDesEncryptionKey(168)
                                              .BlockMode(BlockMode::CBC)
@@ -4118,7 +4088,7 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcPkcs7PaddingCorrupted) {
  *
  * Verifies that 3DES CBC works with many different input sizes.
  */
-TEST_P(EncryptionOperationsTest, TripleDesCbcIncrementalNoPadding) {
+TEST_F(EncryptionOperationsTest, TripleDesCbcIncrementalNoPadding) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .TripleDesEncryptionKey(168)
                                              .BlockMode(BlockMode::CBC)
@@ -4156,8 +4126,6 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcIncrementalNoPadding) {
     EXPECT_EQ(message, plaintext);
 }
 
-INSTANTIATE_KEYMASTER_HIDL_TEST(EncryptionOperationsTest);
-
 typedef KeymasterHidlTest MaxOperationsTest;
 
 /*
@@ -4165,7 +4133,7 @@ typedef KeymasterHidlTest MaxOperationsTest;
  *
  * Verifies that the max uses per boot tag works correctly with AES keys.
  */
-TEST_P(MaxOperationsTest, TestLimitAes) {
+TEST_F(MaxOperationsTest, TestLimitAes) {
     if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
@@ -4192,7 +4160,7 @@ TEST_P(MaxOperationsTest, TestLimitAes) {
  *
  * Verifies that the max uses per boot tag works correctly with RSA keys.
  */
-TEST_P(MaxOperationsTest, TestLimitRsa) {
+TEST_F(MaxOperationsTest, TestLimitRsa) {
     if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
@@ -4213,8 +4181,6 @@ TEST_P(MaxOperationsTest, TestLimitRsa) {
     EXPECT_EQ(ErrorCode::KEY_MAX_OPS_EXCEEDED, Begin(KeyPurpose::SIGN, params));
 }
 
-INSTANTIATE_KEYMASTER_HIDL_TEST(MaxOperationsTest);
-
 typedef KeymasterHidlTest AddEntropyTest;
 
 /*
@@ -4223,7 +4189,7 @@ typedef KeymasterHidlTest AddEntropyTest;
  * Verifies that the addRngEntropy method doesn't blow up.  There's no way to test that entropy is
  * actually added.
  */
-TEST_P(AddEntropyTest, AddEntropy) {
+TEST_F(AddEntropyTest, AddEntropy) {
     EXPECT_EQ(ErrorCode::OK, keymaster().addRngEntropy(HidlBuf("foo")));
 }
 
@@ -4232,7 +4198,7 @@ TEST_P(AddEntropyTest, AddEntropy) {
  *
  * Verifies that the addRngEntropy method doesn't blow up when given an empty buffer.
  */
-TEST_P(AddEntropyTest, AddEmptyEntropy) {
+TEST_F(AddEntropyTest, AddEmptyEntropy) {
     EXPECT_EQ(ErrorCode::OK, keymaster().addRngEntropy(HidlBuf()));
 }
 
@@ -4241,11 +4207,9 @@ TEST_P(AddEntropyTest, AddEmptyEntropy) {
  *
  * Verifies that the addRngEntropy method doesn't blow up when given a largish amount of data.
  */
-TEST_P(AddEntropyTest, AddLargeEntropy) {
+TEST_F(AddEntropyTest, AddLargeEntropy) {
     EXPECT_EQ(ErrorCode::OK, keymaster().addRngEntropy(HidlBuf(string(2 * 1024, 'a'))));
 }
-
-INSTANTIATE_KEYMASTER_HIDL_TEST(AddEntropyTest);
 
 typedef KeymasterHidlTest AttestationTest;
 
@@ -4254,7 +4218,8 @@ typedef KeymasterHidlTest AttestationTest;
  *
  * Verifies that attesting to RSA keys works and generates the expected output.
  */
-TEST_P(AttestationTest, RsaAttestation) {
+TEST_F(AttestationTest, RsaAttestation) {
+    auto creation_time = std::chrono::system_clock::now();
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaSigningKey(2048, 65537)
@@ -4279,7 +4244,7 @@ TEST_P(AttestationTest, RsaAttestation) {
     EXPECT_TRUE(verify_attestation_record("challenge", "foo",                     //
                                           key_characteristics_.softwareEnforced,  //
                                           key_characteristics_.hardwareEnforced,  //
-                                          SecLevel(), cert_chain[0]));
+                                          SecLevel(), cert_chain[0], creation_time));
 }
 
 /*
@@ -4287,7 +4252,7 @@ TEST_P(AttestationTest, RsaAttestation) {
  *
  * Verifies that attesting to RSA requires app ID.
  */
-TEST_P(AttestationTest, RsaAttestationRequiresAppId) {
+TEST_F(AttestationTest, RsaAttestationRequiresAppId) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .RsaSigningKey(2048, 65537)
@@ -4307,7 +4272,8 @@ TEST_P(AttestationTest, RsaAttestationRequiresAppId) {
  *
  * Verifies that attesting to EC keys works and generates the expected output.
  */
-TEST_P(AttestationTest, EcAttestation) {
+TEST_F(AttestationTest, EcAttestation) {
+    auto creation_time = std::chrono::system_clock::now();
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .EcdsaSigningKey(EcCurve::P_256)
@@ -4329,7 +4295,7 @@ TEST_P(AttestationTest, EcAttestation) {
     EXPECT_TRUE(verify_attestation_record("challenge", "foo",                     //
                                           key_characteristics_.softwareEnforced,  //
                                           key_characteristics_.hardwareEnforced,  //
-                                          SecLevel(), cert_chain[0]));
+                                          SecLevel(), cert_chain[0], creation_time));
 }
 
 /*
@@ -4337,7 +4303,7 @@ TEST_P(AttestationTest, EcAttestation) {
  *
  * Verifies that attesting to EC keys requires app ID
  */
-TEST_P(AttestationTest, EcAttestationRequiresAttestationAppId) {
+TEST_F(AttestationTest, EcAttestationRequiresAttestationAppId) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .EcdsaSigningKey(EcCurve::P_256)
@@ -4352,43 +4318,11 @@ TEST_P(AttestationTest, EcAttestationRequiresAttestationAppId) {
 }
 
 /*
- * AttestationTest.AttestationApplicationIDLengthProperlyEncoded
- *
- * Verifies that the Attestation Application ID software enforced tag has a proper length encoding.
- * Some implementations break strict encoding rules by encoding a length between 127 and 256 in one
- * byte. Proper DER encoding specifies that for lengths greather than 127, one byte should be used
- * to specify how many following bytes will be used to encode the length.
- */
-TEST_P(AttestationTest, AttestationApplicationIDLengthProperlyEncoded) {
-    std::vector<uint32_t> app_id_lengths{143, 258};
-    for (uint32_t length : app_id_lengths) {
-        ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                     .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                     .EcdsaSigningKey(EcCurve::P_256)
-                                                     .Digest(Digest::SHA_2_256)));
-
-        hidl_vec<hidl_vec<uint8_t>> cert_chain;
-        const string app_id(length, 'a');
-        ASSERT_EQ(ErrorCode::OK,
-                  AttestKey(AuthorizationSetBuilder()
-                                    .Authorization(TAG_ATTESTATION_CHALLENGE, HidlBuf("challenge"))
-                                    .Authorization(TAG_ATTESTATION_APPLICATION_ID, HidlBuf(app_id)),
-                            &cert_chain));
-        EXPECT_GE(cert_chain.size(), 2U);
-
-        EXPECT_TRUE(verify_attestation_record("challenge", app_id,                    //
-                                              key_characteristics_.softwareEnforced,  //
-                                              key_characteristics_.hardwareEnforced,  //
-                                              SecLevel(), cert_chain[0]));
-        CheckedDeleteKey();
-    }
-}
-/*
  * AttestationTest.AesAttestation
  *
  * Verifies that attesting to AES keys fails in the expected way.
  */
-TEST_P(AttestationTest, AesAttestation) {
+TEST_F(AttestationTest, AesAttestation) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .AesEncryptionKey(128)
@@ -4408,7 +4342,7 @@ TEST_P(AttestationTest, AesAttestation) {
  *
  * Verifies that attesting to HMAC keys fails in the expected way.
  */
-TEST_P(AttestationTest, HmacAttestation) {
+TEST_F(AttestationTest, HmacAttestation) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .Authorization(TAG_NO_AUTH_REQUIRED)
                                              .HmacKey(128)
@@ -4424,8 +4358,6 @@ TEST_P(AttestationTest, HmacAttestation) {
                         &cert_chain));
 }
 
-INSTANTIATE_KEYMASTER_HIDL_TEST(AttestationTest);
-
 typedef KeymasterHidlTest KeyDeletionTest;
 
 /**
@@ -4433,61 +4365,75 @@ typedef KeymasterHidlTest KeyDeletionTest;
  *
  * This test checks that if rollback protection is implemented, DeleteKey invalidates a formerly
  * valid key blob.
+ *
+ * TODO(swillden):  Update to incorporate changes in rollback resistance semantics.
  */
-TEST_P(KeyDeletionTest, DeleteKey) {
-    auto error = GenerateKey(AuthorizationSetBuilder()
-                                     .RsaSigningKey(2048, 65537)
-                                     .Digest(Digest::NONE)
-                                     .Padding(PaddingMode::NONE)
-                                     .Authorization(TAG_NO_AUTH_REQUIRED)
-                                     .Authorization(TAG_ROLLBACK_RESISTANCE));
-    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
+TEST_F(KeyDeletionTest, DeleteKey) {
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                             .RsaSigningKey(2048, 65537)
+                                             .Digest(Digest::NONE)
+                                             .Padding(PaddingMode::NONE)
+                                             .Authorization(TAG_NO_AUTH_REQUIRED)));
 
     // Delete must work if rollback protection is implemented
-    if (error == ErrorCode::OK) {
-        AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
-        ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
+    AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
+    bool rollback_protected = hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE);
 
+    if (rollback_protected) {
         ASSERT_EQ(ErrorCode::OK, DeleteKey(true /* keep key blob */));
+    } else {
+        auto delete_result = DeleteKey(true /* keep key blob */);
+        ASSERT_TRUE(delete_result == ErrorCode::OK | delete_result == ErrorCode::UNIMPLEMENTED);
+    }
 
-        string message = "12345678901234567890123456789012";
-        AuthorizationSet begin_out_params;
+    string message = "12345678901234567890123456789012";
+    AuthorizationSet begin_out_params;
+
+    if (rollback_protected) {
         EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
                   Begin(KeyPurpose::SIGN, key_blob_,
                         AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
                         &begin_out_params, &op_handle_));
-        AbortIfNeeded();
-        key_blob_ = HidlBuf();
+    } else {
+        EXPECT_EQ(ErrorCode::OK,
+                  Begin(KeyPurpose::SIGN, key_blob_,
+                        AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
+                        &begin_out_params, &op_handle_));
     }
+    AbortIfNeeded();
+    key_blob_ = HidlBuf();
 }
 
 /**
  * KeyDeletionTest.DeleteInvalidKey
  *
- * This test checks that the HAL excepts invalid key blobs..
+ * This test checks that the HAL excepts invalid key blobs.
+ *
+ * TODO(swillden):  Update to incorporate changes in rollback resistance semantics.
  */
-TEST_P(KeyDeletionTest, DeleteInvalidKey) {
+TEST_F(KeyDeletionTest, DeleteInvalidKey) {
     // Generate key just to check if rollback protection is implemented
-    auto error = GenerateKey(AuthorizationSetBuilder()
-                                     .RsaSigningKey(2048, 65537)
-                                     .Digest(Digest::NONE)
-                                     .Padding(PaddingMode::NONE)
-                                     .Authorization(TAG_NO_AUTH_REQUIRED)
-                                     .Authorization(TAG_ROLLBACK_RESISTANCE));
-    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                             .RsaSigningKey(2048, 65537)
+                                             .Digest(Digest::NONE)
+                                             .Padding(PaddingMode::NONE)
+                                             .Authorization(TAG_NO_AUTH_REQUIRED)));
 
     // Delete must work if rollback protection is implemented
-    if (error == ErrorCode::OK) {
-        AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
-        ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
+    AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
+    bool rollback_protected = hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE);
 
-        // Delete the key we don't care about the result at this point.
-        DeleteKey();
+    // Delete the key we don't care about the result at this point.
+    DeleteKey();
 
-        // Now create an invalid key blob and delete it.
-        key_blob_ = HidlBuf("just some garbage data which is not a valid key blob");
+    // Now create an invalid key blob and delete it.
+    key_blob_ = HidlBuf("just some garbage data which is not a valid key blob");
 
+    if (rollback_protected) {
         ASSERT_EQ(ErrorCode::OK, DeleteKey());
+    } else {
+        auto delete_result = DeleteKey();
+        ASSERT_TRUE(delete_result == ErrorCode::OK | delete_result == ErrorCode::UNIMPLEMENTED);
     }
 }
 
@@ -4501,37 +4447,40 @@ TEST_P(KeyDeletionTest, DeleteInvalidKey) {
  * device has been wiped manually (e.g., fastboot flashall -w), and new FBE/FDE keys have
  * been provisioned. Use this test only on dedicated testing devices that have no valuable
  * credentials stored in Keystore/Keymaster.
+ *
+ * TODO(swillden):  Update to incorporate changes in rollback resistance semantics.
  */
-TEST_P(KeyDeletionTest, DeleteAllKeys) {
+TEST_F(KeyDeletionTest, DeleteAllKeys) {
     if (!arm_deleteAllKeys) return;
-    auto error = GenerateKey(AuthorizationSetBuilder()
-                                     .RsaSigningKey(2048, 65537)
-                                     .Digest(Digest::NONE)
-                                     .Padding(PaddingMode::NONE)
-                                     .Authorization(TAG_NO_AUTH_REQUIRED)
-                                     .Authorization(TAG_ROLLBACK_RESISTANCE));
-    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                             .RsaSigningKey(2048, 65537)
+                                             .Digest(Digest::NONE)
+                                             .Padding(PaddingMode::NONE)
+                                             .Authorization(TAG_NO_AUTH_REQUIRED)));
 
     // Delete must work if rollback protection is implemented
-    if (error == ErrorCode::OK) {
-        AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
-        ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
+    AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
+    bool rollback_protected = hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE);
 
-        ASSERT_EQ(ErrorCode::OK, DeleteAllKeys());
+    ASSERT_EQ(ErrorCode::OK, DeleteAllKeys());
 
-        string message = "12345678901234567890123456789012";
-        AuthorizationSet begin_out_params;
+    string message = "12345678901234567890123456789012";
+    AuthorizationSet begin_out_params;
 
+    if (rollback_protected) {
         EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
                   Begin(KeyPurpose::SIGN, key_blob_,
                         AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
                         &begin_out_params, &op_handle_));
-        AbortIfNeeded();
-        key_blob_ = HidlBuf();
+    } else {
+        EXPECT_EQ(ErrorCode::OK,
+                  Begin(KeyPurpose::SIGN, key_blob_,
+                        AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
+                        &begin_out_params, &op_handle_));
     }
+    AbortIfNeeded();
+    key_blob_ = HidlBuf();
 }
-
-INSTANTIATE_KEYMASTER_HIDL_TEST(KeyDeletionTest);
 
 using UpgradeKeyTest = KeymasterHidlTest;
 
@@ -4540,7 +4489,7 @@ using UpgradeKeyTest = KeymasterHidlTest;
  *
  * Verifies that calling upgrade key on an up-to-date key works (i.e. does nothing).
  */
-TEST_P(UpgradeKeyTest, UpgradeKey) {
+TEST_F(UpgradeKeyTest, UpgradeKey) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                              .AesEncryptionKey(128)
                                              .Padding(PaddingMode::NONE)
@@ -4552,96 +4501,18 @@ TEST_P(UpgradeKeyTest, UpgradeKey) {
     EXPECT_EQ(result, std::make_pair(ErrorCode::OK, HidlBuf()));
 }
 
-INSTANTIATE_KEYMASTER_HIDL_TEST(UpgradeKeyTest);
-
-using ClearOperationsTest = KeymasterHidlTest;
-
-/*
- * ClearSlotsTest.TooManyOperations
- *
- * Verifies that TOO_MANY_OPERATIONS is returned after the max number of
- * operations are started without being finished or aborted. Also verifies
- * that aborting the operations clears the operations.
- *
- */
-TEST_P(ClearOperationsTest, DISABLED_TooManyOperations) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                             .Authorization(TAG_NO_AUTH_REQUIRED)
-                                             .RsaEncryptionKey(2048, 65537)
-                                             .Padding(PaddingMode::NONE)));
-
-    auto params = AuthorizationSetBuilder().Padding(PaddingMode::NONE);
-    int max_operations = SecLevel() == SecurityLevel::STRONGBOX ? 4 : 16;
-    OperationHandle op_handles[max_operations];
-    AuthorizationSet out_params;
-    for(int i=0; i<max_operations; i++) {
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &(op_handles[i])));
-    }
-    EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
-         Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &op_handle_));
-    // Try again just in case there's a weird overflow bug
-    EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
-         Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &op_handle_));
-    for(int i=0; i<max_operations; i++) {
-        EXPECT_EQ(ErrorCode::OK, Abort(op_handles[i]));
-    }
-    EXPECT_EQ(ErrorCode::OK,
-         Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &op_handle_));
-    AbortIfNeeded();
-}
-
-INSTANTIATE_KEYMASTER_HIDL_TEST(ClearOperationsTest);
-
-typedef KeymasterHidlTest TransportLimitTest;
-
-/*
- * TransportLimitTest.FinishInput
- *
- * Verifies that passing input data to finish succeeds as expected.
- */
-TEST_P(TransportLimitTest, LargeFinishInput) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                 .AesEncryptionKey(128)
-                                                 .BlockMode(BlockMode::ECB)
-                                                 .Padding(PaddingMode::NONE)));
-
-    for (int msg_size = 8 /* 256 bytes */; msg_size <= 11 /* 2 KiB */; msg_size++) {
-        auto cipher_params =
-                AuthorizationSetBuilder().BlockMode(BlockMode::ECB).Padding(PaddingMode::NONE);
-
-        AuthorizationSet out_params;
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, cipher_params, &out_params));
-
-        string plain_message = std::string(1 << msg_size, 'x');
-        string encrypted_message;
-        auto rc = Finish(plain_message, &encrypted_message);
-
-        EXPECT_EQ(ErrorCode::OK, rc);
-        EXPECT_EQ(plain_message.size(), encrypted_message.size())
-                << "Encrypt finish returned OK, but did not consume all of the given input";
-        cipher_params.push_back(out_params);
-
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, cipher_params));
-
-        string decrypted_message;
-        rc = Finish(encrypted_message, &decrypted_message);
-        EXPECT_EQ(ErrorCode::OK, rc);
-        EXPECT_EQ(plain_message.size(), decrypted_message.size())
-                << "Decrypt finish returned OK, did not consume all of the given input";
-    }
-}
-
-INSTANTIATE_KEYMASTER_HIDL_TEST(TransportLimitTest);
-
 }  // namespace test
 }  // namespace V4_0
 }  // namespace keymaster
 }  // namespace hardware
 }  // namespace android
 
+using android::hardware::keymaster::V4_0::test::KeymasterHidlEnvironment;
+
 int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(KeymasterHidlEnvironment::Instance());
     ::testing::InitGoogleTest(&argc, argv);
+    KeymasterHidlEnvironment::Instance()->init(&argc, argv);
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
             if (std::string(argv[i]) == "--arm_deleteAllKeys") {

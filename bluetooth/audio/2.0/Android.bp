@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.bluetooth.audio@2.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IBluetoothAudioPort.hal",
@@ -16,3 +19,4 @@ hidl_interface {
     ],
     gen_java: false,
 }
+
