@@ -18,15 +18,17 @@
 #define GNSS_HAL_TEST_H_
 
 #include <android/hardware/gnss/2.0/IGnss.h>
-#include "GnssCallbackEventQueue.h"
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 
-#include <gtest/gtest.h>
+#include <condition_variable>
+#include <deque>
+#include <mutex>
 
 using android::hardware::hidl_vec;
 using android::hardware::Return;
 using android::hardware::Void;
 
-using android::hardware::gnss::common::GnssCallbackEventQueue;
 using android::hardware::gnss::measurement_corrections::V1_0::IMeasurementCorrectionsCallback;
 using android::hardware::gnss::V1_0::GnssLocationFlags;
 using android::hardware::gnss::V2_0::IGnss;
@@ -45,12 +47,63 @@ using android::sp;
 
 #define TIMEOUT_SEC 2  // for basic commands/responses
 
+// Test environment for GNSS HIDL HAL.
+class GnssHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static GnssHidlEnvironment* Instance() {
+        static GnssHidlEnvironment* instance = new GnssHidlEnvironment;
+        return instance;
+    }
+
+    virtual void registerTestServices() override { registerTestService<IGnss>(); }
+
+   private:
+    GnssHidlEnvironment() {}
+};
+
 // The main test class for GNSS HAL.
-class GnssHalTest : public testing::TestWithParam<std::string> {
-  public:
+class GnssHalTest : public ::testing::VtsHalHidlTargetTestBase {
+   public:
     virtual void SetUp() override;
 
     virtual void TearDown() override;
+
+    /* Producer/consumer queue for storing/retrieving callback events from GNSS HAL */
+    template <class T>
+    class CallbackQueue {
+      public:
+        CallbackQueue(const std::string& name) : name_(name), called_count_(0){};
+        ~CallbackQueue() { reset(); }
+
+        /* Adds callback event to the end of the queue. */
+        void store(const T& event);
+
+        /*
+         * Removes the callack event at the front of the queue, stores it in event parameter
+         * and returns true. Returns false on timeout and event is not populated.
+         */
+        bool retrieve(T& event, int timeout_seconds);
+
+        /* Returns the number of events pending to be retrieved from the callback event queue. */
+        int size() const;
+
+        /* Returns the number of callback events received since last reset(). */
+        int calledCount() const;
+
+        /* Clears the callback event queue and resets the calledCount() to 0. */
+        void reset();
+
+      private:
+        CallbackQueue(const CallbackQueue&) = delete;
+        CallbackQueue& operator=(const CallbackQueue&) = delete;
+
+        std::string name_;
+        int called_count_;
+        mutable std::recursive_mutex mtx_;
+        std::condition_variable_any cv_;
+        std::deque<T> events_;
+    };
 
     /* Callback class for data & Event. */
     class GnssCallback : public IGnssCallback_2_0 {
@@ -60,11 +113,11 @@ class GnssHalTest : public testing::TestWithParam<std::string> {
         uint32_t last_capabilities_;
         GnssLocation_2_0 last_location_;
 
-        GnssCallbackEventQueue<IGnssCallback_1_0::GnssSystemInfo> info_cbq_;
-        GnssCallbackEventQueue<android::hardware::hidl_string> name_cbq_;
-        GnssCallbackEventQueue<uint32_t> capabilities_cbq_;
-        GnssCallbackEventQueue<GnssLocation_2_0> location_cbq_;
-        GnssCallbackEventQueue<hidl_vec<IGnssCallback_2_0::GnssSvInfo>> sv_info_list_cbq_;
+        CallbackQueue<IGnssCallback_1_0::GnssSystemInfo> info_cbq_;
+        CallbackQueue<android::hardware::hidl_string> name_cbq_;
+        CallbackQueue<uint32_t> capabilities_cbq_;
+        CallbackQueue<GnssLocation_2_0> location_cbq_;
+        CallbackQueue<hidl_vec<IGnssCallback_2_0::GnssSvInfo>> sv_info_cbq_;
 
         GnssCallback();
         virtual ~GnssCallback() = default;
@@ -107,7 +160,7 @@ class GnssHalTest : public testing::TestWithParam<std::string> {
     /* Callback class for GnssMeasurement. */
     class GnssMeasurementCallback : public IGnssMeasurementCallback_2_0 {
       public:
-        GnssCallbackEventQueue<IGnssMeasurementCallback_2_0::GnssData> measurement_cbq_;
+        CallbackQueue<IGnssMeasurementCallback_2_0::GnssData> measurement_cbq_;
 
         GnssMeasurementCallback() : measurement_cbq_("measurement"){};
         virtual ~GnssMeasurementCallback() = default;
@@ -130,7 +183,7 @@ class GnssHalTest : public testing::TestWithParam<std::string> {
     class GnssMeasurementCorrectionsCallback : public IMeasurementCorrectionsCallback {
       public:
         uint32_t last_capabilities_;
-        GnssCallbackEventQueue<uint32_t> capabilities_cbq_;
+        CallbackQueue<uint32_t> capabilities_cbq_;
 
         GnssMeasurementCorrectionsCallback() : capabilities_cbq_("capabilities"){};
         virtual ~GnssMeasurementCorrectionsCallback() = default;
@@ -189,5 +242,49 @@ class GnssHalTest : public testing::TestWithParam<std::string> {
     sp<IGnss> gnss_hal_;         // GNSS HAL to call into
     sp<GnssCallback> gnss_cb_;   // Primary callback interface
 };
+
+template <class T>
+void GnssHalTest::CallbackQueue<T>::store(const T& event) {
+    std::unique_lock<std::recursive_mutex> lock(mtx_);
+    events_.push_back(event);
+    ++called_count_;
+    lock.unlock();
+    cv_.notify_all();
+}
+
+template <class T>
+bool GnssHalTest::CallbackQueue<T>::retrieve(T& event, int timeout_seconds) {
+    std::unique_lock<std::recursive_mutex> lock(mtx_);
+    cv_.wait_for(lock, std::chrono::seconds(timeout_seconds), [&] { return !events_.empty(); });
+    if (events_.empty()) {
+        return false;
+    }
+    event = events_.front();
+    events_.pop_front();
+    return true;
+}
+
+template <class T>
+int GnssHalTest::CallbackQueue<T>::size() const {
+    std::unique_lock<std::recursive_mutex> lock(mtx_);
+    return events_.size();
+}
+
+template <class T>
+int GnssHalTest::CallbackQueue<T>::calledCount() const {
+    std::unique_lock<std::recursive_mutex> lock(mtx_);
+    return called_count_;
+}
+
+template <class T>
+void GnssHalTest::CallbackQueue<T>::reset() {
+    std::unique_lock<std::recursive_mutex> lock(mtx_);
+    if (!events_.empty()) {
+        ALOGW("%u unprocessed events discarded in callback queue %s", (unsigned int)events_.size(),
+              name_.c_str());
+    }
+    events_.clear();
+    called_count_ = 0;
+}
 
 #endif  // GNSS_HAL_TEST_H_
