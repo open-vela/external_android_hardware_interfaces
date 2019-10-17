@@ -25,13 +25,6 @@ import @1.2::SymmPerChannelQuantParams;
 
 import android.hidl.safe_union@1.0::Monostate;
 
-/**
- * NOTE: Since NNAPI 1.2, OEM operation and data type are deprecated. Extensions
- * are the preferred alternative.
- *
- * NOTE: Adding a new fundamental type requires updating the value of
- * OperandTypeRange::FUNDAMENTAL_MAX.
- */
 enum OperandType : @1.2::OperandType {
     /**
      * A tensor of 8 bit signed integers that represent real numbers.
@@ -43,10 +36,29 @@ enum OperandType : @1.2::OperandType {
      *
      * The formula is:
      * real_value = (integer_value - zeroPoint) * scale.
-     *
-     * Available since API level 30.
      */
     TENSOR_QUANT8_ASYMM_SIGNED = 14,
+
+    /*
+     * DEPRECATED. Since HAL version 1.2, extensions are the preferred
+     * alternative to OEM operation and data types.
+     *
+     * OEM specific scalar value.
+     * OEM                 = 10000,
+     */
+    /*
+     * DEPRECATED. Since HAL version 1.2, extensions are the preferred
+     * alternative to OEM operation and data types.
+     *
+     * A tensor of OEM specific values.
+     * TENSOR_OEM_BYTE     = 10001,
+     */
+    /* ADDING A NEW FUNDAMENTAL TYPE REQUIRES UPDATING THE VALUE OF
+     * OperandTypeRange::FUNDAMENTAL_MAX.
+     */
+    /* ADDING A NEW OEM TYPE REQUIRES UPDATING THE VALUE OF
+     * OperandTypeRange::OEM_MAX.
+     */
 };
 
 /**
