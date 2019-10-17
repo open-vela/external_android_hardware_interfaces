@@ -18,7 +18,7 @@
 #define ATRACE_TAG ATRACE_TAG_CAMERA
 //#define LOG_NDEBUG 0
 
-#include <android/log.h>
+#include <cutils/log.h>
 
 #include <inttypes.h>
 #include <math.h>
