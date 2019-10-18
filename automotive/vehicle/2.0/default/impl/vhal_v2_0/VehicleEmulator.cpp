@@ -120,10 +120,7 @@ void VehicleEmulator::doGetProperty(VehicleEmulator::EmulatorMessage const& rxMs
     }
 
     {
-        VehiclePropValue request = {
-                .areaId = areaId,
-                .prop = propId,
-        };
+        VehiclePropValue request = { .prop = propId, .areaId = areaId };
         StatusCode halStatus;
         auto val = mHal->get(request, &halStatus);
         if (val != nullptr) {
@@ -153,10 +150,10 @@ void VehicleEmulator::doSetProperty(VehicleEmulator::EmulatorMessage const& rxMs
                                     VehicleEmulator::EmulatorMessage& respMsg) {
     emulator::VehiclePropValue protoVal = rxMsg.value(0);
     VehiclePropValue val = {
-            .timestamp = elapsedRealtimeNano(),
-            .areaId = protoVal.area_id(),
-            .prop = protoVal.prop(),
-            .status = (VehiclePropertyStatus)protoVal.status(),
+        .prop = protoVal.prop(),
+        .areaId = protoVal.area_id(),
+        .status = (VehiclePropertyStatus)protoVal.status(),
+        .timestamp = elapsedRealtimeNano(),
     };
 
     respMsg.set_msg_type(emulator::SET_PROPERTY_RESP);
