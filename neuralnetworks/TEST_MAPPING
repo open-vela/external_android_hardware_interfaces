@@ -1,35 +1,26 @@
 {
   "presubmit": [
     {
-      "name": "VtsHalNeuralnetworksV1_0TargetTest",
+      "name": "PresubmitHalNeuralnetworksV1_0TargetTest",
       "options": [
         {
-          // Just use sample-all driver for presubmit tests for faster results.
-          // The other sample drivers (fast-float, quant, etc.) are subsets of
-          // sample-all.
-          "native-test-flag": "--gtest_filter=*sample_all*"
+          "native-test-flag": "--hal_service_instance=android.hardware.neuralnetworks@1.0::IDevice/sample-all"
         }
       ]
     },
     {
-      "name": "VtsHalNeuralnetworksV1_1TargetTest",
+      "name": "PresubmitHalNeuralnetworksV1_1TargetTest",
       "options": [
         {
-          // Just use sample-all driver for presubmit tests for faster results.
-          // The other sample drivers (fast-float, quant, etc.) are subsets of
-          // sample-all.
-          "native-test-flag": "--gtest_filter=*sample_all*"
+          "native-test-flag": "--hal_service_instance=android.hardware.neuralnetworks@1.1::IDevice/sample-all"
         }
       ]
     },
     {
-      "name": "VtsHalNeuralnetworksV1_2TargetTest",
+      "name": "PresubmitHalNeuralnetworksV1_2TargetTest",
       "options": [
         {
-          // Just use sample-all driver for presubmit tests for faster results.
-          // The other sample drivers (fast-float, quant, etc.) are subsets of
-          // sample-all.
-          "native-test-flag": "--gtest_filter=*sample_all*"
+          "native-test-flag": "--hal_service_instance=android.hardware.neuralnetworks@1.2::IDevice/sample-all"
         }
       ]
     }
