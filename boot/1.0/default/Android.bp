@@ -3,12 +3,12 @@ cc_library_shared {
     defaults: ["hidl_defaults"],
     relative_install_path: "hw",
     vendor: true,
+    recovery_available: true,
     srcs: ["BootControl.cpp"],
 
     shared_libs: [
         "liblog",
         "libhidlbase",
-        "libhidltransport",
         "libhardware",
         "libutils",
         "android.hardware.boot@1.0",
@@ -28,7 +28,6 @@ cc_binary {
         "liblog",
         "libhardware",
         "libhidlbase",
-        "libhidltransport",
         "libutils",
         "android.hardware.boot@1.0",
     ],
