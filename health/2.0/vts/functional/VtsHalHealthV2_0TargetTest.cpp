@@ -240,7 +240,7 @@ bool verifyStorageInfo(const hidl_vec<struct StorageInfo>& info) {
 
 template <typename T>
 bool verifyEnum(T value) {
-    for (auto it : hidl_enum_iterator<T>()) {
+    for (auto it : hidl_enum_range<T>()) {
         if (it == value) {
             return true;
         }
@@ -257,52 +257,111 @@ bool verifyHealthInfo(const HealthInfo& health_info) {
     using V1_0::BatteryStatus;
     using V1_0::BatteryHealth;
 
-    if (!((health_info.legacy.batteryChargeCounter > 0) &&
-          (health_info.legacy.batteryCurrent != INT32_MIN) &&
+    if (!((health_info.legacy.batteryCurrent != INT32_MIN) &&
           (0 <= health_info.legacy.batteryLevel && health_info.legacy.batteryLevel <= 100) &&
           verifyEnum<BatteryHealth>(health_info.legacy.batteryHealth) &&
-          (health_info.legacy.batteryStatus != BatteryStatus::UNKNOWN) &&
           verifyEnum<BatteryStatus>(health_info.legacy.batteryStatus))) {
         return false;
+    }
+
+    if (health_info.legacy.batteryPresent) {
+        // If a battery is present, the battery status must be known.
+        if (!((health_info.legacy.batteryChargeCounter > 0) &&
+              (health_info.legacy.batteryStatus != BatteryStatus::UNKNOWN))) {
+            return false;
+        }
     }
 
     return true;
 }
 
 /*
- * Tests the values returned by getChargeCounter(),
- * getCurrentNow(), getCurrentAverage(), getCapacity(), getEnergyCounter(),
- * getChargeStatus(), getStorageInfo(), getDiskStats() and getHealthInfo() from
- * interface IHealth.
+ * Tests the values returned by getChargeCounter() from interface IHealth.
  */
-TEST_F(HealthHidlTest, Properties) {
+TEST_F(HealthHidlTest, getChargeCounter) {
     SKIP_IF_SKIPPED();
     EXPECT_OK(mHealth->getChargeCounter([](auto result, auto value) {
         EXPECT_VALID_OR_UNSUPPORTED_PROP(result, std::to_string(value), value > 0);
     }));
+}
+
+/*
+ * Tests the values returned by getCurrentNow() from interface IHealth.
+ */
+TEST_F(HealthHidlTest, getCurrentNow) {
+    SKIP_IF_SKIPPED();
     EXPECT_OK(mHealth->getCurrentNow([](auto result, auto value) {
         EXPECT_VALID_OR_UNSUPPORTED_PROP(result, std::to_string(value), value != INT32_MIN);
     }));
+}
+
+/*
+ * Tests the values returned by getCurrentAverage() from interface IHealth.
+ */
+TEST_F(HealthHidlTest, getCurrentAverage) {
+    SKIP_IF_SKIPPED();
     EXPECT_OK(mHealth->getCurrentAverage([](auto result, auto value) {
         EXPECT_VALID_OR_UNSUPPORTED_PROP(result, std::to_string(value), value != INT32_MIN);
     }));
+}
+
+/*
+ * Tests the values returned by getCapacity() from interface IHealth.
+ */
+TEST_F(HealthHidlTest, getCapacity) {
+    SKIP_IF_SKIPPED();
     EXPECT_OK(mHealth->getCapacity([](auto result, auto value) {
         EXPECT_VALID_OR_UNSUPPORTED_PROP(result, std::to_string(value), 0 <= value && value <= 100);
     }));
+}
+
+/*
+ * Tests the values returned by getEnergyCounter() from interface IHealth.
+ */
+TEST_F(HealthHidlTest, getEnergyCounter) {
+    SKIP_IF_SKIPPED();
     EXPECT_OK(mHealth->getEnergyCounter([](auto result, auto value) {
         EXPECT_VALID_OR_UNSUPPORTED_PROP(result, std::to_string(value), value != INT64_MIN);
     }));
+}
+
+/*
+ * Tests the values returned by getChargeStatus() from interface IHealth.
+ */
+TEST_F(HealthHidlTest, getChargeStatus) {
+    SKIP_IF_SKIPPED();
     EXPECT_OK(mHealth->getChargeStatus([](auto result, auto value) {
         EXPECT_VALID_OR_UNSUPPORTED_PROP(
             result, toString(value),
             value != BatteryStatus::UNKNOWN && verifyEnum<BatteryStatus>(value));
     }));
+}
+
+/*
+ * Tests the values returned by getStorageInfo() from interface IHealth.
+ */
+TEST_F(HealthHidlTest, getStorageInfo) {
+    SKIP_IF_SKIPPED();
     EXPECT_OK(mHealth->getStorageInfo([](auto result, auto& value) {
         EXPECT_VALID_OR_UNSUPPORTED_PROP(result, toString(value), verifyStorageInfo(value));
     }));
+}
+
+/*
+ * Tests the values returned by getDiskStats() from interface IHealth.
+ */
+TEST_F(HealthHidlTest, getDiskStats) {
+    SKIP_IF_SKIPPED();
     EXPECT_OK(mHealth->getDiskStats([](auto result, auto& value) {
         EXPECT_VALID_OR_UNSUPPORTED_PROP(result, toString(value), true);
     }));
+}
+
+/*
+ * Tests the values returned by getHealthInfo() from interface IHealth.
+ */
+TEST_F(HealthHidlTest, getHealthInfo) {
+    SKIP_IF_SKIPPED();
     EXPECT_OK(mHealth->getHealthInfo([](auto result, auto& value) {
         EXPECT_VALID_OR_UNSUPPORTED_PROP(result, toString(value), verifyHealthInfo(value));
     }));

@@ -1,0 +1,37 @@
+{
+  "presubmit": [
+    {
+      "name": "VtsHalNeuralnetworksV1_0TargetTest",
+      "options": [
+        {
+          // Just use sample-all driver for presubmit tests for faster results.
+          // The other sample drivers (fast-float, quant, etc.) are subsets of
+          // sample-all.
+          "native-test-flag": "--gtest_filter=*sample_all*"
+        }
+      ]
+    },
+    {
+      "name": "VtsHalNeuralnetworksV1_1TargetTest",
+      "options": [
+        {
+          // Just use sample-all driver for presubmit tests for faster results.
+          // The other sample drivers (fast-float, quant, etc.) are subsets of
+          // sample-all.
+          "native-test-flag": "--gtest_filter=*sample_all*"
+        }
+      ]
+    },
+    {
+      "name": "VtsHalNeuralnetworksV1_2TargetTest",
+      "options": [
+        {
+          // Just use sample-all driver for presubmit tests for faster results.
+          // The other sample drivers (fast-float, quant, etc.) are subsets of
+          // sample-all.
+          "native-test-flag": "--gtest_filter=*sample_all*"
+        }
+      ]
+    }
+  ]
+}
