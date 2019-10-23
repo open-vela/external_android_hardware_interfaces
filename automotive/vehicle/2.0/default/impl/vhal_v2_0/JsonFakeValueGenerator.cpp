@@ -101,11 +101,9 @@ std::vector<VehiclePropValue> JsonFakeValueGenerator::parseFakeValueJson(std::is
                   rawEvent.toStyledString().c_str());
             continue;
         }
-        VehiclePropValue event = {
-                .timestamp = rawEvent["timestamp"].asInt64(),
-                .areaId = rawEvent["areaId"].asInt(),
-                .prop = rawEvent["prop"].asInt(),
-        };
+        VehiclePropValue event = {.prop = rawEvent["prop"].asInt(),
+                                  .areaId = rawEvent["areaId"].asInt(),
+                                  .timestamp = rawEvent["timestamp"].asInt64()};
 
         Json::Value rawEventValue = rawEvent["value"];
         auto& value = event.value;

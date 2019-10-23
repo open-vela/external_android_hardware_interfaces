@@ -18,27 +18,30 @@
 
 #include "VtsHalNeuralnetworks.h"
 
-namespace android::hardware::neuralnetworks::V1_2::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_2 {
+namespace vts {
+namespace functional {
 
-using V1_0::DeviceStatus;
-using V1_0::ErrorStatus;
 using V1_0::PerformanceInfo;
 
 // create device test
-TEST_P(NeuralnetworksHidlTest, CreateDevice) {}
+TEST_F(NeuralnetworksHidlTest, CreateDevice) {}
 
 // status test
-TEST_P(NeuralnetworksHidlTest, StatusTest) {
-    Return<DeviceStatus> status = kDevice->getStatus();
+TEST_F(NeuralnetworksHidlTest, StatusTest) {
+    Return<DeviceStatus> status = device->getStatus();
     ASSERT_TRUE(status.isOk());
     EXPECT_EQ(DeviceStatus::AVAILABLE, static_cast<DeviceStatus>(status));
 }
 
 // initialization
-TEST_P(NeuralnetworksHidlTest, GetCapabilitiesTest) {
+TEST_F(NeuralnetworksHidlTest, GetCapabilitiesTest) {
     using OperandPerformance = Capabilities::OperandPerformance;
-    Return<void> ret = kDevice->getCapabilities_1_2([](ErrorStatus status,
-                                                       const Capabilities& capabilities) {
+    Return<void> ret = device->getCapabilities_1_2([](ErrorStatus status,
+                                                      const Capabilities& capabilities) {
         EXPECT_EQ(ErrorStatus::NONE, status);
 
         auto isPositive = [](const PerformanceInfo& perf) {
@@ -60,18 +63,17 @@ TEST_P(NeuralnetworksHidlTest, GetCapabilitiesTest) {
 }
 
 // device version test
-TEST_P(NeuralnetworksHidlTest, GetDeviceVersionStringTest) {
-    Return<void> ret =
-            kDevice->getVersionString([](ErrorStatus status, const hidl_string& version) {
-                EXPECT_EQ(ErrorStatus::NONE, status);
-                EXPECT_LT(0, version.size());
-            });
+TEST_F(NeuralnetworksHidlTest, GetDeviceVersionStringTest) {
+    Return<void> ret = device->getVersionString([](ErrorStatus status, const hidl_string& version) {
+        EXPECT_EQ(ErrorStatus::NONE, status);
+        EXPECT_LT(0, version.size());
+    });
     EXPECT_TRUE(ret.isOk());
 }
 
 // device type test
-TEST_P(NeuralnetworksHidlTest, GetDeviceTypeTest) {
-    Return<void> ret = kDevice->getType([](ErrorStatus status, DeviceType type) {
+TEST_F(NeuralnetworksHidlTest, GetDeviceTypeTest) {
+    Return<void> ret = device->getType([](ErrorStatus status, DeviceType type) {
         EXPECT_EQ(ErrorStatus::NONE, status);
         EXPECT_TRUE(type == DeviceType::OTHER || type == DeviceType::CPU ||
                     type == DeviceType::GPU || type == DeviceType::ACCELERATOR);
@@ -80,8 +82,8 @@ TEST_P(NeuralnetworksHidlTest, GetDeviceTypeTest) {
 }
 
 // device supported extensions test
-TEST_P(NeuralnetworksHidlTest, GetDeviceSupportedExtensionsTest) {
-    Return<void> ret = kDevice->getSupportedExtensions(
+TEST_F(NeuralnetworksHidlTest, GetDeviceSupportedExtensionsTest) {
+    Return<void> ret = device->getSupportedExtensions(
             [](ErrorStatus status, const hidl_vec<Extension>& extensions) {
                 EXPECT_EQ(ErrorStatus::NONE, status);
                 for (auto& extension : extensions) {
@@ -101,8 +103,8 @@ TEST_P(NeuralnetworksHidlTest, GetDeviceSupportedExtensionsTest) {
 }
 
 // getNumberOfCacheFilesNeeded test
-TEST_P(NeuralnetworksHidlTest, getNumberOfCacheFilesNeeded) {
-    Return<void> ret = kDevice->getNumberOfCacheFilesNeeded(
+TEST_F(NeuralnetworksHidlTest, getNumberOfCacheFilesNeeded) {
+    Return<void> ret = device->getNumberOfCacheFilesNeeded(
             [](ErrorStatus status, uint32_t numModelCache, uint32_t numDataCache) {
                 EXPECT_EQ(ErrorStatus::NONE, status);
                 EXPECT_LE(numModelCache,
@@ -111,4 +113,9 @@ TEST_P(NeuralnetworksHidlTest, getNumberOfCacheFilesNeeded) {
             });
     EXPECT_TRUE(ret.isOk());
 }
-}  // namespace android::hardware::neuralnetworks::V1_2::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_2
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
