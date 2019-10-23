@@ -153,7 +153,7 @@ std::unique_ptr<VehiclePropValue> createOfferingMessage(const VmsOffers& offers)
 std::unique_ptr<VehiclePropValue> createAvailabilityRequest();
 
 // Creates a VehiclePropValue containing a message of type
-// VmsMessageType.SUBSCRIPTIONS_REQUEST.
+// VmsMessageType.AVAILABILITY_REQUEST.
 std::unique_ptr<VehiclePropValue> createSubscriptionsRequest();
 
 // Creates a VehiclePropValue containing a message of type VmsMessageType.DATA.
@@ -202,21 +202,21 @@ int32_t parsePublisherIdResponse(const VehiclePropValue& publisher_id_response);
 
 // Returns true if the new sequence number is greater than the last seen
 // sequence number.
-bool isSequenceNumberNewer(const VehiclePropValue& subscriptions_state,
+bool isSequenceNumberNewer(const VehiclePropValue& subscription_change,
                            const int last_seen_sequence_number);
 
 // Returns sequence number of the message.
-int32_t getSequenceNumberForSubscriptionsState(const VehiclePropValue& subscriptions_state);
+int32_t getSequenceNumberForSubscriptionsState(const VehiclePropValue& subscription_change);
 
-// Takes a subscriptions state message and returns the layers that have active
+// Takes a subscription change message and returns the layers that have active
 // subscriptions of the layers that are offered by your HAL client/publisher.
 //
-// A publisher can use this function when receiving a subscriptions response or subscriptions
-// change message to determine which layers to publish data on.
+// A publisher can use this function when receiving a subscription change message
+// to determine which layers to publish data on.
 // The caller of this function can optionally decide to not consume these layers
 // if the subscription change has the sequence number less than the last seen
 // sequence number.
-std::vector<VmsLayer> getSubscribedLayers(const VehiclePropValue& subscriptions_state,
+std::vector<VmsLayer> getSubscribedLayers(const VehiclePropValue& subscription_change,
                                           const VmsOffers& offers);
 
 // Takes an availability change message and returns true if the parsed message implies that
