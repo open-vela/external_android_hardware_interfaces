@@ -122,6 +122,7 @@ DECLARE_TYPED_TAG(CONFIRMATION_TOKEN);
 DECLARE_TYPED_TAG(CREATION_DATETIME);
 DECLARE_TYPED_TAG(DIGEST);
 DECLARE_TYPED_TAG(EC_CURVE);
+DECLARE_TYPED_TAG(HARDWARE_TYPE);
 DECLARE_TYPED_TAG(INCLUDE_UNIQUE_ID);
 DECLARE_TYPED_TAG(INVALID);
 DECLARE_TYPED_TAG(KEY_SIZE);
@@ -162,12 +163,13 @@ using all_tags_t =
              TAG_USER_SECURE_ID_t, TAG_NO_AUTH_REQUIRED_t, TAG_AUTH_TIMEOUT_t,
              TAG_ALLOW_WHILE_ON_BODY_t, TAG_UNLOCKED_DEVICE_REQUIRED_t, TAG_APPLICATION_ID_t,
              TAG_APPLICATION_DATA_t, TAG_CREATION_DATETIME_t, TAG_ROLLBACK_RESISTANCE_t,
-             TAG_ROOT_OF_TRUST_t, TAG_ASSOCIATED_DATA_t, TAG_NONCE_t, TAG_BOOTLOADER_ONLY_t,
-             TAG_OS_VERSION_t, TAG_OS_PATCHLEVEL_t, TAG_UNIQUE_ID_t, TAG_ATTESTATION_CHALLENGE_t,
-             TAG_ATTESTATION_APPLICATION_ID_t, TAG_RESET_SINCE_ID_ROTATION_t, TAG_PURPOSE_t,
-             TAG_ALGORITHM_t, TAG_BLOCK_MODE_t, TAG_DIGEST_t, TAG_PADDING_t,
-             TAG_BLOB_USAGE_REQUIREMENTS_t, TAG_ORIGIN_t, TAG_USER_AUTH_TYPE_t, TAG_EC_CURVE_t,
-             TAG_BOOT_PATCHLEVEL_t, TAG_VENDOR_PATCHLEVEL_t, TAG_TRUSTED_USER_PRESENCE_REQUIRED_t>;
+             TAG_HARDWARE_TYPE_t, TAG_ROOT_OF_TRUST_t, TAG_ASSOCIATED_DATA_t, TAG_NONCE_t,
+             TAG_BOOTLOADER_ONLY_t, TAG_OS_VERSION_t, TAG_OS_PATCHLEVEL_t, TAG_UNIQUE_ID_t,
+             TAG_ATTESTATION_CHALLENGE_t, TAG_ATTESTATION_APPLICATION_ID_t,
+             TAG_RESET_SINCE_ID_ROTATION_t, TAG_PURPOSE_t, TAG_ALGORITHM_t, TAG_BLOCK_MODE_t,
+             TAG_DIGEST_t, TAG_PADDING_t, TAG_BLOB_USAGE_REQUIREMENTS_t, TAG_ORIGIN_t,
+             TAG_USER_AUTH_TYPE_t, TAG_EC_CURVE_t, TAG_BOOT_PATCHLEVEL_t, TAG_VENDOR_PATCHLEVEL_t,
+             TAG_TRUSTED_CONFIRMATION_REQUIRED_t, TAG_TRUSTED_USER_PRESENCE_REQUIRED_t>;
 
 template <typename TypedTagType>
 struct TypedTag2ValueType;
@@ -220,6 +222,7 @@ MAKE_TAG_ENUM_VALUE_ACCESSOR(TAG_ORIGIN, f.origin)
 MAKE_TAG_ENUM_VALUE_ACCESSOR(TAG_PADDING, f.paddingMode)
 MAKE_TAG_ENUM_VALUE_ACCESSOR(TAG_PURPOSE, f.purpose)
 MAKE_TAG_ENUM_VALUE_ACCESSOR(TAG_USER_AUTH_TYPE, f.hardwareAuthenticatorType)
+MAKE_TAG_ENUM_VALUE_ACCESSOR(TAG_HARDWARE_TYPE, f.hardwareType)
 
 template <TagType tag_type, Tag tag, typename ValueT>
 inline KeyParameter makeKeyParameter(TypedTag<tag_type, tag> ttag, ValueT&& value) {
@@ -277,36 +280,50 @@ inline KeyParameter Authorization(TypedTag<tag_type, tag> ttag, Args&&... args) 
  */
 template <typename ValueT>
 class NullOr {
-    template <typename T>
-    struct reference_initializer {
-        static T&& init() { return *static_cast<std::remove_reference_t<T>*>(nullptr); }
-    };
-    template <typename T>
-    struct pointer_initializer {
-        static T init() { return nullptr; }
-    };
-    template <typename T>
-    struct value_initializer {
-        static T init() { return T(); }
-    };
-    template <typename T>
-    using initializer_t =
-        std::conditional_t<std::is_lvalue_reference<T>::value, reference_initializer<T>,
-                           std::conditional_t<std::is_pointer<T>::value, pointer_initializer<T>,
-                                              value_initializer<T>>>;
+    using internal_t = std::conditional_t<std::is_lvalue_reference<ValueT>::value,
+                                          std::remove_reference_t<ValueT>*, ValueT>;
 
-   public:
-    NullOr() : value_(initializer_t<ValueT>::init()), null_(true) {}
-    NullOr(ValueT&& value) : value_(std::forward<ValueT>(value)), null_(false) {}
+    struct pointer_initializer {
+        static std::nullptr_t init() { return nullptr; }
+    };
+    struct value_initializer {
+        static ValueT init() { return ValueT(); }
+    };
+    struct value_pointer_deref_t {
+        static ValueT& deref(ValueT& v) { return v; }
+    };
+    struct reference_deref_t {
+        static auto& deref(internal_t v) { return *v; }
+    };
+    using initializer_t = std::conditional_t<std::is_lvalue_reference<ValueT>::value ||
+                                                     std::is_pointer<ValueT>::value,
+                                             pointer_initializer, value_initializer>;
+    using deref_t = std::conditional_t<std::is_lvalue_reference<ValueT>::value, reference_deref_t,
+                                       value_pointer_deref_t>;
+
+  public:
+    NullOr() : value_(initializer_t::init()), null_(true) {}
+    template <typename T>
+    NullOr(T&& value, typename std::enable_if<
+                              !std::is_lvalue_reference<ValueT>::value &&
+                                      std::is_same<std::decay_t<ValueT>, std::decay_t<T>>::value,
+                              int>::type = 0)
+        : value_(std::forward<ValueT>(value)), null_(false) {}
+    template <typename T>
+    NullOr(T& value, typename std::enable_if<
+                             std::is_lvalue_reference<ValueT>::value &&
+                                     std::is_same<std::decay_t<ValueT>, std::decay_t<T>>::value,
+                             int>::type = 0)
+        : value_(&value), null_(false) {}
 
     bool isOk() const { return !null_; }
 
-    const ValueT& value() const & { return value_; }
-    ValueT& value() & { return value_; }
-    ValueT&& value() && { return std::move(value_); }
+    const ValueT& value() const& { return deref_t::deref(value_); }
+    ValueT& value() & { return deref_t::deref(value_); }
+    ValueT&& value() && { return std::move(deref_t::deref(value_)); }
 
-   private:
-    ValueT value_;
+  private:
+    internal_t value_;
     bool null_;
 };
 
