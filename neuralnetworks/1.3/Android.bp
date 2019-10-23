@@ -9,7 +9,6 @@ hidl_interface {
     srcs: [
         "types.hal",
         "IDevice.hal",
-        "IPreparedModel.hal",
         "IPreparedModelCallback.hal",
     ],
     interfaces: [
