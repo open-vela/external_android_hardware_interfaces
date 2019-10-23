@@ -24,21 +24,24 @@ namespace V1_0 {
 namespace implementation {
 
 // Methods from ::android::hardware::tests::msgq::V1_0::ITestMsgQ follow.
-Return<bool> TestMsgQ::configureFmqSyncReadWrite(
-    const android::hardware::MQDescriptorSync<uint16_t>& mqDesc) {
-    mFmqSynchronized.reset(new (std::nothrow) MessageQueueSync(mqDesc));
+Return<void> TestMsgQ::configureFmqSyncReadWrite(configureFmqSyncReadWrite_cb _hidl_cb) {
+    static constexpr size_t kNumElementsInQueue = 1024;
+    mFmqSynchronized.reset(new (std::nothrow) MessageQueueSync(
+            kNumElementsInQueue, true /* configureEventFlagWord */));
     if ((mFmqSynchronized == nullptr) || (mFmqSynchronized->isValid() == false)) {
-        return false;
+        _hidl_cb(false /* ret */, MessageQueueSync::Descriptor());
+    } else {
+        /*
+         * Initialize the EventFlag word with bit FMQ_NOT_FULL.
+         */
+        auto evFlagWordPtr = mFmqSynchronized->getEventFlagWord();
+        if (evFlagWordPtr != nullptr) {
+            std::atomic_init(evFlagWordPtr,
+                             static_cast<uint32_t>(ITestMsgQ::EventFlagBits::FMQ_NOT_FULL));
+        }
+        _hidl_cb(true /* ret */, *mFmqSynchronized->getDesc());
     }
-    /*
-     * Initialize the EventFlag word with bit FMQ_NOT_FULL.
-     */
-    auto evFlagWordPtr = mFmqSynchronized->getEventFlagWord();
-    if (evFlagWordPtr != nullptr) {
-        std::atomic_init(evFlagWordPtr,
-                         static_cast<uint32_t>(ITestMsgQ::EventFlagBits::FMQ_NOT_FULL));
-    }
-    return true;
+    return Void();
 }
 
 Return<void> TestMsgQ::getFmqUnsyncWrite(bool configureFmq, getFmqUnsyncWrite_cb _hidl_cb) {
