@@ -12,13 +12,13 @@ LOCAL_SHARED_LIBRARIES := \
         android.hardware.graphics.composer@2.1 \
         android.hardware.graphics.composer@2.2 \
         android.hardware.graphics.mapper@2.0 \
+        android.hardware.graphics.mapper@3.0 \
         libbase \
         libbinder \
         libcutils \
         libfmq \
         libhardware \
         libhidlbase \
-        libhidltransport \
         libhwc2on1adapter \
         libhwc2onfbadapter \
         liblog \
