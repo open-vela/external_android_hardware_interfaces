@@ -169,11 +169,6 @@ TEST_F(RadioHidlTest_v1_4, setPreferredNetworkTypeBitmap) {
 
 /*
  * Test IRadio.startNetworkScan() for the response returned.
- *
- * REQUEST_NOT_SUPPORTED is temporarily returned because of vendors failed to fully implement
- * startNetworkScan in HAL @1.4 (see b/137298570 and b/135595082). Starting from @1.5, however,
- * REQUEST_NOT_SUPPORTED will be disallowed for all tests. Modems have "GSM" rat scan need to
- * support scanning requests combined with some parameters.
  */
 TEST_F(RadioHidlTest_v1_4, startNetworkScan) {
     serial = GetRandomSerialNumber();
@@ -183,7 +178,12 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan) {
                                       .channels = {1, 2}};
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {
-            .type = ScanType::ONE_SHOT, .interval = 60, .specifiers = {specifier}};
+            .type = ScanType::ONE_SHOT,
+            .interval = 60,
+            .specifiers = {specifier},
+            .maxSearchTime = 60,
+            .incrementalResults = false,
+            .incrementalResultsPeriodicity = 1};
 
     Return<void> res = radio_v1_4->startNetworkScan_1_4(serial, request);
     ASSERT_OK(res);
@@ -398,7 +398,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidPeriodicity1) {
             .interval = 60,
             .specifiers = {specifier},
             .maxSearchTime = 600,
-            .incrementalResults = false,
+            .incrementalResults = true,
             .incrementalResultsPeriodicity = 0};
 
     Return<void> res = radio_v1_4->startNetworkScan_1_4(serial, request);
@@ -434,7 +434,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidPeriodicity2) {
             .interval = 60,
             .specifiers = {specifier},
             .maxSearchTime = 600,
-            .incrementalResults = false,
+            .incrementalResults = true,
             .incrementalResultsPeriodicity = 11};
 
     Return<void> res = radio_v1_4->startNetworkScan_1_4(serial, request);
