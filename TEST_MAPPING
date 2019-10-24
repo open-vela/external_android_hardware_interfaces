@@ -1,8 +1,0 @@
-{
-  "presubmit": [
-    {
-      "name": "hidl_implementation_test"
-    }
-  ]
-}
-
