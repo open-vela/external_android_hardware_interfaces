@@ -46,8 +46,6 @@ std::string legacyErrorToString(legacy_hal::wifi_error error) {
             return "BUSY";
         case legacy_hal::WIFI_ERROR_UNKNOWN:
             return "UNKNOWN";
-        default:
-            return "UNKNOWN ERROR";
     }
 }
 
@@ -94,10 +92,6 @@ WifiStatus createWifiStatusFromLegacyError(legacy_hal::wifi_error error,
 
         case legacy_hal::WIFI_ERROR_UNKNOWN:
             return createWifiStatus(WifiStatusCode::ERROR_UNKNOWN, "unknown");
-
-        default:
-            return createWifiStatus(WifiStatusCode::ERROR_UNKNOWN,
-                                    "unknown error");
     }
 }
 
