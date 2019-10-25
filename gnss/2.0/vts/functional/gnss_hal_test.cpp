@@ -20,12 +20,13 @@
 #include <chrono>
 #include "Utils.h"
 
+#include <gtest/gtest.h>
+
 using ::android::hardware::gnss::common::Utils;
 
 // Implementations for the main test class for GNSS HAL
 void GnssHalTest::SetUp() {
-    gnss_hal_ = ::testing::VtsHalHidlTargetTestBase::getService<IGnss>(
-        GnssHidlEnvironment::Instance()->getServiceName<IGnss>());
+    gnss_hal_ = IGnss::getService(GetParam());
     ASSERT_NE(gnss_hal_, nullptr);
 
     SetUpGnssCallback();
@@ -152,7 +153,7 @@ GnssHalTest::GnssCallback::GnssCallback()
       name_cbq_("name"),
       capabilities_cbq_("capabilities"),
       location_cbq_("location"),
-      sv_info_cbq_("sv_info") {}
+      sv_info_list_cbq_("sv_info") {}
 
 Return<void> GnssHalTest::GnssCallback::gnssSetSystemInfoCb(
         const IGnssCallback_1_0::GnssSystemInfo& info) {
@@ -204,7 +205,7 @@ Return<void> GnssHalTest::GnssCallback::gnssSvStatusCb(const IGnssCallback_1_0::
 Return<void> GnssHalTest::GnssCallback::gnssSvStatusCb_2_0(
         const hidl_vec<IGnssCallback_2_0::GnssSvInfo>& svInfoList) {
     ALOGI("gnssSvStatusCb_2_0. Size = %d", (int)svInfoList.size());
-    sv_info_cbq_.store(svInfoList);
+    sv_info_list_cbq_.store(svInfoList);
     return Void();
 }
 
