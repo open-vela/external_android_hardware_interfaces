@@ -24,23 +24,26 @@ static void waitForDeviceDestruction() {
     //        flushCommand makes sure all local command are sent, thus should reduce
     //        the latency between local and remote destruction.
     IPCThreadState::self()->flushCommands();
-    usleep(100);
+    usleep(100 * 1000);
 }
 
 TEST_F(AudioHidlTest, OpenPrimaryDeviceUsingGetDevice) {
     doc::test("Calling openDevice(\"primary\") should return the primary device.");
-    {
-        Result result;
-        sp<IDevice> baseDevice;
-        ASSERT_OK(devicesFactory->openDevice("primary", returnIn(result, baseDevice)));
-        ASSERT_OK(result);
-        ASSERT_TRUE(baseDevice != nullptr);
+    struct WaitExecutor {
+        ~WaitExecutor() { waitForDeviceDestruction(); }
+    } waitExecutor;  // Make sure we wait for the device destruction on exiting from the test.
+    Result result;
+    sp<IDevice> baseDevice;
+    ASSERT_OK(devicesFactory->openDevice("primary", returnIn(result, baseDevice)));
+    if (result != Result::OK && isPrimaryDeviceOptional()) {
+        GTEST_SKIP() << "No primary device on this factory";  // returns
+    }
+    ASSERT_OK(result);
+    ASSERT_TRUE(baseDevice != nullptr);
 
-        Return<sp<IPrimaryDevice>> primaryDevice = IPrimaryDevice::castFrom(baseDevice);
-        ASSERT_TRUE(primaryDevice.isOk());
-        ASSERT_TRUE(sp<IPrimaryDevice>(primaryDevice) != nullptr);
-    }  // Destroy local IDevice proxy
-    waitForDeviceDestruction();
+    Return<sp<IPrimaryDevice>> primaryDevice = IPrimaryDevice::castFrom(baseDevice);
+    ASSERT_TRUE(primaryDevice.isOk());
+    ASSERT_TRUE(sp<IPrimaryDevice>(primaryDevice) != nullptr);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -117,6 +120,10 @@ TEST_F(AudioPrimaryHidlTest, GetMicrophonesTest) {
                 ASSERT_NE(0U, activeMicrophones.size());
             }
             stream->close();
+            // Workaround for b/139329877. Ensures the stream gets closed on the audio hal side.
+            stream.clear();
+            IPCThreadState::self()->flushCommands();
+            usleep(1000);
             if (efGroup) {
                 EventFlag::deleteEventFlag(&efGroup);
             }
@@ -148,6 +155,7 @@ TEST_F(AudioPrimaryHidlTest, SetConnectedState) {
     // initial state. To workaround this, destroy the HAL at the end of this test.
     device.clear();
     waitForDeviceDestruction();
+    ASSERT_NO_FATAL_FAILURE(initPrimaryDevice());
 }
 
 static void testGetDevices(IStream* stream, AudioDevice expectedDevice) {
