@@ -408,7 +408,11 @@ TEST_F(FloatAccessorPrimaryHidlTest, MasterVolumeTest) {
 
 class AudioPatchPrimaryHidlTest : public AudioPrimaryHidlTest {
    protected:
-     bool areAudioPatchesSupported() { return extract(device->supportsAudioPatches()); }
+    bool areAudioPatchesSupported() {
+        auto result = device->supportsAudioPatches();
+        EXPECT_IS_OK(result);
+        return result;
+    }
 };
 
 TEST_F(AudioPatchPrimaryHidlTest, AudioPatches) {
@@ -825,6 +829,17 @@ INSTANTIATE_TEST_CASE_P(
 ////////////////////////////// IStream getters ///////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
+/** Unpack the provided result.
+ * If the result is not OK, register a failure and return an undefined value. */
+template <class R>
+static R extract(Return<R> ret) {
+    if (!ret.isOk()) {
+        EXPECT_IS_OK(ret);
+        return R{};
+    }
+    return ret;
+}
+
 /* Could not find a way to write a test for two parametrized class fixure
  * thus use this macro do duplicate tests for Input and Output stream */
 #define TEST_IO_STREAM(test_name, documentation, code) \
@@ -1174,7 +1189,11 @@ TEST_P(OutputStreamTest, PrepareForWritingCheckOverflow) {
 struct Capability {
     Capability(IStreamOut* stream) {
         EXPECT_OK(stream->supportsPauseAndResume(returnIn(pause, resume)));
-        drain = extract(stream->supportsDrain());
+        auto ret = stream->supportsDrain();
+        EXPECT_IS_OK(ret);
+        if (ret.isOk()) {
+            drain = ret;
+        }
     }
     bool pause = false;
     bool resume = false;
@@ -1186,6 +1205,19 @@ TEST_P(OutputStreamTest, SupportsPauseAndResumeAndDrain) {
     Capability(stream.get());
 }
 
+template <class Value>
+static void checkInvalidStateOr0(Result res, Value value) {
+    switch (res) {
+        case Result::INVALID_STATE:
+            break;
+        case Result::OK:
+            ASSERT_EQ(0U, value);
+            break;
+        default:
+            FAIL() << "Unexpected result " << toString(res);
+    }
+}
+
 TEST_P(OutputStreamTest, GetRenderPosition) {
     doc::test("A new stream render position should be 0 or INVALID_STATE");
     uint32_t dspFrames;
@@ -1194,7 +1226,7 @@ TEST_P(OutputStreamTest, GetRenderPosition) {
         doc::partialTest("getRenderPosition is not supported");
         return;
     }
-    expectValueOrFailure(res, 0U, dspFrames, Result::INVALID_STATE);
+    checkInvalidStateOr0(res, dspFrames);
 }
 
 TEST_P(OutputStreamTest, GetNextWriteTimestamp) {
@@ -1205,7 +1237,7 @@ TEST_P(OutputStreamTest, GetNextWriteTimestamp) {
         doc::partialTest("getNextWriteTimestamp is not supported");
         return;
     }
-    expectValueOrFailure(res, uint64_t{0}, timestampUs, Result::INVALID_STATE);
+    checkInvalidStateOr0(res, timestampUs);
 }
 
 /** Stub implementation of out stream callback. */
