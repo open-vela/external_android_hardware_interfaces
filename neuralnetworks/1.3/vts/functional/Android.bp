@@ -15,7 +15,7 @@
 //
 
 cc_test {
-    name: "VtsHalNeuralnetworksV1_3TargetTest",
+    name: "VtsHalNeuralNetworksV1_3TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
     srcs: [
         "BasicTests.cpp",
