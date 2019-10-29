@@ -16,6 +16,7 @@
 
 #define LOG_TAG "broadcastradio.vts"
 
+#include <VtsHalHidlTargetTestBase.h>
 #include <android-base/logging.h>
 #include <android/hardware/broadcastradio/1.1/IBroadcastRadio.h>
 #include <android/hardware/broadcastradio/1.1/IBroadcastRadioFactory.h>
@@ -24,16 +25,13 @@
 #include <android/hardware/broadcastradio/1.1/types.h>
 #include <broadcastradio-utils-1x/Utils.h>
 #include <broadcastradio-vts-utils/call-barrier.h>
-#include <broadcastradio-vts-utils/hal-1.x-enum-utils.h>
+#include <broadcastradio-vts-utils/environment-utils.h>
 #include <broadcastradio-vts-utils/mock-timeout.h>
 #include <broadcastradio-vts-utils/pointer-utils.h>
 #include <cutils/native_handle.h>
 #include <cutils/properties.h>
 #include <gmock/gmock.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
 #include <hidl/HidlTransportSupport.h>
-#include <hidl/ServiceManagement.h>
 #include <utils/threads.h>
 
 #include <chrono>
@@ -53,7 +51,6 @@ using testing::DoAll;
 using testing::Invoke;
 using testing::SaveArg;
 
-using broadcastradio::V1_0::vts::RadioClassFromString;
 using broadcastradio::vts::CallBarrier;
 using V1_0::BandConfig;
 using V1_0::Class;
@@ -62,6 +59,7 @@ using V1_0::MetadataKey;
 using V1_0::MetadataType;
 
 using broadcastradio::vts::clearAndWait;
+using broadcastradio::vts::BroadcastRadioHidlEnvironment;
 
 static constexpr auto kConfigTimeout = 10s;
 static constexpr auto kConnectModuleTimeout = 1s;
@@ -95,9 +93,11 @@ struct TunerCallbackMock : public ITunerCallback {
     MOCK_TIMEOUT_METHOD1(currentProgramInfoChanged, Return<void>(const ProgramInfo&));
 };
 
-class BroadcastRadioHalTest
-    : public ::testing::TestWithParam<std::tuple<std::string, std::string>> {
-  protected:
+static BroadcastRadioHidlEnvironment<IBroadcastRadioFactory>* gEnv = nullptr;
+
+class BroadcastRadioHalTest : public ::testing::VtsHalHidlTargetTestBase,
+                              public ::testing::WithParamInterface<Class> {
+   protected:
     virtual void SetUp() override;
     virtual void TearDown() override;
 
@@ -120,10 +120,11 @@ class BroadcastRadioHalTest
 };
 
 void BroadcastRadioHalTest::SetUp() {
-    radioClass = RadioClassFromString(std::get<1>(GetParam()));
+    radioClass = GetParam();
 
     // lookup HIDL service
-    auto factory = IBroadcastRadioFactory::getService(std::get<0>(GetParam()));
+    auto factory =
+        getService<IBroadcastRadioFactory>(gEnv->getServiceName<IBroadcastRadioFactory>());
     ASSERT_NE(nullptr, factory.get());
 
     // connect radio module
@@ -600,16 +601,24 @@ TEST_P(BroadcastRadioHalTest, VerifyIdentifiersFormat) {
     } while (nextBand());
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BroadcastRadioHalTest);
-INSTANTIATE_TEST_CASE_P(
-        PerInstance, BroadcastRadioHalTest,
-        testing::Combine(testing::ValuesIn(android::hardware::getAllHalInstanceNames(
-                                 IBroadcastRadioFactory::descriptor)),
-                         ::testing::Values("AM_FM", "SAT", "DT")),
-        android::hardware::PrintInstanceTupleNameToString<>);
+INSTANTIATE_TEST_CASE_P(BroadcastRadioHalTestCases, BroadcastRadioHalTest,
+                        ::testing::Values(Class::AM_FM, Class::SAT, Class::DT));
 
 }  // namespace vts
 }  // namespace V1_1
 }  // namespace broadcastradio
 }  // namespace hardware
 }  // namespace android
+
+int main(int argc, char** argv) {
+    using android::hardware::broadcastradio::V1_1::vts::gEnv;
+    using android::hardware::broadcastradio::V1_1::IBroadcastRadioFactory;
+    using android::hardware::broadcastradio::vts::BroadcastRadioHidlEnvironment;
+    gEnv = new BroadcastRadioHidlEnvironment<IBroadcastRadioFactory>;
+    ::testing::AddGlobalTestEnvironment(gEnv);
+    ::testing::InitGoogleTest(&argc, argv);
+    gEnv->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    ALOGI("Test result = %d", status);
+    return status;
+}
