@@ -26,7 +26,7 @@ cc_defaults {
     ],
 
     header_libs: [
-        "libhidl_gtest_helper",
+        "libhidl_gtest_helpers",
     ],
 
     group_static_libs: true,
