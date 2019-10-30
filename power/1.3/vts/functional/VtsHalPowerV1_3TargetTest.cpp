@@ -17,9 +17,9 @@
 #define LOG_TAG "power_hidl_hal_test"
 #include <android-base/logging.h>
 #include <android/hardware/power/1.3/IPower.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 
 using ::android::sp;
 using ::android::hardware::hidl_vec;
@@ -27,21 +27,38 @@ using ::android::hardware::Return;
 using ::android::hardware::power::V1_3::IPower;
 using ::android::hardware::power::V1_3::PowerHint;
 
-class PowerHidlTest : public testing::TestWithParam<std::string> {
+// Test environment for Power HIDL HAL.
+class PowerHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static PowerHidlEnvironment* Instance() {
+        static PowerHidlEnvironment* instance = new PowerHidlEnvironment;
+        return instance;
+    }
+
+    virtual void registerTestServices() override { registerTestService<IPower>(); }
+};
+
+class PowerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        power = IPower::getService(GetParam());
+        power = ::testing::VtsHalHidlTargetTestBase::getService<IPower>(
+            PowerHidlEnvironment::Instance()->getServiceName<IPower>());
         ASSERT_NE(power, nullptr);
     }
 
     sp<IPower> power;
 };
 
-TEST_P(PowerHidlTest, PowerHintAsync_1_3) {
+TEST_F(PowerHidlTest, PowerHintAsync_1_3) {
     ASSERT_TRUE(power->powerHintAsync_1_3(PowerHint::EXPENSIVE_RENDERING, 0).isOk());
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, PowerHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IPower::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(PowerHidlEnvironment::Instance());
+    ::testing::InitGoogleTest(&argc, argv);
+    PowerHidlEnvironment::Instance()->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    LOG(INFO) << "Test result = " << status;
+    return status;
+}
