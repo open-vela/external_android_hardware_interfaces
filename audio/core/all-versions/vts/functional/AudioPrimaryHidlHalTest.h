@@ -215,25 +215,32 @@ TEST_F(AudioPolicyConfigTest, LoadAudioPolicyXMLConfiguration) {
 // Test all audio devices
 class AudioHidlTest : public AudioPolicyConfigTest {
    public:
-    void SetUp() override {
-        ASSERT_NO_FATAL_FAILURE(HidlTest::SetUp());  // setup base
+     static void SetUpTestSuite() {
+         devicesFactory = ::testing::VtsHalHidlTargetTestBase::getService<IDevicesFactory>(
+                 environment->getServiceName<IDevicesFactory>());
+     }
 
-        if (devicesFactory == nullptr) {
-            environment->registerTearDown([] { devicesFactory.clear(); });
-            devicesFactory = ::testing::VtsHalHidlTargetTestBase::getService<IDevicesFactory>(
-                environment->getServiceName<IDevicesFactory>("default"));
-        }
-        ASSERT_TRUE(devicesFactory != nullptr);
-    }
+     static void TearDownTestSuite() { devicesFactory.clear(); }
+
+     void SetUp() override {
+         ASSERT_NO_FATAL_FAILURE(AudioPolicyConfigTest::SetUp());  // setup base
+         // Failures during SetUpTestSuite do not cause test termination.
+         ASSERT_TRUE(devicesFactory != nullptr);
+     }
 
    protected:
     // Cache the devicesFactory retrieval to speed up each test by ~0.5s
     static sp<IDevicesFactory> devicesFactory;
+
+    static bool isPrimaryDeviceOptional() {
+        // It's OK not to have "primary" device on non-default audio HAL service.
+        return environment->getServiceName<IDevicesFactory>() != kDefaultServiceName;
+    }
 };
 sp<IDevicesFactory> AudioHidlTest::devicesFactory;
 
 TEST_F(AudioHidlTest, GetAudioDevicesFactoryService) {
-    doc::test("Test the getService (called in SetUp)");
+    doc::test("Test the getService");
 }
 
 TEST_F(AudioHidlTest, OpenDeviceInvalidParameter) {
@@ -257,23 +264,31 @@ TEST_F(AudioHidlTest, OpenDeviceInvalidParameter) {
 // Test the primary device
 class AudioPrimaryHidlTest : public AudioHidlTest {
    public:
-    /** Primary HAL test are NOT thread safe. */
+     static void SetUpTestSuite() {
+         ASSERT_NO_FATAL_FAILURE(AudioHidlTest::SetUpTestSuite());
+         ASSERT_NO_FATAL_FAILURE(initPrimaryDevice());
+     }
+
+     static void TearDownTestSuite() {
+         device.clear();
+         AudioHidlTest::TearDownTestSuite();
+     }
+
     void SetUp() override {
         ASSERT_NO_FATAL_FAILURE(AudioHidlTest::SetUp());  // setup base
-
-        if (device == nullptr) {
-            initPrimaryDevice();
-            ASSERT_TRUE(device != nullptr);
-            environment->registerTearDown([] { device.clear(); });
+        if (device == nullptr && isPrimaryDeviceOptional()) {
+            GTEST_SKIP() << "No primary device on this factory";
         }
+        ASSERT_TRUE(device != nullptr);
     }
 
    protected:
     // Cache the device opening to speed up each test by ~0.5s
     static sp<IPrimaryDevice> device;
 
-   private:
-    void initPrimaryDevice() {
+    static void initPrimaryDevice() {
+        // Failures during test suite set up do not cause test termination.
+        ASSERT_TRUE(devicesFactory != nullptr);
         Result result;
 #if MAJOR_VERSION == 2
         sp<IDevice> baseDevice;
@@ -292,7 +307,7 @@ class AudioPrimaryHidlTest : public AudioHidlTest {
 sp<IPrimaryDevice> AudioPrimaryHidlTest::device;
 
 TEST_F(AudioPrimaryHidlTest, OpenPrimaryDevice) {
-    doc::test("Test the openDevice (called in SetUp)");
+    doc::test("Test the openDevice (called during setup)");
 }
 
 TEST_F(AudioPrimaryHidlTest, Init) {
@@ -393,11 +408,7 @@ TEST_F(FloatAccessorPrimaryHidlTest, MasterVolumeTest) {
 
 class AudioPatchPrimaryHidlTest : public AudioPrimaryHidlTest {
    protected:
-    bool areAudioPatchesSupported() {
-        auto result = device->supportsAudioPatches();
-        EXPECT_IS_OK(result);
-        return result;
-    }
+     bool areAudioPatchesSupported() { return extract(device->supportsAudioPatches()); }
 };
 
 TEST_F(AudioPatchPrimaryHidlTest, AudioPatches) {
@@ -684,14 +695,29 @@ class OpenStreamTest : public AudioConfigPrimaryTest,
 
     Return<Result> closeStream() {
         open = false;
-        return stream->close();
+        auto res = stream->close();
+        stream.clear();
+        waitForStreamDestruction();
+        return res;
+    }
+
+    void waitForStreamDestruction() {
+        // FIXME: there is no way to know when the remote IStream is being destroyed
+        //        Binder does not support testing if an object is alive, thus
+        //        wait for 100ms to let the binder destruction propagates and
+        //        the remote device has the time to be destroyed.
+        //        flushCommand makes sure all local command are sent, thus should reduce
+        //        the latency between local and remote destruction.
+        IPCThreadState::self()->flushCommands();
+        usleep(100 * 1000);
     }
 
    private:
     void TearDown() override {
         if (open) {
-            ASSERT_OK(stream->close());
+            ASSERT_OK(closeStream());
         }
+        AudioConfigPrimaryTest::TearDown();
     }
 
    protected:
@@ -704,8 +730,9 @@ class OpenStreamTest : public AudioConfigPrimaryTest,
 ////////////////////////////// openOutputStream //////////////////////////////
 
 class OutputStreamTest : public OpenStreamTest<IStreamOut> {
-    virtual void SetUp() override {
+    void SetUp() override {
         ASSERT_NO_FATAL_FAILURE(OpenStreamTest::SetUp());  // setup base
+        if (IsSkipped()) return;                           // do not attempt to use 'device'
         address.device = AudioDevice::OUT_DEFAULT;
         const AudioConfig& config = GetParam();
         // TODO: test all flag combination
@@ -752,8 +779,9 @@ INSTANTIATE_TEST_CASE_P(
 ////////////////////////////// openInputStream //////////////////////////////
 
 class InputStreamTest : public OpenStreamTest<IStreamIn> {
-    virtual void SetUp() override {
+    void SetUp() override {
         ASSERT_NO_FATAL_FAILURE(OpenStreamTest::SetUp());  // setup base
+        if (IsSkipped()) return;                           // do not attempt to use 'device'
         address.device = AudioDevice::IN_DEFAULT;
         const AudioConfig& config = GetParam();
         // TODO: test all supported flags and source
@@ -796,17 +824,6 @@ INSTANTIATE_TEST_CASE_P(
 //////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// IStream getters ///////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
-
-/** Unpack the provided result.
- * If the result is not OK, register a failure and return an undefined value. */
-template <class R>
-static R extract(Return<R> ret) {
-    if (!ret.isOk()) {
-        EXPECT_IS_OK(ret);
-        return R{};
-    }
-    return ret;
-}
 
 /* Could not find a way to write a test for two parametrized class fixure
  * thus use this macro do duplicate tests for Input and Output stream */
@@ -985,8 +1002,14 @@ TEST_IO_STREAM(getMmapPositionNoMmap, "Get a stream Mmap position before mapping
                ASSERT_RESULT(invalidStateOrNotSupported, stream->stop()))
 
 TEST_IO_STREAM(close, "Make sure a stream can be closed", ASSERT_OK(closeStream()))
-TEST_IO_STREAM(closeTwice, "Make sure a stream can not be closed twice", ASSERT_OK(closeStream());
-               ASSERT_RESULT(Result::INVALID_STATE, closeStream()))
+// clang-format off
+TEST_IO_STREAM(closeTwice, "Make sure a stream can not be closed twice",
+        auto streamCopy = stream;
+        ASSERT_OK(closeStream());
+        ASSERT_RESULT(Result::INVALID_STATE, streamCopy->close());
+        streamCopy.clear();
+        waitForStreamDestruction())
+// clang-format on
 
 static void testCreateTooBigMmapBuffer(IStream* stream) {
     MmapBufferInfo info;
@@ -1151,11 +1174,7 @@ TEST_P(OutputStreamTest, PrepareForWritingCheckOverflow) {
 struct Capability {
     Capability(IStreamOut* stream) {
         EXPECT_OK(stream->supportsPauseAndResume(returnIn(pause, resume)));
-        auto ret = stream->supportsDrain();
-        EXPECT_IS_OK(ret);
-        if (ret.isOk()) {
-            drain = ret;
-        }
+        drain = extract(stream->supportsDrain());
     }
     bool pause = false;
     bool resume = false;
@@ -1167,19 +1186,6 @@ TEST_P(OutputStreamTest, SupportsPauseAndResumeAndDrain) {
     Capability(stream.get());
 }
 
-template <class Value>
-static void checkInvalidStateOr0(Result res, Value value) {
-    switch (res) {
-        case Result::INVALID_STATE:
-            break;
-        case Result::OK:
-            ASSERT_EQ(0U, value);
-            break;
-        default:
-            FAIL() << "Unexpected result " << toString(res);
-    }
-}
-
 TEST_P(OutputStreamTest, GetRenderPosition) {
     doc::test("A new stream render position should be 0 or INVALID_STATE");
     uint32_t dspFrames;
@@ -1188,7 +1194,7 @@ TEST_P(OutputStreamTest, GetRenderPosition) {
         doc::partialTest("getRenderPosition is not supported");
         return;
     }
-    checkInvalidStateOr0(res, dspFrames);
+    expectValueOrFailure(res, 0U, dspFrames, Result::INVALID_STATE);
 }
 
 TEST_P(OutputStreamTest, GetNextWriteTimestamp) {
@@ -1199,7 +1205,7 @@ TEST_P(OutputStreamTest, GetNextWriteTimestamp) {
         doc::partialTest("getNextWriteTimestamp is not supported");
         return;
     }
-    checkInvalidStateOr0(res, timestampUs);
+    expectValueOrFailure(res, uint64_t{0}, timestampUs, Result::INVALID_STATE);
 }
 
 /** Stub implementation of out stream callback. */
