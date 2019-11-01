@@ -252,7 +252,7 @@ TEST_P(HealthHidlTest, shouldKeepScreenOn) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-        PerInstance, HealthHidlTest,
+        , HealthHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IHealth::descriptor)),
         android::hardware::PrintInstanceNameToString);
 
