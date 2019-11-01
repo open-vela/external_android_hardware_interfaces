@@ -50,18 +50,12 @@ bool VehiclePropertyStore::writeValue(const VehiclePropValue& propValue,
     VehiclePropValue* valueToUpdate = const_cast<VehiclePropValue*>(getValueOrNullLocked(recId));
     if (valueToUpdate == nullptr) {
         mPropertyValues.insert({ recId, propValue });
-        return true;
-    }
-
-    // propValue is outdated and drops it.
-    if (valueToUpdate->timestamp > propValue.timestamp) {
-        return false;
-    }
-    // update the propertyValue.
-    valueToUpdate->timestamp = propValue.timestamp;
-    valueToUpdate->value = propValue.value;
-    if (updateStatus) {
-        valueToUpdate->status = propValue.status;
+    } else {
+        valueToUpdate->timestamp = propValue.timestamp;
+        valueToUpdate->value = propValue.value;
+        if (updateStatus) {
+            valueToUpdate->status = propValue.status;
+        }
     }
     return true;
 }
