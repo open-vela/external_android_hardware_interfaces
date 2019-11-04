@@ -12,11 +12,5 @@ hidl_interface {
     interfaces: [
         "android.hardware.graphics.common@1.0",
     ],
-    types: [
-        "AnwBuffer",
-        "AnwBufferAttributes",
-        "Rect",
-    ],
-    gen_java: false,
+    gen_java: true,
 }
-
