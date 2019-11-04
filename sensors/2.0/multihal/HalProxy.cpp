@@ -150,7 +150,6 @@ Return<Result> HalProxy::initialize(
 
     // Clears the queue if any events were pending write before.
     mPendingWriteEventsQueue = std::queue<std::pair<std::vector<Event>, size_t>>();
-    mSizePendingWriteEventsQueue = 0;
 
     // Clears previously connected dynamic sensors
     mDynamicSensors.clear();
@@ -288,7 +287,7 @@ Return<void> HalProxy::debug(const hidl_handle& fd, const hidl_vec<hidl_string>&
            << " ms ago" << std::endl;
     // TODO(b/142969448): Add logging for history of wakelock acquisition per subhal.
     stream << "  Wakelock ref count: " << mWakelockRefCount << std::endl;
-    stream << "  # of events on pending write writes queue: " << mSizePendingWriteEventsQueue
+    stream << "  Size of pending write events queue: " << mPendingWriteEventsQueue.size()
            << std::endl;
     if (!mPendingWriteEventsQueue.empty()) {
         stream << "  Size of events list on front of pending writes queue: "
@@ -491,10 +490,8 @@ void HalProxy::handlePendingWrites() {
                 // all the events ahead of it down to fill gap off array at front after the erase.
                 pendingWriteEvents.erase(pendingWriteEvents.begin(),
                                          pendingWriteEvents.begin() + eventQueueSize);
-                mSizePendingWriteEventsQueue -= eventQueueSize;
             } else {
                 mPendingWriteEventsQueue.pop();
-                mSizePendingWriteEventsQueue -= pendingWriteEvents.size();
             }
         }
     }
@@ -566,12 +563,11 @@ void HalProxy::postEventsToMessageQueue(const std::vector<Event>& events, size_t
             }
         }
     }
-    size_t numLeft = events.size() - numToWrite;
-    if (numToWrite < events.size() &&
-        mSizePendingWriteEventsQueue + numLeft <= kMaxSizePendingWriteEventsQueue) {
+    if (numToWrite < events.size()) {
+        // TODO(b/143302327): Bound the mPendingWriteEventsQueue so that we do not trigger OOMs if
+        // framework stalls
         std::vector<Event> eventsLeft(events.begin() + numToWrite, events.end());
         mPendingWriteEventsQueue.push({eventsLeft, numWakeupEvents});
-        mSizePendingWriteEventsQueue += numLeft;
         mEventQueueWriteCV.notify_one();
     }
 }
