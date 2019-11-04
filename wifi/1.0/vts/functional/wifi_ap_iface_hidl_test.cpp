@@ -39,9 +39,7 @@ class WifiApIfaceHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         ASSERT_NE(nullptr, wifi_ap_iface_.get());
     }
 
-    virtual void TearDown() override {
-        stopWifi();
-    }
+    virtual void TearDown() override { stopWifi(); }
 
    protected:
     sp<IWifiApIface> wifi_ap_iface_;
