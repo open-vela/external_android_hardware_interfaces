@@ -15,9 +15,6 @@
  */
 
 package android.hardware.tv.tuner@1.0;
-
-import IFilter;
-
 /**
  * Descrambler is used to descramble input data.
  *
@@ -62,13 +59,12 @@ interface IDescrambler {
      * packets from different PIDs.
      *
      * @param pid the PID of packets to start to be descrambled.
-     * @param filter an optional filter instance to identify upper stream.
      * @return result Result status of the operation.
      *         SUCCESS if successful,
      *         INVALID_STATE if failed for wrong state.
      *         UNKNOWN_ERROR if failed for other reasons.
      */
-    addPid(DemuxPid pid, IFilter optionalSourceFilter) generates (Result result);
+    addPid(DemuxTpid pid) generates (Result result);
 
     /**
      * Remove packets' PID from the descrambler
@@ -77,13 +73,12 @@ interface IDescrambler {
      * descrambler stop to descramble.
      *
      * @param pid the PID of packets to stop to be descrambled.
-     * @param filter an optional filter instance to identify upper stream.
      * @return result Result status of the operation.
      *         SUCCESS if successful,
      *         INVALID_STATE if failed for wrong state.
      *         UNKNOWN_ERROR if failed for other reasons.
      */
-    removePid(DemuxPid pid, IFilter optionalSourceFilter) generates (Result result);
+    removePid(DemuxTpid pid) generates (Result result);
 
     /**
      * Release the descrambler instance
@@ -97,3 +92,4 @@ interface IDescrambler {
      */
     close() generates (Result result);
 };
+

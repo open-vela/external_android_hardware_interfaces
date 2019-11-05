@@ -19,9 +19,8 @@
 #include <hidl/LegacySupport.h>
 
 using android::hardware::defaultPassthroughServiceImplementation;
-using IBootControl_V1_0 = android::hardware::boot::V1_0::IBootControl;
-using IBootControl_V1_1 = android::hardware::boot::V1_1::IBootControl;
+using ::android::hardware::boot::V1_1::IBootControl;
 
 int main(int /* argc */, char* /* argv */[]) {
-    return defaultPassthroughServiceImplementation<IBootControl_V1_0, IBootControl_V1_1>();
+    return defaultPassthroughServiceImplementation<IBootControl>();
 }

@@ -432,7 +432,7 @@ TEST(HalProxyTest, PostEventsMultipleSubhalsThreaded) {
     EXPECT_EQ(eventQueue->availableToRead(), kNumEvents * 2);
 }
 
-TEST(HalProxyTest, DestructingWithEventsPendingOnBackgroundThread) {
+TEST(HalProxyTest, DestructingWithEventsPendingOnBackgroundThreadTest) {
     constexpr size_t kQueueSize = 5;
     constexpr size_t kNumEvents = 6;
     AllSensorsSubHal subHal;
@@ -447,145 +447,13 @@ TEST(HalProxyTest, DestructingWithEventsPendingOnBackgroundThread) {
     std::vector<Event> events = makeMultipleAccelerometerEvents(kNumEvents);
     subHal.postEvents(events, false /* wakeup */);
 
-    // Destructing HalProxy object with events on the background thread
-}
+    // Sleep for a half second so that background thread has time to attempt it's blocking write
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-TEST(HalProxyTest, DestructingWithUnackedWakeupEventsPosted) {
-    constexpr size_t kQueueSize = 5;
-    AllSensorsSubHal subHal;
-    std::vector<ISensorsSubHal*> subHals{&subHal};
+    // Should see a 5 second wait for blocking write timeout here
 
-    std::unique_ptr<EventMessageQueue> eventQueue = makeEventFMQ(kQueueSize);
-    std::unique_ptr<WakeupMessageQueue> wakeLockQueue = makeWakelockFMQ(kQueueSize);
-    ::android::sp<ISensorsCallback> callback = new SensorsCallback();
-    HalProxy proxy(subHals);
-    proxy.initialize(*eventQueue->getDesc(), *wakeLockQueue->getDesc(), callback);
-
-    std::vector<Event> events{makeProximityEvent()};
-    subHal.postEvents(events, true /* wakeup */);
-
-    // Not sending any acks back through wakeLockQueue
-
-    // Destructing HalProxy object with unacked wakeup events posted
-}
-
-TEST(HalProxyTest, ReinitializeWithEventsPendingOnBackgroundThread) {
-    constexpr size_t kQueueSize = 5;
-    constexpr size_t kNumEvents = 10;
-    AllSensorsSubHal subHal;
-    std::vector<ISensorsSubHal*> subHals{&subHal};
-
-    std::unique_ptr<EventMessageQueue> eventQueue = makeEventFMQ(kQueueSize);
-    std::unique_ptr<WakeupMessageQueue> wakeLockQueue = makeWakelockFMQ(kQueueSize);
-    ::android::sp<ISensorsCallback> callback = new SensorsCallback();
-    HalProxy proxy(subHals);
-    proxy.initialize(*eventQueue->getDesc(), *wakeLockQueue->getDesc(), callback);
-
-    std::vector<Event> events = makeMultipleAccelerometerEvents(kNumEvents);
-    subHal.postEvents(events, false /* wakeup */);
-
-    eventQueue = makeEventFMQ(kQueueSize);
-    wakeLockQueue = makeWakelockFMQ(kQueueSize);
-
-    Result secondInitResult =
-            proxy.initialize(*eventQueue->getDesc(), *wakeLockQueue->getDesc(), callback);
-    EXPECT_EQ(secondInitResult, Result::OK);
-    // Small sleep so that pending writes thread has a change to hit writeBlocking call.
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    Event eventOut;
-    EXPECT_FALSE(eventQueue->read(&eventOut));
-}
-
-TEST(HalProxyTest, ReinitializingWithUnackedWakeupEventsPosted) {
-    constexpr size_t kQueueSize = 5;
-    AllSensorsSubHal subHal;
-    std::vector<ISensorsSubHal*> subHals{&subHal};
-
-    std::unique_ptr<EventMessageQueue> eventQueue = makeEventFMQ(kQueueSize);
-    std::unique_ptr<WakeupMessageQueue> wakeLockQueue = makeWakelockFMQ(kQueueSize);
-    ::android::sp<ISensorsCallback> callback = new SensorsCallback();
-    HalProxy proxy(subHals);
-    proxy.initialize(*eventQueue->getDesc(), *wakeLockQueue->getDesc(), callback);
-
-    std::vector<Event> events{makeProximityEvent()};
-    subHal.postEvents(events, true /* wakeup */);
-
-    // Not sending any acks back through wakeLockQueue
-
-    eventQueue = makeEventFMQ(kQueueSize);
-    wakeLockQueue = makeWakelockFMQ(kQueueSize);
-
-    Result secondInitResult =
-            proxy.initialize(*eventQueue->getDesc(), *wakeLockQueue->getDesc(), callback);
-    EXPECT_EQ(secondInitResult, Result::OK);
-}
-
-TEST(HalProxyTest, InitializeManyTimesInARow) {
-    constexpr size_t kQueueSize = 5;
-    constexpr size_t kNumTimesToInit = 100;
-    AllSensorsSubHal subHal;
-    std::vector<ISensorsSubHal*> subHals{&subHal};
-
-    std::unique_ptr<EventMessageQueue> eventQueue = makeEventFMQ(kQueueSize);
-    std::unique_ptr<WakeupMessageQueue> wakeLockQueue = makeWakelockFMQ(kQueueSize);
-    ::android::sp<ISensorsCallback> callback = new SensorsCallback();
-    HalProxy proxy(subHals);
-
-    for (size_t i = 0; i < kNumTimesToInit; i++) {
-        Result secondInitResult =
-                proxy.initialize(*eventQueue->getDesc(), *wakeLockQueue->getDesc(), callback);
-        EXPECT_EQ(secondInitResult, Result::OK);
-    }
-}
-
-TEST(HalProxyTest, OperationModeResetOnInitialize) {
-    constexpr size_t kQueueSize = 5;
-    AllSensorsSubHal subHal;
-    std::vector<ISensorsSubHal*> subHals{&subHal};
-    std::unique_ptr<EventMessageQueue> eventQueue = makeEventFMQ(kQueueSize);
-    std::unique_ptr<WakeupMessageQueue> wakeLockQueue = makeWakelockFMQ(kQueueSize);
-    ::android::sp<ISensorsCallback> callback = new SensorsCallback();
-    HalProxy proxy(subHals);
-    proxy.setOperationMode(OperationMode::DATA_INJECTION);
-    proxy.initialize(*eventQueue->getDesc(), *wakeLockQueue->getDesc(), callback);
-    Event event = makeAccelerometerEvent();
-    // Should not be able to inject a non AdditionInfo type event because operation mode should
-    // have been reset to NORMAL
-    EXPECT_EQ(proxy.injectSensorData(event), Result::BAD_VALUE);
-}
-
-TEST(HalProxyTest, DynamicSensorsDiscardedOnInitialize) {
-    constexpr size_t kQueueSize = 5;
-    constexpr size_t kNumSensors = 5;
-    AddAndRemoveDynamicSensorsSubHal subHal;
-    std::vector<ISensorsSubHal*> subHals{&subHal};
-    std::unique_ptr<EventMessageQueue> eventQueue = makeEventFMQ(kQueueSize);
-    std::unique_ptr<WakeupMessageQueue> wakeLockQueue = makeWakelockFMQ(kQueueSize);
-    HalProxy proxy(subHals);
-
-    std::vector<SensorInfo> sensorsToConnect;
-    std::vector<int32_t> sensorHandlesToAttemptToRemove;
-    makeSensorsAndSensorHandlesStartingAndOfSize(1, kNumSensors, sensorsToConnect,
-                                                 sensorHandlesToAttemptToRemove);
-
-    std::vector<int32_t> nonDynamicSensorHandles;
-    for (int32_t sensorHandle = 1; sensorHandle < 10; sensorHandle++) {
-        nonDynamicSensorHandles.push_back(sensorHandle);
-    }
-
-    TestSensorsCallback* callback = new TestSensorsCallback();
-    ::android::sp<ISensorsCallback> callbackPtr = callback;
-    proxy.initialize(*eventQueue->getDesc(), *wakeLockQueue->getDesc(), callbackPtr);
-    subHal.addDynamicSensors(sensorsToConnect);
-
-    proxy.initialize(*eventQueue->getDesc(), *wakeLockQueue->getDesc(), callbackPtr);
-    subHal.removeDynamicSensors(sensorHandlesToAttemptToRemove);
-
-    std::vector<int32_t> sensorHandlesActuallyRemoved = callback->getSensorHandlesDisconnected();
-
-    // Should not have received the sensorHandles for any dynamic sensors that were removed since
-    // all of them should have been removed in the second initialize call.
-    EXPECT_TRUE(sensorHandlesActuallyRemoved.empty());
+    // Should be one events left on pending writes queue here and proxy will destruct
+    // If this TEST completes then it was a success, if it hangs we will see a crash
 }
 
 TEST(HalProxyTest, DynamicSensorsConnectedTest) {
@@ -661,67 +529,6 @@ TEST(HalProxyTest, DynamicSensorsDisconnectedTest) {
         EXPECT_TRUE(nonDynamicSensorHandlesSet.find(sensorHandleSeen) ==
                     nonDynamicSensorHandlesSet.end());
     }
-}
-
-TEST(HalProxyTest, InvalidSensorHandleSubHalIndexProxyCalls) {
-    constexpr size_t kNumSubHals = 3;
-    constexpr size_t kQueueSize = 5;
-    int32_t kNumSubHalsInt32 = static_cast<int32_t>(kNumSubHals);
-    std::vector<AllSensorsSubHal> subHalObjs(kNumSubHals);
-    std::vector<ISensorsSubHal*> subHals;
-    for (const auto& subHal : subHalObjs) {
-        subHals.push_back((ISensorsSubHal*)(&subHal));
-    }
-
-    std::unique_ptr<EventMessageQueue> eventQueue = makeEventFMQ(kQueueSize);
-    std::unique_ptr<WakeupMessageQueue> wakeLockQueue = makeWakelockFMQ(kQueueSize);
-    ::android::sp<ISensorsCallback> callback = new SensorsCallback();
-    HalProxy proxy(subHals);
-    // Initialize for the injectSensorData call so callback postEvents is valid
-    proxy.initialize(*eventQueue->getDesc(), *wakeLockQueue->getDesc(), callback);
-
-    // For testing proxy.injectSensorData properly
-    proxy.setOperationMode(OperationMode::DATA_INJECTION);
-
-    // kNumSubHalsInt32 index is one off the end of mSubHalList in proxy object
-    EXPECT_EQ(proxy.activate(0x00000001 | (kNumSubHalsInt32 << 24), true), Result::BAD_VALUE);
-    EXPECT_EQ(proxy.batch(0x00000001 | (kNumSubHalsInt32 << 24), 0, 0), Result::BAD_VALUE);
-    EXPECT_EQ(proxy.flush(0x00000001 | (kNumSubHalsInt32 << 24)), Result::BAD_VALUE);
-    Event event;
-    event.sensorHandle = 0x00000001 | (kNumSubHalsInt32 << 24);
-    EXPECT_EQ(proxy.injectSensorData(event), Result::BAD_VALUE);
-}
-
-TEST(HalProxyTest, PostedEventSensorHandleSubHalIndexValid) {
-    constexpr size_t kQueueSize = 5;
-    constexpr int32_t subhal1Index = 0;
-    constexpr int32_t subhal2Index = 1;
-    AllSensorsSubHal subhal1;
-    AllSensorsSubHal subhal2;
-    std::vector<ISensorsSubHal*> subHals{&subhal1, &subhal2};
-
-    std::unique_ptr<EventMessageQueue> eventQueue = makeEventFMQ(kQueueSize);
-    std::unique_ptr<WakeupMessageQueue> wakeLockQueue = makeWakelockFMQ(kQueueSize);
-    ::android::sp<ISensorsCallback> callback = new SensorsCallback();
-    HalProxy proxy(subHals);
-    proxy.initialize(*eventQueue->getDesc(), *wakeLockQueue->getDesc(), callback);
-
-    int32_t sensorHandleToPost = 0x00000001;
-    Event eventIn = makeAccelerometerEvent();
-    eventIn.sensorHandle = sensorHandleToPost;
-    std::vector<Event> eventsToPost{eventIn};
-    subhal1.postEvents(eventsToPost, false);
-
-    Event eventOut;
-    EXPECT_TRUE(eventQueue->read(&eventOut));
-
-    EXPECT_EQ(eventOut.sensorHandle, (subhal1Index << 24) | sensorHandleToPost);
-
-    subhal2.postEvents(eventsToPost, false);
-
-    EXPECT_TRUE(eventQueue->read(&eventOut));
-
-    EXPECT_EQ(eventOut.sensorHandle, (subhal2Index << 24) | sensorHandleToPost);
 }
 
 // Helper implementations follow
