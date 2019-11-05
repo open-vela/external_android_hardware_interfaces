@@ -20,13 +20,11 @@
 
 #include <android/hardware/sensors/2.0/types.h>
 
-#include <android-base/file.h>
 #include "hardware_legacy/power.h"
 
 #include <dlfcn.h>
 
 #include <cinttypes>
-#include <cmath>
 #include <fstream>
 #include <functional>
 #include <thread>
@@ -44,8 +42,6 @@ using ::android::hardware::sensors::V2_0::implementation::kWakelockTimeoutNs;
 
 typedef ISensorsSubHal*(SensorsHalGetSubHalFunc)(uint32_t*);
 
-static constexpr int32_t kBitsAfterSubHalIndex = 24;
-
 /**
  * Set the subhal index as first byte of sensor handle and return this modified version.
  *
@@ -54,31 +50,8 @@ static constexpr int32_t kBitsAfterSubHalIndex = 24;
  *
  * @return The modified sensor handle.
  */
-int32_t setSubHalIndex(int32_t sensorHandle, size_t subHalIndex) {
-    return sensorHandle | (static_cast<int32_t>(subHalIndex) << kBitsAfterSubHalIndex);
-}
-
-/**
- * Extract the subHalIndex from sensorHandle.
- *
- * @param sensorHandle The sensorHandle to extract from.
- *
- * @return The subhal index.
- */
-size_t extractSubHalIndex(int32_t sensorHandle) {
-    return static_cast<size_t>(sensorHandle >> kBitsAfterSubHalIndex);
-}
-
-/**
- * Convert nanoseconds to milliseconds.
- *
- * @param nanos The nanoseconds input.
- *
- * @return The milliseconds count.
- */
-int64_t msFromNs(int64_t nanos) {
-    constexpr int64_t nanosecondsInAMillsecond = 1000000;
-    return nanos / nanosecondsInAMillsecond;
+uint32_t setSubHalIndex(uint32_t sensorHandle, size_t subHalIndex) {
+    return sensorHandle | (subHalIndex << 24);
 }
 
 HalProxy::HalProxy() {
@@ -92,7 +65,15 @@ HalProxy::HalProxy(std::vector<ISensorsSubHal*>& subHalList) : mSubHalList(subHa
 }
 
 HalProxy::~HalProxy() {
-    stopThreads();
+    mThreadsRun.store(false);
+    mWakelockCV.notify_one();
+    mEventQueueWriteCV.notify_one();
+    if (mPendingWritesThread.joinable()) {
+        mPendingWritesThread.join();
+    }
+    if (mWakelockThread.joinable()) {
+        mWakelockThread.join();
+    }
 }
 
 Return<void> HalProxy::getSensorsList(getSensorsList_cb _hidl_cb) {
@@ -128,9 +109,6 @@ Return<Result> HalProxy::setOperationMode(OperationMode mode) {
 }
 
 Return<Result> HalProxy::activate(int32_t sensorHandle, bool enabled) {
-    if (!isSubHalIndexValid(sensorHandle)) {
-        return Result::BAD_VALUE;
-    }
     return getSubHalForSensorHandle(sensorHandle)
             ->activate(clearSubHalIndex(sensorHandle), enabled);
 }
@@ -141,19 +119,8 @@ Return<Result> HalProxy::initialize(
         const sp<ISensorsCallback>& sensorsCallback) {
     Result result = Result::OK;
 
-    stopThreads();
-    resetSharedWakelock();
-
-    // So that the pending write events queue can be cleared safely and when we start threads
-    // again we do not get new events until after initialize resets the subhals.
-    disableAllSensors();
-
-    // Clears the queue if any events were pending write before.
-    mPendingWriteEventsQueue = std::queue<std::pair<std::vector<Event>, size_t>>();
-    mSizePendingWriteEventsQueue = 0;
-
-    // Clears previously connected dynamic sensors
-    mDynamicSensors.clear();
+    // TODO: clean up sensor requests, if not already done elsewhere through a death recipient, and
+    // clean up any other resources that exist (FMQs, flags, threads, etc.)
 
     mDynamicSensorsCallback = sensorsCallback;
 
@@ -161,28 +128,20 @@ Return<Result> HalProxy::initialize(
     mEventQueue =
             std::make_unique<EventMessageQueue>(eventQueueDescriptor, true /* resetPointers */);
 
+    // Create the EventFlag that is used to signal to the framework that sensor events have been
+    // written to the Event FMQ
+    if (EventFlag::createEventFlag(mEventQueue->getEventFlagWord(), &mEventQueueFlag) != OK) {
+        result = Result::BAD_VALUE;
+    }
+
     // Create the Wake Lock FMQ that is used by the framework to communicate whenever WAKE_UP
     // events have been successfully read and handled by the framework.
     mWakeLockQueue =
             std::make_unique<WakeLockMessageQueue>(wakeLockDescriptor, true /* resetPointers */);
 
-    if (mEventQueueFlag != nullptr) {
-        EventFlag::deleteEventFlag(&mEventQueueFlag);
-    }
-    if (mWakelockQueueFlag != nullptr) {
-        EventFlag::deleteEventFlag(&mWakelockQueueFlag);
-    }
-    if (EventFlag::createEventFlag(mEventQueue->getEventFlagWord(), &mEventQueueFlag) != OK) {
-        result = Result::BAD_VALUE;
-    }
-    if (EventFlag::createEventFlag(mWakeLockQueue->getEventFlagWord(), &mWakelockQueueFlag) != OK) {
-        result = Result::BAD_VALUE;
-    }
     if (!mDynamicSensorsCallback || !mEventQueue || !mWakeLockQueue || mEventQueueFlag == nullptr) {
         result = Result::BAD_VALUE;
     }
-
-    mThreadsRun.store(true);
 
     mPendingWritesThread = std::thread(startPendingWritesThread, this);
     mWakelockThread = std::thread(startWakelockThread, this);
@@ -198,24 +157,16 @@ Return<Result> HalProxy::initialize(
         }
     }
 
-    mCurrentOperationMode = OperationMode::NORMAL;
-
     return result;
 }
 
 Return<Result> HalProxy::batch(int32_t sensorHandle, int64_t samplingPeriodNs,
                                int64_t maxReportLatencyNs) {
-    if (!isSubHalIndexValid(sensorHandle)) {
-        return Result::BAD_VALUE;
-    }
     return getSubHalForSensorHandle(sensorHandle)
             ->batch(clearSubHalIndex(sensorHandle), samplingPeriodNs, maxReportLatencyNs);
 }
 
 Return<Result> HalProxy::flush(int32_t sensorHandle) {
-    if (!isSubHalIndexValid(sensorHandle)) {
-        return Result::BAD_VALUE;
-    }
     return getSubHalForSensorHandle(sensorHandle)->flush(clearSubHalIndex(sensorHandle));
 }
 
@@ -229,9 +180,6 @@ Return<Result> HalProxy::injectSensorData(const Event& event) {
     }
     if (result == Result::OK) {
         Event subHalEvent = event;
-        if (!isSubHalIndexValid(event.sensorHandle)) {
-            return Result::BAD_VALUE;
-        }
         subHalEvent.sensorHandle = clearSubHalIndex(event.sensorHandle);
         result = getSubHalForSensorHandle(event.sensorHandle)->injectSensorData(subHalEvent);
     }
@@ -269,43 +217,8 @@ Return<void> HalProxy::configDirectReport(int32_t sensorHandle, int32_t channelH
     return Return<void>();
 }
 
-Return<void> HalProxy::debug(const hidl_handle& fd, const hidl_vec<hidl_string>& /*args*/) {
-    if (fd.getNativeHandle() == nullptr || fd->numFds < 1) {
-        ALOGE("%s: missing fd for writing", __FUNCTION__);
-        return Void();
-    }
-
-    android::base::borrowed_fd writeFd = dup(fd->data[0]);
-
-    std::ostringstream stream;
-    stream << "===HalProxy===" << std::endl;
-    stream << "Internal values:" << std::endl;
-    stream << "  Threads are running: " << (mThreadsRun.load() ? "true" : "false") << std::endl;
-    int64_t now = getTimeNow();
-    stream << "  Wakelock timeout start time: " << msFromNs(now - mWakelockTimeoutStartTime)
-           << " ms ago" << std::endl;
-    stream << "  Wakelock timeout reset time: " << msFromNs(now - mWakelockTimeoutResetTime)
-           << " ms ago" << std::endl;
-    // TODO(b/142969448): Add logging for history of wakelock acquisition per subhal.
-    stream << "  Wakelock ref count: " << mWakelockRefCount << std::endl;
-    stream << "  # of events on pending write writes queue: " << mSizePendingWriteEventsQueue
-           << std::endl;
-    if (!mPendingWriteEventsQueue.empty()) {
-        stream << "  Size of events list on front of pending writes queue: "
-               << mPendingWriteEventsQueue.front().first.size() << std::endl;
-    }
-    stream << "  # of non-dynamic sensors across all subhals: " << mSensors.size() << std::endl;
-    stream << "  # of dynamic sensors across all subhals: " << mDynamicSensors.size() << std::endl;
-    stream << "SubHals (" << mSubHalList.size() << "):" << std::endl;
-    for (ISensorsSubHal* subHal : mSubHalList) {
-        stream << "  Name: " << subHal->getName() << std::endl;
-        stream << "  Debug dump: " << std::endl;
-        android::base::WriteStringToFd(stream.str(), writeFd);
-        subHal->debug(fd, {});
-        stream.str("");
-        stream << std::endl;
-    }
-    android::base::WriteStringToFd(stream.str(), writeFd);
+Return<void> HalProxy::debug(const hidl_handle& /* fd */, const hidl_vec<hidl_string>& /* args */) {
+    // TODO: output debug information
     return Return<void>();
 }
 
@@ -331,7 +244,7 @@ Return<void> HalProxy::onDynamicSensorsConnected(const hidl_vec<SensorInfo>& dyn
 
 Return<void> HalProxy::onDynamicSensorsDisconnected(
         const hidl_vec<int32_t>& dynamicSensorHandlesRemoved, int32_t subHalIndex) {
-    // TODO(b/143302327): Block this call until all pending events are flushed from queue
+    // TODO: Block this call until all pending events are flushed from queue
     std::vector<int32_t> sensorHandles;
     {
         std::lock_guard<std::mutex> lock(mDynamicSensorsMutex);
@@ -401,7 +314,7 @@ void HalProxy::initializeSensorList() {
                     ALOGE("SubHal sensorHandle's first byte was not 0");
                 } else {
                     ALOGV("Loaded sensor: %s", sensor.name.c_str());
-                    sensor.sensorHandle = setSubHalIndex(sensor.sensorHandle, subHalIndex);
+                    sensor.sensorHandle |= (subHalIndex << 24);
                     setDirectChannelFlags(&sensor, subHal);
                     mSensors[sensor.sensorHandle] = sensor;
                 }
@@ -418,48 +331,12 @@ void HalProxy::init() {
     initializeSensorList();
 }
 
-void HalProxy::stopThreads() {
-    mThreadsRun.store(false);
-    if (mEventQueueFlag != nullptr && mEventQueue != nullptr) {
-        size_t numToRead = mEventQueue->availableToRead();
-        std::vector<Event> events(numToRead);
-        mEventQueue->read(events.data(), numToRead);
-        mEventQueueFlag->wake(static_cast<uint32_t>(EventQueueFlagBits::EVENTS_READ));
-    }
-    if (mWakelockQueueFlag != nullptr && mWakeLockQueue != nullptr) {
-        uint32_t kZero = 0;
-        mWakeLockQueue->write(&kZero);
-        mWakelockQueueFlag->wake(static_cast<uint32_t>(WakeLockQueueFlagBits::DATA_WRITTEN));
-    }
-    mWakelockCV.notify_one();
-    mEventQueueWriteCV.notify_one();
-    if (mPendingWritesThread.joinable()) {
-        mPendingWritesThread.join();
-    }
-    if (mWakelockThread.joinable()) {
-        mWakelockThread.join();
-    }
-}
-
-void HalProxy::disableAllSensors() {
-    for (const auto& sensorEntry : mSensors) {
-        int32_t sensorHandle = sensorEntry.first;
-        activate(sensorHandle, false /* enabled */);
-    }
-    std::lock_guard<std::mutex> dynamicSensorsLock(mDynamicSensorsMutex);
-    for (const auto& sensorEntry : mDynamicSensors) {
-        int32_t sensorHandle = sensorEntry.first;
-        activate(sensorHandle, false /* enabled */);
-    }
-}
-
 void HalProxy::startPendingWritesThread(HalProxy* halProxy) {
     halProxy->handlePendingWrites();
 }
 
 void HalProxy::handlePendingWrites() {
-    // TODO(b/143302327): Find a way to optimize locking strategy maybe using two mutexes instead of
-    // one.
+    // TODO: Find a way to optimize locking strategy maybe using two mutexes instead of one.
     std::unique_lock<std::mutex> lock(mEventQueueWriteMutex);
     while (mThreadsRun.load()) {
         mEventQueueWriteCV.wait(
@@ -470,6 +347,8 @@ void HalProxy::handlePendingWrites() {
             size_t eventQueueSize = mEventQueue->getQuantumCount();
             size_t numToWrite = std::min(pendingWriteEvents.size(), eventQueueSize);
             lock.unlock();
+            // TODO: Find a way to interrup writeBlocking if the thread should exit
+            // so we don't have to wait for timeout on framework restarts.
             if (!mEventQueue->writeBlocking(
                         pendingWriteEvents.data(), numToWrite,
                         static_cast<uint32_t>(EventQueueFlagBits::EVENTS_READ),
@@ -487,14 +366,12 @@ void HalProxy::handlePendingWrites() {
             }
             lock.lock();
             if (pendingWriteEvents.size() > eventQueueSize) {
-                // TODO(b/143302327): Check if this erase operation is too inefficient. It will copy
-                // all the events ahead of it down to fill gap off array at front after the erase.
+                // TODO: Check if this erase operation is too inefficient. It will copy all the
+                // events ahead of it down to fill gap off array at front after the erase.
                 pendingWriteEvents.erase(pendingWriteEvents.begin(),
                                          pendingWriteEvents.begin() + eventQueueSize);
-                mSizePendingWriteEventsQueue -= eventQueueSize;
             } else {
                 mPendingWriteEventsQueue.pop();
-                mSizePendingWriteEventsQueue -= pendingWriteEvents.size();
             }
         }
     }
@@ -558,20 +435,19 @@ void HalProxy::postEventsToMessageQueue(const std::vector<Event>& events, size_t
         numToWrite = std::min(events.size(), mEventQueue->availableToWrite());
         if (numToWrite > 0) {
             if (mEventQueue->write(events.data(), numToWrite)) {
-                // TODO(b/143302327): While loop if mEventQueue->avaiableToWrite > 0 to possibly fit
-                // in more writes immediately
+                // TODO: While loop if mEventQueue->avaiableToWrite > 0 to possibly fit in more
+                // writes immediately
                 mEventQueueFlag->wake(static_cast<uint32_t>(EventQueueFlagBits::READ_AND_PROCESS));
             } else {
                 numToWrite = 0;
             }
         }
     }
-    size_t numLeft = events.size() - numToWrite;
-    if (numToWrite < events.size() &&
-        mSizePendingWriteEventsQueue + numLeft <= kMaxSizePendingWriteEventsQueue) {
+    if (numToWrite < events.size()) {
+        // TODO: Bound the mPendingWriteEventsQueue so that we do not trigger OOMs if framework
+        // stalls
         std::vector<Event> eventsLeft(events.begin() + numToWrite, events.end());
         mPendingWriteEventsQueue.push({eventsLeft, numWakeupEvents});
-        mSizePendingWriteEventsQueue += numLeft;
         mEventQueueWriteCV.notify_one();
     }
 }
@@ -618,12 +494,8 @@ void HalProxy::setDirectChannelFlags(SensorInfo* sensorInfo, ISensorsSubHal* sub
     }
 }
 
-ISensorsSubHal* HalProxy::getSubHalForSensorHandle(int32_t sensorHandle) {
-    return mSubHalList[extractSubHalIndex(sensorHandle)];
-}
-
-bool HalProxy::isSubHalIndexValid(int32_t sensorHandle) {
-    return extractSubHalIndex(sensorHandle) < mSubHalList.size();
+ISensorsSubHal* HalProxy::getSubHalForSensorHandle(uint32_t sensorHandle) {
+    return mSubHalList[static_cast<size_t>(sensorHandle >> 24)];
 }
 
 size_t HalProxy::countNumWakeupEvents(const std::vector<Event>& events, size_t n) {
@@ -637,11 +509,11 @@ size_t HalProxy::countNumWakeupEvents(const std::vector<Event>& events, size_t n
     return numWakeupEvents;
 }
 
-int32_t HalProxy::clearSubHalIndex(int32_t sensorHandle) {
+uint32_t HalProxy::clearSubHalIndex(uint32_t sensorHandle) {
     return sensorHandle & (~kSensorHandleSubHalIndexMask);
 }
 
-bool HalProxy::subHalIndexIsClear(int32_t sensorHandle) {
+bool HalProxy::subHalIndexIsClear(uint32_t sensorHandle) {
     return (sensorHandle & kSensorHandleSubHalIndexMask) == 0;
 }
 
@@ -660,7 +532,7 @@ void HalProxyCallback::postEvents(const std::vector<Event>& events, ScopedWakelo
                     " w/ index %zu.",
                     mSubHalIndex);
     }
-    mHalProxy->postEventsToMessageQueue(processedEvents, numWakeupEvents, std::move(wakelock));
+    mHalProxy->postEventsToMessageQueue(events, numWakeupEvents, std::move(wakelock));
 }
 
 ScopedWakelock HalProxyCallback::createScopedWakelock(bool lock) {

@@ -33,5 +33,4 @@ cc_test {
         "libfmq",
         "libutils",
     ],
-    test_suites: ["general-tests", "vts-core"],
 }
