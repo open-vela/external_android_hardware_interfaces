@@ -18,8 +18,6 @@ package android.hardware.radio@1.5;
 
 import @1.4::IRadio;
 import @1.5::AccessNetwork;
-import @1.5::NetworkScanRequest;
-import @1.5::RadioAccessSpecifier;
 import @1.5::SignalThresholdInfo;
 
 /**
@@ -31,6 +29,7 @@ import @1.5::SignalThresholdInfo;
  * setResponseFunctions must work with @1.5::IRadioResponse and @1.5::IRadioIndication.
  */
 interface IRadio extends @1.4::IRadio {
+
     /**
      * Sets the signal strength reporting criteria.
      *
@@ -56,73 +55,4 @@ interface IRadio extends @1.4::IRadio {
      */
     oneway setSignalStrengthReportingCriteria_1_5(int32_t serial,
             SignalThresholdInfo signalThresholdInfo, AccessNetwork accessNetwork);
-
-    /**
-     * Enable or disable UiccApplications on the SIM. If disabled:
-     *  - Modem will not register on any network.
-     *  - SIM must be PRESENT, and the IccId of the SIM must still be accessible.
-     *  - The corresponding modem stack is still functional, e.g. able to make emergency calls or
-     *    do network scan.
-     * By default if this API is not called, the uiccApplications must be enabled automatically.
-     * It must work for both single SIM and DSDS cases for UX consistency.
-     * The preference is per SIM, and must be remembered over power cycle, modem reboot, or SIM
-     * insertion / unplug.
-     *
-     * @param serial: Serial number of request.
-     * @param enable: true if to enable uiccApplications, false to disable.
-
-     * Response callback is IRadioResponse.enableUiccApplicationsResponse()
-     */
-    oneway enableUiccApplications(int32_t serial, bool enable);
-
-    /**
-     * Whether uiccApplications are enabled, or disabled.
-     *
-     * By default uiccApplications must be enabled, unless enableUiccApplications() with enable
-     * being false is called.
-     *
-     * @param serial Serial number of request.
-     *
-     * Response callback is IRadioResponse.areUiccApplicationsEnabledResponse()
-     */
-    oneway areUiccApplicationsEnabled(int32_t serial);
-
-    /**
-     * Query whether disabling and enabling UiccApplications functionality is supported. If not,
-     * calling enableUiccApplications with a different value will return
-     * RadioError:REQUEST_NOT_SUPPORTED.
-     *
-     * @param serial Serial number of request.
-     *
-     * Response callback is IRadioResponse.canToggleUiccApplicationsEnablementResponse()
-     */
-    oneway canToggleUiccApplicationsEnablement(int32_t serial);
-
-    /**
-     * Specify which bands modem's background scan must act on.
-     * If specifyChannels is true, it only scans bands specified in specifiers.
-     * If specifyChannels is false, it scans all bands.
-     *
-     * For example, CBRS is only on LTE band 48. By specifying this band,
-     * modem saves more power.
-     *
-     * @param serial Serial number of request.
-     * @param specifyChannels whether to scan bands defined in specifiers.
-     * @param specifiers which bands to scan. Only used if specifyChannels is true.
-     *
-     * Response callback is IRadioResponse.setSystemSelectionChannelsResponse()
-     */
-    oneway setSystemSelectionChannels_1_5(int32_t serial, bool specifyChannels,
-            vec<RadioAccessSpecifier> specifiers);
-
-    /**
-     * Starts a network scan
-     *
-     * @param serial Serial number of request.
-     * @param request Defines the radio networks/bands/channels which need to be scanned.
-     *
-     * Same API as @1.4::IRadio.startNetworkScan_1_4, except using
-     * 1.5 version of NetworkScanRequest
-     */
-    oneway startNetworkScan_1_5(int32_t serial, NetworkScanRequest request);
 };
