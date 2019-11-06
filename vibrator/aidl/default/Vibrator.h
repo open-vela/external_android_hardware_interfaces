@@ -31,7 +31,6 @@ class Vibrator : public BnVibrator {
     ndk::ScopedAStatus perform(Effect effect, EffectStrength strength,
                                const std::shared_ptr<IVibratorCallback>& callback,
                                int32_t* _aidl_return) override;
-    ndk::ScopedAStatus getSupportedEffects(std::vector<Effect>* _aidl_return) override;
     ndk::ScopedAStatus setAmplitude(int32_t amplitude) override;
     ndk::ScopedAStatus setExternalControl(bool enabled) override;
 };
