@@ -7,12 +7,8 @@ hidl_interface {
         enabled: true,
     },
     srcs: [
-        "types.hal",
         "IWifi.hal",
         "IWifiApIface.hal",
-        "IWifiChip.hal",
-        "IWifiRttController.hal",
-        "IWifiRttControllerEventCallback.hal",
     ],
     interfaces: [
         "android.hardware.wifi@1.0",

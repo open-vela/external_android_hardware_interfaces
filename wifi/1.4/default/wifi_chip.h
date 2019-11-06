@@ -21,8 +21,7 @@
 #include <map>
 
 #include <android-base/macros.h>
-#include <android/hardware/wifi/1.4/IWifiChip.h>
-#include <android/hardware/wifi/1.4/IWifiRttController.h>
+#include <android/hardware/wifi/1.3/IWifiChip.h>
 
 #include "hidl_callback_util.h"
 #include "ringbuffer.h"
@@ -47,7 +46,7 @@ using namespace android::hardware::wifi::V1_0;
  * Since there is only a single chip instance used today, there is no
  * identifying handle information stored here.
  */
-class WifiChip : public V1_4::IWifiChip {
+class WifiChip : public V1_3::IWifiChip {
    public:
     WifiChip(
         ChipId chip_id,
@@ -153,9 +152,6 @@ class WifiChip : public V1_4::IWifiChip {
         getCapabilities_cb hidl_status_cb) override;
     Return<void> debug(const hidl_handle& handle,
                        const hidl_vec<hidl_string>& options) override;
-    Return<void> createRttController_1_4(
-        const sp<IWifiIface>& bound_iface,
-        createRttController_1_4_cb hidl_status_cb) override;
 
    private:
     void invalidateAndRemoveAllIfaces();
@@ -199,8 +195,8 @@ class WifiChip : public V1_4::IWifiChip {
     std::pair<WifiStatus, sp<IWifiStaIface>> getStaIfaceInternal(
         const std::string& ifname);
     WifiStatus removeStaIfaceInternal(const std::string& ifname);
-    std::pair<WifiStatus, sp<V1_0::IWifiRttController>>
-    createRttControllerInternal(const sp<IWifiIface>& bound_iface);
+    std::pair<WifiStatus, sp<IWifiRttController>> createRttControllerInternal(
+        const sp<IWifiIface>& bound_iface);
     std::pair<WifiStatus, std::vector<WifiDebugRingBufferStatus>>
     getDebugRingBuffersStatusInternal();
     WifiStatus startLoggingToDebugRingBufferInternal(
@@ -221,8 +217,6 @@ class WifiChip : public V1_4::IWifiChip {
         const sp<V1_2::IWifiChipEventCallback>& event_callback);
     WifiStatus selectTxPowerScenarioInternal_1_2(TxPowerScenario scenario);
     std::pair<WifiStatus, uint32_t> getCapabilitiesInternal_1_3();
-    std::pair<WifiStatus, sp<IWifiRttController>>
-    createRttControllerInternal_1_4(const sp<IWifiIface>& bound_iface);
     WifiStatus handleChipConfiguration(
         std::unique_lock<std::recursive_mutex>* lock, ChipModeId mode_id);
     WifiStatus registerDebugRingBufferCallback();
