@@ -27,8 +27,7 @@ namespace vibrator {
 ndk::ScopedAStatus Vibrator::getCapabilities(int32_t* _aidl_return) {
     LOG(INFO) << "Vibrator reporting capabilities";
     *_aidl_return = IVibrator::CAP_ON_CALLBACK | IVibrator::CAP_PERFORM_CALLBACK |
-                    IVibrator::CAP_AMPLITUDE_CONTROL | IVibrator::CAP_EXTERNAL_CONTROL |
-                    IVibrator::CAP_EXTERNAL_AMPLITUDE_CONTROL;
+                    IVibrator::CAP_AMPLITUDE_CONTROL | IVibrator::CAP_EXTERNAL_CONTROL;
     return ndk::ScopedAStatus::ok();
 }
 
@@ -76,6 +75,11 @@ ndk::ScopedAStatus Vibrator::perform(Effect effect, EffectStrength strength,
     }
 
     *_aidl_return = kEffectMillis;
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Vibrator::getSupportedEffects(std::vector<Effect>* _aidl_return) {
+    *_aidl_return = {Effect::CLICK, Effect::TICK};
     return ndk::ScopedAStatus::ok();
 }
 

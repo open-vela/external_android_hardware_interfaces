@@ -31,20 +31,16 @@ interface IVibrator {
      */
     const int CAP_PERFORM_CALLBACK = 1 << 1;
     /**
-     * Whether setAmplitude is supported (when external control is disabled)
+     * Whether setAmplitude is supported.
      */
     const int CAP_AMPLITUDE_CONTROL = 1 << 2;
     /**
      * Whether setExternalControl is supported.
      */
     const int CAP_EXTERNAL_CONTROL = 1 << 3;
-    /**
-     * Whether setAmplitude is supported (when external control is enabled)
-     */
-    const int CAP_EXTERNAL_AMPLITUDE_CONTROL = 1 << 4;
 
     /**
-     * Determine capabilities of the vibrator HAL (CAP_* mask)
+     * Determine capabilities of the vibrator HAL (CAP_* values)
      */
     int getCapabilities();
 
@@ -59,9 +55,7 @@ interface IVibrator {
      * Turn on vibrator
      *
      * This function must only be called after the previous timeout has expired or
-     * was canceled (through off()). A callback is only expected to be supported when
-     * getCapabilities CAP_ON_CALLBACK is specified.
-     *
+     * was canceled (through off()).
      * @param timeoutMs number of milliseconds to vibrate.
      * @param callback A callback used to inform Frameworks of state change, if supported.
      */
@@ -69,9 +63,6 @@ interface IVibrator {
 
     /**
      * Fire off a predefined haptic event.
-     *
-     * A callback is only expected to be supported when getCapabilities CAP_PERFORM_CALLBACK
-     * is specified.
      *
      * @param effect The type of haptic event to trigger.
      * @param strength The intensity of haptic event to trigger.
@@ -83,13 +74,17 @@ interface IVibrator {
     int perform(in Effect effect, in EffectStrength strength, in IVibratorCallback callback);
 
     /**
+     * List supported effects.
+     *
+     * Return the effects which are supported (an effect is expected to be supported at every
+     * strength level.
+     */
+    Effect[] getSupportedEffects();
+
+    /**
      * Sets the motor's vibrational amplitude.
      *
-     * Changes the force being produced by the underlying motor. This may not be supported and
-     * this support is reflected in getCapabilities (CAP_AMPLITUDE_CONTROL). When this device
-     * is under external control (via setExternalControl), amplitude control may not be supported
-     * even though it is supported normally. This can be checked with
-     * CAP_EXTERNAL_AMPLITUDE_CONTROL.
+     * Changes the force being produced by the underlying motor.
      *
      * @param amplitude The unitless force setting. Note that this number must
      *                  be between 1 and 255, inclusive. If the motor does not
@@ -101,14 +96,12 @@ interface IVibrator {
     /**
      * Enables/disables control override of vibrator to audio.
      *
-     * Support is reflected in getCapabilities (CAP_EXTERNAL_CONTROL).
-     *
      * When this API is set, the vibrator control should be ceded to audio system
      * for haptic audio. While this is enabled, issuing of other commands to control
      * the vibrator is unsupported and the resulting behavior is undefined. Amplitude
      * control may or may not be supported and is reflected in the return value of
-     * getCapabilities (CAP_EXTERNAL_AMPLITUDE_CONTROL) while this is enabled. When this is
-     * disabled, the vibrator should resume to an off state.
+     * supportsAmplitudeControl() while this is enabled. When this is disabled, the
+     * vibrator should resume to an off state.
      *
      * @param enabled Whether external control should be enabled or disabled.
      */
