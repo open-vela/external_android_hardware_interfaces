@@ -28,7 +28,7 @@
 #include <random>
 #include <thread>
 
-#include "1.3/Callbacks.h"
+#include "1.2/Callbacks.h"
 #include "GeneratedTestHarness.h"
 #include "MemoryUtils.h"
 #include "TestHarness.h"
@@ -48,11 +48,12 @@ const test_helper::TestModel& get_test_model();
 namespace android::hardware::neuralnetworks::V1_3::vts::functional {
 
 using namespace test_helper;
-using implementation::PreparedModelCallback;
 using V1_0::ErrorStatus;
 using V1_1::ExecutionPreference;
 using V1_2::Constant;
+using V1_2::IPreparedModel;
 using V1_2::OperationType;
+using V1_2::implementation::PreparedModelCallback;
 
 namespace float32_model {
 
@@ -230,7 +231,7 @@ class CompilationCachingTestBase : public testing::Test {
         ASSERT_NE(kDevice.get(), nullptr);
 
         // Create cache directory. The cache directory and a temporary cache file is always created
-        // to test the behavior of prepareModelFromCache_1_3, even when caching is not supported.
+        // to test the behavior of prepareModelFromCache, even when caching is not supported.
         char cacheDirTemp[] = "/data/local/tmp/TestCompilationCachingXXXXXX";
         char* cacheDir = mkdtemp(cacheDirTemp);
         ASSERT_NE(cacheDir, nullptr);
@@ -369,7 +370,7 @@ class CompilationCachingTestBase : public testing::Test {
         // Launch prepare model from cache.
         sp<PreparedModelCallback> preparedModelCallback = new PreparedModelCallback();
         hidl_array<uint8_t, sizeof(mToken)> cacheToken(mToken);
-        Return<ErrorStatus> prepareLaunchStatus = kDevice->prepareModelFromCache_1_3(
+        Return<ErrorStatus> prepareLaunchStatus = kDevice->prepareModelFromCache(
                 modelCache, dataCache, cacheToken, preparedModelCallback);
         ASSERT_TRUE(prepareLaunchStatus.isOk());
         if (static_cast<ErrorStatus>(prepareLaunchStatus) != ErrorStatus::NONE) {
@@ -456,7 +457,8 @@ TEST_P(CompilationCachingTest, CacheSavingAndRetrieval) {
     }
 
     // Execute and verify results.
-    EvaluatePreparedModel(preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
+    EvaluatePreparedModel(preparedModel, testModel,
+                          /*testDynamicOutputShape=*/false);
 }
 
 TEST_P(CompilationCachingTest, CacheSavingAndRetrievalNonZeroOffset) {
@@ -518,7 +520,8 @@ TEST_P(CompilationCachingTest, CacheSavingAndRetrievalNonZeroOffset) {
     }
 
     // Execute and verify results.
-    EvaluatePreparedModel(preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
+    EvaluatePreparedModel(preparedModel, testModel,
+                          /*testDynamicOutputShape=*/false);
 }
 
 TEST_P(CompilationCachingTest, SaveToCacheInvalidNumCache) {
@@ -539,7 +542,8 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidNumCache) {
         saveModelToCache(model, modelCache, dataCache, &preparedModel);
         ASSERT_NE(preparedModel, nullptr);
         // Execute and verify results.
-        EvaluatePreparedModel(preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
+        EvaluatePreparedModel(preparedModel, testModel,
+                              /*testDynamicOutputShape=*/false);
         // Check if prepareModelFromCache fails.
         preparedModel = nullptr;
         ErrorStatus status;
@@ -563,7 +567,8 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidNumCache) {
         saveModelToCache(model, modelCache, dataCache, &preparedModel);
         ASSERT_NE(preparedModel, nullptr);
         // Execute and verify results.
-        EvaluatePreparedModel(preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
+        EvaluatePreparedModel(preparedModel, testModel,
+                              /*testDynamicOutputShape=*/false);
         // Check if prepareModelFromCache fails.
         preparedModel = nullptr;
         ErrorStatus status;
@@ -586,7 +591,8 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidNumCache) {
         saveModelToCache(model, modelCache, dataCache, &preparedModel);
         ASSERT_NE(preparedModel, nullptr);
         // Execute and verify results.
-        EvaluatePreparedModel(preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
+        EvaluatePreparedModel(preparedModel, testModel,
+                              /*testDynamicOutputShape=*/false);
         // Check if prepareModelFromCache fails.
         preparedModel = nullptr;
         ErrorStatus status;
@@ -610,7 +616,8 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidNumCache) {
         saveModelToCache(model, modelCache, dataCache, &preparedModel);
         ASSERT_NE(preparedModel, nullptr);
         // Execute and verify results.
-        EvaluatePreparedModel(preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
+        EvaluatePreparedModel(preparedModel, testModel,
+                              /*testDynamicOutputShape=*/false);
         // Check if prepareModelFromCache fails.
         preparedModel = nullptr;
         ErrorStatus status;
@@ -721,7 +728,8 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidNumFd) {
         saveModelToCache(model, modelCache, dataCache, &preparedModel);
         ASSERT_NE(preparedModel, nullptr);
         // Execute and verify results.
-        EvaluatePreparedModel(preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
+        EvaluatePreparedModel(preparedModel, testModel,
+                              /*testDynamicOutputShape=*/false);
         // Check if prepareModelFromCache fails.
         preparedModel = nullptr;
         ErrorStatus status;
@@ -745,7 +753,8 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidNumFd) {
         saveModelToCache(model, modelCache, dataCache, &preparedModel);
         ASSERT_NE(preparedModel, nullptr);
         // Execute and verify results.
-        EvaluatePreparedModel(preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
+        EvaluatePreparedModel(preparedModel, testModel,
+                              /*testDynamicOutputShape=*/false);
         // Check if prepareModelFromCache fails.
         preparedModel = nullptr;
         ErrorStatus status;
@@ -768,7 +777,8 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidNumFd) {
         saveModelToCache(model, modelCache, dataCache, &preparedModel);
         ASSERT_NE(preparedModel, nullptr);
         // Execute and verify results.
-        EvaluatePreparedModel(preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
+        EvaluatePreparedModel(preparedModel, testModel,
+                              /*testDynamicOutputShape=*/false);
         // Check if prepareModelFromCache fails.
         preparedModel = nullptr;
         ErrorStatus status;
@@ -792,7 +802,8 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidNumFd) {
         saveModelToCache(model, modelCache, dataCache, &preparedModel);
         ASSERT_NE(preparedModel, nullptr);
         // Execute and verify results.
-        EvaluatePreparedModel(preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
+        EvaluatePreparedModel(preparedModel, testModel,
+                              /*testDynamicOutputShape=*/false);
         // Check if prepareModelFromCache fails.
         preparedModel = nullptr;
         ErrorStatus status;
@@ -904,7 +915,8 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidAccessMode) {
         saveModelToCache(model, modelCache, dataCache, &preparedModel);
         ASSERT_NE(preparedModel, nullptr);
         // Execute and verify results.
-        EvaluatePreparedModel(preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
+        EvaluatePreparedModel(preparedModel, testModel,
+                              /*testDynamicOutputShape=*/false);
         // Check if prepareModelFromCache fails.
         preparedModel = nullptr;
         ErrorStatus status;
@@ -926,7 +938,8 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidAccessMode) {
         saveModelToCache(model, modelCache, dataCache, &preparedModel);
         ASSERT_NE(preparedModel, nullptr);
         // Execute and verify results.
-        EvaluatePreparedModel(preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
+        EvaluatePreparedModel(preparedModel, testModel,
+                              /*testDynamicOutputShape=*/false);
         // Check if prepareModelFromCache fails.
         preparedModel = nullptr;
         ErrorStatus status;
@@ -1070,7 +1083,8 @@ TEST_P(CompilationCachingTest, SaveToCache_TOCTOU) {
                 ASSERT_EQ(preparedModel, nullptr);
             } else {
                 ASSERT_NE(preparedModel, nullptr);
-                EvaluatePreparedModel(preparedModel, testModelAdd, /*testKind=*/TestKind::GENERAL);
+                EvaluatePreparedModel(preparedModel, testModelAdd,
+                                      /*testDynamicOutputShape=*/false);
             }
         }
     }
@@ -1131,7 +1145,8 @@ TEST_P(CompilationCachingTest, PrepareFromCache_TOCTOU) {
                 ASSERT_EQ(preparedModel, nullptr);
             } else {
                 ASSERT_NE(preparedModel, nullptr);
-                EvaluatePreparedModel(preparedModel, testModelAdd, /*testKind=*/TestKind::GENERAL);
+                EvaluatePreparedModel(preparedModel, testModelAdd,
+                                      /*testDynamicOutputShape=*/false);
             }
         }
     }

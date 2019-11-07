@@ -17,8 +17,8 @@
 #ifndef ANDROID_HARDWARE_NEURALNETWORKS_V1_3_GENERATED_TEST_HARNESS_H
 #define ANDROID_HARDWARE_NEURALNETWORKS_V1_3_GENERATED_TEST_HARNESS_H
 
+#include <android/hardware/neuralnetworks/1.2/IPreparedModel.h>
 #include <android/hardware/neuralnetworks/1.3/IDevice.h>
-#include <android/hardware/neuralnetworks/1.3/IPreparedModel.h>
 #include <android/hardware/neuralnetworks/1.3/types.h>
 #include <functional>
 #include <vector>
@@ -55,21 +55,11 @@ class ValidationTest : public GeneratedTestBase {};
 
 Model createModel(const test_helper::TestModel& testModel);
 
-void PrepareModel(const sp<IDevice>& device, const Model& model, sp<IPreparedModel>* preparedModel);
+void PrepareModel(const sp<IDevice>& device, const Model& model,
+                  sp<V1_2::IPreparedModel>* preparedModel);
 
-enum class TestKind {
-    // Runs a test model and compares the results to a golden data
-    GENERAL,
-    // Same as GENERAL but sets dimensions for the output tensors to zeros
-    DYNAMIC_SHAPE,
-    // Tests if quantized model with TENSOR_QUANT8_ASYMM produces the same result
-    // (OK/SKIPPED/FAILED) as the model with all such tensors converted to
-    // TENSOR_QUANT8_ASYMM_SIGNED.
-    QUANTIZATION_COUPLING
-};
-
-void EvaluatePreparedModel(const sp<IPreparedModel>& preparedModel,
-                           const test_helper::TestModel& testModel, TestKind testKind);
+void EvaluatePreparedModel(const sp<V1_2::IPreparedModel>& preparedModel,
+                           const test_helper::TestModel& testModel, bool testDynamicOutputShape);
 
 }  // namespace android::hardware::neuralnetworks::V1_3::vts::functional
 

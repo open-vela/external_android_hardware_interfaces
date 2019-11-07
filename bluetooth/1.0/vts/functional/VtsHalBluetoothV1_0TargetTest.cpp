@@ -24,9 +24,8 @@
 #include <utils/Log.h>
 
 #include <VtsHalHidlTargetCallbackBase.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 
 #include <chrono>
 #include <queue>
@@ -138,12 +137,30 @@ class ThroughputLogger {
   std::chrono::steady_clock::time_point start_time_;
 };
 
+// Test environment for Bluetooth HIDL HAL.
+class BluetoothHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+ public:
+  // get the test environment singleton
+  static BluetoothHidlEnvironment* Instance() {
+    static BluetoothHidlEnvironment* instance = new BluetoothHidlEnvironment;
+    return instance;
+  }
+
+  virtual void registerTestServices() override {
+    registerTestService<IBluetoothHci>();
+  }
+
+ private:
+  BluetoothHidlEnvironment() {}
+};
+
 // The main test class for Bluetooth HIDL HAL.
-class BluetoothHidlTest : public ::testing::TestWithParam<std::string> {
+class BluetoothHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
     // currently test passthrough mode only
-    bluetooth = IBluetoothHci::getService(GetParam());
+    bluetooth =
+        ::testing::VtsHalHidlTargetTestBase::getService<IBluetoothHci>();
     ASSERT_NE(bluetooth, nullptr);
     ALOGI("%s: getService() for bluetooth is %s", __func__,
           bluetooth->isRemote() ? "remote" : "local");
@@ -600,10 +617,10 @@ void BluetoothHidlTest::enterLoopbackMode(std::vector<uint16_t>& sco_handles,
 }
 
 // Empty test: Initialize()/Close() are called in SetUp()/TearDown().
-TEST_P(BluetoothHidlTest, InitializeAndClose) {}
+TEST_F(BluetoothHidlTest, InitializeAndClose) {}
 
 // Send an HCI Reset with sendHciCommand and wait for a command complete event.
-TEST_P(BluetoothHidlTest, HciReset) {
+TEST_F(BluetoothHidlTest, HciReset) {
   hidl_vec<uint8_t> cmd = COMMAND_HCI_RESET;
   bluetooth->sendHciCommand(cmd);
 
@@ -611,7 +628,7 @@ TEST_P(BluetoothHidlTest, HciReset) {
 }
 
 // Read and check the HCI version of the controller.
-TEST_P(BluetoothHidlTest, HciVersionTest) {
+TEST_F(BluetoothHidlTest, HciVersionTest) {
   hidl_vec<uint8_t> cmd = COMMAND_HCI_READ_LOCAL_VERSION_INFORMATION;
   bluetooth->sendHciCommand(cmd);
 
@@ -632,7 +649,7 @@ TEST_P(BluetoothHidlTest, HciVersionTest) {
 }
 
 // Send an unknown HCI command and wait for the error message.
-TEST_P(BluetoothHidlTest, HciUnknownCommand) {
+TEST_F(BluetoothHidlTest, HciUnknownCommand) {
   hidl_vec<uint8_t> cmd = COMMAND_HCI_SHOULD_BE_UNKNOWN;
   bluetooth->sendHciCommand(cmd);
 
@@ -659,14 +676,14 @@ TEST_P(BluetoothHidlTest, HciUnknownCommand) {
 }
 
 // Enter loopback mode, but don't send any packets.
-TEST_P(BluetoothHidlTest, WriteLoopbackMode) {
+TEST_F(BluetoothHidlTest, WriteLoopbackMode) {
   std::vector<uint16_t> sco_connection_handles;
   std::vector<uint16_t> acl_connection_handles;
   enterLoopbackMode(sco_connection_handles, acl_connection_handles);
 }
 
 // Enter loopback mode and send single packets.
-TEST_P(BluetoothHidlTest, LoopbackModeSinglePackets) {
+TEST_F(BluetoothHidlTest, LoopbackModeSinglePackets) {
   setBufferSizes();
 
   std::vector<uint16_t> sco_connection_handles;
@@ -703,7 +720,7 @@ TEST_P(BluetoothHidlTest, LoopbackModeSinglePackets) {
 }
 
 // Enter loopback mode and send packets for bandwidth measurements.
-TEST_P(BluetoothHidlTest, LoopbackModeBandwidth) {
+TEST_F(BluetoothHidlTest, LoopbackModeBandwidth) {
   setBufferSizes();
 
   std::vector<uint16_t> sco_connection_handles;
@@ -741,8 +758,11 @@ TEST_P(BluetoothHidlTest, LoopbackModeBandwidth) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    PerInstance, BluetoothHidlTest,
-    testing::ValuesIn(
-        android::hardware::getAllHalInstanceNames(IBluetoothHci::descriptor)),
-    android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+  ::testing::AddGlobalTestEnvironment(BluetoothHidlEnvironment::Instance());
+  ::testing::InitGoogleTest(&argc, argv);
+  BluetoothHidlEnvironment::Instance()->init(&argc, argv);
+  int status = RUN_ALL_TESTS();
+  ALOGI("Test result = %d", status);
+  return status;
+}
