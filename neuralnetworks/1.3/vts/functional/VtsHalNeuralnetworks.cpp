@@ -21,8 +21,8 @@
 #include <hidl/ServiceManagement.h>
 #include <string>
 #include <utility>
+#include "1.0/Callbacks.h"
 #include "1.0/Utils.h"
-#include "1.3/Callbacks.h"
 #include "GeneratedTestHarness.h"
 #include "TestHarness.h"
 
@@ -30,14 +30,15 @@ namespace android::hardware::neuralnetworks::V1_3::vts::functional {
 
 using HidlToken =
         hidl_array<uint8_t, static_cast<uint32_t>(V1_2::Constant::BYTE_SIZE_OF_CACHE_TOKEN)>;
-using implementation::PreparedModelCallback;
 using V1_0::ErrorStatus;
 using V1_0::Request;
 using V1_1::ExecutionPreference;
+using V1_2::IPreparedModel;
+using V1_2::implementation::PreparedModelCallback;
 
 // internal helper function
 void createPreparedModel(const sp<IDevice>& device, const Model& model,
-                         sp<IPreparedModel>* preparedModel, bool reportSkipping) {
+                         sp<IPreparedModel>* preparedModel) {
     ASSERT_NE(nullptr, preparedModel);
     *preparedModel = nullptr;
 
@@ -63,7 +64,7 @@ void createPreparedModel(const sp<IDevice>& device, const Model& model,
     // retrieve prepared model
     preparedModelCallback->wait();
     const ErrorStatus prepareReturnStatus = preparedModelCallback->getStatus();
-    *preparedModel = getPreparedModel_1_3(preparedModelCallback);
+    *preparedModel = getPreparedModel_1_2(preparedModelCallback);
 
     // The getSupportedOperations_1_3 call returns a list of operations that are
     // guaranteed not to fail if prepareModel_1_3 is called, and
@@ -74,9 +75,6 @@ void createPreparedModel(const sp<IDevice>& device, const Model& model,
     // can continue.
     if (!fullySupportsModel && prepareReturnStatus != ErrorStatus::NONE) {
         ASSERT_EQ(nullptr, preparedModel->get());
-        if (!reportSkipping) {
-            return;
-        }
         LOG(INFO) << "NN VTS: Early termination of test because vendor service cannot prepare "
                      "model that it does not support.";
         std::cout << "[          ]   Early termination of test because vendor service cannot "
@@ -167,7 +165,7 @@ TEST_P(ValidationTest, Test) {
 
 INSTANTIATE_GENERATED_TEST(ValidationTest, [](const test_helper::TestModel&) { return true; });
 
-sp<IPreparedModel> getPreparedModel_1_3(const sp<PreparedModelCallback>& callback) {
+sp<IPreparedModel> getPreparedModel_1_2(const sp<PreparedModelCallback>& callback) {
     sp<V1_0::IPreparedModel> preparedModelV1_0 = callback->getPreparedModel();
     return IPreparedModel::castFrom(preparedModelV1_0).withDefault(nullptr);
 }
