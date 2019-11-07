@@ -27,6 +27,7 @@ cc_defaults {
         "android.hardware.sensors@2.0",
         "libcutils",
         "libfmq",
+        "libhardware",
         "libhidlbase",
         "liblog",
         "libpower",
@@ -82,8 +83,10 @@ cc_test {
     shared_libs: [
         "android.hardware.sensors@1.0",
         "android.hardware.sensors@2.0",
+        "libbase",
         "libcutils",
         "libfmq",
+        "libhardware",
         "libhidlbase",
         "liblog",
         "libpower",

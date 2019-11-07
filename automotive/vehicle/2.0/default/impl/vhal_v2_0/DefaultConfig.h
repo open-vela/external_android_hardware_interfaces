@@ -85,34 +85,6 @@ const int32_t kGenerateFakeDataControllingProperty =
     0x0666 | VehiclePropertyGroup::VENDOR | VehicleArea::GLOBAL | VehiclePropertyType::MIXED;
 
 /**
- * This property is used for test purpose to set properties' value from vehicle.
- * For example: Mocking hard button press triggering a HVAC fan speed change.
- * Android set kSetPropertyFromVehcileForTest with an array of integer {HVAC_FAN_SPEED, value of
- * fan speed} and a long value indicates the timestamp of the events .
- * It only works with integer type properties.
- */
-const int32_t kSetIntPropertyFromVehcileForTest =
-        0x1112 | VehiclePropertyGroup::VENDOR | VehicleArea::GLOBAL | VehiclePropertyType::MIXED;
-/**
- * This property is used for test purpose to set properties' value from vehicle.
- * It only works with float type properties.
- */
-const int32_t kSetFloatPropertyFromVehcileForTest =
-        0x1113 | VehiclePropertyGroup::VENDOR | VehicleArea::GLOBAL | VehiclePropertyType::MIXED;
-/**
- * This property is used for test purpose to set properties' value from vehicle.
- * It only works with boolean type properties.
- */
-const int32_t kSetBooleanPropertyFromVehcileForTest =
-        0x1114 | VehiclePropertyGroup::VENDOR | VehicleArea::GLOBAL | VehiclePropertyType::MIXED;
-
-/**
- * This property is used for test purpose. End to end tests use this property to test set and get
- * method for MIXED type properties.
- */
-const int32_t kMixedTypePropertyForTest =
-        0x1111 | VehiclePropertyGroup::VENDOR | VehicleArea::GLOBAL | VehiclePropertyType::MIXED;
-/**
  * FakeDataCommand enum defines the supported command type for kGenerateFakeDataControllingProperty.
  * All those commands can be send independently with each other. And each will override the one sent
  * previously.
@@ -195,6 +167,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::INFO_FUEL_CAPACITY),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::STATIC,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.floatValues = {15000.0f}}},
 
@@ -204,13 +177,14 @@ const ConfigDeclaration kVehicleProperties[]{
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::STATIC,
                  },
-         .initialValue = {.int32Values = {(int)FuelType::FUEL_TYPE_UNLEADED}}},
+         .initialValue = {.int32Values = {1}}},
 
         {.config =
                  {
                          .prop = toInt(VehicleProperty::INFO_EV_BATTERY_CAPACITY),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::STATIC,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.floatValues = {150000.0f}}},
 
@@ -220,13 +194,14 @@ const ConfigDeclaration kVehicleProperties[]{
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::STATIC,
                  },
-         .initialValue = {.int32Values = {(int)EvConnectorType::IEC_TYPE_1_AC}}},
+         .initialValue = {.int32Values = {1}}},
 
         {.config =
                  {
                          .prop = toInt(VehicleProperty::INFO_DRIVER_SEAT),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::STATIC,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {SEAT_1_LEFT}}},
 
@@ -235,6 +210,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::INFO_FUEL_DOOR_LOCATION),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::STATIC,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {FUEL_DOOR_REAR_LEFT}}},
 
@@ -243,6 +219,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::INFO_EV_PORT_LOCATION),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::STATIC,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {CHARGE_PORT_FRONT_LEFT}}},
 
@@ -257,7 +234,7 @@ const ConfigDeclaration kVehicleProperties[]{
                  {
                          .prop = toInt(VehicleProperty::PERF_VEHICLE_SPEED),
                          .access = VehiclePropertyAccess::READ,
-                         .changeMode = VehiclePropertyChangeMode::CONTINUOUS,
+                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                          .minSampleRate = 1.0f,
                          .maxSampleRate = 10.0f,
                  },
@@ -288,9 +265,7 @@ const ConfigDeclaration kVehicleProperties[]{
                  {
                          .prop = toInt(VehicleProperty::PERF_ODOMETER),
                          .access = VehiclePropertyAccess::READ,
-                         .changeMode = VehiclePropertyChangeMode::CONTINUOUS,
-                         .minSampleRate = 0.0f,
-                         .maxSampleRate = 10.0f,
+                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                  },
          .initialValue = {.floatValues = {0.0f}}},
 
@@ -310,9 +285,8 @@ const ConfigDeclaration kVehicleProperties[]{
                  {
                          .prop = toInt(VehicleProperty::FUEL_LEVEL),
                          .access = VehiclePropertyAccess::READ,
-                         .changeMode = VehiclePropertyChangeMode::CONTINUOUS,
-                         .minSampleRate = 0.0f,
-                         .maxSampleRate = 100.0f,
+                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.floatValues = {15000.0f}}},
 
@@ -321,6 +295,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::FUEL_DOOR_OPEN),
                          .access = VehiclePropertyAccess::READ_WRITE,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {0}}},
 
@@ -328,9 +303,8 @@ const ConfigDeclaration kVehicleProperties[]{
                  {
                          .prop = toInt(VehicleProperty::EV_BATTERY_LEVEL),
                          .access = VehiclePropertyAccess::READ,
-                         .changeMode = VehiclePropertyChangeMode::CONTINUOUS,
-                         .minSampleRate = 0.0f,
-                         .maxSampleRate = 100.0f,
+                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.floatValues = {150000.0f}}},
 
@@ -339,6 +313,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::EV_CHARGE_PORT_OPEN),
                          .access = VehiclePropertyAccess::READ_WRITE,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {0}}},
 
@@ -347,6 +322,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::EV_CHARGE_PORT_CONNECTED),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {0}}},
 
@@ -354,48 +330,51 @@ const ConfigDeclaration kVehicleProperties[]{
                  {
                          .prop = toInt(VehicleProperty::EV_BATTERY_INSTANTANEOUS_CHARGE_RATE),
                          .access = VehiclePropertyAccess::READ,
-                         .changeMode = VehiclePropertyChangeMode::CONTINUOUS,
-                         .minSampleRate = 1.0f,
-                         .maxSampleRate = 10.0f,
+                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.floatValues = {0.0f}}},
 
         {.config =
                  {
                          .prop = toInt(VehicleProperty::RANGE_REMAINING),
-                         .access = VehiclePropertyAccess::READ_WRITE,
+                         .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::CONTINUOUS,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                          .minSampleRate = 1.0f,
                          .maxSampleRate = 2.0f,
                  },
          .initialValue = {.floatValues = {100.0f}}},  // units in meters
 
-        {.config = {.prop = toInt(VehicleProperty::TIRE_PRESSURE),
-                    .access = VehiclePropertyAccess::READ,
-                    .changeMode = VehiclePropertyChangeMode::CONTINUOUS,
-                    .minSampleRate = 1.0f,
-                    .maxSampleRate = 2.0f,
-                    .areaConfigs = {VehicleAreaConfig{
-                                            .areaId = WHEEL_FRONT_LEFT,
-                                            .minFloatValue = 100.0f,
-                                            .maxFloatValue = 300.0f,
-                                    },
-                                    VehicleAreaConfig{
-                                            .areaId = WHEEL_FRONT_RIGHT,
-                                            .minFloatValue = 100.0f,
-                                            .maxFloatValue = 300.0f,
-                                    },
-                                    VehicleAreaConfig{
-                                            .areaId = WHEEL_REAR_LEFT,
-                                            .minFloatValue = 100.0f,
-                                            .maxFloatValue = 300.0f,
-                                    },
-                                    VehicleAreaConfig{
-                                            .areaId = WHEEL_REAR_RIGHT,
-                                            .minFloatValue = 100.0f,
-                                            .maxFloatValue = 300.0f,
-                                    }}},
-         .initialValue = {.floatValues = {200.0f}}},  // units in kPa
+        {.config =
+                 {
+                         .prop = toInt(VehicleProperty::TIRE_PRESSURE),
+                         .access = VehiclePropertyAccess::READ,
+                         .changeMode = VehiclePropertyChangeMode::CONTINUOUS,
+                         .areaConfigs = {VehicleAreaConfig{
+                                                 .areaId = WHEEL_FRONT_LEFT,
+                                                 .minFloatValue = 100.0f,
+                                                 .maxFloatValue = 300.0f,
+                                         },
+                                         VehicleAreaConfig{
+                                                 .areaId = WHEEL_FRONT_RIGHT,
+                                                 .minFloatValue = 100.0f,
+                                                 .maxFloatValue = 300.0f,
+                                         },
+                                         VehicleAreaConfig{
+                                                 .areaId = WHEEL_REAR_LEFT,
+                                                 .minFloatValue = 100.0f,
+                                                 .maxFloatValue = 300.0f,
+                                         },
+                                         VehicleAreaConfig{
+                                                 .areaId = WHEEL_REAR_RIGHT,
+                                                 .minFloatValue = 100.0f,
+                                                 .maxFloatValue = 300.0f,
+                                         }},
+                         .minSampleRate = 1.0f,
+                         .maxSampleRate = 2.0f,
+                 },
+         .initialValue = {.floatValues = {200}}},  // units in kPa
 
         {.config =
                  {
@@ -418,6 +397,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::FUEL_LEVEL_LOW),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {0}}},
 
@@ -441,17 +421,6 @@ const ConfigDeclaration kVehicleProperties[]{
 
         {
                 .config = {.prop = toInt(VehicleProperty::HVAC_DEFROSTER),
-                           .access = VehiclePropertyAccess::READ_WRITE,
-                           .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                           .areaConfigs =
-                                   {VehicleAreaConfig{
-                                            .areaId = toInt(VehicleAreaWindow::FRONT_WINDSHIELD)},
-                                    VehicleAreaConfig{
-                                            .areaId = toInt(VehicleAreaWindow::REAR_WINDSHIELD)}}},
-                .initialValue = {.int32Values = {0}}  // Will be used for all areas.
-        },
-        {
-                .config = {.prop = toInt(VehicleProperty::HVAC_ELECTRIC_DEFROSTER_ON),
                            .access = VehiclePropertyAccess::READ_WRITE,
                            .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                            .areaConfigs =
@@ -589,17 +558,24 @@ const ConfigDeclaration kVehicleProperties[]{
                  },
          .initialValue = {.floatValues = {25.0f}}},
 
-        {.config = {.prop = toInt(VehicleProperty::HVAC_TEMPERATURE_DISPLAY_UNITS),
-                    .access = VehiclePropertyAccess::READ_WRITE,
-                    .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                    .configArray = {(int)VehicleUnit::FAHRENHEIT, (int)VehicleUnit::CELSIUS}},
+        {.config =
+                 {
+                         .prop = toInt(VehicleProperty::HVAC_TEMPERATURE_DISPLAY_UNITS),
+                         .access = VehiclePropertyAccess::READ_WRITE,
+                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
+                         .configArray = {(int)VehicleUnit::FAHRENHEIT, (int)VehicleUnit::CELSIUS},
+                 },
          .initialValue = {.int32Values = {(int)VehicleUnit::FAHRENHEIT}}},
 
-        {.config = {.prop = toInt(VehicleProperty::DISTANCE_DISPLAY_UNITS),
-                    .access = VehiclePropertyAccess::READ_WRITE,
-                    .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                    .configArray = {(int)VehicleUnit::KILOMETER, (int)VehicleUnit::MILE},
-                    .areaConfigs = {VehicleAreaConfig{.areaId = (0)}}},
+        {.config =
+                 {
+                         .prop = toInt(VehicleProperty::DISTANCE_DISPLAY_UNITS),
+                         .access = VehiclePropertyAccess::READ_WRITE,
+                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .configArray = {(int)VehicleUnit::KILOMETER, (int)VehicleUnit::MILE},
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}}
+                 },
          .initialValue = {.int32Values = {(int)VehicleUnit::MILE}}},
 
         {.config =
@@ -617,14 +593,6 @@ const ConfigDeclaration kVehicleProperties[]{
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                  },
          .initialValue = {.int32Values = {toInt(VehicleGear::GEAR_PARK)}}},
-
-        {.config =
-                 {
-                         .prop = toInt(VehicleProperty::TURN_SIGNAL_STATE),
-                         .access = VehiclePropertyAccess::READ,
-                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                 },
-         .initialValue = {.int32Values = {toInt(VehicleTurnSignal::NONE)}}},
 
         {.config =
                  {
@@ -658,47 +626,8 @@ const ConfigDeclaration kVehicleProperties[]{
                                 .prop = kGenerateFakeDataControllingProperty,
                                 .access = VehiclePropertyAccess::WRITE,
                                 .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                                .configArray = {1, 0, 0, 2, 0, 0, 0, 0, 0},
                         },
         },
-
-        {
-                .config =
-                        {
-                                .prop = kSetIntPropertyFromVehcileForTest,
-                                .access = VehiclePropertyAccess::WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                                .configArray = {0, 0, 0, 2, 1, 0, 0, 0, 0},
-                        },
-        },
-
-        {
-                .config =
-                        {
-                                .prop = kSetFloatPropertyFromVehcileForTest,
-                                .access = VehiclePropertyAccess::WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                                .configArray = {0, 0, 1, 0, 1, 0, 1, 0, 0},
-                        },
-        },
-
-        {
-                .config =
-                        {
-                                .prop = kSetBooleanPropertyFromVehcileForTest,
-                                .access = VehiclePropertyAccess::WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                                .configArray = {0, 1, 1, 0, 1, 0, 0, 0, 0},
-                        },
-        },
-
-        {.config = {.prop = kMixedTypePropertyForTest,
-                    .access = VehiclePropertyAccess::READ_WRITE,
-                    .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                    .configArray = {1, 1, 0, 2, 0, 0, 1, 0, 0}},
-         .initialValue = {.stringValue = "MIXED property",
-                          .int32Values = {1 /* indicate TRUE boolean value */, 2, 3},
-                          .floatValues = {4.5f}}},
 
         {.config = {.prop = toInt(VehicleProperty::DOOR_LOCK),
                     .access = VehiclePropertyAccess::READ_WRITE,
@@ -828,6 +757,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::HEADLIGHTS_STATE),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {LIGHT_STATE_ON}}},
 
@@ -836,6 +766,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::HIGH_BEAM_LIGHTS_STATE),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {LIGHT_STATE_ON}}},
 
@@ -844,6 +775,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::FOG_LIGHTS_STATE),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {LIGHT_STATE_ON}}},
 
@@ -852,6 +784,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::HAZARD_LIGHTS_STATE),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {LIGHT_STATE_ON}}},
 
@@ -860,6 +793,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::HEADLIGHTS_SWITCH),
                          .access = VehiclePropertyAccess::READ_WRITE,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {LIGHT_SWITCH_AUTO}}},
 
@@ -868,6 +802,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::HIGH_BEAM_LIGHTS_SWITCH),
                          .access = VehiclePropertyAccess::READ_WRITE,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {LIGHT_SWITCH_AUTO}}},
 
@@ -876,6 +811,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::FOG_LIGHTS_SWITCH),
                          .access = VehiclePropertyAccess::READ_WRITE,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {LIGHT_SWITCH_AUTO}}},
 
@@ -884,6 +820,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::HAZARD_LIGHTS_SWITCH),
                          .access = VehiclePropertyAccess::READ_WRITE,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (0)}},
                  },
          .initialValue = {.int32Values = {LIGHT_SWITCH_AUTO}}},
 
