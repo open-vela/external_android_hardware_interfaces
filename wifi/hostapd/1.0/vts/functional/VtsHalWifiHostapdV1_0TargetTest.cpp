@@ -14,8 +14,36 @@
  * limitations under the License.
  */
 
-#include <VtsHalHidlTargetTestEnvBase.h>
+#include <android-base/logging.h>
+#include <android/hardware/wifi/1.0/IWifi.h>
 
-// TODO(b/143892896): Remove this file after wifi_hidl_test_utils.cpp is
-// updated.
-::testing::VtsHalHidlTargetTestEnvBase* gEnv = nullptr;
+#include "hostapd_hidl_test_utils.h"
+
+class WifiHostapdHidlEnvironment_1_0 : public WifiHostapdHidlEnvironment {
+   public:
+    // get the test environment singleton
+    static WifiHostapdHidlEnvironment_1_0* Instance() {
+        static WifiHostapdHidlEnvironment_1_0* instance =
+            new WifiHostapdHidlEnvironment_1_0;
+        return instance;
+    }
+
+    virtual void registerTestServices() override {
+        registerTestService<::android::hardware::wifi::V1_0::IWifi>();
+        registerTestService<android::hardware::wifi::hostapd::V1_0::IHostapd>();
+    }
+
+   private:
+    WifiHostapdHidlEnvironment_1_0() {}
+};
+
+WifiHostapdHidlEnvironment* gEnv = WifiHostapdHidlEnvironment_1_0::Instance();
+
+int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(gEnv);
+    ::testing::InitGoogleTest(&argc, argv);
+    gEnv->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    LOG(INFO) << "Test result = " << status;
+    return status;
+}
