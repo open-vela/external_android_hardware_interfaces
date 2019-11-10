@@ -81,6 +81,6 @@ TEST_P(BootHidlTest, SetSnapshotMergeStatus) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-        PerInstance, BootHidlTest,
+        , BootHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IBootControl::descriptor)),
         android::hardware::PrintInstanceNameToString);
