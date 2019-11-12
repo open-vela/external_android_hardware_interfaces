@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.vibrator@1.4",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IVibrator.hal",
