@@ -403,11 +403,6 @@ class CommandWriterBase {
     }
 
    protected:
-     template <typename T>
-     void beginCommand(T command, uint16_t length) {
-         beginCommandBase(static_cast<IComposerClient::Command>(command), length);
-     }
-
     void setClientTargetInternal(uint32_t slot, const native_handle_t* target, int acquireFence,
                                  int32_t dataspace,
                                  const std::vector<IComposerClient::Rect>& damage) {
@@ -434,7 +429,7 @@ class CommandWriterBase {
         endCommand();
     }
 
-    void beginCommandBase(IComposerClient::Command command, uint16_t length) {
+    void beginCommand(IComposerClient::Command command, uint16_t length) {
         if (mCommandEnd) {
             LOG_FATAL("endCommand was not called before command 0x%x", command);
         }
@@ -626,15 +621,9 @@ class CommandReaderBase {
     }
 
    protected:
-     template <typename T>
-     bool beginCommand(T* outCommand, uint16_t* outLength) {
-         return beginCommandBase(reinterpret_cast<IComposerClient::Command*>(outCommand),
-                                 outLength);
-     }
-
     bool isEmpty() const { return (mDataRead >= mDataSize); }
 
-    bool beginCommandBase(IComposerClient::Command* outCommand, uint16_t* outLength) {
+    bool beginCommand(IComposerClient::Command* outCommand, uint16_t* outLength) {
         if (mCommandEnd) {
             LOG_FATAL("endCommand was not called for last command");
         }
