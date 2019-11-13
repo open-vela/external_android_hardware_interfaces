@@ -18,7 +18,6 @@
 #include <cutils/log.h>
 
 #include <iostream>
-#include <signal.h>
 
 #include <openssl/evp.h>
 #include <openssl/mem.h>
@@ -1540,6 +1539,89 @@ TEST_F(SigningOperationsTest, HmacRfc4231TestCase5) {
     }
 }
 
+/*
+ * SigningOperationsTest.HmacRfc4231TestCase6
+ *
+ * Validates against the test vectors from RFC 4231 test case 6.
+ */
+TEST_F(SigningOperationsTest, HmacRfc4231TestCase6) {
+    string key(131, 0xaa);
+    string message = "Test Using Larger Than Block-Size Key - Hash Key First";
+
+    uint8_t sha_224_expected[] = {
+        0x95, 0xe9, 0xa0, 0xdb, 0x96, 0x20, 0x95, 0xad, 0xae, 0xbe, 0x9b, 0x2d, 0x6f, 0x0d,
+        0xbc, 0xe2, 0xd4, 0x99, 0xf1, 0x12, 0xf2, 0xd2, 0xb7, 0x27, 0x3f, 0xa6, 0x87, 0x0e,
+    };
+    uint8_t sha_256_expected[] = {
+        0x60, 0xe4, 0x31, 0x59, 0x1e, 0xe0, 0xb6, 0x7f, 0x0d, 0x8a, 0x26,
+        0xaa, 0xcb, 0xf5, 0xb7, 0x7f, 0x8e, 0x0b, 0xc6, 0x21, 0x37, 0x28,
+        0xc5, 0x14, 0x05, 0x46, 0x04, 0x0f, 0x0e, 0xe3, 0x7f, 0x54,
+    };
+    uint8_t sha_384_expected[] = {
+        0x4e, 0xce, 0x08, 0x44, 0x85, 0x81, 0x3e, 0x90, 0x88, 0xd2, 0xc6, 0x3a,
+        0x04, 0x1b, 0xc5, 0xb4, 0x4f, 0x9e, 0xf1, 0x01, 0x2a, 0x2b, 0x58, 0x8f,
+        0x3c, 0xd1, 0x1f, 0x05, 0x03, 0x3a, 0xc4, 0xc6, 0x0c, 0x2e, 0xf6, 0xab,
+        0x40, 0x30, 0xfe, 0x82, 0x96, 0x24, 0x8d, 0xf1, 0x63, 0xf4, 0x49, 0x52,
+    };
+    uint8_t sha_512_expected[] = {
+        0x80, 0xb2, 0x42, 0x63, 0xc7, 0xc1, 0xa3, 0xeb, 0xb7, 0x14, 0x93, 0xc1, 0xdd,
+        0x7b, 0xe8, 0xb4, 0x9b, 0x46, 0xd1, 0xf4, 0x1b, 0x4a, 0xee, 0xc1, 0x12, 0x1b,
+        0x01, 0x37, 0x83, 0xf8, 0xf3, 0x52, 0x6b, 0x56, 0xd0, 0x37, 0xe0, 0x5f, 0x25,
+        0x98, 0xbd, 0x0f, 0xd2, 0x21, 0x5d, 0x6a, 0x1e, 0x52, 0x95, 0xe6, 0x4f, 0x73,
+        0xf6, 0x3f, 0x0a, 0xec, 0x8b, 0x91, 0x5a, 0x98, 0x5d, 0x78, 0x65, 0x98,
+    };
+
+    CheckHmacTestVector(key, message, Digest::SHA_2_256, make_string(sha_256_expected));
+    if (SecLevel() != SecurityLevel::STRONGBOX) {
+        CheckHmacTestVector(key, message, Digest::SHA_2_224, make_string(sha_224_expected));
+        CheckHmacTestVector(key, message, Digest::SHA_2_384, make_string(sha_384_expected));
+        CheckHmacTestVector(key, message, Digest::SHA_2_512, make_string(sha_512_expected));
+    }
+}
+
+/*
+ * SigningOperationsTest.HmacRfc4231TestCase7
+ *
+ * Validates against the test vectors from RFC 4231 test case 7.
+ */
+TEST_F(SigningOperationsTest, HmacRfc4231TestCase7) {
+    string key(131, 0xaa);
+    string message =
+        "This is a test using a larger than block-size key and a larger than "
+        "block-size data. The key needs to be hashed before being used by the HMAC "
+        "algorithm.";
+
+    uint8_t sha_224_expected[] = {
+        0x3a, 0x85, 0x41, 0x66, 0xac, 0x5d, 0x9f, 0x02, 0x3f, 0x54, 0xd5, 0x17, 0xd0, 0xb3,
+        0x9d, 0xbd, 0x94, 0x67, 0x70, 0xdb, 0x9c, 0x2b, 0x95, 0xc9, 0xf6, 0xf5, 0x65, 0xd1,
+    };
+    uint8_t sha_256_expected[] = {
+        0x9b, 0x09, 0xff, 0xa7, 0x1b, 0x94, 0x2f, 0xcb, 0x27, 0x63, 0x5f,
+        0xbc, 0xd5, 0xb0, 0xe9, 0x44, 0xbf, 0xdc, 0x63, 0x64, 0x4f, 0x07,
+        0x13, 0x93, 0x8a, 0x7f, 0x51, 0x53, 0x5c, 0x3a, 0x35, 0xe2,
+    };
+    uint8_t sha_384_expected[] = {
+        0x66, 0x17, 0x17, 0x8e, 0x94, 0x1f, 0x02, 0x0d, 0x35, 0x1e, 0x2f, 0x25,
+        0x4e, 0x8f, 0xd3, 0x2c, 0x60, 0x24, 0x20, 0xfe, 0xb0, 0xb8, 0xfb, 0x9a,
+        0xdc, 0xce, 0xbb, 0x82, 0x46, 0x1e, 0x99, 0xc5, 0xa6, 0x78, 0xcc, 0x31,
+        0xe7, 0x99, 0x17, 0x6d, 0x38, 0x60, 0xe6, 0x11, 0x0c, 0x46, 0x52, 0x3e,
+    };
+    uint8_t sha_512_expected[] = {
+        0xe3, 0x7b, 0x6a, 0x77, 0x5d, 0xc8, 0x7d, 0xba, 0xa4, 0xdf, 0xa9, 0xf9, 0x6e,
+        0x5e, 0x3f, 0xfd, 0xde, 0xbd, 0x71, 0xf8, 0x86, 0x72, 0x89, 0x86, 0x5d, 0xf5,
+        0xa3, 0x2d, 0x20, 0xcd, 0xc9, 0x44, 0xb6, 0x02, 0x2c, 0xac, 0x3c, 0x49, 0x82,
+        0xb1, 0x0d, 0x5e, 0xeb, 0x55, 0xc3, 0xe4, 0xde, 0x15, 0x13, 0x46, 0x76, 0xfb,
+        0x6d, 0xe0, 0x44, 0x60, 0x65, 0xc9, 0x74, 0x40, 0xfa, 0x8c, 0x6a, 0x58,
+    };
+
+    CheckHmacTestVector(key, message, Digest::SHA_2_256, make_string(sha_256_expected));
+    if (SecLevel() != SecurityLevel::STRONGBOX) {
+        CheckHmacTestVector(key, message, Digest::SHA_2_224, make_string(sha_224_expected));
+        CheckHmacTestVector(key, message, Digest::SHA_2_384, make_string(sha_384_expected));
+        CheckHmacTestVector(key, message, Digest::SHA_2_512, make_string(sha_512_expected));
+    }
+}
+
 typedef KeymasterHidlTest VerificationOperationsTest;
 
 /*
@@ -2125,26 +2207,26 @@ TEST_F(ImportKeyTest, HmacKeySuccess) {
 }
 
 auto wrapped_key = hex2str(
-    "3082017902010004820100934bf94e2aa28a3f83c9f79297250262fbe3276b5a1c91159bbfa3ef8957aac84b59b30b"
-    "455a79c2973480823d8b3863c3deef4a8e243590268d80e18751a0e130f67ce6a1ace9f79b95e097474febc981195b"
-    "1d13a69086c0863f66a7b7fdb48792227b1ac5e2489febdf087ab5486483033a6f001ca5d1ec1e27f5c30f4cec2642"
-    "074a39ae68aee552e196627a8e3d867e67a8c01b11e75f13cca0a97ab668b50cda07a8ecb7cd8e3dd7009c9636534f"
-    "6f239cffe1fc8daa466f78b676c7119efb96bce4e69ca2a25d0b34ed9c3ff999b801597d5220e307eaa5bee507fb94"
-    "d1fa69f9e519b2de315bac92c36f2ea1fa1df4478c0ddedeae8c70e0233cd098040cd796b02c370f1fa4cc0124f130"
-    "2e0201033029a1083106020100020101a203020120a30402020100a4053103020101a6053103020140bf8377020500"
-    "0420ccd540855f833a5e1480bfd2d36faf3aeee15df5beabe2691bc82dde2a7aa910041064c9f689c60ff6223ab6e6"
-    "999e0eb6e5");
+    "3082017902010004820100A0E69B1395D382354FC0E7F74AC068C5818279D76D46745C7274997D045BAA8B9763B3F3"
+    "09E5E59ECA99273AAAE0A37449DA9B1E67B66EC4E42BB62C25346683A43A9F2ACBCA6D350B25551CC53CE0721D29BE"
+    "90F60686877478F82B3BB111C5EAC0BAE9310D7AD11F5A82948B31C322820F24E20DDB0FBD07D1566DAEAA058D4645"
+    "2607352699E1F631D2ABAF60B13E41ED5EDBB90D252331BDB9CDB1B672E871F37CAC009FE9028B3B1E0ACE8F6F0678"
+    "3F581B860620BDD478969EDE3101AAEFF65C6DB03E143E586167DC87D0CCE39E9119782F7B60A7A1CF2B7EE234E013"
+    "E3DE6C56F0D51F30C389D31FA37C5F2875ACB44434E82EF40B316C93DE129BA0040CD796B02C370F1FA4CC0124F130"
+    "2E0201033029A1083106020100020101A203020120A30402020100A4053103020101A6053103020140BF8377020500"
+    "0420CCD540855F833A5E1480BFD2D36FAF3AEEE15DF5BEABE2691BC82DDE2A7AA910041064C9F689C60FF6223AB6E6"
+    "999E0EB6E5");
 
 auto wrapped_key_masked = hex2str(
-    "3082017902010004820100aad93ed5924f283b4bb5526fbe7a1412f9d9749ec30db9062b29e574a8546f33c8873245"
-    "2f5b8e6a391ee76c39ed1712c61d8df6213dec1cffbc17a8c6d04c7b30893d8daa9b2015213e21946821553207f8f9"
-    "931c4caba23ed3bee28b36947e47f10e0a5c3dc51c988a628daad3e5e1f4005e79c2d5a96c284b4b8d7e4948f331e5"
-    "b85dd5a236f85579f3ea1d1b848487470bdb0ab4f81a12bee42c99fe0df4bee3759453e69ad1d68a809ce06b949f76"
-    "94a990429b2fe81e066ff43e56a21602db70757922a4bcc23ab89f1e35da77586775f423e519c2ea394caf48a28d0c"
-    "8020f1dcf6b3a68ec246f615ae96dae9a079b1f6eb959033c1af5c125fd94168040c6d9721d08589581ab49204a330"
-    "2e0201033029a1083106020100020101a203020120a30402020100a4053103020101a6053103020140bf8377020500"
-    "0420a61c6e247e25b3e6e69aa78eb03c2d4ac20d1f99a9a024a76f35c8e2cab9b68d04102560c70109ae67c030f00b"
-    "98b512a670");
+    "30820179020100048201001EF5320D3C920D7614688A439409ACE4318C48395ABB7247A68671BD4B7156A7773B31A4"
+    "4459B73858625988A312E4D8855138F555678F525E4C52D91444FDC936BE6AEB63FD73FD84201EF46F88A0B622F528"
+    "956C92C9C731EB65BCBC6A03BEAB45959B54A768E2842D2CE174EE542EF2A15DCAA7542F3574BEEB1A991F95439466"
+    "E1960A9CE9E4CBC77DB23765191E4758C850908BCC74E158B77AB774141F171262C1AC771FDFA2E942F2F7633E97E8"
+    "0BD492C3E821361AC6B4F568DE351C816C8C997212C707F728FB3BCAAA796EA6B8E7A80BE010970B380122940277E9"
+    "4C5E9288F7CB6878A4C4CC1E83AB85A81FD68E43B14F1F81AD21E0D3545D70EE040C6D9721D08589581AB49204A330"
+    "2E0201033029A1083106020100020101A203020120A30402020100A4053103020101A6053103020140BF8377020500"
+    "0420A61C6E247E25B3E6E69AA78EB03C2D4AC20D1F99A9A024A76F35C8E2CAB9B68D04102560C70109AE67C030F00B"
+    "98B512A670");
 
 auto wrapping_key = hex2str(
     "308204be020100300d06092a864886f70d0101010500048204a8308204a40201000282010100aec367931d8900ce56"
@@ -2183,16 +2265,14 @@ class ImportWrappedKeyTest : public KeymasterHidlTest {};
 TEST_F(ImportWrappedKeyTest, Success) {
     auto wrapping_key_desc = AuthorizationSetBuilder()
                                  .RsaEncryptionKey(2048, 65537)
-                                 .Digest(Digest::SHA_2_256)
+                                 .Digest(Digest::SHA1)
                                  .Padding(PaddingMode::RSA_OAEP)
                                  .Authorization(TAG_PURPOSE, KeyPurpose::WRAP_KEY);
 
     ASSERT_EQ(ErrorCode::OK,
               ImportWrappedKey(
                   wrapped_key, wrapping_key, wrapping_key_desc, zero_masking_key,
-                  AuthorizationSetBuilder()
-                      .Digest(Digest::SHA_2_256)
-                      .Padding(PaddingMode::RSA_OAEP)));
+                  AuthorizationSetBuilder().Digest(Digest::SHA1).Padding(PaddingMode::RSA_OAEP)));
 
     string message = "Hello World!";
     auto params = AuthorizationSetBuilder().BlockMode(BlockMode::ECB).Padding(PaddingMode::PKCS7);
@@ -2204,45 +2284,39 @@ TEST_F(ImportWrappedKeyTest, Success) {
 TEST_F(ImportWrappedKeyTest, SuccessMasked) {
     auto wrapping_key_desc = AuthorizationSetBuilder()
                                  .RsaEncryptionKey(2048, 65537)
-                                 .Digest(Digest::SHA_2_256)
+                                 .Digest(Digest::SHA1)
                                  .Padding(PaddingMode::RSA_OAEP)
                                  .Authorization(TAG_PURPOSE, KeyPurpose::WRAP_KEY);
 
     ASSERT_EQ(ErrorCode::OK,
               ImportWrappedKey(
                   wrapped_key_masked, wrapping_key, wrapping_key_desc, masking_key,
-                  AuthorizationSetBuilder()
-                      .Digest(Digest::SHA_2_256)
-                      .Padding(PaddingMode::RSA_OAEP)));
+                  AuthorizationSetBuilder().Digest(Digest::SHA1).Padding(PaddingMode::RSA_OAEP)));
 }
 
 TEST_F(ImportWrappedKeyTest, WrongMask) {
     auto wrapping_key_desc = AuthorizationSetBuilder()
                                  .RsaEncryptionKey(2048, 65537)
-                                 .Digest(Digest::SHA_2_256)
+                                 .Digest(Digest::SHA1)
                                  .Padding(PaddingMode::RSA_OAEP)
                                  .Authorization(TAG_PURPOSE, KeyPurpose::WRAP_KEY);
 
     ASSERT_EQ(ErrorCode::VERIFICATION_FAILED,
               ImportWrappedKey(
                   wrapped_key_masked, wrapping_key, wrapping_key_desc, zero_masking_key,
-                  AuthorizationSetBuilder()
-                      .Digest(Digest::SHA_2_256)
-                      .Padding(PaddingMode::RSA_OAEP)));
+                  AuthorizationSetBuilder().Digest(Digest::SHA1).Padding(PaddingMode::RSA_OAEP)));
 }
 
 TEST_F(ImportWrappedKeyTest, WrongPurpose) {
     auto wrapping_key_desc = AuthorizationSetBuilder()
                                  .RsaEncryptionKey(2048, 65537)
-                                 .Digest(Digest::SHA_2_256)
+                                 .Digest(Digest::SHA1)
                                  .Padding(PaddingMode::RSA_OAEP);
 
     ASSERT_EQ(ErrorCode::INCOMPATIBLE_PURPOSE,
               ImportWrappedKey(
                   wrapped_key_masked, wrapping_key, wrapping_key_desc, zero_masking_key,
-                  AuthorizationSetBuilder()
-                      .Digest(Digest::SHA_2_256)
-                      .Padding(PaddingMode::RSA_OAEP)));
+                  AuthorizationSetBuilder().Digest(Digest::SHA1).Padding(PaddingMode::RSA_OAEP)));
 }
 
 typedef KeymasterHidlTest EncryptionOperationsTest;
@@ -2476,8 +2550,7 @@ TEST_F(EncryptionOperationsTest, RsaOaepTooLarge) {
               Begin(KeyPurpose::ENCRYPT,
                     AuthorizationSetBuilder().Padding(PaddingMode::RSA_OAEP).Digest(Digest::SHA_2_256)));
     string result;
-    auto error = Finish(message, &result);
-    EXPECT_TRUE(error == ErrorCode::INVALID_INPUT_LENGTH || error == ErrorCode::INVALID_ARGUMENT);
+    EXPECT_EQ(ErrorCode::INVALID_ARGUMENT, Finish(message, &result));
     EXPECT_EQ(0U, result.size());
 }
 
@@ -2535,8 +2608,7 @@ TEST_F(EncryptionOperationsTest, RsaPkcs1TooLarge) {
     auto params = AuthorizationSetBuilder().Padding(PaddingMode::RSA_PKCS1_1_5_ENCRYPT);
     EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, params));
     string result;
-    auto error = Finish(message, &result);
-    EXPECT_TRUE(error == ErrorCode::INVALID_INPUT_LENGTH || error == ErrorCode::INVALID_ARGUMENT);
+    EXPECT_EQ(ErrorCode::INVALID_ARGUMENT, Finish(message, &result));
     EXPECT_EQ(0U, result.size());
 }
 
@@ -2621,40 +2693,6 @@ TEST_F(EncryptionOperationsTest, AesWrongMode) {
         ErrorCode::INCOMPATIBLE_BLOCK_MODE,
         Begin(KeyPurpose::ENCRYPT,
               AuthorizationSetBuilder().BlockMode(BlockMode::ECB).Padding(PaddingMode::NONE)));
-}
-
-/*
- * EncryptionOperationsTest.AesWrongPurpose
- *
- * Verifies that AES encryption fails in the correct way when an unauthorized purpose is specified.
- */
-TEST_F(EncryptionOperationsTest, AesWrongPurpose) {
-    auto err = GenerateKey(AuthorizationSetBuilder()
-                                   .Authorization(TAG_NO_AUTH_REQUIRED)
-                                   .AesKey(128)
-                                   .Authorization(TAG_PURPOSE, KeyPurpose::ENCRYPT)
-                                   .Authorization(TAG_BLOCK_MODE, BlockMode::GCM)
-                                   .Authorization(TAG_MIN_MAC_LENGTH, 128)
-                                   .Padding(PaddingMode::NONE));
-    ASSERT_EQ(ErrorCode::OK, err) << "Got " << err;
-
-    err = Begin(KeyPurpose::DECRYPT,
-                AuthorizationSetBuilder().BlockMode(BlockMode::GCM).Padding(PaddingMode::NONE));
-    EXPECT_EQ(ErrorCode::INCOMPATIBLE_PURPOSE, err) << "Got " << err;
-
-    CheckedDeleteKey();
-
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                 .AesKey(128)
-                                                 .Authorization(TAG_PURPOSE, KeyPurpose::DECRYPT)
-                                                 .Authorization(TAG_BLOCK_MODE, BlockMode::GCM)
-                                                 .Authorization(TAG_MIN_MAC_LENGTH, 128)
-                                                 .Padding(PaddingMode::NONE)));
-
-    err = Begin(KeyPurpose::ENCRYPT,
-                AuthorizationSetBuilder().BlockMode(BlockMode::GCM).Padding(PaddingMode::NONE));
-    EXPECT_EQ(ErrorCode::INCOMPATIBLE_PURPOSE, err) << "Got " << err;
 }
 
 /*
@@ -3174,92 +3212,6 @@ TEST_F(EncryptionOperationsTest, AesGcmRoundTripSuccess) {
     EXPECT_EQ(ErrorCode::OK, Finish("", &plaintext));
     EXPECT_EQ(message.length(), plaintext.length());
     EXPECT_EQ(message, plaintext);
-}
-
-/*
- * EncryptionOperationsTest.AesGcmRoundTripWithDelaySuccess
- *
- * Verifies that AES GCM mode works, even when there's a long delay
- * between operations.
- */
-TEST_F(EncryptionOperationsTest, AesGcmRoundTripWithDelaySuccess) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                             .Authorization(TAG_NO_AUTH_REQUIRED)
-                                             .AesEncryptionKey(128)
-                                             .Authorization(TAG_BLOCK_MODE, BlockMode::GCM)
-                                             .Padding(PaddingMode::NONE)
-                                             .Authorization(TAG_MIN_MAC_LENGTH, 128)));
-
-    string aad = "foobar";
-    string message = "123456789012345678901234567890123456";
-
-    auto begin_params = AuthorizationSetBuilder()
-                            .BlockMode(BlockMode::GCM)
-                            .Padding(PaddingMode::NONE)
-                            .Authorization(TAG_MAC_LENGTH, 128);
-
-    auto update_params =
-        AuthorizationSetBuilder().Authorization(TAG_ASSOCIATED_DATA, aad.data(), aad.size());
-
-    // Encrypt
-    AuthorizationSet begin_out_params;
-    ASSERT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, begin_params, &begin_out_params))
-        << "Begin encrypt";
-    string ciphertext;
-    AuthorizationSet update_out_params;
-    sleep(5);
-    ASSERT_EQ(ErrorCode::OK,
-              Finish(op_handle_, update_params, message, "", &update_out_params, &ciphertext));
-
-    ASSERT_EQ(ciphertext.length(), message.length() + 16);
-
-    // Grab nonce
-    begin_params.push_back(begin_out_params);
-
-    // Decrypt.
-    ASSERT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params)) << "Begin decrypt";
-    string plaintext;
-    size_t input_consumed;
-    sleep(5);
-    ASSERT_EQ(ErrorCode::OK, Update(op_handle_, update_params, ciphertext, &update_out_params,
-                                    &plaintext, &input_consumed));
-    EXPECT_EQ(ciphertext.size(), input_consumed);
-    sleep(5);
-    EXPECT_EQ(ErrorCode::OK, Finish("", &plaintext));
-    EXPECT_EQ(message.length(), plaintext.length());
-    EXPECT_EQ(message, plaintext);
-}
-
-/*
- * EncryptionOperationsTest.AesGcmDifferentNonces
- *
- * Verifies that encrypting the same data with different nonces produces different outputs.
- */
-TEST_F(EncryptionOperationsTest, AesGcmDifferentNonces) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                 .AesEncryptionKey(128)
-                                                 .Authorization(TAG_BLOCK_MODE, BlockMode::GCM)
-                                                 .Padding(PaddingMode::NONE)
-                                                 .Authorization(TAG_MIN_MAC_LENGTH, 128)
-                                                 .Authorization(TAG_CALLER_NONCE)));
-
-    string aad = "foobar";
-    string message = "123456789012345678901234567890123456";
-    string nonce1 = "000000000000";
-    string nonce2 = "111111111111";
-    string nonce3 = "222222222222";
-
-    string ciphertext1 =
-            EncryptMessage(message, BlockMode::GCM, PaddingMode::NONE, 128, HidlBuf(nonce1));
-    string ciphertext2 =
-            EncryptMessage(message, BlockMode::GCM, PaddingMode::NONE, 128, HidlBuf(nonce2));
-    string ciphertext3 =
-            EncryptMessage(message, BlockMode::GCM, PaddingMode::NONE, 128, HidlBuf(nonce3));
-
-    ASSERT_NE(ciphertext1, ciphertext2);
-    ASSERT_NE(ciphertext1, ciphertext3);
-    ASSERT_NE(ciphertext2, ciphertext3);
 }
 
 /*
@@ -4330,35 +4282,6 @@ TEST_F(AttestationTest, EcAttestationRequiresAttestationAppId) {
 }
 
 /*
- * AttestationTest.AttestationApplicationIDLengthProperlyEncoded
- *
- * Verifies that the Attestation Application ID software enforced tag has a proper length encoding.
- * Some implementations break strict encoding rules by encoding a length between 127 and 256 in one
- * byte. Proper DER encoding specifies that for lengths greather than 127, one byte should be used
- * to specify how many following bytes will be used to encode the length.
- */
-TEST_F(AttestationTest, AttestationApplicationIDLengthProperlyEncoded) {
-    auto creation_time = std::chrono::system_clock::now();
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                 .EcdsaSigningKey(EcCurve::P_256)
-                                                 .Digest(Digest::SHA_2_256)));
-
-    hidl_vec<hidl_vec<uint8_t>> cert_chain;
-    const string app_id(143, 'a');
-    ASSERT_EQ(ErrorCode::OK,
-              AttestKey(AuthorizationSetBuilder()
-                                .Authorization(TAG_ATTESTATION_CHALLENGE, HidlBuf("challenge"))
-                                .Authorization(TAG_ATTESTATION_APPLICATION_ID, HidlBuf(app_id)),
-                        &cert_chain));
-    EXPECT_GE(cert_chain.size(), 2U);
-
-    EXPECT_TRUE(verify_attestation_record("challenge", app_id,                    //
-                                          key_characteristics_.softwareEnforced,  //
-                                          key_characteristics_.hardwareEnforced,  //
-                                          SecLevel(), cert_chain[0], creation_time));
-}
-/*
  * AttestationTest.AesAttestation
  *
  * Verifies that attesting to AES keys fails in the expected way.
@@ -4406,61 +4329,75 @@ typedef KeymasterHidlTest KeyDeletionTest;
  *
  * This test checks that if rollback protection is implemented, DeleteKey invalidates a formerly
  * valid key blob.
+ *
+ * TODO(swillden):  Update to incorporate changes in rollback resistance semantics.
  */
 TEST_F(KeyDeletionTest, DeleteKey) {
-    auto error = GenerateKey(AuthorizationSetBuilder()
-                                     .RsaSigningKey(2048, 65537)
-                                     .Digest(Digest::NONE)
-                                     .Padding(PaddingMode::NONE)
-                                     .Authorization(TAG_NO_AUTH_REQUIRED)
-                                     .Authorization(TAG_ROLLBACK_RESISTANCE));
-    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                             .RsaSigningKey(2048, 65537)
+                                             .Digest(Digest::NONE)
+                                             .Padding(PaddingMode::NONE)
+                                             .Authorization(TAG_NO_AUTH_REQUIRED)));
 
     // Delete must work if rollback protection is implemented
-    if (error == ErrorCode::OK) {
-        AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
-        ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
+    AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
+    bool rollback_protected = hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE);
 
+    if (rollback_protected) {
         ASSERT_EQ(ErrorCode::OK, DeleteKey(true /* keep key blob */));
+    } else {
+        auto delete_result = DeleteKey(true /* keep key blob */);
+        ASSERT_TRUE(delete_result == ErrorCode::OK | delete_result == ErrorCode::UNIMPLEMENTED);
+    }
 
-        string message = "12345678901234567890123456789012";
-        AuthorizationSet begin_out_params;
+    string message = "12345678901234567890123456789012";
+    AuthorizationSet begin_out_params;
+
+    if (rollback_protected) {
         EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
                   Begin(KeyPurpose::SIGN, key_blob_,
                         AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
                         &begin_out_params, &op_handle_));
-        AbortIfNeeded();
-        key_blob_ = HidlBuf();
+    } else {
+        EXPECT_EQ(ErrorCode::OK,
+                  Begin(KeyPurpose::SIGN, key_blob_,
+                        AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
+                        &begin_out_params, &op_handle_));
     }
+    AbortIfNeeded();
+    key_blob_ = HidlBuf();
 }
 
 /**
  * KeyDeletionTest.DeleteInvalidKey
  *
- * This test checks that the HAL excepts invalid key blobs..
+ * This test checks that the HAL excepts invalid key blobs.
+ *
+ * TODO(swillden):  Update to incorporate changes in rollback resistance semantics.
  */
 TEST_F(KeyDeletionTest, DeleteInvalidKey) {
     // Generate key just to check if rollback protection is implemented
-    auto error = GenerateKey(AuthorizationSetBuilder()
-                                     .RsaSigningKey(2048, 65537)
-                                     .Digest(Digest::NONE)
-                                     .Padding(PaddingMode::NONE)
-                                     .Authorization(TAG_NO_AUTH_REQUIRED)
-                                     .Authorization(TAG_ROLLBACK_RESISTANCE));
-    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                             .RsaSigningKey(2048, 65537)
+                                             .Digest(Digest::NONE)
+                                             .Padding(PaddingMode::NONE)
+                                             .Authorization(TAG_NO_AUTH_REQUIRED)));
 
     // Delete must work if rollback protection is implemented
-    if (error == ErrorCode::OK) {
-        AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
-        ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
+    AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
+    bool rollback_protected = hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE);
 
-        // Delete the key we don't care about the result at this point.
-        DeleteKey();
+    // Delete the key we don't care about the result at this point.
+    DeleteKey();
 
-        // Now create an invalid key blob and delete it.
-        key_blob_ = HidlBuf("just some garbage data which is not a valid key blob");
+    // Now create an invalid key blob and delete it.
+    key_blob_ = HidlBuf("just some garbage data which is not a valid key blob");
 
+    if (rollback_protected) {
         ASSERT_EQ(ErrorCode::OK, DeleteKey());
+    } else {
+        auto delete_result = DeleteKey();
+        ASSERT_TRUE(delete_result == ErrorCode::OK | delete_result == ErrorCode::UNIMPLEMENTED);
     }
 }
 
@@ -4474,34 +4411,39 @@ TEST_F(KeyDeletionTest, DeleteInvalidKey) {
  * device has been wiped manually (e.g., fastboot flashall -w), and new FBE/FDE keys have
  * been provisioned. Use this test only on dedicated testing devices that have no valuable
  * credentials stored in Keystore/Keymaster.
+ *
+ * TODO(swillden):  Update to incorporate changes in rollback resistance semantics.
  */
 TEST_F(KeyDeletionTest, DeleteAllKeys) {
     if (!arm_deleteAllKeys) return;
-    auto error = GenerateKey(AuthorizationSetBuilder()
-                                     .RsaSigningKey(2048, 65537)
-                                     .Digest(Digest::NONE)
-                                     .Padding(PaddingMode::NONE)
-                                     .Authorization(TAG_NO_AUTH_REQUIRED)
-                                     .Authorization(TAG_ROLLBACK_RESISTANCE));
-    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                             .RsaSigningKey(2048, 65537)
+                                             .Digest(Digest::NONE)
+                                             .Padding(PaddingMode::NONE)
+                                             .Authorization(TAG_NO_AUTH_REQUIRED)));
 
     // Delete must work if rollback protection is implemented
-    if (error == ErrorCode::OK) {
-        AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
-        ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
+    AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
+    bool rollback_protected = hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE);
 
-        ASSERT_EQ(ErrorCode::OK, DeleteAllKeys());
+    ASSERT_EQ(ErrorCode::OK, DeleteAllKeys());
 
-        string message = "12345678901234567890123456789012";
-        AuthorizationSet begin_out_params;
+    string message = "12345678901234567890123456789012";
+    AuthorizationSet begin_out_params;
 
+    if (rollback_protected) {
         EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
                   Begin(KeyPurpose::SIGN, key_blob_,
                         AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
                         &begin_out_params, &op_handle_));
-        AbortIfNeeded();
-        key_blob_ = HidlBuf();
+    } else {
+        EXPECT_EQ(ErrorCode::OK,
+                  Begin(KeyPurpose::SIGN, key_blob_,
+                        AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
+                        &begin_out_params, &op_handle_));
     }
+    AbortIfNeeded();
+    key_blob_ = HidlBuf();
 }
 
 using UpgradeKeyTest = KeymasterHidlTest;
@@ -4522,84 +4464,6 @@ TEST_F(UpgradeKeyTest, UpgradeKey) {
     // Key doesn't need upgrading.  Should get okay, but no new key blob.
     EXPECT_EQ(result, std::make_pair(ErrorCode::OK, HidlBuf()));
 }
-
-
-using ClearOperationsTest = KeymasterHidlTest;
-
-/*
- * ClearSlotsTest.TooManyOperations
- *
- * Verifies that TOO_MANY_OPERATIONS is returned after the max number of
- * operations are started without being finished or aborted. Also verifies
- * that aborting the operations clears the operations.
- *
- */
-TEST_F(ClearOperationsTest, TooManyOperations) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                             .Authorization(TAG_NO_AUTH_REQUIRED)
-                                             .RsaEncryptionKey(2048, 65537)
-                                             .Padding(PaddingMode::NONE)));
-
-    auto params = AuthorizationSetBuilder().Padding(PaddingMode::NONE);
-    int max_operations = SecLevel() == SecurityLevel::STRONGBOX ? 4 : 16;
-    OperationHandle op_handles[max_operations];
-    AuthorizationSet out_params;
-    for(int i=0; i<max_operations; i++) {
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &(op_handles[i])));
-    }
-    EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
-         Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &op_handle_));
-    // Try again just in case there's a weird overflow bug
-    EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
-         Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &op_handle_));
-    for(int i=0; i<max_operations; i++) {
-        EXPECT_EQ(ErrorCode::OK, Abort(op_handles[i]));
-    }
-    EXPECT_EQ(ErrorCode::OK,
-         Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &op_handle_));
-    AbortIfNeeded();
-}
-
-/*
- * ClearSlotsTest.ServiceDeath
- *
- * Verifies that the service is restarted after death and the ongoing
- * operations are cleared.
- */
-TEST_F(ClearOperationsTest, ServiceDeath) {
-
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                             .Authorization(TAG_NO_AUTH_REQUIRED)
-                                             .RsaEncryptionKey(2048, 65537)
-                                             .Padding(PaddingMode::NONE)));
-
-    auto params = AuthorizationSetBuilder().Padding(PaddingMode::NONE);
-    int max_operations = SecLevel() == SecurityLevel::STRONGBOX ? 4 : 16;
-    OperationHandle op_handles[max_operations];
-    AuthorizationSet out_params;
-    for(int i=0; i<max_operations; i++) {
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &(op_handles[i])));
-    }
-    EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
-         Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &op_handle_));
-
-    DebugInfo debug_info;
-    GetDebugInfo(&debug_info);
-    kill(debug_info.pid, SIGKILL);
-    // wait 1 second for keymaster to restart
-    sleep(1);
-    InitializeKeymaster();
-
-    for(int i=0; i<max_operations; i++) {
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &(op_handles[i])));
-    }
-    EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
-         Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, &op_handle_));
-    for(int i=0; i<max_operations; i++) {
-        EXPECT_EQ(ErrorCode::OK, Abort(op_handles[i]));
-    }
-}
-
 
 }  // namespace test
 }  // namespace V4_0
