@@ -26,8 +26,9 @@
 #include <android/log.h>
 #include <hardware/audio.h>
 #include <hardware/audio_effect.h>
-#include <media/AudioContainers.h>
 #include <media/TypeConverter.h>
+#include <utils/SortedVector.h>
+#include <utils/Vector.h>
 
 namespace android {
 namespace hardware {
@@ -99,11 +100,11 @@ Return<void> Stream::getSupportedSampleRates(AudioFormat format,
     Result result =
         getParam(AudioParameter::keyStreamSupportedSamplingRates, &halListValue, context);
     hidl_vec<uint32_t> sampleRates;
-    SampleRateSet halSampleRates;
+    SortedVector<uint32_t> halSampleRates;
     if (result == Result::OK) {
         halSampleRates =
             samplingRatesFromString(halListValue.string(), AudioParameter::valueListSeparator);
-        sampleRates = hidl_vec<uint32_t>(halSampleRates.begin(), halSampleRates.end());
+        sampleRates.setToExternal(halSampleRates.editArray(), halSampleRates.size());
         // Legacy get_parameter does not return a status_t, thus can not advertise of failure.
         // Note that this method must succeed (non empty list) if the format is supported.
         if (sampleRates.size() == 0) {
@@ -125,14 +126,13 @@ Return<void> Stream::getSupportedChannelMasks(AudioFormat format,
     String8 halListValue;
     Result result = getParam(AudioParameter::keyStreamSupportedChannels, &halListValue, context);
     hidl_vec<AudioChannelBitfield> channelMasks;
-    ChannelMaskSet halChannelMasks;
+    SortedVector<audio_channel_mask_t> halChannelMasks;
     if (result == Result::OK) {
         halChannelMasks =
             channelMasksFromString(halListValue.string(), AudioParameter::valueListSeparator);
         channelMasks.resize(halChannelMasks.size());
-        size_t i = 0;
-        for (auto channelMask : halChannelMasks) {
-            channelMasks[i++] = AudioChannelBitfield(channelMask);
+        for (size_t i = 0; i < halChannelMasks.size(); ++i) {
+            channelMasks[i] = AudioChannelBitfield(halChannelMasks[i]);
         }
         // Legacy get_parameter does not return a status_t, thus can not advertise of failure.
         // Note that this method must succeed (non empty list) if the format is supported.
@@ -168,7 +168,7 @@ Return<void> Stream::getSupportedFormats(getSupportedFormats_cb _hidl_cb) {
     String8 halListValue;
     Result result = getParam(AudioParameter::keyStreamSupportedFormats, &halListValue);
     hidl_vec<AudioFormat> formats;
-    FormatVector halFormats;
+    Vector<audio_format_t> halFormats;
     if (result == Result::OK) {
         halFormats = formatsFromString(halListValue.string(), AudioParameter::valueListSeparator);
         formats.resize(halFormats.size());
