@@ -27,8 +27,6 @@
 #include "wifi_hidl_test_utils.h"
 
 using ::android::sp;
-using ::android::hardware::hidl_array;
-using ::android::hardware::wifi::V1_0::WifiStatus;
 using ::android::hardware::wifi::V1_0::WifiStatusCode;
 using ::android::hardware::wifi::V1_3::IWifiStaIface;
 
@@ -61,11 +59,14 @@ class WifiStaIfaceHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  * and return a success status code.
  */
 TEST_F(WifiStaIfaceHidlTest, GetFactoryMacAddress) {
-    std::pair<WifiStatus, hidl_array<uint8_t, 6> > status_and_mac =
+    const auto& status_and_mac =
         HIDL_INVOKE(wifi_sta_iface_, getFactoryMacAddress);
     EXPECT_EQ(WifiStatusCode::SUCCESS, status_and_mac.first.code);
-    hidl_array<uint8_t, 6> all_zero{};
-    EXPECT_NE(all_zero, status_and_mac.second);
+    const int num_elements = sizeof(status_and_mac.second) / sizeof(uint8_t);
+    EXPECT_EQ(6, num_elements);
+    for (int i = 0; i < num_elements; i++) {
+        EXPECT_NE(0, status_and_mac.second[i]);
+    }
 }
 
 /*
