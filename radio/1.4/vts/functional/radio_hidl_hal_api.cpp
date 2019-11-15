@@ -149,8 +149,7 @@ TEST_F(RadioHidlTest_v1_4, setPreferredNetworkTypeBitmap) {
     EXPECT_EQ(serial, radioRsp_v1_4->rspInfo.serial);
     ALOGI("setPreferredNetworkTypeBitmap, rspInfo.error = %s\n",
           toString(radioRsp_v1_4->rspInfo.error).c_str());
-    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_4->rspInfo.error,
-                                 {RadioError::NONE, RadioError::MODE_NOT_SUPPORTED}));
+    EXPECT_EQ(RadioError::NONE, radioRsp_v1_4->rspInfo.error);
     if (radioRsp_v1_4->rspInfo.error == RadioError::NONE) {
          // give some time for modem to set the value.
         sleep(3);
@@ -170,6 +169,11 @@ TEST_F(RadioHidlTest_v1_4, setPreferredNetworkTypeBitmap) {
 
 /*
  * Test IRadio.startNetworkScan() for the response returned.
+ *
+ * REQUEST_NOT_SUPPORTED is temporarily returned because of vendors failed to fully implement
+ * startNetworkScan in HAL @1.4 (see b/137298570 and b/135595082). Starting from @1.5, however,
+ * REQUEST_NOT_SUPPORTED will be disallowed for all tests. Modems have "GSM" rat scan need to
+ * support scanning requests combined with some parameters.
  */
 TEST_F(RadioHidlTest_v1_4, startNetworkScan) {
     serial = GetRandomSerialNumber();
