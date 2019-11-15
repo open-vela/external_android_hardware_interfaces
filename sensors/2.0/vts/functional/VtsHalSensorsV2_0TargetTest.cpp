@@ -38,10 +38,6 @@ using ::android::hardware::sensors::V1_0::SensorsEventFormatOffset;
 using ::android::hardware::sensors::V1_0::SensorStatus;
 using ::android::hardware::sensors::V1_0::SharedMemType;
 using ::android::hardware::sensors::V1_0::Vec3;
-using std::chrono::duration_cast;
-using std::chrono::microseconds;
-using std::chrono::milliseconds;
-using std::chrono::nanoseconds;
 
 constexpr size_t kEventSize = static_cast<size_t>(SensorsEventFormatOffset::TOTAL_LENGTH);
 
@@ -71,9 +67,9 @@ class EventCallback : public IEventCallback {
     }
 
     void waitForFlushEvents(const std::vector<SensorInfo>& sensorsToWaitFor,
-                            int32_t numCallsToFlush, milliseconds timeout) {
+                            int32_t numCallsToFlush, int64_t timeoutMs) {
         std::unique_lock<std::recursive_mutex> lock(mFlushMutex);
-        mFlushCV.wait_for(lock, timeout,
+        mFlushCV.wait_for(lock, std::chrono::milliseconds(timeoutMs),
                           [&] { return flushesReceived(sensorsToWaitFor, numCallsToFlush); });
     }
 
@@ -82,9 +78,10 @@ class EventCallback : public IEventCallback {
         return mEventMap[sensorHandle];
     }
 
-    void waitForEvents(const std::vector<SensorInfo>& sensorsToWaitFor, milliseconds timeout) {
+    void waitForEvents(const std::vector<SensorInfo>& sensorsToWaitFor, int32_t timeoutMs) {
         std::unique_lock<std::recursive_mutex> lock(mEventMutex);
-        mEventCV.wait_for(lock, timeout, [&] { return eventsReceived(sensorsToWaitFor); });
+        mEventCV.wait_for(lock, std::chrono::milliseconds(timeoutMs),
+                          [&] { return eventsReceived(sensorsToWaitFor); });
     }
 
    protected:
@@ -389,7 +386,7 @@ TEST_F(SensorsHidlTest, InjectSensorEventData) {
     }
 
     // Wait for events to be written back to the Event FMQ
-    callback.waitForEvents(sensors, milliseconds(1000) /* timeout */);
+    callback.waitForEvents(sensors, 1000 /* timeoutMs */);
 
     for (const auto& s : sensors) {
         auto events = callback.getEvents(s.sensorHandle);
@@ -716,7 +713,7 @@ void SensorsHidlTest::runFlushTest(const std::vector<SensorInfo>& sensors, bool 
     }
 
     // Wait up to one second for the flush events
-    callback.waitForFlushEvents(sensors, flushCalls, milliseconds(1000) /* timeout */);
+    callback.waitForFlushEvents(sensors, flushCalls, 1000 /* timeoutMs */);
 
     // Deactivate all sensors after waiting for flush events so pending flush events are not
     // abandoned by the HAL.
@@ -842,8 +839,8 @@ TEST_F(SensorsHidlTest, Activate) {
 }
 
 TEST_F(SensorsHidlTest, NoStaleEvents) {
-    constexpr milliseconds kFiveHundredMs(500);
-    constexpr milliseconds kOneSecond(1000);
+    constexpr int64_t kFiveHundredMilliseconds = 500 * 1000;
+    constexpr int64_t kOneSecond = 1000 * 1000;
 
     // Register the callback to receive sensor events
     EventCallback callback;
@@ -851,10 +848,9 @@ TEST_F(SensorsHidlTest, NoStaleEvents) {
 
     // This test is not valid for one-shot or special-report-mode sensors
     const std::vector<SensorInfo> sensors = getNonOneShotAndNonSpecialSensors();
-    milliseconds maxMinDelay(0);
+    int32_t maxMinDelay = 0;
     for (const SensorInfo& sensor : sensors) {
-        milliseconds minDelay = duration_cast<milliseconds>(microseconds(sensor.minDelay));
-        maxMinDelay = milliseconds(std::max(maxMinDelay.count(), minDelay.count()));
+        maxMinDelay = std::max(maxMinDelay, sensor.minDelay);
     }
 
     // Activate the sensors so that they start generating events
@@ -863,7 +859,7 @@ TEST_F(SensorsHidlTest, NoStaleEvents) {
     // According to the CDD, the first sample must be generated within 400ms + 2 * sample_time
     // and the maximum reporting latency is 100ms + 2 * sample_time. Wait a sufficient amount
     // of time to guarantee that a sample has arrived.
-    callback.waitForEvents(sensors, kFiveHundredMs + (5 * maxMinDelay));
+    callback.waitForEvents(sensors, kFiveHundredMilliseconds + (5 * maxMinDelay));
     activateAllSensors(false);
 
     // Save the last received event for each sensor
@@ -880,10 +876,10 @@ TEST_F(SensorsHidlTest, NoStaleEvents) {
     }
 
     // Allow some time to pass, reset the callback, then reactivate the sensors
-    usleep(duration_cast<microseconds>(kOneSecond + (5 * maxMinDelay)).count());
+    usleep(kOneSecond + (5 * maxMinDelay));
     callback.reset();
     activateAllSensors(true);
-    callback.waitForEvents(sensors, kFiveHundredMs + (5 * maxMinDelay));
+    callback.waitForEvents(sensors, kFiveHundredMilliseconds + (5 * maxMinDelay));
     activateAllSensors(false);
 
     for (const SensorInfo& sensor : sensors) {
@@ -898,11 +894,11 @@ TEST_F(SensorsHidlTest, NoStaleEvents) {
         // Ensure that the first event received is not stale by ensuring that its timestamp is
         // sufficiently different from the previous event
         const Event newEvent = callback.getEvents(sensor.sensorHandle).front();
-        milliseconds delta = duration_cast<milliseconds>(
-                nanoseconds(newEvent.timestamp - lastEventTimestampMap[sensor.sensorHandle]));
-        milliseconds sensorMinDelay = duration_cast<milliseconds>(microseconds(sensor.minDelay));
-        ASSERT_GE(delta, kFiveHundredMs + (3 * sensorMinDelay));
+        int64_t delta = newEvent.timestamp - lastEventTimestampMap[sensor.sensorHandle];
+        ASSERT_GE(delta, kFiveHundredMilliseconds + (3 * sensor.minDelay));
     }
+
+    getEnvironment()->unregisterCallback();
 }
 
 void SensorsHidlTest::checkRateLevel(const SensorInfo& sensor, int32_t directChannelHandle,
