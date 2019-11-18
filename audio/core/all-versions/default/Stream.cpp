@@ -175,8 +175,17 @@ Return<void> Stream::getSupportedFormats(getSupportedFormats_cb _hidl_cb) {
         for (size_t i = 0; i < halFormats.size(); ++i) {
             formats[i] = AudioFormat(halFormats[i]);
         }
+        // Legacy get_parameter does not return a status_t, thus can not advertise of failure.
+        // Note that the method must not return an empty list if this capability is supported.
+        if (formats.size() == 0) {
+            result = Result::NOT_SUPPORTED;
+        }
     }
+#if MAJOR_VERSION <= 5
     _hidl_cb(formats);
+#elif MAJOR_VERSION >= 6
+    _hidl_cb(result, formats);
+#endif
     return Void();
 }
 
@@ -243,8 +252,8 @@ Return<Result> Stream::setParameters(const hidl_vec<ParameterValue>& parameters)
 
 Return<Result> Stream::setConnectedState(const DeviceAddress& address, bool connected) {
     return setParam(
-        connected ? AudioParameter::keyStreamConnect : AudioParameter::keyStreamDisconnect,
-        address);
+            connected ? AudioParameter::keyDeviceConnect : AudioParameter::keyDeviceDisconnect,
+            address);
 }
 #elif MAJOR_VERSION >= 4
 Return<void> Stream::getDevices(getDevices_cb _hidl_cb) {
