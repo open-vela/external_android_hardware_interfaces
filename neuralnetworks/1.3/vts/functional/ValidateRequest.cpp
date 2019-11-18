@@ -29,6 +29,7 @@ namespace android::hardware::neuralnetworks::V1_3::vts::functional {
 
 using V1_0::ErrorStatus;
 using V1_0::Request;
+using V1_2::IPreparedModel;
 using V1_2::MeasureTiming;
 using V1_2::OutputShape;
 using V1_2::Timing;
@@ -60,11 +61,11 @@ static void validate(const sp<IPreparedModel>& preparedModel, const std::string&
 
     // asynchronous
     {
-        SCOPED_TRACE(message + " [execute_1_3]");
+        SCOPED_TRACE(message + " [execute_1_2]");
 
         sp<ExecutionCallback> executionCallback = new ExecutionCallback();
         Return<ErrorStatus> executeLaunchStatus =
-                preparedModel->execute_1_3(request, measure, executionCallback);
+                preparedModel->execute_1_2(request, measure, executionCallback);
         ASSERT_TRUE(executeLaunchStatus.isOk());
         ASSERT_EQ(ErrorStatus::INVALID_ARGUMENT, static_cast<ErrorStatus>(executeLaunchStatus));
 
@@ -79,9 +80,9 @@ static void validate(const sp<IPreparedModel>& preparedModel, const std::string&
 
     // synchronous
     {
-        SCOPED_TRACE(message + " [executeSynchronously_1_3]");
+        SCOPED_TRACE(message + " [executeSynchronously]");
 
-        Return<void> executeStatus = preparedModel->executeSynchronously_1_3(
+        Return<void> executeStatus = preparedModel->executeSynchronously(
                 request, measure,
                 [](ErrorStatus error, const hidl_vec<OutputShape>& outputShapes,
                    const Timing& timing) {
@@ -158,8 +159,8 @@ void validateRequest(const sp<IPreparedModel>& preparedModel, const Request& req
 }
 
 void validateRequestFailure(const sp<IPreparedModel>& preparedModel, const Request& request) {
-    SCOPED_TRACE("Expecting request to fail [executeSynchronously_1_3]");
-    Return<void> executeStatus = preparedModel->executeSynchronously_1_3(
+    SCOPED_TRACE("Expecting request to fail [executeSynchronously]");
+    Return<void> executeStatus = preparedModel->executeSynchronously(
             request, MeasureTiming::NO,
             [](ErrorStatus error, const hidl_vec<OutputShape>& outputShapes, const Timing& timing) {
                 ASSERT_NE(ErrorStatus::NONE, error);
