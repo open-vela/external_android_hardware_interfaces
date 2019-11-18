@@ -26,6 +26,7 @@ cc_library_static {
         "android.hardware.wifi.supplicant@1.0",
         "android.hardware.wifi.supplicant@1.1",
         "android.hardware.wifi@1.0",
+        "libcrypto",
         "libgmock",
         "libwifi-system",
         "libwifi-system-iface",
@@ -47,11 +48,12 @@ cc_test {
         "android.hardware.wifi.supplicant@1.0",
         "android.hardware.wifi.supplicant@1.1",
         "android.hardware.wifi@1.0",
+        "libcrypto",
         "libgmock",
         "libwifi-system",
         "libwifi-system-iface",
     ],
-    test_suites: ["general-tests", "vts-core"],
+    test_suites: ["general-tests"],
 }
 
 cc_test {
@@ -67,9 +69,9 @@ cc_test {
         "android.hardware.wifi.supplicant@1.0",
         "android.hardware.wifi.supplicant@1.1",
         "android.hardware.wifi@1.0",
+        "libcrypto",
         "libgmock",
         "libwifi-system",
         "libwifi-system-iface",
     ],
-    test_suites: ["general-tests", "vts-core"],
 }
