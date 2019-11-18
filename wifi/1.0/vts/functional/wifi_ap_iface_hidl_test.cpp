@@ -16,37 +16,39 @@
 
 #include <android-base/logging.h>
 
-#include <android/hardware/wifi/1.0/IWifi.h>
 #include <android/hardware/wifi/1.0/IWifiApIface.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+
+#include <VtsHalHidlTargetTestBase.h>
 
 #include "wifi_hidl_call_util.h"
 #include "wifi_hidl_test_utils.h"
 
-using ::android::sp;
 using ::android::hardware::wifi::V1_0::IfaceType;
-using ::android::hardware::wifi::V1_0::IWifi;
 using ::android::hardware::wifi::V1_0::IWifiApIface;
 using ::android::hardware::wifi::V1_0::WifiBand;
 using ::android::hardware::wifi::V1_0::WifiStatusCode;
+using ::android::sp;
+
+extern WifiHidlEnvironment* gEnv;
 
 /**
  * Fixture to use for all AP Iface HIDL interface tests.
  */
-class WifiApIfaceHidlTest : public ::testing::TestWithParam<std::string> {
+class WifiApIfaceHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        wifi_ap_iface_ = getWifiApIface(GetInstanceName());
+        if (!gEnv->isSoftApOn) return;
+        wifi_ap_iface_ = getWifiApIface();
         ASSERT_NE(nullptr, wifi_ap_iface_.get());
     }
 
-    virtual void TearDown() override { stopWifi(GetInstanceName()); }
+    virtual void TearDown() override {
+        if (!gEnv->isSoftApOn) return;
+        stopWifi();
+    }
 
    protected:
     sp<IWifiApIface> wifi_ap_iface_;
-    std::string GetInstanceName() { return GetParam(); }
 };
 
 /*
@@ -54,15 +56,18 @@ class WifiApIfaceHidlTest : public ::testing::TestWithParam<std::string> {
  * Ensures that an instance of the IWifiApIface proxy object is
  * successfully created.
  */
-TEST_P(WifiApIfaceHidlTest, Create) {
-    // The creation of a proxy object is tested as part of SetUp method.
+TEST(WifiApIfaceHidlTestNoFixture, Create) {
+    if (!gEnv->isSoftApOn) return;
+    EXPECT_NE(nullptr, getWifiApIface().get());
+    stopWifi();
 }
 
 /*
  * GetType:
  * Ensures that the correct interface type is returned for AP interface.
  */
-TEST_P(WifiApIfaceHidlTest, GetType) {
+TEST_F(WifiApIfaceHidlTest, GetType) {
+    if (!gEnv->isSoftApOn) return;
     const auto& status_and_type = HIDL_INVOKE(wifi_ap_iface_, getType);
     EXPECT_EQ(WifiStatusCode::SUCCESS, status_and_type.first.code);
     EXPECT_EQ(IfaceType::AP, status_and_type.second);
@@ -73,7 +78,8 @@ TEST_P(WifiApIfaceHidlTest, GetType) {
  * Ensures that a call to set the country code will return with a success
  * status code.
  */
-TEST_P(WifiApIfaceHidlTest, SetCountryCode) {
+TEST_F(WifiApIfaceHidlTest, SetCountryCode) {
+    if (!gEnv->isSoftApOn) return;
     const android::hardware::hidl_array<int8_t, 2> kCountryCode{
         std::array<int8_t, 2>{{0x55, 0x53}}};
     EXPECT_EQ(WifiStatusCode::SUCCESS,
@@ -84,15 +90,10 @@ TEST_P(WifiApIfaceHidlTest, SetCountryCode) {
  * GetValidFrequenciesForBand:
  * Ensures that we can retrieve valid frequencies for 2.4 GHz band.
  */
-TEST_P(WifiApIfaceHidlTest, GetValidFrequenciesForBand) {
+TEST_F(WifiApIfaceHidlTest, GetValidFrequenciesForBand) {
+    if (!gEnv->isSoftApOn) return;
     const auto& status_and_freqs = HIDL_INVOKE(
         wifi_ap_iface_, getValidFrequenciesForBand, WifiBand::BAND_24GHZ);
     EXPECT_EQ(WifiStatusCode::SUCCESS, status_and_freqs.first.code);
     EXPECT_GT(status_and_freqs.second.size(), 0u);
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    PerInstance, WifiApIfaceHidlTest,
-    testing::ValuesIn(
-        android::hardware::getAllHalInstanceNames(IWifi::descriptor)),
-    android::hardware::PrintInstanceNameToString);
