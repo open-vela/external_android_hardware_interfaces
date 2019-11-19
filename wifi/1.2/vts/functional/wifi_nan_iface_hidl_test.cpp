@@ -16,12 +16,10 @@
 
 #include <android-base/logging.h>
 
-#include <android/hardware/wifi/1.2/IWifi.h>
 #include <android/hardware/wifi/1.2/IWifiNanIface.h>
 #include <android/hardware/wifi/1.2/IWifiNanIfaceEventCallback.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+
+#include <VtsHalHidlTargetTestBase.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -38,19 +36,19 @@ using ::android::sp;
 
 #define TIMEOUT_PERIOD 10
 
-android::sp<android::hardware::wifi::V1_2::IWifiNanIface> getWifiNanIface_1_2(
-    const std::string& instance_name) {
+android::sp<android::hardware::wifi::V1_2::IWifiNanIface>
+getWifiNanIface_1_2() {
     return android::hardware::wifi::V1_2::IWifiNanIface::castFrom(
-        getWifiNanIface(instance_name));
+        getWifiNanIface());
 }
 
 /**
  * Fixture to use for all NAN Iface HIDL interface tests.
  */
-class WifiNanIfaceHidlTest : public ::testing::TestWithParam<std::string> {
+class WifiNanIfaceHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        iwifiNanIface = getWifiNanIface_1_2(GetInstanceName());
+        iwifiNanIface = getWifiNanIface_1_2();
         ASSERT_NE(nullptr, iwifiNanIface.get());
         ASSERT_EQ(WifiStatusCode::SUCCESS,
                   HIDL_INVOKE(iwifiNanIface, registerEventCallback_1_2,
@@ -58,7 +56,7 @@ class WifiNanIfaceHidlTest : public ::testing::TestWithParam<std::string> {
                       .code);
     }
 
-    virtual void TearDown() override { stopWifi(GetInstanceName()); }
+    virtual void TearDown() override { stopWifi(); }
 
     /* Used as a mechanism to inform the test about data/event callback */
     inline void notify() {
@@ -460,8 +458,6 @@ class WifiNanIfaceHidlTest : public ::testing::TestWithParam<std::string> {
     ::android::hardware::wifi::V1_2::NanDataPathConfirmInd
         nanDataPathConfirmInd_1_2;
     NanDataPathScheduleUpdateInd nanDataPathScheduleUpdateInd;
-
-    std::string GetInstanceName() { return GetParam(); }
 };
 
 /*
@@ -469,14 +465,15 @@ class WifiNanIfaceHidlTest : public ::testing::TestWithParam<std::string> {
  * Ensures that an instance of the IWifiNanIface proxy object is
  * successfully created.
  */
-TEST_P(WifiNanIfaceHidlTest, Create) {
-    // The creation of a proxy object is tested as part of SetUp method.
+TEST(WifiNanIfaceHidlTestNoFixture, Create) {
+    ASSERT_NE(nullptr, getWifiNanIface_1_2().get());
+    stopWifi();
 }
 
 /*
  * enableRequest_1_2InvalidArgs: validate that fails with invalid arguments
  */
-TEST_P(WifiNanIfaceHidlTest, enableRequest_1_2InvalidArgs) {
+TEST_F(WifiNanIfaceHidlTest, enableRequest_1_2InvalidArgs) {
     uint16_t inputCmdId = 10;
     callbackType = INVALID;
     NanEnableRequest nanEnableRequest = {};
@@ -496,7 +493,7 @@ TEST_P(WifiNanIfaceHidlTest, enableRequest_1_2InvalidArgs) {
  * enableRequest_1_2ShimInvalidArgs: validate that fails with invalid arguments
  * to the shim
  */
-TEST_P(WifiNanIfaceHidlTest, enableRequest_1_2ShimInvalidArgs) {
+TEST_F(WifiNanIfaceHidlTest, enableRequest_1_2ShimInvalidArgs) {
     uint16_t inputCmdId = 10;
     NanEnableRequest nanEnableRequest = {};
     nanEnableRequest.configParams.numberOfPublishServiceIdsInBeacon =
@@ -511,7 +508,7 @@ TEST_P(WifiNanIfaceHidlTest, enableRequest_1_2ShimInvalidArgs) {
 /*
  * configRequest_1_2InvalidArgs: validate that fails with invalid arguments
  */
-TEST_P(WifiNanIfaceHidlTest, configRequest_1_2InvalidArgs) {
+TEST_F(WifiNanIfaceHidlTest, configRequest_1_2InvalidArgs) {
     uint16_t inputCmdId = 10;
     callbackType = INVALID;
     NanConfigRequest nanConfigRequest = {};
@@ -531,7 +528,7 @@ TEST_P(WifiNanIfaceHidlTest, configRequest_1_2InvalidArgs) {
  * configRequest_1_2ShimInvalidArgs: validate that fails with invalid arguments
  * to the shim
  */
-TEST_P(WifiNanIfaceHidlTest, configRequest_1_2ShimInvalidArgs) {
+TEST_F(WifiNanIfaceHidlTest, configRequest_1_2ShimInvalidArgs) {
     uint16_t inputCmdId = 10;
     NanConfigRequest nanConfigRequest = {};
     nanConfigRequest.numberOfPublishServiceIdsInBeacon = 128;  // must be <= 127
@@ -541,9 +538,3 @@ TEST_P(WifiNanIfaceHidlTest, configRequest_1_2ShimInvalidArgs) {
                           nanConfigRequest, nanConfigRequestSupp)
                   .code);
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    PerInstance, WifiNanIfaceHidlTest,
-    testing::ValuesIn(android::hardware::getAllHalInstanceNames(
-        ::android::hardware::wifi::V1_2::IWifi::descriptor)),
-    android::hardware::PrintInstanceNameToString);
