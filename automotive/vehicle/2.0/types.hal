@@ -1282,7 +1282,7 @@ enum VehicleProperty : int32_t {
 
      *
      * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @access VehiclePropertyAccess:READ_WRITE
+     * @access VehiclePropertyAccess:WRITE
      */
     AP_POWER_STATE_REPORT = (
         0x0A01

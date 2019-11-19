@@ -21,12 +21,11 @@
 
 #define LOG_TAG "thermal_hidl_hal_test"
 
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/logging.h>
 #include <android/hardware/thermal/1.0/IThermal.h>
 #include <android/hardware/thermal/1.0/types.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 #include <unistd.h>
 
 using ::android::hardware::hidl_string;
@@ -47,11 +46,26 @@ using ::android::sp;
 #define MAX_DEVICE_TEMPERATURE 200
 #define MAX_FAN_SPEED 20000
 
+// Test environment for Thermal HIDL HAL.
+class ThermalHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+ public:
+  // get the test environment singleton
+  static ThermalHidlEnvironment* Instance() {
+    static ThermalHidlEnvironment* instance = new ThermalHidlEnvironment;
+    return instance;
+  }
+
+  virtual void registerTestServices() override { registerTestService<IThermal>(); }
+ private:
+  ThermalHidlEnvironment() {}
+};
+
 // The main test class for THERMAL HIDL HAL.
-class ThermalHidlTest : public testing::TestWithParam<std::string> {
+class ThermalHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
-    thermal_ = IThermal::getService(GetParam());
+    thermal_ = ::testing::VtsHalHidlTargetTestBase::getService<IThermal>(
+        ThermalHidlEnvironment::Instance()->getServiceName<IThermal>());
     ASSERT_NE(thermal_, nullptr);
     baseSize_ = 0;
     names_.clear();
@@ -164,7 +178,7 @@ class ThermalHidlTest : public testing::TestWithParam<std::string> {
 };
 
 // Sanity test for Thermal::getTemperatures().
-TEST_P(ThermalHidlTest, TemperatureTest) {
+TEST_F(ThermalHidlTest, TemperatureTest) {
   hidl_vec<Temperature> passed;
   for (size_t i = 0; i < MONITORING_OPERATION_NUMBER; ++i) {
     thermal_->getTemperatures(
@@ -179,7 +193,7 @@ TEST_P(ThermalHidlTest, TemperatureTest) {
 }
 
 // Sanity test for Thermal::getCpuUsages().
-TEST_P(ThermalHidlTest, CpuUsageTest) {
+TEST_F(ThermalHidlTest, CpuUsageTest) {
   hidl_vec<CpuUsage> passed;
   for (size_t i = 0; i < MONITORING_OPERATION_NUMBER; ++i) {
     thermal_->getCpuUsages(
@@ -194,7 +208,7 @@ TEST_P(ThermalHidlTest, CpuUsageTest) {
 }
 
 // Sanity test for Thermal::getCoolingDevices().
-TEST_P(ThermalHidlTest, CoolingDeviceTest) {
+TEST_F(ThermalHidlTest, CoolingDeviceTest) {
   hidl_vec<CoolingDevice> passed;
   for (size_t i = 0; i < MONITORING_OPERATION_NUMBER; ++i) {
     thermal_->getCoolingDevices([&passed](
@@ -208,7 +222,11 @@ TEST_P(ThermalHidlTest, CoolingDeviceTest) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, ThermalHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IThermal::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+  ::testing::AddGlobalTestEnvironment(ThermalHidlEnvironment::Instance());
+  ::testing::InitGoogleTest(&argc, argv);
+  ThermalHidlEnvironment::Instance()->init(&argc, argv);
+  int status = RUN_ALL_TESTS();
+  LOG(INFO) << "Test result = " << status;
+  return status;
+}
