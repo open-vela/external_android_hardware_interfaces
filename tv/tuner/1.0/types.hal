@@ -63,7 +63,7 @@ enum FrontendType : uint32_t {
     DVBS,
     /**
      * Digital Video Broadcasting - Terrestrial
-     * DVB Terresttrial Frontend Standard ETSI EN 300 468 V1.15.1 and
+     * DVB Terrestrial Frontend Standard ETSI EN 300 468 V1.15.1 and
      * ETSI EN 302 755 V1.4.1.
      */
     DVBT,
@@ -255,7 +255,7 @@ enum FrontendAtscModulation : uint32_t {
 };
 
 /**
- *  Signal Setting for ATSC Frontend.
+ *  Signal Settings for an ATSC Frontend.
  */
 struct FrontendAtscSettings {
     /**
@@ -868,7 +868,7 @@ enum FrontendIsdbsRolloff : uint32_t {
 };
 
 /**
- *  Modulaltion Type for ISDBS.
+ *  Modulation Type for ISDBS.
  */
 @export
 enum FrontendIsdbsModulation : uint32_t {
