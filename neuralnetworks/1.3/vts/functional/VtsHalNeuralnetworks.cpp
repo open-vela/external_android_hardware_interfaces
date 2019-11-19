@@ -25,7 +25,6 @@
 #include "1.3/Callbacks.h"
 #include "GeneratedTestHarness.h"
 #include "TestHarness.h"
-#include "Utils.h"
 
 namespace android::hardware::neuralnetworks::V1_3::vts::functional {
 
@@ -33,6 +32,7 @@ using HidlToken =
         hidl_array<uint8_t, static_cast<uint32_t>(V1_2::Constant::BYTE_SIZE_OF_CACHE_TOKEN)>;
 using implementation::PreparedModelCallback;
 using V1_0::ErrorStatus;
+using V1_0::Request;
 using V1_1::ExecutionPreference;
 
 // internal helper function
@@ -124,9 +124,9 @@ INSTANTIATE_DEVICE_TEST(NeuralnetworksHidlTest);
 // Forward declaration from ValidateModel.cpp
 void validateModel(const sp<IDevice>& device, const Model& model);
 // Forward declaration from ValidateRequest.cpp
-void validateRequest(const sp<IPreparedModel>& preparedModel, const Request& request);
+void validateRequest(const sp<IPreparedModel>& preparedModel, const V1_0::Request& request);
 // Forward declaration from ValidateRequest.cpp
-void validateRequestFailure(const sp<IPreparedModel>& preparedModel, const Request& request);
+void validateRequestFailure(const sp<IPreparedModel>& preparedModel, const V1_0::Request& request);
 // Forward declaration from ValidateBurst.cpp
 void validateBurst(const sp<IPreparedModel>& preparedModel, const V1_0::Request& request);
 
@@ -139,11 +139,7 @@ void validateEverything(const sp<IDevice>& device, const Model& model, const Req
     if (preparedModel == nullptr) return;
 
     validateRequest(preparedModel, request);
-
-    // TODO(butlermichael): Check if we need to test burst in V1_3 if the interface remains V1_2.
-    ASSERT_TRUE(nn::compliantWithV1_0(request));
-    V1_0::Request request10 = nn::convertToV1_0(request);
-    validateBurst(preparedModel, request10);
+    validateBurst(preparedModel, request);
 }
 
 void validateFailure(const sp<IDevice>& device, const Model& model, const Request& request) {
@@ -161,7 +157,7 @@ void validateFailure(const sp<IDevice>& device, const Model& model, const Reques
 
 TEST_P(ValidationTest, Test) {
     const Model model = createModel(kTestModel);
-    const Request request = nn::convertToV1_3(createRequest(kTestModel));
+    const Request request = createRequest(kTestModel);
     if (kTestModel.expectFailure) {
         validateFailure(kDevice, model, request);
     } else {
