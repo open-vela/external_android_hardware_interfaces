@@ -35,6 +35,21 @@ enum VehiclePropertyType : int32_t {
     /**
      * Any combination of scalar or vector types. The exact format must be
      * provided in the description of the property.
+     *
+     * For vendor MIXED type properties, configArray needs to be formatted in this
+     * structure.
+     * configArray[0], 1 indicates the property has a String value
+     * configArray[1], 1 indicates the property has a Boolean value .
+     * configArray[2], 1 indicates the property has an Integer value.
+     * configArray[3], the number indicates the size of Integer[] in the property.
+     * configArray[4], 1 indicates the property has a Long value.
+     * configArray[5], the number indicates the size of Long[] in the property.
+     * configArray[6], 1 indicates the property has a Float value.
+     * configArray[7], the number indicates the size of Float[] in the property.
+     * configArray[8], the number indicates the size of byte[] in the property.
+     * For example:
+     * {@code configArray = {1, 1, 1, 3, 0, 0, 0, 0, 0}} indicates the property has
+     * a String value, a Boolean value, an Integer value and an array with 3 integers.
      */
     MIXED           = 0x00e00000,
 
@@ -799,7 +814,7 @@ enum VehicleProperty : int32_t {
         | VehicleArea:SEAT),
 
     /**
-     * On/off defrost for designated window
+     * Fan-based defrost for designated window.
      *
      * @change_mode VehiclePropertyChangeMode:ON_CHANGE
      * @access VehiclePropertyAccess:READ_WRITE
@@ -1076,6 +1091,7 @@ enum VehicleProperty : int32_t {
      *
      * @change_mode VehiclePropertyChangeMode:STATIC
      * @access VehiclePropertyAccess:READ
+     * @data_enum VehicleHvacFanDirection
      */
     HVAC_FAN_DIRECTION_AVAILABLE = (
         0x0511
@@ -1117,6 +1133,18 @@ enum VehicleProperty : int32_t {
         | VehiclePropertyGroup:SYSTEM
         | VehiclePropertyType:INT32
         | VehicleArea:SEAT),
+
+    /**
+     * Electric defrosters' status
+     *
+     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
+     * @access VehiclePropertyAccess:READ_WRITE
+     */
+    HVAC_ELECTRIC_DEFROSTER_ON = (
+        0x0514
+        | VehiclePropertyGroup:SYSTEM
+        | VehiclePropertyType:BOOLEAN
+        | VehicleArea:WINDOW),
 
    /**
      * Distance units for display
@@ -2321,6 +2349,96 @@ enum VehicleProperty : int32_t {
         | VehiclePropertyType:INT32
         | VehicleArea:SEAT),
 
+    /**
+     * Support customize permissions for vendor properties
+     *
+     * Implement this property if vehicle hal support customize vendor permissions feature.
+     * VehiclePropConfig.configArray is used to indicate vendor properties and permissions
+     * which selected for this vendor property. The permission must be one of enum in
+     * VehicleVendorPermission.
+     * The configArray is set as follows:
+     *      configArray[n] = propId : property ID for the vendor property
+     *      configArray[n+1] = one of enums in VehicleVendorPermission. It indicates the permission
+     *      for reading value of the property.
+     *      configArray[n+2] = one of enums in VehicleVendorPermission. It indicates the permission
+     *      for writing value of the property.
+     *
+     * For example:
+     * configArray = {
+     *      vendor_prop_1, PERMISSION_VENDOR_SEAT_READ, PERMISSION_VENDOR_SEAT_WRITE,
+     *      vendor_prop_2, PERMISSION_VENDOR_INFO, PERMISSION_NOT_ACCESSIBLE,
+     * }
+     * If vendor properties are not in this array, they will have the default vendor permission.
+     * If vendor chose PERMISSION_NOT_ACCESSIBLE, android will not have access to the property. In
+     * the example, Android can not write value for vendor_prop_2.
+     *
+     * @change_mode VehiclePropertyChangeMode:STATIC
+     * @access VehiclePropertyAccess:READ
+     */
+    SUPPORT_CUSTOMIZE_VENDOR_PERMISSION = (
+        0x0F05
+        | VehiclePropertyGroup:SYSTEM
+        | VehiclePropertyType:BOOLEAN
+        | VehicleArea:GLOBAL),
+
+};
+
+/**
+ * Used by SUPPORT_CUSTOMIZE_VENDOR_PERMISSION to indicate the permission of vendor properties.
+ */
+enum VehicleVendorPermission : int32_t {
+    PERMISSION_DEFAULT = 0x00000000,
+
+    // permissions for the property related with window
+    PERMISSION_SET_VENDOR_CATEGORY_WINDOW= 0X00000001,
+    PERMISSION_GET_VENDOR_CATEGORY_WINDOW = 0x00000002,
+    // permissions for the property related with door
+    PERMISSION_SET_VENDOR_CATEGORY_DOOR  = 0x00000003,
+    PERMISSION_GET_VENDOR_CATEGORY_DOOR   = 0x00000004,
+    // permissions for the property related with seat
+    PERMISSION_SET_VENDOR_CATEGORY_SEAT  = 0x00000005,
+    PERMISSION_GET_VENDOR_CATEGORY_SEAT   = 0x00000006,
+    // permissions for the property related with mirror
+    PERMISSION_SET_VENDOR_CATEGORY_MIRROR= 0x00000007,
+    PERMISSION_GET_VENDOR_CATEGORY_MIRROR = 0x00000008,
+
+    // permissions for the property related with car's information
+    PERMISSION_SET_VENDOR_CATEGORY_INFO  = 0x00000009,
+    PERMISSION_GET_VENDOR_CATEGORY_INFO   = 0x0000000A,
+    // permissions for the property related with car's engine
+    PERMISSION_SET_VENDOR_CATEGORY_ENGINE= 0x0000000B,
+    PERMISSION_GET_VENDOR_CATEGORY_ENGINE = 0x0000000C,
+    // permissions for the property related with car's HVAC
+    PERMISSION_SET_VENDOR_CATEGORY_HVAC  = 0x0000000D,
+    PERMISSION_GET_VENDOR_CATEGORY_HVAC   = 0x0000000E,
+    // permissions for the property related with car's light
+    PERMISSION_SET_VENDOR_CATEGORY_LIGHT = 0x0000000F,
+    PERMISSION_GET_VENDOR_CATEGORY_LIGHT  = 0x00000010,
+
+    // permissions reserved for other vendor permission
+    PERMISSION_SET_VENDOR_CATEGORY_1  = 0x00010000,
+    PERMISSION_GET_VENDOR_CATEGORY_1   = 0x00011000,
+    PERMISSION_SET_VENDOR_CATEGORY_2  = 0x00020000,
+    PERMISSION_GET_VENDOR_CATEGORY_2   = 0x00021000,
+    PERMISSION_SET_VENDOR_CATEGORY_3  = 0x00030000,
+    PERMISSION_GET_VENDOR_CATEGORY_3   = 0x00031000,
+    PERMISSION_SET_VENDOR_CATEGORY_4  = 0x00040000,
+    PERMISSION_GET_VENDOR_CATEGORY_4   = 0x00041000,
+    PERMISSION_SET_VENDOR_CATEGORY_5  = 0x00050000,
+    PERMISSION_GET_VENDOR_CATEGORY_5   = 0x00051000,
+    PERMISSION_SET_VENDOR_CATEGORY_6  = 0x00060000,
+    PERMISSION_GET_VENDOR_CATEGORY_6   = 0x00061000,
+    PERMISSION_SET_VENDOR_CATEGORY_7  = 0x00070000,
+    PERMISSION_GET_VENDOR_CATEGORY_7   = 0x00071000,
+    PERMISSION_SET_VENDOR_CATEGORY_8  = 0x00080000,
+    PERMISSION_GET_VENDOR_CATEGORY_8   = 0x00081000,
+    PERMISSION_SET_VENDOR_CATEGORY_9  = 0x00090000,
+    PERMISSION_GET_VENDOR_CATEGORY_9   = 0x00091000,
+    PERMISSION_SET_VENDOR_CATEGORY_10 = 0x000A0000,
+    PERMISSION_GET_VENDOR_CATEGORY_10  = 0x000A1000,
+
+    // Indicate not available for android to access.
+    PERMISSION_NOT_ACCESSIBLE = 0xF0000000
 };
 
 /**
@@ -2458,9 +2576,19 @@ enum FuelType : int32_t {
  * Bit flags for fan direction
  */
 enum VehicleHvacFanDirection : int32_t {
+    UNKNOWN = 0x0,
+
     FACE = 0x1,
     FLOOR = 0x2,
+    /**
+     * FACE_AND_FLOOR = FACE | FLOOR
+     */
+    FACE_AND_FLOOR = 0x3,
     DEFROST = 0x4,
+    /**
+     * DEFROST_AND_FLOOR = DEFROST | FLOOR
+     */
+    DEFROST_AND_FLOOR = 0x06,
 };
 
 enum VehicleOilLevel : int32_t {
@@ -2499,7 +2627,7 @@ enum VehicleApPowerStateReq : int32_t {
      * power controller must change power state to this state to shutdown
      * system.
      *
-     * int32Values[1] : one of enum_vehicle_ap_power_state_shutdown_param_type
+     * int32Values[1] : one of VehicleApPowerStateShutdownParam
      *
      * SHUTDOWN_PRPARE may be requested from either WAIT_FOR_VHAL or ON states.
      */
@@ -2531,6 +2659,11 @@ enum VehicleApPowerStateShutdownParam : int32_t {
 
     /** AP can only shutdown with postponing allowed. */
     SHUTDOWN_ONLY = 3,
+
+    /**
+     * AP may enter deep sleep, but must either sleep or shut down immediately.
+     * Postponing is not allowed. */
+    SLEEP_IMMEDIATELY = 4,
 };
 
 enum VehicleApPowerStateReport : int32_t {
@@ -2723,6 +2856,8 @@ enum VehiclePropertyStatus : int32_t {
  * Various gears which can be selected by user and chosen in system.
  */
 enum VehicleGear : int32_t {
+    GEAR_UNKNOWN = 0x0000,
+
     GEAR_NEUTRAL = 0x0001,
     GEAR_REVERSE = 0x0002,
     GEAR_PARK = 0x0004,
@@ -3541,4 +3676,3 @@ enum VmsAvailabilityStateIntegerValuesIndex : VmsBaseMessageIntegerValuesIndex {
 enum VmsPublisherInformationIntegerValuesIndex : VmsBaseMessageIntegerValuesIndex {
     PUBLISHER_ID = 1,
 };
-
