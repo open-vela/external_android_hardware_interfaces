@@ -39,10 +39,11 @@ namespace implementation {
 
 using ::android::hardware::audio::common::CPP_VERSION::implementation::HidlUtils;
 
-Device::Device(audio_hw_device_t* device) : mIsClosed(false), mDevice(device) {}
+Device::Device(audio_hw_device_t* device) : mDevice(device) {}
 
 Device::~Device() {
-    (void)doClose();
+    int status = audio_hw_device_close(mDevice);
+    ALOGW_IF(status, "Error closing audio hw device %p: %s", mDevice, strerror(-status));
     mDevice = nullptr;
 }
 
@@ -379,18 +380,6 @@ Return<void> Device::getMicrophones(getMicrophones_cb _hidl_cb) {
 Return<Result> Device::setConnectedState(const DeviceAddress& address, bool connected) {
     auto key = connected ? AudioParameter::keyDeviceConnect : AudioParameter::keyDeviceDisconnect;
     return setParam(key, address);
-}
-#endif
-
-Result Device::doClose() {
-    if (mIsClosed) return Result::INVALID_STATE;
-    mIsClosed = true;
-    return analyzeStatus("close", audio_hw_device_close(mDevice));
-}
-
-#if MAJOR_VERSION >= 6
-Return<Result> Device::close() {
-    return doClose();
 }
 #endif
 
