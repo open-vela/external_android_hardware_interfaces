@@ -1,6 +1,5 @@
 aidl_interface {
     name: "vintf-graphics-common",
-    host_supported: true,
     vendor_available: true,
     vndk: {
         enabled: true,
