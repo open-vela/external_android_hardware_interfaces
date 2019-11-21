@@ -53,14 +53,10 @@ Result Device::analyzeStatus(const char* funcName, int status,
 
 void Device::closeInputStream(audio_stream_in_t* stream) {
     mDevice->close_input_stream(mDevice, stream);
-    LOG_ALWAYS_FATAL_IF(mOpenedStreamsCount == 0, "mOpenedStreamsCount is already 0");
-    --mOpenedStreamsCount;
 }
 
 void Device::closeOutputStream(audio_stream_out_t* stream) {
     mDevice->close_output_stream(mDevice, stream);
-    LOG_ALWAYS_FATAL_IF(mOpenedStreamsCount == 0, "mOpenedStreamsCount is already 0");
-    --mOpenedStreamsCount;
 }
 
 char* Device::halGetParameters(const char* keys) {
@@ -162,7 +158,6 @@ std::tuple<Result, sp<IStreamOut>> Device::openOutputStreamImpl(int32_t ioHandle
     sp<IStreamOut> streamOut;
     if (status == OK) {
         streamOut = new StreamOut(this, halStream);
-        ++mOpenedStreamsCount;
     }
     HidlUtils::audioConfigFromHal(halConfig, suggestedConfig);
     return {analyzeStatus("open_output_stream", status, {EINVAL} /*ignore*/), streamOut};
@@ -189,7 +184,6 @@ std::tuple<Result, sp<IStreamIn>> Device::openInputStreamImpl(
     sp<IStreamIn> streamIn;
     if (status == OK) {
         streamIn = new StreamIn(this, halStream);
-        ++mOpenedStreamsCount;
     }
     HidlUtils::audioConfigFromHal(halConfig, suggestedConfig);
     return {analyzeStatus("open_input_stream", status, {EINVAL} /*ignore*/), streamIn};
@@ -389,7 +383,7 @@ Return<Result> Device::setConnectedState(const DeviceAddress& address, bool conn
 #endif
 
 Result Device::doClose() {
-    if (mIsClosed || mOpenedStreamsCount != 0) return Result::INVALID_STATE;
+    if (mIsClosed) return Result::INVALID_STATE;
     mIsClosed = true;
     return analyzeStatus("close", audio_hw_device_close(mDevice));
 }
