@@ -369,7 +369,10 @@ void* Gralloc::lock(const native_handle_t* bufferHandle, uint64_t cpuUsage,
         accessRegion.top = accessRegionRect.top;
         accessRegion.width = accessRegionRect.width;
         accessRegion.height = accessRegionRect.height;
-        return mGralloc4->lock(bufferHandle, cpuUsage, accessRegion, acquireFence);
+        int32_t bytesPerPixel;
+        int32_t bytesPerStride;
+        return mGralloc4->lock(bufferHandle, cpuUsage, accessRegion, acquireFence, &bytesPerPixel,
+                               &bytesPerStride);
     } else if (mGralloc3) {
         IMapper3::Rect accessRegion;
         accessRegion.left = accessRegionRect.left;
