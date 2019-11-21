@@ -177,24 +177,6 @@ bool GnssHalTest::IsGnssHalVersion_1_1() const {
     return hasGnssHalVersion_1_1 && !hasGnssHalVersion_2_0;
 }
 
-void GnssHalTest::notify() {
-    std::unique_lock<std::mutex> lock(mtx_);
-    notify_count_++;
-    cv_.notify_one();
-}
-
-std::cv_status GnssHalTest::wait(int timeout_seconds) {
-    std::unique_lock<std::mutex> lock(mtx_);
-
-    auto status = std::cv_status::no_timeout;
-    while (notify_count_ == 0) {
-        status = cv_.wait_for(lock, std::chrono::seconds(timeout_seconds));
-        if (status == std::cv_status::timeout) return status;
-    }
-    notify_count_--;
-    return status;
-}
-
 GnssConstellationType GnssHalTest::startLocationAndGetNonGpsConstellation() {
     const int kLocationsToAwait = 3;
 
@@ -205,7 +187,7 @@ GnssConstellationType GnssHalTest::startLocationAndGetNonGpsConstellation() {
     ALOGD("Observed %d GnssSvStatus, while awaiting %d Locations (%d received)",
           (int)list_gnss_sv_status_.size(), kLocationsToAwait, location_called_count_);
 
-    // Find first non-GPS constellation to blacklist
+    // Find first non-GPS constellation
     GnssConstellationType constellation_to_blacklist = GnssConstellationType::UNKNOWN;
     for (const auto& gnss_sv_status : list_gnss_sv_status_) {
         for (uint32_t iSv = 0; iSv < gnss_sv_status.numSvs; iSv++) {
@@ -225,10 +207,28 @@ GnssConstellationType GnssHalTest::startLocationAndGetNonGpsConstellation() {
 
     if (constellation_to_blacklist == GnssConstellationType::UNKNOWN) {
         ALOGI("No non-GPS constellations found, constellation blacklist test less effective.");
-        // Proceed functionally to blacklist something.
+        // Proceed functionally to return something.
         constellation_to_blacklist = GnssConstellationType::GLONASS;
     }
     return constellation_to_blacklist;
+}
+
+void GnssHalTest::notify() {
+    std::unique_lock<std::mutex> lock(mtx_);
+    notify_count_++;
+    cv_.notify_one();
+}
+
+std::cv_status GnssHalTest::wait(int timeout_seconds) {
+    std::unique_lock<std::mutex> lock(mtx_);
+
+    auto status = std::cv_status::no_timeout;
+    while (notify_count_ == 0) {
+        status = cv_.wait_for(lock, std::chrono::seconds(timeout_seconds));
+        if (status == std::cv_status::timeout) return status;
+    }
+    notify_count_--;
+    return status;
 }
 
 Return<void> GnssHalTest::GnssCallback::gnssSetSystemInfoCb(
