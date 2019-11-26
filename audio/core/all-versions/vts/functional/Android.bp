@@ -24,7 +24,6 @@ cc_defaults {
         "libxml2",
     ],
     shared_libs: [
-        "libaudiofoundation",
         "libfmq",
     ],
     header_libs: [
