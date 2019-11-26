@@ -29,8 +29,8 @@ namespace hardware {
 namespace details {
 // Templated classes can use the below method
 // to avoid creating dependencies on liblog.
-bool wouldLogVerbose();
-void logAlwaysVerbose(const std::string& message);
+bool wouldLogInfo();
+void logAlwaysInfo(const std::string& message);
 void logAlwaysError(const std::string& message);
 }  // namespace details
 
@@ -92,7 +92,7 @@ decltype(V::value) get(const decltype(V::value) &defValue) {
     };
     static V cachedValue = getHelper();
 
-    if (wouldLogVerbose()) {
+    if (wouldLogInfo()) {
         std::string iname = __PRETTY_FUNCTION__;
         // func name starts with "func = " in __PRETTY_FUNCTION__
         auto pos = iname.find("func = ");
@@ -107,7 +107,7 @@ decltype(V::value) get(const decltype(V::value) &defValue) {
         oss << iname << " retrieved: "
             << (cachedValue.specified ? cachedValue.value : defValue)
             << (cachedValue.specified ? "" : " (default)");
-        logAlwaysVerbose(oss.str());
+        logAlwaysInfo(oss.str());
     }
 
     return cachedValue.specified ? cachedValue.value : defValue;
