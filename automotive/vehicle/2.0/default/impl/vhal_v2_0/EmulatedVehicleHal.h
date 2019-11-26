@@ -30,8 +30,8 @@
 #include "vhal_v2_0/VehiclePropertyStore.h"
 
 #include "DefaultConfig.h"
-#include "EmulatedVehicleConnector.h"
-#include "GeneratorHub.h"
+#include "FakeValueGenerator.h"
+
 #include "VehicleEmulator.h"
 
 namespace android {
@@ -45,8 +45,7 @@ namespace impl {
 /** Implementation of VehicleHal that connected to emulator instead of real vehicle network. */
 class EmulatedVehicleHal : public EmulatedVehicleHalIface {
 public:
-    EmulatedVehicleHal(VehiclePropertyStore* propStore,
-                       EmulatedVehicleClient* client);
+    EmulatedVehicleHal(VehiclePropertyStore* propStore);
     ~EmulatedVehicleHal() = default;
 
     //  Methods from VehicleHal
@@ -68,7 +67,9 @@ private:
     }
 
     StatusCode handleGenerateFakeDataRequest(const VehiclePropValue& request);
-    void onPropertyValue(const VehiclePropValue& value);
+    void onFakeValueGenerated(const VehiclePropValue& value);
+    VehiclePropValuePtr createHwInputKeyProp(VehicleHwKeyInputAction action, int32_t keyCode,
+                                             int32_t targetDisplay);
 
     void onContinuousPropertyTimer(const std::vector<int32_t>& properties);
     bool isContinuousProperty(int32_t propId) const;
@@ -84,7 +85,8 @@ private:
     VehiclePropertyStore* mPropStore;
     std::unordered_set<int32_t> mHvacPowerProps;
     RecurrentTimer mRecurrentTimer;
-    EmulatedVehicleClient* mVehicleClient;
+    std::unique_ptr<FakeValueGenerator> mLinearFakeValueGenerator;
+    std::unique_ptr<FakeValueGenerator> mJsonFakeValueGenerator;
 };
 
 }  // impl
