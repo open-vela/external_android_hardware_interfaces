@@ -16,29 +16,25 @@
 
 #include <android-base/logging.h>
 
-#include <android/hardware/wifi/1.0/IWifi.h>
 #include <android/hardware/wifi/1.0/IWifiRttController.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+
+#include <VtsHalHidlTargetTestBase.h>
 
 #include "wifi_hidl_test_utils.h"
 
-using ::android::sp;
-using ::android::hardware::wifi::V1_0::IWifi;
 using ::android::hardware::wifi::V1_0::IWifiRttController;
+using ::android::sp;
 
 /**
  * Fixture to use for all RTT controller HIDL interface tests.
  */
-class WifiRttControllerHidlTest : public ::testing::TestWithParam<std::string> {
+class WifiRttControllerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {}
 
-    virtual void TearDown() override { stopWifi(GetInstanceName()); }
+    virtual void TearDown() override { stopWifi(); }
 
    protected:
-    std::string GetInstanceName() { return GetParam(); }
 };
 
 /*
@@ -46,13 +42,7 @@ class WifiRttControllerHidlTest : public ::testing::TestWithParam<std::string> {
  * Ensures that an instance of the IWifiRttController proxy object is
  * successfully created.
  */
-TEST_P(WifiRttControllerHidlTest, Create) {
-    stopWifi(GetInstanceName());
-    EXPECT_NE(nullptr, getWifiRttController(GetInstanceName()).get());
+TEST(WifiRttControllerHidlTestNoFixture, Create) {
+    EXPECT_NE(nullptr, getWifiRttController().get());
+    stopWifi();
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    PerInstance, WifiRttControllerHidlTest,
-    testing::ValuesIn(
-        android::hardware::getAllHalInstanceNames(IWifi::descriptor)),
-    android::hardware::PrintInstanceNameToString);
