@@ -18,25 +18,26 @@
 
 #include "VtsHalNeuralnetworks.h"
 
-#include "1.2/Callbacks.h"
+#include "Callbacks.h"
 #include "ExecutionBurstController.h"
 #include "ExecutionBurstServer.h"
-#include "GeneratedTestHarness.h"
 #include "TestHarness.h"
 #include "Utils.h"
 
 #include <android-base/logging.h>
-#include <chrono>
 #include <cstring>
 
-namespace android::hardware::neuralnetworks::V1_2::vts::functional {
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_2 {
+namespace vts {
+namespace functional {
 
-using nn::ExecutionBurstController;
-using nn::RequestChannelSender;
-using nn::ResultChannelReceiver;
-using V1_0::ErrorStatus;
-using V1_0::Request;
-using ExecutionBurstCallback = ExecutionBurstController::ExecutionBurstCallback;
+using ::android::nn::ExecutionBurstController;
+using ::android::nn::RequestChannelSender;
+using ::android::nn::ResultChannelReceiver;
+using ExecutionBurstCallback = ::android::nn::ExecutionBurstController::ExecutionBurstCallback;
 
 // This constant value represents the length of an FMQ that is large enough to
 // return a result from a burst execution for all of the generated test cases.
@@ -65,9 +66,9 @@ static void createBurst(const sp<IPreparedModel>& preparedModel, const sp<IBurst
 
     // create FMQ objects
     auto [fmqRequestChannel, fmqRequestDescriptor] =
-            RequestChannelSender::create(kExecutionBurstChannelLength);
+            RequestChannelSender::create(kExecutionBurstChannelLength, /*blocking=*/true);
     auto [fmqResultChannel, fmqResultDescriptor] =
-            ResultChannelReceiver::create(resultChannelLength, std::chrono::microseconds{0});
+            ResultChannelReceiver::create(resultChannelLength, /*blocking=*/true);
     ASSERT_NE(nullptr, fmqRequestChannel.get());
     ASSERT_NE(nullptr, fmqResultChannel.get());
     ASSERT_NE(nullptr, fmqRequestDescriptor);
@@ -238,7 +239,7 @@ static void mutateDatumTest(RequestChannelSender* sender, ResultChannelReceiver*
 ///////////////////////// BURST VALIATION TESTS ////////////////////////////////////
 
 static void validateBurstSerialization(const sp<IPreparedModel>& preparedModel,
-                                       const Request& request) {
+                                       const std::vector<Request>& requests) {
     // create burst
     std::unique_ptr<RequestChannelSender> sender;
     std::unique_ptr<ResultChannelReceiver> receiver;
@@ -249,32 +250,35 @@ static void validateBurstSerialization(const sp<IPreparedModel>& preparedModel,
     ASSERT_NE(nullptr, receiver.get());
     ASSERT_NE(nullptr, context.get());
 
-    // load memory into callback slots
-    std::vector<intptr_t> keys;
-    keys.reserve(request.pools.size());
-    std::transform(request.pools.begin(), request.pools.end(), std::back_inserter(keys),
-                   [](const auto& pool) { return reinterpret_cast<intptr_t>(&pool); });
-    const std::vector<int32_t> slots = callback->getSlots(request.pools, keys);
+    // validate each request
+    for (const Request& request : requests) {
+        // load memory into callback slots
+        std::vector<intptr_t> keys;
+        keys.reserve(request.pools.size());
+        std::transform(request.pools.begin(), request.pools.end(), std::back_inserter(keys),
+                       [](const auto& pool) { return reinterpret_cast<intptr_t>(&pool); });
+        const std::vector<int32_t> slots = callback->getSlots(request.pools, keys);
 
-    // ensure slot std::numeric_limits<int32_t>::max() doesn't exist (for
-    // subsequent slot validation testing)
-    ASSERT_TRUE(std::all_of(slots.begin(), slots.end(), [](int32_t slot) {
-        return slot != std::numeric_limits<int32_t>::max();
-    }));
+        // ensure slot std::numeric_limits<int32_t>::max() doesn't exist (for
+        // subsequent slot validation testing)
+        ASSERT_TRUE(std::all_of(slots.begin(), slots.end(), [](int32_t slot) {
+            return slot != std::numeric_limits<int32_t>::max();
+        }));
 
-    // serialize the request
-    const auto serialized = android::nn::serialize(request, MeasureTiming::YES, slots);
+        // serialize the request
+        const auto serialized = ::android::nn::serialize(request, MeasureTiming::YES, slots);
 
-    // validations
-    removeDatumTest(sender.get(), receiver.get(), serialized);
-    addDatumTest(sender.get(), receiver.get(), serialized);
-    mutateDatumTest(sender.get(), receiver.get(), serialized);
+        // validations
+        removeDatumTest(sender.get(), receiver.get(), serialized);
+        addDatumTest(sender.get(), receiver.get(), serialized);
+        mutateDatumTest(sender.get(), receiver.get(), serialized);
+    }
 }
 
 // This test validates that when the Result message size exceeds length of the
 // result FMQ, the service instance gracefully fails and returns an error.
 static void validateBurstFmqLength(const sp<IPreparedModel>& preparedModel,
-                                   const Request& request) {
+                                   const std::vector<Request>& requests) {
     // create regular burst
     std::shared_ptr<ExecutionBurstController> controllerRegular;
     ASSERT_NO_FATAL_FAILURE(createBurstWithResultChannelLength(
@@ -287,36 +291,35 @@ static void validateBurstFmqLength(const sp<IPreparedModel>& preparedModel,
             preparedModel, kExecutionBurstChannelSmallLength, &controllerSmall));
     ASSERT_NE(nullptr, controllerSmall.get());
 
-    // load memory into callback slots
-    std::vector<intptr_t> keys(request.pools.size());
-    for (size_t i = 0; i < keys.size(); ++i) {
-        keys[i] = reinterpret_cast<intptr_t>(&request.pools[i]);
+    // validate each request
+    for (const Request& request : requests) {
+        // load memory into callback slots
+        std::vector<intptr_t> keys(request.pools.size());
+        for (size_t i = 0; i < keys.size(); ++i) {
+            keys[i] = reinterpret_cast<intptr_t>(&request.pools[i]);
+        }
+
+        // collect serialized result by running regular burst
+        const auto [statusRegular, outputShapesRegular, timingRegular] =
+                controllerRegular->compute(request, MeasureTiming::NO, keys);
+
+        // skip test if regular burst output isn't useful for testing a failure
+        // caused by having too small of a length for the result FMQ
+        const std::vector<FmqResultDatum> serialized =
+                ::android::nn::serialize(statusRegular, outputShapesRegular, timingRegular);
+        if (statusRegular != ErrorStatus::NONE ||
+            serialized.size() <= kExecutionBurstChannelSmallLength) {
+            continue;
+        }
+
+        // by this point, execution should fail because the result channel isn't
+        // large enough to return the serialized result
+        const auto [statusSmall, outputShapesSmall, timingSmall] =
+                controllerSmall->compute(request, MeasureTiming::NO, keys);
+        EXPECT_NE(ErrorStatus::NONE, statusSmall);
+        EXPECT_EQ(0u, outputShapesSmall.size());
+        EXPECT_TRUE(badTiming(timingSmall));
     }
-
-    // collect serialized result by running regular burst
-    const auto [nRegular, outputShapesRegular, timingRegular, fallbackRegular] =
-            controllerRegular->compute(request, MeasureTiming::NO, keys);
-    const ErrorStatus statusRegular = nn::convertResultCodeToErrorStatus(nRegular);
-    EXPECT_FALSE(fallbackRegular);
-
-    // skip test if regular burst output isn't useful for testing a failure
-    // caused by having too small of a length for the result FMQ
-    const std::vector<FmqResultDatum> serialized =
-            android::nn::serialize(statusRegular, outputShapesRegular, timingRegular);
-    if (statusRegular != ErrorStatus::NONE ||
-        serialized.size() <= kExecutionBurstChannelSmallLength) {
-        return;
-    }
-
-    // by this point, execution should fail because the result channel isn't
-    // large enough to return the serialized result
-    const auto [nSmall, outputShapesSmall, timingSmall, fallbackSmall] =
-            controllerSmall->compute(request, MeasureTiming::NO, keys);
-    const ErrorStatus statusSmall = nn::convertResultCodeToErrorStatus(nSmall);
-    EXPECT_NE(ErrorStatus::NONE, statusSmall);
-    EXPECT_EQ(0u, outputShapesSmall.size());
-    EXPECT_TRUE(badTiming(timingSmall));
-    EXPECT_FALSE(fallbackSmall);
 }
 
 static bool isSanitized(const FmqResultDatum& datum) {
@@ -364,7 +367,7 @@ static bool isSanitized(const FmqResultDatum& datum) {
 }
 
 static void validateBurstSanitized(const sp<IPreparedModel>& preparedModel,
-                                   const Request& request) {
+                                   const std::vector<Request>& requests) {
     // create burst
     std::unique_ptr<RequestChannelSender> sender;
     std::unique_ptr<ResultChannelReceiver> receiver;
@@ -375,31 +378,40 @@ static void validateBurstSanitized(const sp<IPreparedModel>& preparedModel,
     ASSERT_NE(nullptr, receiver.get());
     ASSERT_NE(nullptr, context.get());
 
-    // load memory into callback slots
-    std::vector<intptr_t> keys;
-    keys.reserve(request.pools.size());
-    std::transform(request.pools.begin(), request.pools.end(), std::back_inserter(keys),
-                   [](const auto& pool) { return reinterpret_cast<intptr_t>(&pool); });
-    const std::vector<int32_t> slots = callback->getSlots(request.pools, keys);
+    // validate each request
+    for (const Request& request : requests) {
+        // load memory into callback slots
+        std::vector<intptr_t> keys;
+        keys.reserve(request.pools.size());
+        std::transform(request.pools.begin(), request.pools.end(), std::back_inserter(keys),
+                       [](const auto& pool) { return reinterpret_cast<intptr_t>(&pool); });
+        const std::vector<int32_t> slots = callback->getSlots(request.pools, keys);
 
-    // send valid request
-    ASSERT_TRUE(sender->send(request, MeasureTiming::YES, slots));
+        // send valid request
+        ASSERT_TRUE(sender->send(request, MeasureTiming::YES, slots));
 
-    // receive valid result
-    auto serialized = receiver->getPacketBlocking();
-    ASSERT_TRUE(serialized.has_value());
+        // receive valid result
+        auto serialized = receiver->getPacketBlocking();
+        ASSERT_TRUE(serialized.has_value());
 
-    // sanitize result
-    ASSERT_TRUE(std::all_of(serialized->begin(), serialized->end(), isSanitized))
-            << "The result serialized data is not properly sanitized";
+        // sanitize result
+        ASSERT_TRUE(std::all_of(serialized->begin(), serialized->end(), isSanitized))
+                << "The result serialized data is not properly sanitized";
+    }
 }
 
 ///////////////////////////// ENTRY POINT //////////////////////////////////
 
-void validateBurst(const sp<IPreparedModel>& preparedModel, const Request& request) {
-    ASSERT_NO_FATAL_FAILURE(validateBurstSerialization(preparedModel, request));
-    ASSERT_NO_FATAL_FAILURE(validateBurstFmqLength(preparedModel, request));
-    ASSERT_NO_FATAL_FAILURE(validateBurstSanitized(preparedModel, request));
+void ValidationTest::validateBurst(const sp<IPreparedModel>& preparedModel,
+                                   const std::vector<Request>& requests) {
+    ASSERT_NO_FATAL_FAILURE(validateBurstSerialization(preparedModel, requests));
+    ASSERT_NO_FATAL_FAILURE(validateBurstFmqLength(preparedModel, requests));
+    ASSERT_NO_FATAL_FAILURE(validateBurstSanitized(preparedModel, requests));
 }
 
-}  // namespace android::hardware::neuralnetworks::V1_2::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_2
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
