@@ -1,0 +1,15 @@
+aidl_interface {
+    name: "vintf-vibrator",
+    vendor_available: true,
+    srcs: [
+        "android/hardware/vibrator/*.aidl",
+    ],
+    stability: "vintf",
+    backend: {
+        ndk: {
+            vndk: {
+                enabled: true,
+            },
+        },
+    },
+}
