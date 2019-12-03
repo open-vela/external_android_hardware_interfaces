@@ -159,7 +159,6 @@ enum FilterEventType : uint8_t {
     RECORD,
     MMTPRECORD,
     DOWNLOAD,
-    TEMI,
 };
 
 struct PlaybackConf {
@@ -821,9 +820,6 @@ class TunerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
                     break;
                 case DemuxTsFilterType::RECORD:
                     eventType = FilterEventType::RECORD;
-                    break;
-                case DemuxTsFilterType::TEMI:
-                    eventType = FilterEventType::TEMI;
                     break;
             }
             break;
