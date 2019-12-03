@@ -1,6 +1,7 @@
 cc_library_static {
     name: "android.hardware.health@1.0-convert",
     vendor_available: true,
+    recovery_available: true,
     srcs: ["convert.cpp"],
     include_dirs: [
         "system/core/base/include",
@@ -11,7 +12,6 @@ cc_library_static {
     shared_libs: [
         "libcutils",
         "libhidlbase",
-        "libhidltransport",
         "libutils",
         "android.hardware.health@1.0",
     ],
