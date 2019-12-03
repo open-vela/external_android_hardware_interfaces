@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,12 +14,15 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
-#include <radio_hidl_hal_utils_v1_4.h>
+package android.hardware.vibrator;
 
-INSTANTIATE_TEST_SUITE_P(PerInstance, RadioHidlTest_v1_4,
-                         testing::ValuesIn(android::hardware::getAllHalInstanceNames(
-                                 ::android::hardware::radio::V1_4::IRadio::descriptor)),
-                         android::hardware::PrintInstanceNameToString);
+import android.hardware.vibrator.CompositePrimitive;
+
+@VintfStability
+parcelable CompositeEffect {
+    /* Period of silence preceding primitive. */
+    int delayMs;
+    CompositePrimitive primitive;
+    /* 0.0 (exclusive) - 1.0 (inclusive) */
+    float scale;
+}
