@@ -83,6 +83,7 @@ const std::vector<DeviceConfigParameter>& getOutputDeviceConfigParameters() {
                     for (auto& config : configs) {
                         // Some combinations of flags declared in the config file require special
                         // treatment.
+                        bool special = false;
                         if (flags & AUDIO_OUTPUT_FLAG_COMPRESS_OFFLOAD) {
                             config.offloadInfo.sampleRateHz = config.sampleRateHz;
                             config.offloadInfo.channelMask = config.channelMask;
@@ -93,13 +94,22 @@ const std::vector<DeviceConfigParameter>& getOutputDeviceConfigParameters() {
                             config.offloadInfo.bitWidth = 16;
                             config.offloadInfo.bufferSize = 256;  // arbitrary value
                             config.offloadInfo.usage = AudioUsage::MEDIA;
+                            result.emplace_back(
+                                    device, config,
+                                    AudioOutputFlag(AUDIO_OUTPUT_FLAG_COMPRESS_OFFLOAD));
+                            special = true;
+                        }
+                        if ((flags & AUDIO_OUTPUT_FLAG_DIRECT) &&
+                            !(flags &
+                              (AUDIO_OUTPUT_FLAG_HW_AV_SYNC | AUDIO_OUTPUT_FLAG_MMAP_NOIRQ))) {
                             result.emplace_back(device, config,
-                                                AudioOutputFlag(AUDIO_OUTPUT_FLAG_COMPRESS_OFFLOAD |
-                                                                AUDIO_OUTPUT_FLAG_DIRECT));
-                        } else {
-                            if (flags & AUDIO_OUTPUT_FLAG_PRIMARY) {  // ignore the flag
-                                flags &= ~AUDIO_OUTPUT_FLAG_PRIMARY;
-                            }
+                                                AudioOutputFlag(AUDIO_OUTPUT_FLAG_DIRECT));
+                            special = true;
+                        }
+                        if (flags & AUDIO_OUTPUT_FLAG_PRIMARY) {  // ignore the flag
+                            flags &= ~AUDIO_OUTPUT_FLAG_PRIMARY;
+                        }
+                        if (!special) {
                             result.emplace_back(device, config, AudioOutputFlag(flags));
                         }
                     }
