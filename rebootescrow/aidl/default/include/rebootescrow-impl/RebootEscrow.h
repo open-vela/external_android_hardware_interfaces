@@ -14,17 +14,23 @@
  * limitations under the License.
  */
 
-#include <VtsCoreUtil.h>
-#include "supplicant_hidl_test_utils.h"
+#pragma once
 
-// TODO(b/143892896): Remove this line after wifi_hidl_test_utils.cpp is
-// updated.
-WifiSupplicantHidlEnvironment* gEnv = nullptr;
+#include <aidl/android/hardware/rebootescrow/BnRebootEscrow.h>
 
-int main(int argc, char** argv) {
-    if (!::testing::deviceSupportsFeature("android.hardware.wifi.direct"))
-        return 0;
+namespace aidl {
+namespace android {
+namespace hardware {
+namespace rebootescrow {
 
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}
+static const char* REBOOT_ESCROW_DEVICE = "/dev/access-kregistry";
+
+class RebootEscrow : public BnRebootEscrow {
+    ndk::ScopedAStatus storeKey(const std::vector<int8_t>& kek) override;
+    ndk::ScopedAStatus retrieveKey(std::vector<int8_t>* _aidl_return) override;
+};
+
+}  // namespace rebootescrow
+}  // namespace hardware
+}  // namespace android
+}  // namespace aidl
