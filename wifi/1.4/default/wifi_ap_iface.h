@@ -49,8 +49,7 @@ class WifiApIface : public V1_4::IWifiApIface {
     Return<void> setCountryCode(const hidl_array<int8_t, 2>& code,
                                 setCountryCode_cb hidl_status_cb) override;
     Return<void> getValidFrequenciesForBand(
-        V1_0::WifiBand band,
-        getValidFrequenciesForBand_cb hidl_status_cb) override;
+        WifiBand band, getValidFrequenciesForBand_cb hidl_status_cb) override;
     Return<void> setMacAddress(const hidl_array<uint8_t, 6>& mac,
                                setMacAddress_cb hidl_status_cb) override;
     Return<void> getFactoryMacAddress(
@@ -62,7 +61,7 @@ class WifiApIface : public V1_4::IWifiApIface {
     std::pair<WifiStatus, IfaceType> getTypeInternal();
     WifiStatus setCountryCodeInternal(const std::array<int8_t, 2>& code);
     std::pair<WifiStatus, std::vector<WifiChannelInMhz>>
-    getValidFrequenciesForBandInternal(V1_0::WifiBand band);
+    getValidFrequenciesForBandInternal(WifiBand band);
     WifiStatus setMacAddressInternal(const std::array<uint8_t, 6>& mac);
     std::pair<WifiStatus, std::array<uint8_t, 6>>
     getFactoryMacAddressInternal();

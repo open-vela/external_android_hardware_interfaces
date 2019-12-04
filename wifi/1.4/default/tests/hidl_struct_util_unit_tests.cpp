@@ -55,7 +55,8 @@ TEST_F(HidlStructUtilTest, CanConvertLegacyWifiMacInfosToHidlWithOneMac) {
     legacy_mac_info1.iface_infos.push_back(legacy_iface_info2);
     legacy_mac_infos.push_back(legacy_mac_info1);
 
-    std::vector<IWifiChipEventCallback::RadioModeInfo> hidl_radio_mode_infos;
+    std::vector<V1_2::IWifiChipEventCallback::RadioModeInfo>
+        hidl_radio_mode_infos;
     ASSERT_TRUE(hidl_struct_util::convertLegacyWifiMacInfosToHidl(
         legacy_mac_infos, &hidl_radio_mode_infos));
 
@@ -89,18 +90,20 @@ TEST_F(HidlStructUtilTest, CanConvertLegacyWifiMacInfosToHidlWithTwoMac) {
     legacy_mac_info2.iface_infos.push_back(legacy_iface_info2);
     legacy_mac_infos.push_back(legacy_mac_info2);
 
-    std::vector<IWifiChipEventCallback::RadioModeInfo> hidl_radio_mode_infos;
+    std::vector<V1_2::IWifiChipEventCallback::RadioModeInfo>
+        hidl_radio_mode_infos;
     ASSERT_TRUE(hidl_struct_util::convertLegacyWifiMacInfosToHidl(
         legacy_mac_infos, &hidl_radio_mode_infos));
 
     ASSERT_EQ(2u, hidl_radio_mode_infos.size());
 
     // Find mac info 1.
-    const auto hidl_radio_mode_info1 = std::find_if(
-        hidl_radio_mode_infos.begin(), hidl_radio_mode_infos.end(),
-        [&legacy_mac_info1](const IWifiChipEventCallback::RadioModeInfo& x) {
-            return x.radioId == legacy_mac_info1.wlan_mac_id;
-        });
+    const auto hidl_radio_mode_info1 =
+        std::find_if(hidl_radio_mode_infos.begin(), hidl_radio_mode_infos.end(),
+                     [&legacy_mac_info1](
+                         const V1_2::IWifiChipEventCallback::RadioModeInfo& x) {
+                         return x.radioId == legacy_mac_info1.wlan_mac_id;
+                     });
     ASSERT_NE(hidl_radio_mode_infos.end(), hidl_radio_mode_info1);
     EXPECT_EQ(WifiBand::BAND_5GHZ, hidl_radio_mode_info1->bandInfo);
     ASSERT_EQ(1u, hidl_radio_mode_info1->ifaceInfos.size());
@@ -110,11 +113,12 @@ TEST_F(HidlStructUtilTest, CanConvertLegacyWifiMacInfosToHidlWithTwoMac) {
               hidl_iface_info1.channel);
 
     // Find mac info 2.
-    const auto hidl_radio_mode_info2 = std::find_if(
-        hidl_radio_mode_infos.begin(), hidl_radio_mode_infos.end(),
-        [&legacy_mac_info2](const IWifiChipEventCallback::RadioModeInfo& x) {
-            return x.radioId == legacy_mac_info2.wlan_mac_id;
-        });
+    const auto hidl_radio_mode_info2 =
+        std::find_if(hidl_radio_mode_infos.begin(), hidl_radio_mode_infos.end(),
+                     [&legacy_mac_info2](
+                         const V1_2::IWifiChipEventCallback::RadioModeInfo& x) {
+                         return x.radioId == legacy_mac_info2.wlan_mac_id;
+                     });
     ASSERT_NE(hidl_radio_mode_infos.end(), hidl_radio_mode_info2);
     EXPECT_EQ(WifiBand::BAND_24GHZ, hidl_radio_mode_info2->bandInfo);
     ASSERT_EQ(1u, hidl_radio_mode_info2->ifaceInfos.size());
