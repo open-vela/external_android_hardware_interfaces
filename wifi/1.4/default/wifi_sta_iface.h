@@ -63,8 +63,7 @@ class WifiStaIface : public V1_4::IWifiStaIface {
     Return<void> getBackgroundScanCapabilities(
         getBackgroundScanCapabilities_cb hidl_status_cb) override;
     Return<void> getValidFrequenciesForBand(
-        V1_0::WifiBand band,
-        getValidFrequenciesForBand_cb hidl_status_cb) override;
+        WifiBand band, getValidFrequenciesForBand_cb hidl_status_cb) override;
     Return<void> startBackgroundScan(
         uint32_t cmd_id, const StaBackgroundScanParameters& params,
         startBackgroundScan_cb hidl_status_cb) override;
@@ -131,7 +130,7 @@ class WifiStaIface : public V1_4::IWifiStaIface {
     std::pair<WifiStatus, StaBackgroundScanCapabilities>
     getBackgroundScanCapabilitiesInternal();
     std::pair<WifiStatus, std::vector<WifiChannelInMhz>>
-    getValidFrequenciesForBandInternal(V1_0::WifiBand band);
+    getValidFrequenciesForBandInternal(WifiBand band);
     WifiStatus startBackgroundScanInternal(
         uint32_t cmd_id, const StaBackgroundScanParameters& params);
     WifiStatus stopBackgroundScanInternal(uint32_t cmd_id);
