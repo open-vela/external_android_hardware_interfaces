@@ -138,11 +138,11 @@ const char* Effect::sContextCallToCommand = "error";
 const char* Effect::sContextCallFunction = sContextCallToCommand;
 
 Effect::Effect(effect_handle_t handle)
-    : mHandle(handle), mEfGroup(nullptr), mStopProcessThread(false) {}
+    : mIsClosed(false), mHandle(handle), mEfGroup(nullptr), mStopProcessThread(false) {}
 
 Effect::~Effect() {
     ATRACE_CALL();
-    (void)close();
+    close();
     if (mProcessThread.get()) {
         ATRACE_NAME("mProcessThread->join");
         status_t status = mProcessThread->join();
@@ -154,10 +154,8 @@ Effect::~Effect() {
     }
     mInBuffer.clear();
     mOutBuffer.clear();
-#if MAJOR_VERSION <= 5
     int status = EffectRelease(mHandle);
     ALOGW_IF(status, "Error releasing effect %p: %s", mHandle, strerror(-status));
-#endif
     EffectMap::getInstance().remove(mHandle);
     mHandle = 0;
 }
@@ -307,11 +305,12 @@ void Effect::getConfigImpl(int commandCode, const char* commandName, GetConfigCa
 Result Effect::getCurrentConfigImpl(uint32_t featureId, uint32_t configSize,
                                     GetCurrentConfigSuccessCallback onSuccess) {
     uint32_t halCmd = featureId;
-    std::vector<uint32_t> halResult(alignedSizeIn<uint32_t>(sizeof(uint32_t) + configSize), 0);
+    uint32_t halResult[alignedSizeIn<uint32_t>(sizeof(uint32_t) + configSize)];
+    memset(halResult, 0, sizeof(halResult));
     uint32_t halResultSize = 0;
-    return sendCommandReturningStatusAndData(
-            EFFECT_CMD_GET_FEATURE_CONFIG, "GET_FEATURE_CONFIG", sizeof(uint32_t), &halCmd,
-            &halResultSize, &halResult[0], sizeof(uint32_t), [&] { onSuccess(&halResult[1]); });
+    return sendCommandReturningStatusAndData(EFFECT_CMD_GET_FEATURE_CONFIG, "GET_FEATURE_CONFIG",
+                                             sizeof(uint32_t), &halCmd, &halResultSize, halResult,
+                                             sizeof(uint32_t), [&] { onSuccess(&halResult[1]); });
 }
 
 Result Effect::getParameterImpl(uint32_t paramSize, const void* paramData,
@@ -338,7 +337,8 @@ Result Effect::getSupportedConfigsImpl(uint32_t featureId, uint32_t maxConfigs, 
                                        GetSupportedConfigsSuccessCallback onSuccess) {
     uint32_t halCmd[2] = {featureId, maxConfigs};
     uint32_t halResultSize = 2 * sizeof(uint32_t) + maxConfigs * sizeof(configSize);
-    std::vector<uint8_t> halResult(static_cast<size_t>(halResultSize), 0);
+    uint8_t halResult[halResultSize];
+    memset(&halResult[0], 0, halResultSize);
     return sendCommandReturningStatusAndData(
         EFFECT_CMD_GET_FEATURE_SUPPORTED_CONFIGS, "GET_FEATURE_SUPPORTED_CONFIGS", sizeof(halCmd),
         halCmd, &halResultSize, &halResult[0], 2 * sizeof(uint32_t), [&] {
@@ -517,9 +517,9 @@ Return<void> Effect::setAndGetVolume(const hidl_vec<uint32_t>& volumes,
     uint32_t halDataSize;
     std::unique_ptr<uint8_t[]> halData = hidlVecToHal(volumes, &halDataSize);
     uint32_t halResultSize = halDataSize;
-    std::vector<uint32_t> halResult(volumes.size(), 0);
+    uint32_t halResult[volumes.size()];
     Result retval = sendCommandReturningData(EFFECT_CMD_SET_VOLUME, "SET_VOLUME", halDataSize,
-                                             &halData[0], &halResultSize, &halResult[0]);
+                                             &halData[0], &halResultSize, halResult);
     hidl_vec<uint32_t> result;
     if (retval == Result::OK) {
         result.setToExternal(&halResult[0], halResultSize);
@@ -579,6 +579,8 @@ Return<void> Effect::getSupportedAuxChannelsConfigs(uint32_t maxConfigs,
 }
 
 Return<void> Effect::getAuxChannelsConfig(getAuxChannelsConfig_cb _hidl_cb) {
+    uint32_t halResult[alignedSizeIn<uint32_t>(sizeof(uint32_t) + sizeof(channel_config_t))];
+    memset(halResult, 0, sizeof(halResult));
     EffectAuxChannelsConfig result;
     Result retval = getCurrentConfigImpl(
         EFFECT_FEATURE_AUX_CHANNELS, sizeof(channel_config_t), [&](void* configData) {
@@ -590,12 +592,11 @@ Return<void> Effect::getAuxChannelsConfig(getAuxChannelsConfig_cb _hidl_cb) {
 }
 
 Return<Result> Effect::setAuxChannelsConfig(const EffectAuxChannelsConfig& config) {
-    std::vector<uint32_t> halCmd(
-            alignedSizeIn<uint32_t>(sizeof(uint32_t) + sizeof(channel_config_t)), 0);
+    uint32_t halCmd[alignedSizeIn<uint32_t>(sizeof(uint32_t) + sizeof(channel_config_t))];
     halCmd[0] = EFFECT_FEATURE_AUX_CHANNELS;
     effectAuxChannelsConfigToHal(config, reinterpret_cast<channel_config_t*>(&halCmd[1]));
     return sendCommandReturningStatus(EFFECT_CMD_SET_FEATURE_CONFIG,
-                                      "SET_FEATURE_CONFIG AUX_CHANNELS", halCmd.size(), &halCmd[0]);
+                                      "SET_FEATURE_CONFIG AUX_CHANNELS", sizeof(halCmd), halCmd);
 }
 
 Return<Result> Effect::setAudioSource(AudioSource source) {
@@ -689,28 +690,24 @@ Return<void> Effect::getCurrentConfigForFeature(uint32_t featureId, uint32_t con
 
 Return<Result> Effect::setCurrentConfigForFeature(uint32_t featureId,
                                                   const hidl_vec<uint8_t>& configData) {
-    std::vector<uint32_t> halCmd(alignedSizeIn<uint32_t>(sizeof(uint32_t) + configData.size()), 0);
+    uint32_t halCmd[alignedSizeIn<uint32_t>(sizeof(uint32_t) + configData.size())];
+    memset(halCmd, 0, sizeof(halCmd));
     halCmd[0] = featureId;
     memcpy(&halCmd[1], &configData[0], configData.size());
     return sendCommandReturningStatus(EFFECT_CMD_SET_FEATURE_CONFIG, "SET_FEATURE_CONFIG",
-                                      halCmd.size(), &halCmd[0]);
+                                      sizeof(halCmd), halCmd);
 }
 
 Return<Result> Effect::close() {
-    if (mStopProcessThread.load(std::memory_order_relaxed)) {  // only this thread modifies
-        return Result::INVALID_STATE;
+    if (mIsClosed) return Result::INVALID_STATE;
+    mIsClosed = true;
+    if (mProcessThread.get()) {
+        mStopProcessThread.store(true, std::memory_order_release);
     }
-    mStopProcessThread.store(true, std::memory_order_release);
     if (mEfGroup) {
         mEfGroup->wake(static_cast<uint32_t>(MessageQueueFlagBits::REQUEST_QUIT));
     }
-#if MAJOR_VERSION <= 5
     return Result::OK;
-#elif MAJOR_VERSION >= 6
-    // No need to join the processing thread, it is part of the API contract that the client
-    // must finish processing before closing the effect.
-    return analyzeStatus("EffectRelease", "", sContextCallFunction, EffectRelease(mHandle));
-#endif
 }
 
 Return<void> Effect::debug(const hidl_handle& fd, const hidl_vec<hidl_string>& /* options */) {
