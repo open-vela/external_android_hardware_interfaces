@@ -24,7 +24,6 @@
 #include <android/hardware/biometrics/fingerprint/2.1/IBiometricsFingerprintClientCallback.h>
 #include <hidl/HidlSupport.h>
 #include <hidl/HidlTransportSupport.h>
-#include <utils/Condition.h>
 
 #include <cinttypes>
 #include <future>
