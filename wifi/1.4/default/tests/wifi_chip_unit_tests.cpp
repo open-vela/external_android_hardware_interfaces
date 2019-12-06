@@ -720,16 +720,13 @@ TEST_F(WifiChipV2_AwareIfaceCombinationTest,
             ASSERT_EQ(iface_names[0], "wlan0");
         });
     // Retrieve the exact iface object.
-    sp<android::hardware::wifi::V1_0::IWifiNanIface> nan_iface;
-    chip_->getNanIface(
-        "wlan0",
-        [&nan_iface](
-            const WifiStatus& status,
-            const sp<android::hardware::wifi::V1_0::IWifiNanIface>& iface) {
-            ASSERT_EQ(WifiStatusCode::SUCCESS, status.code);
-            ASSERT_NE(iface.get(), nullptr);
-            nan_iface = iface;
-        });
+    sp<IWifiNanIface> nan_iface;
+    chip_->getNanIface("wlan0", [&nan_iface](const WifiStatus& status,
+                                             const sp<IWifiNanIface>& iface) {
+        ASSERT_EQ(WifiStatusCode::SUCCESS, status.code);
+        ASSERT_NE(iface.get(), nullptr);
+        nan_iface = iface;
+    });
 
     // Remove the STA iface.
     removeIface(IfaceType::STA, "wlan0");
