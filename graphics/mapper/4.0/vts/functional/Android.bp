@@ -20,7 +20,6 @@ cc_test {
     srcs: ["VtsHalGraphicsMapperV4_0TargetTest.cpp"],
     static_libs: [
         "android.hardware.graphics.mapper@4.0-vts",
-        "libsync",
     ],
     shared_libs: [
         "android.hardware.graphics.allocator@4.0",
