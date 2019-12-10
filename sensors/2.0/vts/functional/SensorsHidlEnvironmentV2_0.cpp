@@ -58,8 +58,7 @@ struct SensorsCallback : ISensorsCallback {
 bool SensorsHidlEnvironmentV2_0::resetHal() {
     bool succeed = false;
     do {
-        mSensors = ISensors::getService(
-            SensorsHidlEnvironmentV2_0::Instance()->getServiceName<ISensors>());
+        mSensors = ISensors::getService(mServiceName);
         if (mSensors == nullptr) {
             break;
         }
@@ -130,8 +129,8 @@ void SensorsHidlEnvironmentV2_0::HidlTearDown() {
 
 void SensorsHidlEnvironmentV2_0::startPollingThread() {
     mStopThread = false;
-    mEvents.reserve(MAX_RECEIVE_BUFFER_EVENT_COUNT);
     mPollThread = std::thread(pollingThread, this);
+    mEvents.reserve(MAX_RECEIVE_BUFFER_EVENT_COUNT);
 }
 
 void SensorsHidlEnvironmentV2_0::readEvents() {
