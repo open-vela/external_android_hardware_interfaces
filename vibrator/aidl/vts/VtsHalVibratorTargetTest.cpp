@@ -135,12 +135,13 @@ TEST_P(VibratorAidl, ValidateEffect) {
             Status status = vibrator->perform(effect, strength, nullptr /*callback*/, &lengthMs);
 
             if (isEffectSupported) {
-                EXPECT_TRUE(status.isOk()) << toString(effect) << " " << toString(strength);
+                EXPECT_TRUE(status.isOk())
+                        << static_cast<int>(effect) << " " << static_cast<int>(strength);
                 EXPECT_GT(lengthMs, 0);
                 usleep(lengthMs * 1000);
             } else {
                 EXPECT_EQ(status.exceptionCode(), Status::EX_UNSUPPORTED_OPERATION)
-                        << toString(effect) << " " << toString(strength);
+                        << static_cast<int>(effect) << " " << static_cast<int>(strength);
                 EXPECT_EQ(lengthMs, 0);
             }
         }
@@ -201,7 +202,7 @@ TEST_P(VibratorAidl, InvalidEffectsUnsupported) {
             int32_t lengthMs;
             Status status = vibrator->perform(effect, strength, nullptr /*callback*/, &lengthMs);
             EXPECT_EQ(status.exceptionCode(), Status::EX_UNSUPPORTED_OPERATION)
-                    << toString(effect) << " " << toString(strength);
+                    << static_cast<int>(effect) << " " << static_cast<int>(strength);
         }
     }
     for (Effect effect : kEffects) {
@@ -209,7 +210,7 @@ TEST_P(VibratorAidl, InvalidEffectsUnsupported) {
             int32_t lengthMs;
             Status status = vibrator->perform(effect, strength, nullptr /*callback*/, &lengthMs);
             EXPECT_EQ(status.exceptionCode(), Status::EX_UNSUPPORTED_OPERATION)
-                    << toString(effect) << " " << toString(strength);
+                    << static_cast<int>(effect) << " " << static_cast<int>(strength);
         }
     }
 }
