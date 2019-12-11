@@ -17,8 +17,9 @@
 #ifndef ANDROID_SENSORS_HIDL_ENVIRONMENT_BASE_H
 #define ANDROID_SENSORS_HIDL_ENVIRONMENT_BASE_H
 
+#include <VtsHalHidlTargetTestEnvBase.h>
+
 #include <android/hardware/sensors/1.0/types.h>
-#include <gtest/gtest.h>
 
 #include <atomic>
 #include <memory>
@@ -32,11 +33,11 @@ class IEventCallback {
     virtual void onEvent(const ::android::hardware::sensors::V1_0::Event& event) = 0;
 };
 
-class SensorsHidlEnvironmentBase {
-  public:
+class SensorsHidlEnvironmentBase : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
     using Event = ::android::hardware::sensors::V1_0::Event;
-    virtual void HidlSetUp();
-    virtual void HidlTearDown();
+    virtual void HidlSetUp() override;
+    virtual void HidlTearDown() override;
 
     // Get and clear all events collected so far (like "cat" shell command).
     // If output is nullptr, it clears all collected events.
@@ -49,27 +50,22 @@ class SensorsHidlEnvironmentBase {
     void unregisterCallback();
 
    protected:
-     SensorsHidlEnvironmentBase(const std::string& service_name)
-         : mCollectionEnabled(false), mCallback(nullptr) {
-         mServiceName = service_name;
-     }
-     virtual ~SensorsHidlEnvironmentBase(){};
+    SensorsHidlEnvironmentBase() : mCollectionEnabled(false), mCallback(nullptr) {}
 
-     void addEvent(const Event& ev);
+    void addEvent(const Event& ev);
 
-     virtual void startPollingThread() = 0;
-     virtual bool resetHal() = 0;
+    virtual void startPollingThread() = 0;
+    virtual bool resetHal() = 0;
 
-     std::string mServiceName;
-     bool mCollectionEnabled;
-     std::atomic_bool mStopThread;
-     std::thread mPollThread;
-     std::vector<Event> mEvents;
-     std::mutex mEventsMutex;
+    bool mCollectionEnabled;
+    std::atomic_bool mStopThread;
+    std::thread mPollThread;
+    std::vector<Event> mEvents;
+    std::mutex mEventsMutex;
 
-     IEventCallback* mCallback;
+    IEventCallback* mCallback;
 
-     GTEST_DISALLOW_COPY_AND_ASSIGN_(SensorsHidlEnvironmentBase);
+    GTEST_DISALLOW_COPY_AND_ASSIGN_(SensorsHidlEnvironmentBase);
 };
 
 #endif  // ANDROID_SENSORS_HIDL_ENVIRONMENT_BASE_H
