@@ -12,10 +12,12 @@ cc_binary {
     ],
     shared_libs: [
         "libhidlbase",
-        "libhidltransport",
         "libutils",
         "liblog",
         "android.hardware.gnss@1.1",
         "android.hardware.gnss@1.0",
+    ],
+    static_libs: [
+        "android.hardware.gnss@common-default-lib",
     ],
 }
