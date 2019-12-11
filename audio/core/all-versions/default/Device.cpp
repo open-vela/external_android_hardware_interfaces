@@ -84,29 +84,26 @@ Return<Result> Device::setMasterVolume(float volume) {
         ALOGW("Can not set a master volume (%f) outside [0,1]", volume);
         return Result::INVALID_ARGUMENTS;
     }
-    return analyzeStatus("set_master_volume", mDevice->set_master_volume(mDevice, volume),
-                         {ENOSYS} /*ignore*/);
+    return analyzeStatus("set_master_volume", mDevice->set_master_volume(mDevice, volume));
 }
 
 Return<void> Device::getMasterVolume(getMasterVolume_cb _hidl_cb) {
     Result retval(Result::NOT_SUPPORTED);
     float volume = 0;
     if (mDevice->get_master_volume != NULL) {
-        retval = analyzeStatus("get_master_volume", mDevice->get_master_volume(mDevice, &volume),
-                               {ENOSYS} /*ignore*/);
+        retval = analyzeStatus("get_master_volume", mDevice->get_master_volume(mDevice, &volume));
     }
     _hidl_cb(retval, volume);
     return Void();
 }
 
 Return<Result> Device::setMicMute(bool mute) {
-    return analyzeStatus("set_mic_mute", mDevice->set_mic_mute(mDevice, mute), {ENOSYS} /*ignore*/);
+    return analyzeStatus("set_mic_mute", mDevice->set_mic_mute(mDevice, mute));
 }
 
 Return<void> Device::getMicMute(getMicMute_cb _hidl_cb) {
     bool mute = false;
-    Result retval = analyzeStatus("get_mic_mute", mDevice->get_mic_mute(mDevice, &mute),
-                                  {ENOSYS} /*ignore*/);
+    Result retval = analyzeStatus("get_mic_mute", mDevice->get_mic_mute(mDevice, &mute));
     _hidl_cb(retval, mute);
     return Void();
 }
@@ -114,8 +111,7 @@ Return<void> Device::getMicMute(getMicMute_cb _hidl_cb) {
 Return<Result> Device::setMasterMute(bool mute) {
     Result retval(Result::NOT_SUPPORTED);
     if (mDevice->set_master_mute != NULL) {
-        retval = analyzeStatus("set_master_mute", mDevice->set_master_mute(mDevice, mute),
-                               {ENOSYS} /*ignore*/);
+        retval = analyzeStatus("set_master_mute", mDevice->set_master_mute(mDevice, mute));
     }
     return retval;
 }
@@ -124,8 +120,7 @@ Return<void> Device::getMasterMute(getMasterMute_cb _hidl_cb) {
     Result retval(Result::NOT_SUPPORTED);
     bool mute = false;
     if (mDevice->get_master_mute != NULL) {
-        retval = analyzeStatus("get_master_mute", mDevice->get_master_mute(mDevice, &mute),
-                               {ENOSYS} /*ignore*/);
+        retval = analyzeStatus("get_master_mute", mDevice->get_master_mute(mDevice, &mute));
     }
     _hidl_cb(retval, mute);
     return Void();
