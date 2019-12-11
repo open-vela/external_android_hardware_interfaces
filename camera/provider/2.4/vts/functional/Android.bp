@@ -25,6 +25,7 @@ cc_test {
         "libcamera_metadata",
         "libcutils",
         "libfmq",
+        "libgralloctypes",
         "libgui",
         "libui",
     ],
@@ -45,7 +46,6 @@ cc_test {
         "android.hidl.allocator@1.0",
         "libgrallocusage",
         "libhidlmemory",
-        "libgralloctypes",
     ],
-    test_suites: ["general-tests", "vts-core"],
+    test_suites: ["general-tests"],
 }
