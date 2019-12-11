@@ -14,5 +14,14 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
+    types: [
+        "BitsPerSample",
+        "ChannelMode",
+        "CodecConfiguration",
+        "CodecType",
+        "SampleRate",
+        "Status",
+    ],
     gen_java: false,
 }
+
