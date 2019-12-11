@@ -1389,7 +1389,7 @@ static std::string rectString(hwc_rect_t rect) {
 }
 
 static std::string approximateFloatString(float f) {
-    if (static_cast<int32_t>(f) == f) {
+    if (static_cast<float>(static_cast<int32_t>(f)) == f) {
         return std::to_string(static_cast<int32_t>(f));
     }
     int32_t truncated = static_cast<int32_t>(f * 10);
@@ -1680,10 +1680,10 @@ std::string HWC2On1Adapter::Display::Config::toString(bool splitLine) const {
     if (mAttributes.count(HWC2::Attribute::DpiX) != 0 &&
             mAttributes.at(HWC2::Attribute::DpiX) != -1) {
         std::memset(buffer, 0, BUFFER_SIZE);
-        writtenBytes = snprintf(buffer, BUFFER_SIZE,
-                ", DPI: %.1f x %.1f",
-                mAttributes.at(HWC2::Attribute::DpiX) / 1000.0f,
-                mAttributes.at(HWC2::Attribute::DpiY) / 1000.0f);
+        writtenBytes =
+                snprintf(buffer, BUFFER_SIZE, ", DPI: %.1f x %.1f",
+                         static_cast<float>(mAttributes.at(HWC2::Attribute::DpiX)) / 1000.0f,
+                         static_cast<float>(mAttributes.at(HWC2::Attribute::DpiY)) / 1000.0f);
         output.append(buffer, writtenBytes);
     }
 
@@ -1921,8 +1921,8 @@ HWC2On1Adapter::Layer::Layer(Display& display)
     mHwc1Id(0),
     mHasUnsupportedPlaneAlpha(false) {}
 
-bool HWC2On1Adapter::SortLayersByZ::operator()(
-        const std::shared_ptr<Layer>& lhs, const std::shared_ptr<Layer>& rhs) {
+bool HWC2On1Adapter::SortLayersByZ::operator()(const std::shared_ptr<Layer>& lhs,
+                                               const std::shared_ptr<Layer>& rhs) const {
     return lhs->getZ() < rhs->getZ();
 }
 
@@ -2096,8 +2096,7 @@ std::string HWC2On1Adapter::Layer::dump() const {
     } else if (mCompositionType == HWC2::Composition::Sideband) {
         output << "  Handle: " << mSidebandStream << '\n';
     } else {
-        output << "  Buffer: " << mBuffer.getBuffer() << "/" <<
-                mBuffer.getFence() << '\n';
+        output << "  Buffer: " << mBuffer.getBuffer() << '\n';
         output << fill << "  Display frame [LTRB]: " <<
                 rectString(mDisplayFrame) << '\n';
         output << fill << "  Source crop: " <<
