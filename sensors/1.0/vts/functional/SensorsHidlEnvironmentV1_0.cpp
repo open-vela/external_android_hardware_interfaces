@@ -35,7 +35,8 @@ bool SensorsHidlEnvironmentV1_0::resetHal() {
         // this do ... while is for easy error handling
         do {
             step = "getService()";
-            sensors = ISensors::getService(mServiceName);
+            sensors = ISensors::getService(
+                SensorsHidlEnvironmentV1_0::Instance()->getServiceName<ISensors>());
             if (sensors == nullptr) {
                 break;
             }
