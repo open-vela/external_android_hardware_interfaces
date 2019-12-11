@@ -340,8 +340,7 @@ static bool mutateOperationOperandTypeSkip(size_t operand, OperandType type, con
             case OperationType::ARGMAX:
             case OperationType::ARGMIN: {
                 if (type == OperandType::TENSOR_FLOAT16 || type == OperandType::TENSOR_FLOAT32 ||
-                    type == OperandType::TENSOR_INT32 || type == OperandType::TENSOR_QUANT8_ASYMM ||
-                    type == OperandType::TENSOR_QUANT8_ASYMM_SIGNED) {
+                    type == OperandType::TENSOR_INT32 || type == OperandType::TENSOR_QUANT8_ASYMM) {
                     return true;
                 }
             } break;
