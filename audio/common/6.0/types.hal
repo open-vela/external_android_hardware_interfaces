@@ -156,11 +156,6 @@ typedef int32_t AudioSession;
 @export(name="audio_session_t", value_prefix="AUDIO_SESSION_")
 enum AudioSessionConsts : int32_t {
     /**
-     * Session for effects attached to a particular sink or source audio device
-     * (e.g an effect only applied to a speaker)
-     */
-    DEVICE = -2,
-    /**
      * Session for effects attached to a particular output stream
      * (value must be less than 0)
      */
@@ -561,8 +556,6 @@ enum AudioMode : int32_t {
     IN_CALL          = 2,
     /** Calls handled by apps (Eg: Hangout). */
     IN_COMMUNICATION = 3,
-    /** Call screening in progress */
-    CALL_SCREEN      = 4,
 };
 
 @export(name="", value_prefix="AUDIO_DEVICE_")
@@ -739,7 +732,6 @@ enum AudioInputFlag : int32_t {
     MMAP_NOIRQ   = 0x10, // input operates in MMAP no IRQ mode.
     VOIP_TX      = 0x20, // preferred input for VoIP calls.
     HW_AV_SYNC   = 0x40, // input connected to an output that uses a hardware A/V sync
-    DIRECT       = 0x80, // for acquiring encoded streams
 };
 
 @export(name="audio_usage_t", value_prefix="AUDIO_USAGE_")
