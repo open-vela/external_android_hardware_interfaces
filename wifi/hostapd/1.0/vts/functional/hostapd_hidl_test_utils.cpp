@@ -44,11 +44,13 @@ using ::android::hidl::manager::V1_0::IServiceNotification;
 using ::android::wifi_system::HostapdManager;
 using ::android::wifi_system::SupplicantManager;
 
+extern WifiHostapdHidlEnvironment* gEnv;
+
 namespace {
 // Helper function to initialize the driver and firmware to AP mode
 // using the vendor HAL HIDL interface.
-void initilializeDriverAndFirmware(const std::string& wifi_instance_name) {
-    sp<IWifiChip> wifi_chip = getWifiChip(wifi_instance_name);
+void initilializeDriverAndFirmware() {
+    sp<IWifiChip> wifi_chip = getWifiChip();
     ChipModeId mode_id;
     EXPECT_TRUE(configureChipToSupportIfaceType(
         wifi_chip, ::android::hardware::wifi::V1_0::IfaceType::AP, &mode_id));
@@ -56,9 +58,7 @@ void initilializeDriverAndFirmware(const std::string& wifi_instance_name) {
 
 // Helper function to deinitialize the driver and firmware
 // using the vendor HAL HIDL interface.
-void deInitilializeDriverAndFirmware(const std::string& wifi_instance_name) {
-    stopWifi(wifi_instance_name);
-}
+void deInitilializeDriverAndFirmware() { stopWifi(); }
 }  // namespace
 
 // Utility class to wait for wpa_hostapd's HIDL service registration.
@@ -110,42 +110,45 @@ class ServiceNotificationListener : public IServiceNotification {
     std::condition_variable condition_;
 };
 
-void stopSupplicantIfNeeded(const std::string& instance_name) {
+void stopSupplicantIfNeeded() {
     SupplicantManager supplicant_manager;
     if (supplicant_manager.IsSupplicantRunning()) {
         LOG(INFO) << "Supplicant is running, stop supplicant first.";
         ASSERT_TRUE(supplicant_manager.StopSupplicant());
-        deInitilializeDriverAndFirmware(instance_name);
+        deInitilializeDriverAndFirmware();
         ASSERT_FALSE(supplicant_manager.IsSupplicantRunning());
     }
 }
 
-void stopHostapd(const std::string& instance_name) {
+void stopHostapd() {
     HostapdManager hostapd_manager;
 
     ASSERT_TRUE(hostapd_manager.StopHostapd());
-    deInitilializeDriverAndFirmware(instance_name);
+    deInitilializeDriverAndFirmware();
 }
 
-void startHostapdAndWaitForHidlService(
-    const std::string& wifi_instance_name,
-    const std::string& hostapd_instance_name) {
-    initilializeDriverAndFirmware(wifi_instance_name);
+void startHostapdAndWaitForHidlService() {
+    initilializeDriverAndFirmware();
 
     android::sp<ServiceNotificationListener> notification_listener =
         new ServiceNotificationListener();
+    string service_name = gEnv->getServiceName<IHostapd>();
     ASSERT_TRUE(notification_listener->registerForHidlServiceNotifications(
-        hostapd_instance_name));
+        service_name));
 
     HostapdManager hostapd_manager;
     ASSERT_TRUE(hostapd_manager.StartHostapd());
 
-    ASSERT_TRUE(
-        notification_listener->waitForHidlService(500, hostapd_instance_name));
+    ASSERT_TRUE(notification_listener->waitForHidlService(200, service_name));
 }
 
 bool is_1_1(const sp<IHostapd>& hostapd) {
     sp<::android::hardware::wifi::hostapd::V1_1::IHostapd> hostapd_1_1 =
         ::android::hardware::wifi::hostapd::V1_1::IHostapd::castFrom(hostapd);
     return hostapd_1_1.get() != nullptr;
+}
+
+sp<IHostapd> getHostapd() {
+    return ::testing::VtsHalHidlTargetTestBase::getService<IHostapd>(
+        gEnv->getServiceName<IHostapd>());
 }
