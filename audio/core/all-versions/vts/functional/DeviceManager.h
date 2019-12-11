@@ -113,11 +113,7 @@ class DeviceManager : public InterfaceManager<DeviceManager, FactoryAndDevice, I
 #elif MAJOR_VERSION >= 6
         {
             sp<IDevice> device = getExisting(std::make_tuple(factoryName, name));
-            if (device != nullptr) {
-                auto ret = device->close();
-                ALOGE_IF(!ret.isOk(), "Device %s::%s close failed: %s", factoryName.c_str(),
-                         name.c_str(), ret.description().c_str());
-            }
+            if (device != nullptr) device->close();
         }
         return InterfaceManager::reset(std::make_tuple(factoryName, name), false);
 #endif
