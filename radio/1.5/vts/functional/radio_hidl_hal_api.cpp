@@ -29,7 +29,6 @@ TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_invalidHystere
     signalThresholdInfo.hysteresisMs = 5000;
     signalThresholdInfo.hysteresisDb = 10;  // hysteresisDb too large given threshold list deltas
     signalThresholdInfo.thresholds = {-109, -103, -97, -89};
-    signalThresholdInfo.isEnabled = true;
 
     Return<void> res = radio_v1_5->setSignalStrengthReportingCriteria_1_5(
             serial, signalThresholdInfo, ::android::hardware::radio::V1_5::AccessNetwork::GERAN);
@@ -53,7 +52,6 @@ TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_EmptyThreshold
     signalThresholdInfo.signalMeasurement = SignalMeasurementType::RSSI;
     signalThresholdInfo.hysteresisMs = 0;
     signalThresholdInfo.hysteresisDb = 0;
-    signalThresholdInfo.isEnabled = true;
 
     Return<void> res = radio_v1_5->setSignalStrengthReportingCriteria_1_5(
             serial, signalThresholdInfo, ::android::hardware::radio::V1_5::AccessNetwork::GERAN);
@@ -78,7 +76,6 @@ TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Geran) {
     signalThresholdInfo.hysteresisMs = 5000;
     signalThresholdInfo.hysteresisDb = 2;
     signalThresholdInfo.thresholds = {-109, -103, -97, -89};
-    signalThresholdInfo.isEnabled = true;
 
     Return<void> res = radio_v1_5->setSignalStrengthReportingCriteria_1_5(
             serial, signalThresholdInfo, ::android::hardware::radio::V1_5::AccessNetwork::GERAN);
@@ -103,7 +100,6 @@ TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Utran) {
     signalThresholdInfo.hysteresisMs = 5000;
     signalThresholdInfo.hysteresisDb = 2;
     signalThresholdInfo.thresholds = {-110, -97, -73, -49, -25};
-    signalThresholdInfo.isEnabled = true;
 
     Return<void> res = radio_v1_5->setSignalStrengthReportingCriteria_1_5(
             serial, signalThresholdInfo, ::android::hardware::radio::V1_5::AccessNetwork::UTRAN);
@@ -128,7 +124,6 @@ TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Eutran_RSRP) {
     signalThresholdInfo.hysteresisMs = 5000;
     signalThresholdInfo.hysteresisDb = 2;
     signalThresholdInfo.thresholds = {-128, -108, -88, -68};
-    signalThresholdInfo.isEnabled = true;
 
     Return<void> res = radio_v1_5->setSignalStrengthReportingCriteria_1_5(
             serial, signalThresholdInfo, ::android::hardware::radio::V1_5::AccessNetwork::EUTRAN);
@@ -153,7 +148,6 @@ TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Eutran_RSRQ) {
     signalThresholdInfo.hysteresisMs = 5000;
     signalThresholdInfo.hysteresisDb = 2;
     signalThresholdInfo.thresholds = {-27, -20, -13, -6};
-    signalThresholdInfo.isEnabled = true;
 
     Return<void> res = radio_v1_5->setSignalStrengthReportingCriteria_1_5(
             serial, signalThresholdInfo, ::android::hardware::radio::V1_5::AccessNetwork::EUTRAN);
@@ -178,7 +172,6 @@ TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Eutran_RSSNR) 
     signalThresholdInfo.hysteresisMs = 5000;
     signalThresholdInfo.hysteresisDb = 2;
     signalThresholdInfo.thresholds = {-10, 0, 10, 20};
-    signalThresholdInfo.isEnabled = true;
 
     Return<void> res = radio_v1_5->setSignalStrengthReportingCriteria_1_5(
             serial, signalThresholdInfo, ::android::hardware::radio::V1_5::AccessNetwork::EUTRAN);
@@ -199,7 +192,6 @@ TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Cdma2000) {
     signalThresholdInfo.hysteresisMs = 5000;
     signalThresholdInfo.hysteresisDb = 2;
     signalThresholdInfo.thresholds = {-105, -90, -75, -65};
-    signalThresholdInfo.isEnabled = true;
 
     Return<void> res = radio_v1_5->setSignalStrengthReportingCriteria_1_5(
             serial, signalThresholdInfo, ::android::hardware::radio::V1_5::AccessNetwork::CDMA2000);
@@ -224,7 +216,6 @@ TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSRSRP) 
     signalThresholdInfo.hysteresisMs = 5000;
     signalThresholdInfo.hysteresisDb = 0;
     signalThresholdInfo.thresholds = {-105, -90, -75, -65};
-    signalThresholdInfo.isEnabled = true;
 
     Return<void> res = radio_v1_5->setSignalStrengthReportingCriteria_1_5(
             serial, signalThresholdInfo, ::android::hardware::radio::V1_5::AccessNetwork::NGRAN);
@@ -249,7 +240,6 @@ TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSRSRQ) 
     signalThresholdInfo.hysteresisMs = 5000;
     signalThresholdInfo.hysteresisDb = 0;
     signalThresholdInfo.thresholds = {-15, -10, -5, -4};
-    signalThresholdInfo.isEnabled = true;
 
     Return<void> res = radio_v1_5->setSignalStrengthReportingCriteria_1_5(
             serial, signalThresholdInfo, ::android::hardware::radio::V1_5::AccessNetwork::NGRAN);
@@ -264,27 +254,6 @@ TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSRSRQ) 
 }
 
 /*
- * Test IRadio.setSignalStrengthReportingCriteria_1_5() for EUTRAN
- */
-TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Disable_RSSNR) {
-    serial = GetRandomSerialNumber();
-
-    ::android::hardware::radio::V1_5::SignalThresholdInfo signalThresholdInfo;
-    signalThresholdInfo.signalMeasurement = SignalMeasurementType::RSSNR;
-    signalThresholdInfo.hysteresisMs = 5000;
-    signalThresholdInfo.hysteresisDb = 2;
-    signalThresholdInfo.thresholds = {-10, 0, 10, 20};
-    signalThresholdInfo.isEnabled = false;
-
-    Return<void> res = radio_v1_5->setSignalStrengthReportingCriteria_1_5(
-            serial, signalThresholdInfo, ::android::hardware::radio::V1_5::AccessNetwork::EUTRAN);
-    ASSERT_OK(res);
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
-    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
-    EXPECT_EQ(serial, radioRsp_v1_5->rspInfo.serial);
-}
-
-/*
  * Test IRadio.setSignalStrengthReportingCriteria_1_5() for NGRAN_SSSINR
  */
 TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSSINR) {
@@ -295,7 +264,6 @@ TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSSINR) 
     signalThresholdInfo.hysteresisMs = 5000;
     signalThresholdInfo.hysteresisDb = 0;
     signalThresholdInfo.thresholds = {-10, 3, 16, 18};
-    signalThresholdInfo.isEnabled = true;
 
     Return<void> res = radio_v1_5->setSignalStrengthReportingCriteria_1_5(
             serial, signalThresholdInfo, ::android::hardware::radio::V1_5::AccessNetwork::NGRAN);
@@ -311,9 +279,62 @@ TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSSINR) 
 
 /*
  * Test IRadio.enableUiccApplications() for the response returned.
+ */
+TEST_F(RadioHidlTest_v1_5, togglingUiccApplicationsNotSupported) {
+    serial = GetRandomSerialNumber();
+
+    radio_v1_5->canToggleUiccApplicationsEnablement(serial);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
+    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
+    EXPECT_EQ(serial, radioRsp_v1_5->rspInfo.serial);
+    // No error should happen.
+    EXPECT_EQ(RadioError::NONE, radioRsp_v1_5->rspInfo.error);
+
+    // Supported case will be tested by other test cases.
+    if (radioRsp_v1_5->canToggleUiccApplicationsEnablement) return;
+
+    // Enabling UiccApplications should still work as it should be enabled by default.
+    serial = GetRandomSerialNumber();
+    radio_v1_5->enableUiccApplications(serial, true);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
+    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
+    EXPECT_EQ(serial, radioRsp_v1_5->rspInfo.serial);
+    EXPECT_EQ(RadioError::NONE, radioRsp_v1_5->rspInfo.error);
+
+    // Disabling UiccApplications should return REQUEST_NOT_SUPPORTED error.
+    serial = GetRandomSerialNumber();
+    radio_v1_5->enableUiccApplications(serial, false);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
+    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
+    EXPECT_EQ(serial, radioRsp_v1_5->rspInfo.serial);
+    EXPECT_EQ(RadioError::REQUEST_NOT_SUPPORTED, radioRsp_v1_5->rspInfo.error);
+
+    // Query areUiccApplicationsEnabled should return true.
+    serial = GetRandomSerialNumber();
+    radio_v1_5->areUiccApplicationsEnabled(serial);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
+    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
+    EXPECT_EQ(serial, radioRsp_v1_5->rspInfo.serial);
+    EXPECT_EQ(RadioError::NONE, radioRsp_v1_5->rspInfo.error);
+    ASSERT_TRUE(radioRsp_v1_5->areUiccApplicationsEnabled);
+}
+
+/*
+ * Test IRadio.enableUiccApplications() for the response returned.
  * For SIM ABSENT case.
  */
-TEST_F(RadioHidlTest_v1_5, togglingUiccApplicationsSimAbsent) {
+TEST_F(RadioHidlTest_v1_5, togglingUiccApplicationsSupportedSimAbsent) {
+    serial = GetRandomSerialNumber();
+
+    radio_v1_5->canToggleUiccApplicationsEnablement(serial);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
+    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
+    EXPECT_EQ(serial, radioRsp_v1_5->rspInfo.serial);
+    // No error should happen.
+    EXPECT_EQ(RadioError::NONE, radioRsp_v1_5->rspInfo.error);
+    // Not supported case will be tested by togglingUiccApplicationsNotSupported test case.
+    if (!radioRsp_v1_5->canToggleUiccApplicationsEnablement) return;
+
     // This test case only test SIM ABSENT case.
     if (cardStatus.base.base.cardState != CardState::ABSENT) return;
 
@@ -340,7 +361,18 @@ TEST_F(RadioHidlTest_v1_5, togglingUiccApplicationsSimAbsent) {
  * Test IRadio.enableUiccApplications() for the response returned.
  * For SIM PRESENT case.
  */
-TEST_F(RadioHidlTest_v1_5, togglingUiccApplicationsSimPresent) {
+TEST_F(RadioHidlTest_v1_5, togglingUiccApplicationsSupportedSimPresent) {
+    serial = GetRandomSerialNumber();
+
+    radio_v1_5->canToggleUiccApplicationsEnablement(serial);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
+    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
+    EXPECT_EQ(serial, radioRsp_v1_5->rspInfo.serial);
+    // No error should happen.
+    EXPECT_EQ(RadioError::NONE, radioRsp_v1_5->rspInfo.error);
+    // Not supported case will be tested by disablingUiccApplicationsNotSupported test case.
+    if (!radioRsp_v1_5->canToggleUiccApplicationsEnablement) return;
+
     // This test case only test SIM ABSENT case.
     if (cardStatus.base.base.cardState != CardState::PRESENT) return;
 
@@ -387,6 +419,18 @@ TEST_F(RadioHidlTest_v1_5, togglingUiccApplicationsSimPresent) {
  * Test IRadio.areUiccApplicationsEnabled() for the response returned.
  */
 TEST_F(RadioHidlTest_v1_5, areUiccApplicationsEnabled) {
+    serial = GetRandomSerialNumber();
+
+    radio_v1_5->canToggleUiccApplicationsEnablement(serial);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
+    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
+    EXPECT_EQ(serial, radioRsp_v1_5->rspInfo.serial);
+    // No error should happen.
+    EXPECT_EQ(RadioError::NONE, radioRsp_v1_5->rspInfo.error);
+
+    // Not supported case will be tested by togglingUiccApplicationsNotSupported test case.
+    if (!radioRsp_v1_5->canToggleUiccApplicationsEnablement) return;
+
     // Disable Uicc applications.
     serial = GetRandomSerialNumber();
     radio_v1_5->areUiccApplicationsEnabled(serial);
