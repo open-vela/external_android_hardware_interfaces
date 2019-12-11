@@ -34,14 +34,13 @@
 #include <android/hardware/neuralnetworks/1.3/types.h>
 #include <android/hidl/allocator/1.0/IAllocator.h>
 #include <android/hidl/memory/1.0/IMemory.h>
-#include <gtest/gtest.h>
 #include <hidlmemory/mapping.h>
 
+#include <gtest/gtest.h>
 #include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <numeric>
-#include <vector>
 
 #include "1.0/Utils.h"
 #include "1.2/Callbacks.h"
@@ -369,9 +368,9 @@ void EvaluatePreparedModel(const sp<IPreparedModel>& preparedModel, const TestMo
 
 void EvaluatePreparedModel(const sp<IPreparedModel>& preparedModel, const TestModel& testModel,
                            TestKind testKind) {
-    std::vector<OutputType> outputTypesList;
-    std::vector<MeasureTiming> measureTimingList;
-    std::vector<Executor> executorList;
+    std::initializer_list<OutputType> outputTypesList;
+    std::initializer_list<MeasureTiming> measureTimingList;
+    std::initializer_list<Executor> executorList;
 
     switch (testKind) {
         case TestKind::GENERAL: {
@@ -404,9 +403,11 @@ void EvaluatePreparedCoupledModels(const sp<IPreparedModel>& preparedModel,
                                    const TestModel& testModel,
                                    const sp<IPreparedModel>& preparedCoupledModel,
                                    const TestModel& coupledModel) {
-    const std::vector<OutputType> outputTypesList = {OutputType::FULLY_SPECIFIED};
-    const std::vector<MeasureTiming> measureTimingList = {MeasureTiming::NO, MeasureTiming::YES};
-    const std::vector<Executor> executorList = {Executor::ASYNC, Executor::SYNC, Executor::BURST};
+    std::initializer_list<OutputType> outputTypesList = {OutputType::FULLY_SPECIFIED};
+    std::initializer_list<MeasureTiming> measureTimingList = {MeasureTiming::NO,
+                                                              MeasureTiming::YES};
+    std::initializer_list<Executor> executorList = {Executor::ASYNC, Executor::SYNC,
+                                                    Executor::BURST};
 
     for (const OutputType outputType : outputTypesList) {
         for (const MeasureTiming measureTiming : measureTimingList) {
