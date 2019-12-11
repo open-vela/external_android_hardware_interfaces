@@ -1,0 +1,132 @@
+/*
+ * Copyright (C) 2019 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package android.hardware.radio@1.5;
+
+import @1.4::IRadio;
+import @1.5::AccessNetwork;
+import @1.5::NetworkScanRequest;
+import @1.5::RadioAccessSpecifier;
+import @1.5::SignalThresholdInfo;
+
+/**
+ * This interface is used by telephony and telecom to talk to cellular radio.
+ * All the functions have minimum one parameter:
+ * serial: which corresponds to serial no. of request. Serial numbers must only be memorized for the
+ * duration of a method call. If clients provide colliding serials (including passing the same
+ * serial to different methods), multiple responses (one for each method call) must still be served.
+ * setResponseFunctions must work with @1.5::IRadioResponse and @1.5::IRadioIndication.
+ */
+interface IRadio extends @1.4::IRadio {
+    /**
+     * Sets the signal strength reporting criteria.
+     *
+     * The resulting reporting rules are the AND of all the supplied criteria. For each RAN
+     * The hysteresisDb and thresholds apply to only the following measured quantities:
+     * -GERAN    - RSSI
+     * -CDMA2000 - RSSI
+     * -UTRAN    - RSCP
+     * -EUTRAN   - RSRP/RSRQ/RSSNR
+     * -NGRAN    - SSRSRP/SSRSRQ/SSSINR
+     *
+     * Note: Reporting criteria must be individually set for each RAN. For each RAN, if none of
+     * reporting criteria of any measurement is set enabled
+     * (see @1.5::SignalThresholdInfo.isEnabled), the reporting criteria for this RAN is
+     * implementation-defined. For each RAN, if any of reporting criteria of any measure is set
+     * enabled, the reporting criteria of the other measures in this RAN are set disabled
+     * (see @1.5::SignalThresholdInfo.isEnabled) until they are set enabled.
+     *
+     * Response callback is
+     * IRadioResponse.setSignalStrengthReportingCriteriaResponse_1_5()
+     *
+     * @param serial Serial number of request.
+     * @param signalThresholdInfo Signal threshold info including the threshold values,
+     *                            hysteresisDb, hysteresisMs and isEnabled.
+     *                            See @1.5::SignalThresholdInfo for details.
+     * @param accessNetwork The type of network for which to apply these thresholds.
+     */
+    oneway setSignalStrengthReportingCriteria_1_5(int32_t serial,
+            SignalThresholdInfo signalThresholdInfo, AccessNetwork accessNetwork);
+
+    /**
+     * Enable or disable UiccApplications on the SIM. If disabled:
+     *  - Modem will not register on any network.
+     *  - SIM must be PRESENT, and the IccId of the SIM must still be accessible.
+     *  - The corresponding modem stack is still functional, e.g. able to make emergency calls or
+     *    do network scan.
+     * By default if this API is not called, the uiccApplications must be enabled automatically.
+     * It must work for both single SIM and DSDS cases for UX consistency.
+     * The preference is per SIM, and must be remembered over power cycle, modem reboot, or SIM
+     * insertion / unplug.
+     *
+     * @param serial: Serial number of request.
+     * @param enable: true if to enable uiccApplications, false to disable.
+
+     * Response callback is IRadioResponse.enableUiccApplicationsResponse()
+     */
+    oneway enableUiccApplications(int32_t serial, bool enable);
+
+    /**
+     * Whether uiccApplications are enabled, or disabled.
+     *
+     * By default uiccApplications must be enabled, unless enableUiccApplications() with enable
+     * being false is called.
+     *
+     * @param serial Serial number of request.
+     *
+     * Response callback is IRadioResponse.areUiccApplicationsEnabledResponse()
+     */
+    oneway areUiccApplicationsEnabled(int32_t serial);
+
+    /**
+     * Query whether disabling and enabling UiccApplications functionality is supported. If not,
+     * calling enableUiccApplications with a different value will return
+     * RadioError:REQUEST_NOT_SUPPORTED.
+     *
+     * @param serial Serial number of request.
+     *
+     * Response callback is IRadioResponse.canToggleUiccApplicationsEnablementResponse()
+     */
+    oneway canToggleUiccApplicationsEnablement(int32_t serial);
+
+    /**
+     * Specify which bands modem's background scan must act on.
+     * If specifyChannels is true, it only scans bands specified in specifiers.
+     * If specifyChannels is false, it scans all bands.
+     *
+     * For example, CBRS is only on LTE band 48. By specifying this band,
+     * modem saves more power.
+     *
+     * @param serial Serial number of request.
+     * @param specifyChannels whether to scan bands defined in specifiers.
+     * @param specifiers which bands to scan. Only used if specifyChannels is true.
+     *
+     * Response callback is IRadioResponse.setSystemSelectionChannelsResponse()
+     */
+    oneway setSystemSelectionChannels_1_5(int32_t serial, bool specifyChannels,
+            vec<RadioAccessSpecifier> specifiers);
+
+    /**
+     * Starts a network scan
+     *
+     * @param serial Serial number of request.
+     * @param request Defines the radio networks/bands/channels which need to be scanned.
+     *
+     * Same API as @1.4::IRadio.startNetworkScan_1_4, except using
+     * 1.5 version of NetworkScanRequest
+     */
+    oneway startNetworkScan_1_5(int32_t serial, NetworkScanRequest request);
+};
