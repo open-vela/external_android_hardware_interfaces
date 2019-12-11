@@ -134,16 +134,13 @@ EFFECT_TEST(AudioEffectsFactoryHidlTest, CreateEffect) {
     Result retval = Result::NOT_INITIALIZED;
     sp<IEffect> effect;
     ret = effectsFactory->createEffect(
-            effectUuid, 1 /*session*/, 1 /*ioHandle*/,
-#if MAJOR_VERSION >= 6
-            0 /*device*/,
-#endif
-            [&](Result r, const sp<IEffect>& result, uint64_t /*effectId*/) {
-                retval = r;
-                if (r == Result::OK) {
-                    effect = result;
-                }
-            });
+        effectUuid, 1 /*session*/, 1 /*ioHandle*/,
+        [&](Result r, const sp<IEffect>& result, uint64_t /*effectId*/) {
+            retval = r;
+            if (r == Result::OK) {
+                effect = result;
+            }
+        });
     EXPECT_TRUE(ret.isOk());
     EXPECT_EQ(Result::OK, retval);
     EXPECT_NE(nullptr, effect.get());
@@ -239,15 +236,12 @@ void AudioEffectHidlTest::findAndCreateEffect(const Uuid& type) {
     Uuid effectUuid;
     findEffectInstance(type, &effectUuid);
     Return<void> ret = effectsFactory->createEffect(
-            effectUuid, 1 /*session*/, 1 /*ioHandle*/,
-#if MAJOR_VERSION >= 6
-            0 /*device*/,
-#endif
-            [&](Result r, const sp<IEffect>& result, uint64_t /*effectId*/) {
-                if (r == Result::OK) {
-                    effect = result;
-                }
-            });
+        effectUuid, 1 /*session*/, 1 /*ioHandle*/,
+        [&](Result r, const sp<IEffect>& result, uint64_t /*effectId*/) {
+            if (r == Result::OK) {
+                effect = result;
+            }
+        });
     ASSERT_TRUE(ret.isOk());
 }
 
