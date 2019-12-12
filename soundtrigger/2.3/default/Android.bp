@@ -12,20 +12,26 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
-cc_library_static {
-    name: "android.hardware.automotive.evs@common-default-lib",
-    vendor_available: true,
+cc_library_shared {
+    name: "android.hardware.soundtrigger@2.3-impl",
     relative_install_path: "hw",
-    cflags: [
-        "-O0",
-        "-g",
-    ],
+    vendor: true,
     srcs: [
-        "FormatConvert.cpp"
+        "SoundTriggerHw.cpp",
     ],
-    export_include_dirs: ["include"],
     shared_libs: [
+        "libhidlbase",
+        "liblog",
+        "libhidlmemory",
+        "libutils",
+        "libhardware",
+        "android.hardware.soundtrigger@2.0",
+        "android.hardware.soundtrigger@2.0-core",
+        "android.hardware.soundtrigger@2.1",
+        "android.hardware.soundtrigger@2.2",
+        "android.hardware.soundtrigger@2.3",
+        "android.hidl.allocator@1.0",
+        "android.hidl.memory@1.0",
     ],
 }
