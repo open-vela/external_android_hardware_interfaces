@@ -19,7 +19,7 @@
 
 #include <android-base/macros.h>
 #include <android/hardware/wifi/1.0/IWifiStaIfaceEventCallback.h>
-#include <android/hardware/wifi/1.4/IWifiStaIface.h>
+#include <android/hardware/wifi/1.3/IWifiStaIface.h>
 
 #include "hidl_callback_util.h"
 #include "wifi_iface_util.h"
@@ -35,7 +35,7 @@ using namespace android::hardware::wifi::V1_0;
 /**
  * HIDL interface object used to control a STA Iface instance.
  */
-class WifiStaIface : public V1_4::IWifiStaIface {
+class WifiStaIface : public V1_3::IWifiStaIface {
    public:
     WifiStaIface(const std::string& ifname,
                  const std::weak_ptr<legacy_hal::WifiLegacyHal> legacy_hal,
@@ -63,7 +63,8 @@ class WifiStaIface : public V1_4::IWifiStaIface {
     Return<void> getBackgroundScanCapabilities(
         getBackgroundScanCapabilities_cb hidl_status_cb) override;
     Return<void> getValidFrequenciesForBand(
-        WifiBand band, getValidFrequenciesForBand_cb hidl_status_cb) override;
+        V1_0::WifiBand band,
+        getValidFrequenciesForBand_cb hidl_status_cb) override;
     Return<void> startBackgroundScan(
         uint32_t cmd_id, const StaBackgroundScanParameters& params,
         startBackgroundScan_cb hidl_status_cb) override;
@@ -111,8 +112,6 @@ class WifiStaIface : public V1_4::IWifiStaIface {
                                setMacAddress_cb hidl_status_cb) override;
     Return<void> getFactoryMacAddress(
         getFactoryMacAddress_cb hidl_status_cb) override;
-    Return<void> getCapabilities_1_4(
-        getCapabilities_1_4_cb hidl_status_cb) override;
 
    private:
     // Corresponding worker functions for the HIDL methods.
@@ -130,7 +129,7 @@ class WifiStaIface : public V1_4::IWifiStaIface {
     std::pair<WifiStatus, StaBackgroundScanCapabilities>
     getBackgroundScanCapabilitiesInternal();
     std::pair<WifiStatus, std::vector<WifiChannelInMhz>>
-    getValidFrequenciesForBandInternal(WifiBand band);
+    getValidFrequenciesForBandInternal(V1_0::WifiBand band);
     WifiStatus startBackgroundScanInternal(
         uint32_t cmd_id, const StaBackgroundScanParameters& params);
     WifiStatus stopBackgroundScanInternal(uint32_t cmd_id);
@@ -161,7 +160,6 @@ class WifiStaIface : public V1_4::IWifiStaIface {
     WifiStatus setMacAddressInternal(const std::array<uint8_t, 6>& mac);
     std::pair<WifiStatus, std::array<uint8_t, 6>>
     getFactoryMacAddressInternal();
-    std::pair<WifiStatus, uint32_t> getCapabilitiesInternal_1_4();
 
     std::string ifname_;
     std::weak_ptr<legacy_hal::WifiLegacyHal> legacy_hal_;

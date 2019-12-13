@@ -71,7 +71,7 @@ class WifiChip : public V1_4::IWifiChip {
     // marked valid before processing them.
     void invalidate();
     bool isValid();
-    std::set<sp<V1_2::IWifiChipEventCallback>> getEventCallbacks();
+    std::set<sp<IWifiChipEventCallback>> getEventCallbacks();
 
     // HIDL methods exposed.
     Return<void> getId(getId_cb hidl_status_cb) override;
@@ -156,6 +156,9 @@ class WifiChip : public V1_4::IWifiChip {
     Return<void> createRttController_1_4(
         const sp<IWifiIface>& bound_iface,
         createRttController_1_4_cb hidl_status_cb) override;
+    Return<void> registerEventCallback_1_4(
+        const sp<IWifiChipEventCallback>& event_callback,
+        registerEventCallback_1_4_cb hidl_status_cb) override;
 
    private:
     void invalidateAndRemoveAllIfaces();
@@ -194,9 +197,9 @@ class WifiChip : public V1_4::IWifiChip {
     std::pair<WifiStatus, sp<IWifiP2pIface>> getP2pIfaceInternal(
         const std::string& ifname);
     WifiStatus removeP2pIfaceInternal(const std::string& ifname);
-    std::pair<WifiStatus, sp<IWifiStaIface>> createStaIfaceInternal();
+    std::pair<WifiStatus, sp<V1_3::IWifiStaIface>> createStaIfaceInternal();
     std::pair<WifiStatus, std::vector<hidl_string>> getStaIfaceNamesInternal();
-    std::pair<WifiStatus, sp<IWifiStaIface>> getStaIfaceInternal(
+    std::pair<WifiStatus, sp<V1_3::IWifiStaIface>> getStaIfaceInternal(
         const std::string& ifname);
     WifiStatus removeStaIfaceInternal(const std::string& ifname);
     std::pair<WifiStatus, sp<V1_0::IWifiRttController>>
@@ -223,6 +226,9 @@ class WifiChip : public V1_4::IWifiChip {
     std::pair<WifiStatus, uint32_t> getCapabilitiesInternal_1_3();
     std::pair<WifiStatus, sp<IWifiRttController>>
     createRttControllerInternal_1_4(const sp<IWifiIface>& bound_iface);
+    WifiStatus registerEventCallbackInternal_1_4(
+        const sp<IWifiChipEventCallback>& event_callback);
+
     WifiStatus handleChipConfiguration(
         std::unique_lock<std::recursive_mutex>* lock, ChipModeId mode_id);
     WifiStatus registerDebugRingBufferCallback();
@@ -271,7 +277,7 @@ class WifiChip : public V1_4::IWifiChip {
     // registration mechanism. Use this to check if we have already
     // registered a callback.
     bool debug_ring_buffer_cb_registered_;
-    hidl_callback_util::HidlCallbackHandler<V1_2::IWifiChipEventCallback>
+    hidl_callback_util::HidlCallbackHandler<IWifiChipEventCallback>
         event_cb_handler_;
 
     DISALLOW_COPY_AND_ASSIGN(WifiChip);

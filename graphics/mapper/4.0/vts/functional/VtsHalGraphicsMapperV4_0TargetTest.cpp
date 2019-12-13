@@ -16,15 +16,19 @@
 
 #define LOG_TAG "VtsHalGraphicsMapperV4_0TargetTest"
 
+#include <unistd.h>
 #include <chrono>
 #include <thread>
 #include <vector>
 
 #include <aidl/android/hardware/graphics/common/PlaneLayoutComponentType.h>
 
-#include <VtsHalHidlTargetTestBase.h>
 #include <android-base/logging.h>
+#include <android/sync.h>
 #include <gralloctypes/Gralloc4.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
 #include <mapper-vts/4.0/MapperVts.h>
 #include <system/graphics.h>
 
@@ -50,28 +54,12 @@ using aidl::android::hardware::graphics::common::StandardMetadataType;
 using DecodeFunction = std::function<void(const IMapper::BufferDescriptorInfo& descriptorInfo,
                                           const hidl_vec<uint8_t>& vec)>;
 
-// Test environment for graphics.mapper.
-class GraphicsMapperHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-  public:
-    // get the test environment singleton
-    static GraphicsMapperHidlEnvironment* Instance() {
-        static GraphicsMapperHidlEnvironment* instance = new GraphicsMapperHidlEnvironment;
-        return instance;
-    }
-
-    virtual void registerTestServices() override {
-        registerTestService<IAllocator>();
-        registerTestService<IMapper>();
-    }
-};
-
-class GraphicsMapperHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+class GraphicsMapperHidlTest
+    : public ::testing::TestWithParam<std::tuple<std::string, std::string>> {
   protected:
     void SetUp() override {
-        ASSERT_NO_FATAL_FAILURE(
-                mGralloc = std::make_unique<Gralloc>(
-                        GraphicsMapperHidlEnvironment::Instance()->getServiceName<IAllocator>(),
-                        GraphicsMapperHidlEnvironment::Instance()->getServiceName<IMapper>()));
+        ASSERT_NO_FATAL_FAILURE(mGralloc = std::make_unique<Gralloc>(std::get<0>(GetParam()),
+                                                                     std::get<1>(GetParam())));
         ASSERT_NE(nullptr, mGralloc->getAllocator().get());
         ASSERT_NE(nullptr, mGralloc->getMapper().get());
 
@@ -82,6 +70,7 @@ class GraphicsMapperHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         mDummyDescriptorInfo.format = PixelFormat::RGBA_8888;
         mDummyDescriptorInfo.usage =
                 static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN);
+        mDummyDescriptorInfo.reservedSize = 0;
     }
 
     void TearDown() override {}
@@ -128,7 +117,9 @@ class GraphicsMapperHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         int64_t offsetInBitsA = -1;
 
         for (const auto& component : planeLayout.components) {
-            EXPECT_EQ(GRALLOC4_PLANE_LAYOUT_COMPONENT_TYPE, component.type.name);
+            if (!gralloc4::isStandardPlaneLayoutComponentType(component.type)) {
+                continue;
+            }
             EXPECT_EQ(8, component.sizeInBits);
             if (component.type.value == gralloc4::PlaneLayoutComponentType_R.value) {
                 offsetInBitsR = component.offsetInBits;
@@ -218,9 +209,7 @@ class GraphicsMapperHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 
         for (const auto& planeLayout : planeLayouts) {
             for (const auto& planeLayoutComponent : planeLayout.components) {
-                std::string componentTypeName = planeLayoutComponent.type.name;
-                if (!std::strncmp(componentTypeName.c_str(), GRALLOC4_PLANE_LAYOUT_COMPONENT_TYPE,
-                                  componentTypeName.size())) {
+                if (!gralloc4::isStandardPlaneLayoutComponentType(planeLayoutComponent.type)) {
                     continue;
                 }
                 ASSERT_EQ(0, planeLayoutComponent.offsetInBits % 8);
@@ -273,6 +262,24 @@ class GraphicsMapperHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         ASSERT_NE(nullptr, outYCbCr->cr);
     }
 
+    void fillRGBA8888(uint8_t* data, uint32_t height, size_t strideInBytes, size_t widthInBytes,
+                      uint32_t seed = 0) {
+        for (uint32_t y = 0; y < height; y++) {
+            memset(data, y + seed, widthInBytes);
+            data += strideInBytes;
+        }
+    }
+
+    void verifyRGBA8888(uint8_t* data, uint32_t height, size_t strideInBytes, size_t widthInBytes,
+                        uint32_t seed = 0) {
+        for (uint32_t y = 0; y < height; y++) {
+            for (size_t i = 0; i < widthInBytes; i++) {
+                EXPECT_EQ(static_cast<uint8_t>(y + seed), data[i]);
+            }
+            data += strideInBytes;
+        }
+    }
+
     std::unique_ptr<Gralloc> mGralloc;
     IMapper::BufferDescriptorInfo mDummyDescriptorInfo{};
     static const std::set<StandardMetadataType> sRequiredMetadataTypes;
@@ -301,14 +308,14 @@ const std::set<StandardMetadataType> GraphicsMapperHidlTest::sRequiredMetadataTy
 /**
  * Test IAllocator::dumpDebugInfo by calling it.
  */
-TEST_F(GraphicsMapperHidlTest, AllocatorDumpDebugInfo) {
+TEST_P(GraphicsMapperHidlTest, AllocatorDumpDebugInfo) {
     mGralloc->dumpDebugInfo();
 }
 
 /**
  * Test IAllocator::allocate with valid buffer descriptors.
  */
-TEST_F(GraphicsMapperHidlTest, AllocatorAllocate) {
+TEST_P(GraphicsMapperHidlTest, AllocatorAllocate) {
     BufferDescriptor descriptor;
     ASSERT_NO_FATAL_FAILURE(descriptor = mGralloc->createDescriptor(mDummyDescriptorInfo));
 
@@ -331,7 +338,7 @@ TEST_F(GraphicsMapperHidlTest, AllocatorAllocate) {
 /**
  * Test IAllocator::allocate with invalid buffer descriptors.
  */
-TEST_F(GraphicsMapperHidlTest, AllocatorAllocateNegative) {
+TEST_P(GraphicsMapperHidlTest, AllocatorAllocateNegative) {
     // this assumes any valid descriptor is non-empty
     BufferDescriptor descriptor;
     mGralloc->getAllocator()->allocate(descriptor, 1,
@@ -343,7 +350,7 @@ TEST_F(GraphicsMapperHidlTest, AllocatorAllocateNegative) {
 /**
  * Test IAllocator::allocate does not leak.
  */
-TEST_F(GraphicsMapperHidlTest, AllocatorAllocateNoLeak) {
+TEST_P(GraphicsMapperHidlTest, AllocatorAllocateNoLeak) {
     auto info = mDummyDescriptorInfo;
     info.width = 1024;
     info.height = 1024;
@@ -357,7 +364,7 @@ TEST_F(GraphicsMapperHidlTest, AllocatorAllocateNoLeak) {
 /**
  * Test that IAllocator::allocate is thread-safe.
  */
-TEST_F(GraphicsMapperHidlTest, AllocatorAllocateThreaded) {
+TEST_P(GraphicsMapperHidlTest, AllocatorAllocateThreaded) {
     BufferDescriptor descriptor;
     ASSERT_NO_FATAL_FAILURE(descriptor = mGralloc->createDescriptor(mDummyDescriptorInfo));
 
@@ -388,14 +395,14 @@ TEST_F(GraphicsMapperHidlTest, AllocatorAllocateThreaded) {
 /**
  * Test IMapper::createDescriptor with valid descriptor info.
  */
-TEST_F(GraphicsMapperHidlTest, CreateDescriptorBasic) {
+TEST_P(GraphicsMapperHidlTest, CreateDescriptorBasic) {
     ASSERT_NO_FATAL_FAILURE(mGralloc->createDescriptor(mDummyDescriptorInfo));
 }
 
 /**
  * Test IMapper::createDescriptor with invalid descriptor info.
  */
-TEST_F(GraphicsMapperHidlTest, CreateDescriptorNegative) {
+TEST_P(GraphicsMapperHidlTest, CreateDescriptorNegative) {
     auto info = mDummyDescriptorInfo;
     info.width = 0;
     mGralloc->getMapper()->createDescriptor(info, [&](const auto& tmpError, const auto&) {
@@ -406,7 +413,7 @@ TEST_F(GraphicsMapperHidlTest, CreateDescriptorNegative) {
 /**
  * Test IMapper::importBuffer and IMapper::freeBuffer with allocated buffers.
  */
-TEST_F(GraphicsMapperHidlTest, ImportFreeBufferBasic) {
+TEST_P(GraphicsMapperHidlTest, ImportFreeBufferBasic) {
     const native_handle_t* bufferHandle;
     ASSERT_NO_FATAL_FAILURE(bufferHandle = mGralloc->allocate(mDummyDescriptorInfo, true));
     ASSERT_NO_FATAL_FAILURE(mGralloc->freeBuffer(bufferHandle));
@@ -415,7 +422,7 @@ TEST_F(GraphicsMapperHidlTest, ImportFreeBufferBasic) {
 /**
  * Test IMapper::importBuffer and IMapper::freeBuffer with cloned buffers.
  */
-TEST_F(GraphicsMapperHidlTest, ImportFreeBufferClone) {
+TEST_P(GraphicsMapperHidlTest, ImportFreeBufferClone) {
     const native_handle_t* clonedBufferHandle;
     ASSERT_NO_FATAL_FAILURE(clonedBufferHandle = mGralloc->allocate(mDummyDescriptorInfo, false));
 
@@ -433,7 +440,7 @@ TEST_F(GraphicsMapperHidlTest, ImportFreeBufferClone) {
 /**
  * Test IMapper::importBuffer and IMapper::freeBuffer cross mapper instances.
  */
-TEST_F(GraphicsMapperHidlTest, ImportFreeBufferSingleton) {
+TEST_P(GraphicsMapperHidlTest, ImportFreeBufferSingleton) {
     const native_handle_t* rawHandle;
     ASSERT_NO_FATAL_FAILURE(rawHandle = mGralloc->allocate(mDummyDescriptorInfo, false));
 
@@ -445,10 +452,8 @@ TEST_F(GraphicsMapperHidlTest, ImportFreeBufferSingleton) {
 
     // free the imported handle with another mapper
     std::unique_ptr<Gralloc> anotherGralloc;
-    ASSERT_NO_FATAL_FAILURE(
-            anotherGralloc = std::make_unique<Gralloc>(
-                    GraphicsMapperHidlEnvironment::Instance()->getServiceName<IAllocator>(),
-                    GraphicsMapperHidlEnvironment::Instance()->getServiceName<IMapper>()));
+    ASSERT_NO_FATAL_FAILURE(anotherGralloc = std::make_unique<Gralloc>(std::get<0>(GetParam()),
+                                                                       std::get<1>(GetParam())));
     Error error = mGralloc->getMapper()->freeBuffer(importedHandle);
     ASSERT_EQ(Error::NONE, error);
 
@@ -458,7 +463,7 @@ TEST_F(GraphicsMapperHidlTest, ImportFreeBufferSingleton) {
 /**
  * Test IMapper::importBuffer and IMapper::freeBuffer do not leak.
  */
-TEST_F(GraphicsMapperHidlTest, ImportFreeBufferNoLeak) {
+TEST_P(GraphicsMapperHidlTest, ImportFreeBufferNoLeak) {
     auto info = mDummyDescriptorInfo;
     info.width = 1024;
     info.height = 1024;
@@ -472,7 +477,7 @@ TEST_F(GraphicsMapperHidlTest, ImportFreeBufferNoLeak) {
 /**
  * Test IMapper::importBuffer with invalid buffers.
  */
-TEST_F(GraphicsMapperHidlTest, ImportBufferNegative) {
+TEST_P(GraphicsMapperHidlTest, ImportBufferNegative) {
     native_handle_t* invalidHandle = nullptr;
     mGralloc->getMapper()->importBuffer(invalidHandle, [&](const auto& tmpError, const auto&) {
         EXPECT_EQ(Error::BAD_BUFFER, tmpError)
@@ -490,7 +495,7 @@ TEST_F(GraphicsMapperHidlTest, ImportBufferNegative) {
 /**
  * Test IMapper::freeBuffer with invalid buffers.
  */
-TEST_F(GraphicsMapperHidlTest, FreeBufferNegative) {
+TEST_P(GraphicsMapperHidlTest, FreeBufferNegative) {
     native_handle_t* invalidHandle = nullptr;
     Error error = mGralloc->getMapper()->freeBuffer(invalidHandle);
     EXPECT_EQ(Error::BAD_BUFFER, error) << "freeBuffer with nullptr did not fail with BAD_BUFFER";
@@ -513,7 +518,7 @@ TEST_F(GraphicsMapperHidlTest, FreeBufferNegative) {
 /**
  * Test IMapper::lock and IMapper::unlock.
  */
-TEST_F(GraphicsMapperHidlTest, LockUnlockBasic) {
+TEST_P(GraphicsMapperHidlTest, LockUnlockBasic) {
     const auto& info = mDummyDescriptorInfo;
 
     const native_handle_t* bufferHandle;
@@ -529,25 +534,14 @@ TEST_F(GraphicsMapperHidlTest, LockUnlockBasic) {
             data = static_cast<uint8_t*>(mGralloc->lock(bufferHandle, info.usage, region, fence)));
 
     // RGBA_8888
-    size_t strideInBytes = stride * 4;
-    size_t writeInBytes = info.width * 4;
-
-    for (uint32_t y = 0; y < info.height; y++) {
-        memset(data, y, writeInBytes);
-        data += strideInBytes;
-    }
+    fillRGBA8888(data, info.height, stride * 4, info.width * 4);
 
     ASSERT_NO_FATAL_FAILURE(fence = mGralloc->unlock(bufferHandle));
 
     // lock again for reading
     ASSERT_NO_FATAL_FAILURE(
             data = static_cast<uint8_t*>(mGralloc->lock(bufferHandle, info.usage, region, fence)));
-    for (uint32_t y = 0; y < info.height; y++) {
-        for (size_t i = 0; i < writeInBytes; i++) {
-            EXPECT_EQ(static_cast<uint8_t>(y), data[i]);
-        }
-        data += strideInBytes;
-    }
+    ASSERT_NO_FATAL_FAILURE(verifyRGBA8888(data, info.height, stride * 4, info.width * 4));
 
     ASSERT_NO_FATAL_FAILURE(fence = mGralloc->unlock(bufferHandle));
     if (fence >= 0) {
@@ -555,7 +549,7 @@ TEST_F(GraphicsMapperHidlTest, LockUnlockBasic) {
     }
 }
 
-TEST_F(GraphicsMapperHidlTest, Lock_YCBCR_420_888) {
+TEST_P(GraphicsMapperHidlTest, Lock_YCBCR_420_888) {
     auto info = mDummyDescriptorInfo;
     info.format = PixelFormat::YCBCR_420_888;
 
@@ -628,7 +622,7 @@ TEST_F(GraphicsMapperHidlTest, Lock_YCBCR_420_888) {
 /**
  * Test IMapper::unlock with bad access region
  */
-TEST_F(GraphicsMapperHidlTest, LockBadAccessRegion) {
+TEST_P(GraphicsMapperHidlTest, LockBadAccessRegion) {
     const auto& info = mDummyDescriptorInfo;
 
     const native_handle_t* bufferHandle;
@@ -670,7 +664,7 @@ TEST_F(GraphicsMapperHidlTest, LockBadAccessRegion) {
 /**
  * Test IMapper::unlock with invalid buffers.
  */
-TEST_F(GraphicsMapperHidlTest, UnlockNegative) {
+TEST_P(GraphicsMapperHidlTest, UnlockNegative) {
     native_handle_t* invalidHandle = nullptr;
     mGralloc->getMapper()->unlock(invalidHandle, [&](const auto& tmpError, const auto&) {
         EXPECT_EQ(Error::BAD_BUFFER, tmpError)
@@ -706,9 +700,78 @@ TEST_F(GraphicsMapperHidlTest, UnlockNegative) {
 }
 
 /**
+ * Test IMapper::flush and IMapper::reread.
+ */
+TEST_P(GraphicsMapperHidlTest, FlushRereadBasic) {
+    const auto& info = mDummyDescriptorInfo;
+
+    const native_handle_t* rawHandle;
+    uint32_t stride;
+    ASSERT_NO_FATAL_FAILURE(
+            rawHandle = mGralloc->allocate(mDummyDescriptorInfo, false, false, &stride));
+
+    const native_handle_t* writeBufferHandle;
+    const native_handle_t* readBufferHandle;
+    ASSERT_NO_FATAL_FAILURE(writeBufferHandle = mGralloc->importBuffer(rawHandle));
+    ASSERT_NO_FATAL_FAILURE(readBufferHandle = mGralloc->importBuffer(rawHandle));
+
+    // lock buffer for writing
+    const IMapper::Rect region{0, 0, static_cast<int32_t>(info.width),
+                               static_cast<int32_t>(info.height)};
+    uint8_t* writeData;
+    ASSERT_NO_FATAL_FAILURE(
+            writeData = static_cast<uint8_t*>(mGralloc->lock(
+                    writeBufferHandle, static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN), region,
+                    -1)));
+
+    uint8_t* readData;
+    ASSERT_NO_FATAL_FAILURE(
+            readData = static_cast<uint8_t*>(mGralloc->lock(
+                    readBufferHandle, static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN), region,
+                    -1)));
+
+    fillRGBA8888(writeData, info.height, stride * 4, info.width * 4);
+
+    int fence;
+    ASSERT_NO_FATAL_FAILURE(fence = mGralloc->flushLockedBuffer(writeBufferHandle));
+    ASSERT_EQ(0, sync_wait(fence, 3500));
+    close(fence);
+
+    ASSERT_NO_FATAL_FAILURE(mGralloc->rereadLockedBuffer(readBufferHandle));
+
+    ASSERT_NO_FATAL_FAILURE(verifyRGBA8888(readData, info.height, stride * 4, info.width * 4));
+
+    ASSERT_NO_FATAL_FAILURE(fence = mGralloc->unlock(readBufferHandle));
+    if (fence >= 0) {
+        close(fence);
+    }
+    ASSERT_NO_FATAL_FAILURE(fence = mGralloc->unlock(writeBufferHandle));
+    if (fence >= 0) {
+        close(fence);
+    }
+}
+
+/**
+ * Test IMapper::flushLockedBuffer with bad buffer
+ */
+TEST_P(GraphicsMapperHidlTest, FlushLockedBufferBadBuffer) {
+    ASSERT_NO_FATAL_FAILURE(mGralloc->getMapper()->flushLockedBuffer(
+            nullptr, [&](const auto& tmpError, const auto& /*tmpReleaseFence*/) {
+                ASSERT_EQ(Error::BAD_BUFFER, tmpError);
+            }));
+}
+
+/**
+ * Test IMapper::rereadLockedBuffer with bad buffer
+ */
+TEST_P(GraphicsMapperHidlTest, RereadLockedBufferBadBuffer) {
+    ASSERT_EQ(Error::BAD_BUFFER, mGralloc->getMapper()->rereadLockedBuffer(nullptr));
+}
+
+/**
  * Test IMapper::isSupported with required format RGBA_8888
  */
-TEST_F(GraphicsMapperHidlTest, IsSupportedRGBA8888) {
+TEST_P(GraphicsMapperHidlTest, IsSupportedRGBA8888) {
     const auto& info = mDummyDescriptorInfo;
     bool supported = false;
 
@@ -719,7 +782,7 @@ TEST_F(GraphicsMapperHidlTest, IsSupportedRGBA8888) {
 /**
  * Test IMapper::isSupported with required format YV12
  */
-TEST_F(GraphicsMapperHidlTest, IsSupportedYV12) {
+TEST_P(GraphicsMapperHidlTest, IsSupportedYV12) {
     auto info = mDummyDescriptorInfo;
     info.format = PixelFormat::YV12;
     bool supported = false;
@@ -731,7 +794,7 @@ TEST_F(GraphicsMapperHidlTest, IsSupportedYV12) {
 /**
  * Test IMapper::isSupported with optional format Y16
  */
-TEST_F(GraphicsMapperHidlTest, IsSupportedY16) {
+TEST_P(GraphicsMapperHidlTest, IsSupportedY16) {
     auto info = mDummyDescriptorInfo;
     info.format = PixelFormat::Y16;
     bool supported = false;
@@ -742,7 +805,7 @@ TEST_F(GraphicsMapperHidlTest, IsSupportedY16) {
 /**
  * Test IMapper::get(BufferId)
  */
-TEST_F(GraphicsMapperHidlTest, GetBufferId) {
+TEST_P(GraphicsMapperHidlTest, GetBufferId) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_BufferId,
             [](const IMapper::BufferDescriptorInfo& /*info*/, const hidl_vec<uint8_t>& vec) {
                 uint64_t bufferId = 0;
@@ -753,7 +816,7 @@ TEST_F(GraphicsMapperHidlTest, GetBufferId) {
 /**
  * Test IMapper::get(Name)
  */
-TEST_F(GraphicsMapperHidlTest, GetName) {
+TEST_P(GraphicsMapperHidlTest, GetName) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_Name,
             [](const IMapper::BufferDescriptorInfo& info, const hidl_vec<uint8_t>& vec) {
                 std::string name;
@@ -765,7 +828,7 @@ TEST_F(GraphicsMapperHidlTest, GetName) {
 /**
  * Test IMapper::get(Width)
  */
-TEST_F(GraphicsMapperHidlTest, GetWidth) {
+TEST_P(GraphicsMapperHidlTest, GetWidth) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_Width,
             [](const IMapper::BufferDescriptorInfo& info, const hidl_vec<uint8_t>& vec) {
                 uint64_t width = 0;
@@ -777,7 +840,7 @@ TEST_F(GraphicsMapperHidlTest, GetWidth) {
 /**
  * Test IMapper::get(Height)
  */
-TEST_F(GraphicsMapperHidlTest, GetHeight) {
+TEST_P(GraphicsMapperHidlTest, GetHeight) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_Height,
             [](const IMapper::BufferDescriptorInfo& info, const hidl_vec<uint8_t>& vec) {
                 uint64_t height = 0;
@@ -789,7 +852,7 @@ TEST_F(GraphicsMapperHidlTest, GetHeight) {
 /**
  * Test IMapper::get(LayerCount)
  */
-TEST_F(GraphicsMapperHidlTest, GetLayerCount) {
+TEST_P(GraphicsMapperHidlTest, GetLayerCount) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_LayerCount,
             [](const IMapper::BufferDescriptorInfo& info, const hidl_vec<uint8_t>& vec) {
                 uint64_t layerCount = 0;
@@ -801,7 +864,7 @@ TEST_F(GraphicsMapperHidlTest, GetLayerCount) {
 /**
  * Test IMapper::get(PixelFormatRequested)
  */
-TEST_F(GraphicsMapperHidlTest, GetPixelFormatRequested) {
+TEST_P(GraphicsMapperHidlTest, GetPixelFormatRequested) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_PixelFormatRequested,
             [](const IMapper::BufferDescriptorInfo& info, const hidl_vec<uint8_t>& vec) {
                 PixelFormat pixelFormatRequested = PixelFormat::BLOB;
@@ -814,7 +877,7 @@ TEST_F(GraphicsMapperHidlTest, GetPixelFormatRequested) {
 /**
  * Test IMapper::get(PixelFormatFourCC)
  */
-TEST_F(GraphicsMapperHidlTest, GetPixelFormatFourCC) {
+TEST_P(GraphicsMapperHidlTest, GetPixelFormatFourCC) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_PixelFormatFourCC,
             [](const IMapper::BufferDescriptorInfo& /*info*/, const hidl_vec<uint8_t>& vec) {
                 uint32_t pixelFormatFourCC = 0;
@@ -825,7 +888,7 @@ TEST_F(GraphicsMapperHidlTest, GetPixelFormatFourCC) {
 /**
  * Test IMapper::get(PixelFormatModifier)
  */
-TEST_F(GraphicsMapperHidlTest, GetPixelFormatModifier) {
+TEST_P(GraphicsMapperHidlTest, GetPixelFormatModifier) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_PixelFormatModifier,
             [](const IMapper::BufferDescriptorInfo& /*info*/, const hidl_vec<uint8_t>& vec) {
                 uint64_t pixelFormatModifier = 0;
@@ -836,7 +899,7 @@ TEST_F(GraphicsMapperHidlTest, GetPixelFormatModifier) {
 /**
  * Test IMapper::get(Usage)
  */
-TEST_F(GraphicsMapperHidlTest, GetUsage) {
+TEST_P(GraphicsMapperHidlTest, GetUsage) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_Usage,
             [](const IMapper::BufferDescriptorInfo& info, const hidl_vec<uint8_t>& vec) {
                 uint64_t usage = 0;
@@ -848,7 +911,7 @@ TEST_F(GraphicsMapperHidlTest, GetUsage) {
 /**
  * Test IMapper::get(AllocationSize)
  */
-TEST_F(GraphicsMapperHidlTest, GetAllocationSize) {
+TEST_P(GraphicsMapperHidlTest, GetAllocationSize) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_AllocationSize,
             [](const IMapper::BufferDescriptorInfo& /*info*/, const hidl_vec<uint8_t>& vec) {
                 uint64_t allocationSize = 0;
@@ -859,7 +922,7 @@ TEST_F(GraphicsMapperHidlTest, GetAllocationSize) {
 /**
  * Test IMapper::get(ProtectedContent)
  */
-TEST_F(GraphicsMapperHidlTest, GetProtectedContent) {
+TEST_P(GraphicsMapperHidlTest, GetProtectedContent) {
     auto info = mDummyDescriptorInfo;
     info.usage = BufferUsage::PROTECTED | BufferUsage::COMPOSER_OVERLAY;
 
@@ -881,7 +944,7 @@ TEST_F(GraphicsMapperHidlTest, GetProtectedContent) {
 /**
  * Test IMapper::get(Compression)
  */
-TEST_F(GraphicsMapperHidlTest, GetCompression) {
+TEST_P(GraphicsMapperHidlTest, GetCompression) {
     auto info = mDummyDescriptorInfo;
     info.usage = static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN);
 
@@ -898,7 +961,7 @@ TEST_F(GraphicsMapperHidlTest, GetCompression) {
 /**
  * Test IMapper::get(Interlaced)
  */
-TEST_F(GraphicsMapperHidlTest, GetInterlaced) {
+TEST_P(GraphicsMapperHidlTest, GetInterlaced) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_Interlaced,
             [](const IMapper::BufferDescriptorInfo& /*info*/, const hidl_vec<uint8_t>& vec) {
                 ExtendableType interlaced = gralloc4::Interlaced_TopBottom;
@@ -912,7 +975,7 @@ TEST_F(GraphicsMapperHidlTest, GetInterlaced) {
 /**
  * Test IMapper::get(ChromaSiting)
  */
-TEST_F(GraphicsMapperHidlTest, GetChromaSiting) {
+TEST_P(GraphicsMapperHidlTest, GetChromaSiting) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_ChromaSiting,
             [](const IMapper::BufferDescriptorInfo& /*info*/, const hidl_vec<uint8_t>& vec) {
                 ExtendableType chromaSiting = gralloc4::ChromaSiting_Unknown;
@@ -926,7 +989,7 @@ TEST_F(GraphicsMapperHidlTest, GetChromaSiting) {
 /**
  * Test IMapper::get(PlaneLayouts)
  */
-TEST_F(GraphicsMapperHidlTest, GetPlaneLayouts) {
+TEST_P(GraphicsMapperHidlTest, GetPlaneLayouts) {
     const native_handle_t* bufferHandle = nullptr;
     ASSERT_NO_FATAL_FAILURE(bufferHandle = mGralloc->allocate(mDummyDescriptorInfo, true));
 
@@ -942,7 +1005,7 @@ TEST_F(GraphicsMapperHidlTest, GetPlaneLayouts) {
 /**
  * Test IMapper::get(Dataspace)
  */
-TEST_F(GraphicsMapperHidlTest, GetDataspace) {
+TEST_P(GraphicsMapperHidlTest, GetDataspace) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_Dataspace,
             [](const IMapper::BufferDescriptorInfo& /*info*/, const hidl_vec<uint8_t>& vec) {
                 Dataspace dataspace = Dataspace::DISPLAY_P3;
@@ -954,7 +1017,7 @@ TEST_F(GraphicsMapperHidlTest, GetDataspace) {
 /**
  * Test IMapper::get(BlendMode)
  */
-TEST_F(GraphicsMapperHidlTest, GetBlendMode) {
+TEST_P(GraphicsMapperHidlTest, GetBlendMode) {
     testGet(mDummyDescriptorInfo, gralloc4::MetadataType_BlendMode,
             [](const IMapper::BufferDescriptorInfo& /*info*/, const hidl_vec<uint8_t>& vec) {
                 BlendMode blendMode = BlendMode::NONE;
@@ -966,7 +1029,7 @@ TEST_F(GraphicsMapperHidlTest, GetBlendMode) {
 /**
  * Test IMapper::get(metadata) with a bad buffer
  */
-TEST_F(GraphicsMapperHidlTest, GetMetadataBadValue) {
+TEST_P(GraphicsMapperHidlTest, GetMetadataBadValue) {
     const native_handle_t* bufferHandle = nullptr;
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(Error::BAD_BUFFER,
@@ -1021,7 +1084,7 @@ TEST_F(GraphicsMapperHidlTest, GetMetadataBadValue) {
 /**
  * Test IMapper::get(metadata) for unsupported metadata
  */
-TEST_F(GraphicsMapperHidlTest, GetUnsupportedMetadata) {
+TEST_P(GraphicsMapperHidlTest, GetUnsupportedMetadata) {
     const native_handle_t* bufferHandle = nullptr;
     ASSERT_NO_FATAL_FAILURE(bufferHandle = mGralloc->allocate(mDummyDescriptorInfo, true));
 
@@ -1035,7 +1098,7 @@ TEST_F(GraphicsMapperHidlTest, GetUnsupportedMetadata) {
 /**
  * Test IMapper::get(metadata) for unsupported standard metadata
  */
-TEST_F(GraphicsMapperHidlTest, GetUnsupportedStandardMetadata) {
+TEST_P(GraphicsMapperHidlTest, GetUnsupportedStandardMetadata) {
     const native_handle_t* bufferHandle = nullptr;
     ASSERT_NO_FATAL_FAILURE(bufferHandle = mGralloc->allocate(mDummyDescriptorInfo, true));
 
@@ -1049,7 +1112,7 @@ TEST_F(GraphicsMapperHidlTest, GetUnsupportedStandardMetadata) {
 /**
  * Test IMapper::set(PixelFormatFourCC)
  */
-TEST_F(GraphicsMapperHidlTest, SetPixelFormatFourCC) {
+TEST_P(GraphicsMapperHidlTest, SetPixelFormatFourCC) {
     uint32_t pixelFormatFourCC = 0x34324142;  // DRM_FORMAT_BGRA8888
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(NO_ERROR, gralloc4::encodePixelFormatFourCC(pixelFormatFourCC, &vec));
@@ -1065,7 +1128,7 @@ TEST_F(GraphicsMapperHidlTest, SetPixelFormatFourCC) {
 /**
  * Test IMapper::set(PixelFormatModifier)
  */
-TEST_F(GraphicsMapperHidlTest, SetPixelFormatModifier) {
+TEST_P(GraphicsMapperHidlTest, SetPixelFormatModifier) {
     uint64_t pixelFormatModifier = 10;
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(NO_ERROR, gralloc4::encodePixelFormatModifier(pixelFormatModifier, &vec));
@@ -1082,7 +1145,7 @@ TEST_F(GraphicsMapperHidlTest, SetPixelFormatModifier) {
 /**
  * Test IMapper::set(Usage) remove flag
  */
-TEST_F(GraphicsMapperHidlTest, SetUsageRemoveBit) {
+TEST_P(GraphicsMapperHidlTest, SetUsageRemoveBit) {
     uint64_t usage = static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN);
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(NO_ERROR, gralloc4::encodeUsage(usage, &vec));
@@ -1097,7 +1160,7 @@ TEST_F(GraphicsMapperHidlTest, SetUsageRemoveBit) {
 /**
  * Test IMapper::set(Usage) add flag
  */
-TEST_F(GraphicsMapperHidlTest, SetUsageAddBit) {
+TEST_P(GraphicsMapperHidlTest, SetUsageAddBit) {
     uint64_t usage = mDummyDescriptorInfo.usage | static_cast<uint64_t>(BufferUsage::GPU_TEXTURE);
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(NO_ERROR, gralloc4::encodeUsage(usage, &vec));
@@ -1113,7 +1176,7 @@ TEST_F(GraphicsMapperHidlTest, SetUsageAddBit) {
 /**
  * Test IMapper::set(Usage) to test protected content
  */
-TEST_F(GraphicsMapperHidlTest, SetUsageProtected) {
+TEST_P(GraphicsMapperHidlTest, SetUsageProtected) {
     const native_handle_t* bufferHandle = nullptr;
     auto info = mDummyDescriptorInfo;
     info.usage = BufferUsage::PROTECTED | BufferUsage::COMPOSER_OVERLAY;
@@ -1140,7 +1203,7 @@ TEST_F(GraphicsMapperHidlTest, SetUsageProtected) {
 /**
  * Test IMapper::set(AllocationSize)
  */
-TEST_F(GraphicsMapperHidlTest, SetAllocationSize) {
+TEST_P(GraphicsMapperHidlTest, SetAllocationSize) {
     uint64_t allocationSize = 1000000;
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(NO_ERROR, gralloc4::encodeAllocationSize(allocationSize, &vec));
@@ -1156,7 +1219,7 @@ TEST_F(GraphicsMapperHidlTest, SetAllocationSize) {
 /**
  * Test IMapper::set(ProtectedContent)
  */
-TEST_F(GraphicsMapperHidlTest, SetProtectedContent) {
+TEST_P(GraphicsMapperHidlTest, SetProtectedContent) {
     const native_handle_t* bufferHandle = nullptr;
     auto info = mDummyDescriptorInfo;
     info.usage = BufferUsage::PROTECTED | BufferUsage::COMPOSER_OVERLAY;
@@ -1184,7 +1247,7 @@ TEST_F(GraphicsMapperHidlTest, SetProtectedContent) {
 /**
  * Test IMapper::set(Compression)
  */
-TEST_F(GraphicsMapperHidlTest, SetCompression) {
+TEST_P(GraphicsMapperHidlTest, SetCompression) {
     auto info = mDummyDescriptorInfo;
     info.usage = static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN);
 
@@ -1205,7 +1268,7 @@ TEST_F(GraphicsMapperHidlTest, SetCompression) {
 /**
  * Test IMapper::set(Interlaced)
  */
-TEST_F(GraphicsMapperHidlTest, SetInterlaced) {
+TEST_P(GraphicsMapperHidlTest, SetInterlaced) {
     ExtendableType interlaced = gralloc4::Interlaced_RightLeft;
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(NO_ERROR, gralloc4::encodeInterlaced(interlaced, &vec));
@@ -1223,7 +1286,7 @@ TEST_F(GraphicsMapperHidlTest, SetInterlaced) {
 /**
  * Test IMapper::set(ChromaSiting)
  */
-TEST_F(GraphicsMapperHidlTest, SetChromaSiting) {
+TEST_P(GraphicsMapperHidlTest, SetChromaSiting) {
     ExtendableType chromaSiting = gralloc4::ChromaSiting_SitedInterstitial;
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(NO_ERROR, gralloc4::encodeChromaSiting(chromaSiting, &vec));
@@ -1241,7 +1304,7 @@ TEST_F(GraphicsMapperHidlTest, SetChromaSiting) {
 /**
  * Test IMapper::set(PlaneLayouts)
  */
-TEST_F(GraphicsMapperHidlTest, SetPlaneLayouts) {
+TEST_P(GraphicsMapperHidlTest, SetPlaneLayouts) {
     const native_handle_t* bufferHandle = nullptr;
     auto info = mDummyDescriptorInfo;
     ASSERT_NO_FATAL_FAILURE(bufferHandle = mGralloc->allocate(info, true));
@@ -1342,7 +1405,7 @@ TEST_F(GraphicsMapperHidlTest, SetPlaneLayouts) {
 /**
  * Test IMapper::set(Dataspace)
  */
-TEST_F(GraphicsMapperHidlTest, SetDataspace) {
+TEST_P(GraphicsMapperHidlTest, SetDataspace) {
     Dataspace dataspace = Dataspace::V0_SRGB_LINEAR;
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(NO_ERROR, gralloc4::encodeDataspace(dataspace, &vec));
@@ -1358,7 +1421,7 @@ TEST_F(GraphicsMapperHidlTest, SetDataspace) {
 /**
  * Test IMapper::set(BlendMode)
  */
-TEST_F(GraphicsMapperHidlTest, SetBlendMode) {
+TEST_P(GraphicsMapperHidlTest, SetBlendMode) {
     BlendMode blendMode = BlendMode::PREMULTIPLIED;
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(NO_ERROR, gralloc4::encodeBlendMode(blendMode, &vec));
@@ -1374,7 +1437,7 @@ TEST_F(GraphicsMapperHidlTest, SetBlendMode) {
 /**
  * Test IMapper::set(metadata) with a bad buffer
  */
-TEST_F(GraphicsMapperHidlTest, SetMetadataNullBuffer) {
+TEST_P(GraphicsMapperHidlTest, SetMetadataNullBuffer) {
     const native_handle_t* bufferHandle = nullptr;
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(Error::BAD_BUFFER, mGralloc->set(bufferHandle, gralloc4::MetadataType_BufferId, vec));
@@ -1411,7 +1474,7 @@ TEST_F(GraphicsMapperHidlTest, SetMetadataNullBuffer) {
 /**
  * Test IMapper::set(metadata) for constant metadata
  */
-TEST_F(GraphicsMapperHidlTest, SetConstantMetadata) {
+TEST_P(GraphicsMapperHidlTest, SetConstantMetadata) {
     const native_handle_t* bufferHandle = nullptr;
     ASSERT_NO_FATAL_FAILURE(bufferHandle = mGralloc->allocate(mDummyDescriptorInfo, true));
 
@@ -1430,7 +1493,7 @@ TEST_F(GraphicsMapperHidlTest, SetConstantMetadata) {
 /**
  * Test IMapper::set(metadata) for bad metadata
  */
-TEST_F(GraphicsMapperHidlTest, SetBadMetadata) {
+TEST_P(GraphicsMapperHidlTest, SetBadMetadata) {
     const native_handle_t* bufferHandle = nullptr;
     ASSERT_NO_FATAL_FAILURE(bufferHandle = mGralloc->allocate(mDummyDescriptorInfo, true));
 
@@ -1470,7 +1533,7 @@ TEST_F(GraphicsMapperHidlTest, SetBadMetadata) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(BufferId)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoBufferId) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoBufferId) {
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(Error::UNSUPPORTED,
               mGralloc->getFromBufferDescriptorInfo(mDummyDescriptorInfo,
@@ -1480,7 +1543,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoBufferId) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(Name)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoName) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoName) {
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
                                    mDummyDescriptorInfo, gralloc4::MetadataType_Name, &vec));
@@ -1493,7 +1556,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoName) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(Width)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoWidth) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoWidth) {
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
                                    mDummyDescriptorInfo, gralloc4::MetadataType_Width, &vec));
@@ -1506,7 +1569,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoWidth) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(Height)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoHeight) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoHeight) {
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
                                    mDummyDescriptorInfo, gralloc4::MetadataType_Height, &vec));
@@ -1519,7 +1582,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoHeight) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(PixelFormatRequested)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoPixelFormatRequested) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoPixelFormatRequested) {
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(Error::NONE,
               mGralloc->getFromBufferDescriptorInfo(
@@ -1533,7 +1596,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoPixelFormatRequested) 
 /**
  * Test IMapper::getFromBufferDescriptorInfo(PixelFormatFourCC)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoPixelFormatFourCC) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoPixelFormatFourCC) {
     hidl_vec<uint8_t> vec;
     Error err = mGralloc->getFromBufferDescriptorInfo(
             mDummyDescriptorInfo, gralloc4::MetadataType_PixelFormatFourCC, &vec);
@@ -1549,7 +1612,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoPixelFormatFourCC) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(PixelFormatModifier)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoPixelFormatModifier) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoPixelFormatModifier) {
     hidl_vec<uint8_t> vec;
     Error err = mGralloc->getFromBufferDescriptorInfo(
             mDummyDescriptorInfo, gralloc4::MetadataType_PixelFormatModifier, &vec);
@@ -1565,7 +1628,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoPixelFormatModifier) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(Usage)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoUsage) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoUsage) {
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
                                    mDummyDescriptorInfo, gralloc4::MetadataType_Usage, &vec));
@@ -1578,7 +1641,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoUsage) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(AllocationSize)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoAllocationSize) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoAllocationSize) {
     hidl_vec<uint8_t> vec;
     Error err = mGralloc->getFromBufferDescriptorInfo(mDummyDescriptorInfo,
                                                       gralloc4::MetadataType_AllocationSize, &vec);
@@ -1594,7 +1657,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoAllocationSize) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(ProtectedContent)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoProtectedContent) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoProtectedContent) {
     auto info = mDummyDescriptorInfo;
     info.usage = BufferUsage::PROTECTED | BufferUsage::COMPOSER_OVERLAY;
 
@@ -1610,7 +1673,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoProtectedContent) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(Compression)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoCompression) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoCompression) {
     auto info = mDummyDescriptorInfo;
     info.usage = static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN);
 
@@ -1628,7 +1691,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoCompression) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(Interlaced)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoInterlaced) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoInterlaced) {
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
                                    mDummyDescriptorInfo, gralloc4::MetadataType_Interlaced, &vec));
@@ -1643,7 +1706,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoInterlaced) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(ChromaSiting)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoChromaSiting) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoChromaSiting) {
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(Error::NONE,
               mGralloc->getFromBufferDescriptorInfo(mDummyDescriptorInfo,
@@ -1659,7 +1722,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoChromaSiting) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(PlaneLayouts)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoPlaneLayouts) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoPlaneLayouts) {
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(Error::NONE,
               mGralloc->getFromBufferDescriptorInfo(mDummyDescriptorInfo,
@@ -1673,7 +1736,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoPlaneLayouts) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(Dataspace)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoDataspace) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoDataspace) {
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
                                    mDummyDescriptorInfo, gralloc4::MetadataType_Dataspace, &vec));
@@ -1686,7 +1749,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoDataspace) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(BlendMode)
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoBlendMode) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoBlendMode) {
     hidl_vec<uint8_t> vec;
     ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
                                    mDummyDescriptorInfo, gralloc4::MetadataType_BlendMode, &vec));
@@ -1699,7 +1762,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoBlendMode) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(metadata) for unsupported metadata
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoUnsupportedMetadata) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoUnsupportedMetadata) {
     MetadataType metadataTypeFake = {"FAKE", 1};
 
     hidl_vec<uint8_t> vec;
@@ -1711,7 +1774,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoUnsupportedMetadata) {
 /**
  * Test IMapper::getFromBufferDescriptorInfo(metadata) for unsupported standard metadata
  */
-TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoUnsupportedStandardMetadata) {
+TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoUnsupportedStandardMetadata) {
     MetadataType metadataTypeFake = {GRALLOC4_STANDARD_METADATA_TYPE, 9999};
 
     hidl_vec<uint8_t> vec;
@@ -1723,7 +1786,7 @@ TEST_F(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoUnsupportedStandardMet
 /**
  * Test IMapper::listSupportedMetadataTypes()
  */
-TEST_F(GraphicsMapperHidlTest, ListSupportedMetadataTypes) {
+TEST_P(GraphicsMapperHidlTest, ListSupportedMetadataTypes) {
     hidl_vec<IMapper::MetadataTypeDescription> descriptions;
     mGralloc->getMapper()->listSupportedMetadataTypes(
             [&](const auto& tmpError, const auto& tmpDescriptions) {
@@ -1771,7 +1834,7 @@ TEST_F(GraphicsMapperHidlTest, ListSupportedMetadataTypes) {
 /**
  * Test IMapper::dumpBuffer()
  */
-TEST_F(GraphicsMapperHidlTest, DumpBuffer) {
+TEST_P(GraphicsMapperHidlTest, DumpBuffer) {
     const native_handle_t* bufferHandle = nullptr;
     ASSERT_NO_FATAL_FAILURE(bufferHandle = mGralloc->allocate(mDummyDescriptorInfo, true));
     auto buffer = const_cast<native_handle_t*>(bufferHandle);
@@ -1788,7 +1851,7 @@ TEST_F(GraphicsMapperHidlTest, DumpBuffer) {
 /**
  * Test IMapper::dumpBuffer() with an invalid buffer
  */
-TEST_F(GraphicsMapperHidlTest, DumpBufferNullBuffer) {
+TEST_P(GraphicsMapperHidlTest, DumpBufferNullBuffer) {
     native_handle_t* bufferHandle = nullptr;
     auto buffer = const_cast<native_handle_t*>(bufferHandle);
 
@@ -1801,7 +1864,7 @@ TEST_F(GraphicsMapperHidlTest, DumpBufferNullBuffer) {
 /**
  * Test IMapper::dumpBuffer() multiple
  */
-TEST_F(GraphicsMapperHidlTest, DumpBuffers) {
+TEST_P(GraphicsMapperHidlTest, DumpBuffers) {
     size_t bufferCount = 10;
 
     for (int i = 0; i < bufferCount; i++) {
@@ -1821,6 +1884,130 @@ TEST_F(GraphicsMapperHidlTest, DumpBuffers) {
     }
 }
 
+/**
+ * Test IMapper::getReservedRegion()
+ */
+TEST_P(GraphicsMapperHidlTest, GetReservedRegion) {
+    const native_handle_t* bufferHandle = nullptr;
+    auto info = mDummyDescriptorInfo;
+
+    const int pageSize = getpagesize();
+    ASSERT_GE(0, pageSize);
+    std::vector<uint64_t> requestedReservedSizes{1, 10, 333, static_cast<uint64_t>(pageSize) / 2,
+                                                 static_cast<uint64_t>(pageSize)};
+
+    for (auto requestedReservedSize : requestedReservedSizes) {
+        info.reservedSize = requestedReservedSize;
+
+        ASSERT_NO_FATAL_FAILURE(bufferHandle = mGralloc->allocate(info, true));
+
+        void* reservedRegion = nullptr;
+        uint64_t reservedSize = 0;
+        ASSERT_EQ(Error::NONE,
+                  mGralloc->getReservedRegion(bufferHandle, &reservedRegion, &reservedSize));
+        ASSERT_NE(nullptr, reservedRegion);
+        ASSERT_EQ(requestedReservedSize, reservedSize);
+
+        uint8_t testValue = 1;
+        memset(reservedRegion, testValue, reservedSize);
+        for (uint64_t i = 0; i < reservedSize; i++) {
+            ASSERT_EQ(testValue, static_cast<uint8_t*>(reservedRegion)[i]);
+        }
+    }
+}
+
+/**
+ * Test IMapper::getReservedRegion() request over a page
+ */
+TEST_P(GraphicsMapperHidlTest, GetLargeReservedRegion) {
+    const native_handle_t* bufferHandle = nullptr;
+    auto info = mDummyDescriptorInfo;
+
+    const int pageSize = getpagesize();
+    ASSERT_GE(0, pageSize);
+    std::vector<uint64_t> requestedReservedSizes{static_cast<uint64_t>(pageSize) * 2,
+                                                 static_cast<uint64_t>(pageSize) * 10,
+                                                 static_cast<uint64_t>(pageSize) * 1000};
+
+    for (auto requestedReservedSize : requestedReservedSizes) {
+        info.reservedSize = requestedReservedSize;
+
+        BufferDescriptor descriptor;
+        ASSERT_NO_FATAL_FAILURE(descriptor = mGralloc->createDescriptor(info));
+
+        Error err;
+        mGralloc->getAllocator()->allocate(
+                descriptor, 1,
+                [&](const auto& tmpError, const auto&, const auto&) { err = tmpError; });
+        if (err == Error::UNSUPPORTED) {
+            continue;
+        }
+        ASSERT_EQ(Error::NONE, err);
+
+        void* reservedRegion = nullptr;
+        uint64_t reservedSize = 0;
+        err = mGralloc->getReservedRegion(bufferHandle, &reservedRegion, &reservedSize);
+
+        ASSERT_EQ(Error::NONE, err);
+        ASSERT_NE(nullptr, reservedRegion);
+        ASSERT_EQ(requestedReservedSize, reservedSize);
+    }
+}
+
+/**
+ * Test IMapper::getReservedRegion() across multiple mappers
+ */
+TEST_P(GraphicsMapperHidlTest, GetReservedRegionMultiple) {
+    const native_handle_t* bufferHandle = nullptr;
+    auto info = mDummyDescriptorInfo;
+
+    const int pageSize = getpagesize();
+    ASSERT_GE(0, pageSize);
+    info.reservedSize = pageSize;
+
+    ASSERT_NO_FATAL_FAILURE(bufferHandle = mGralloc->allocate(info, true));
+
+    void* reservedRegion1 = nullptr;
+    uint64_t reservedSize1 = 0;
+    ASSERT_EQ(Error::NONE,
+              mGralloc->getReservedRegion(bufferHandle, &reservedRegion1, &reservedSize1));
+    ASSERT_NE(nullptr, reservedRegion1);
+    ASSERT_EQ(info.reservedSize, reservedSize1);
+
+    std::unique_ptr<Gralloc> anotherGralloc;
+    ASSERT_NO_FATAL_FAILURE(anotherGralloc = std::make_unique<Gralloc>(std::get<0>(GetParam()),
+                                                                       std::get<1>(GetParam())));
+
+    void* reservedRegion2 = nullptr;
+    uint64_t reservedSize2 = 0;
+    ASSERT_EQ(Error::NONE,
+              mGralloc->getReservedRegion(bufferHandle, &reservedRegion2, &reservedSize2));
+    ASSERT_EQ(reservedRegion1, reservedRegion2);
+    ASSERT_EQ(reservedSize1, reservedSize2);
+}
+
+/**
+ * Test IMapper::getReservedRegion() with a bad buffer
+ */
+TEST_P(GraphicsMapperHidlTest, GetReservedRegionBadBuffer) {
+    const native_handle_t* bufferHandle = nullptr;
+
+    void* reservedRegion = nullptr;
+    uint64_t reservedSize = 0;
+    ASSERT_EQ(Error::BAD_BUFFER,
+              mGralloc->getReservedRegion(bufferHandle, &reservedRegion, &reservedSize));
+    ASSERT_EQ(nullptr, reservedRegion);
+    ASSERT_EQ(0, reservedSize);
+}
+
+INSTANTIATE_TEST_CASE_P(
+        PerInstance, GraphicsMapperHidlTest,
+        testing::Combine(
+                testing::ValuesIn(
+                        android::hardware::getAllHalInstanceNames(IAllocator::descriptor)),
+                testing::ValuesIn(android::hardware::getAllHalInstanceNames(IMapper::descriptor))),
+        android::hardware::PrintInstanceTupleNameToString<>);
+
 }  // namespace
 }  // namespace vts
 }  // namespace V4_0
@@ -1828,13 +2015,3 @@ TEST_F(GraphicsMapperHidlTest, DumpBuffers) {
 }  // namespace graphics
 }  // namespace hardware
 }  // namespace android
-
-int main(int argc, char** argv) {
-    using android::hardware::graphics::mapper::V4_0::vts::GraphicsMapperHidlEnvironment;
-    ::testing::AddGlobalTestEnvironment(GraphicsMapperHidlEnvironment::Instance());
-    ::testing::InitGoogleTest(&argc, argv);
-    GraphicsMapperHidlEnvironment::Instance()->init(&argc, argv);
-    int status = RUN_ALL_TESTS();
-    LOG(INFO) << "Test result = " << status;
-    return status;
-}

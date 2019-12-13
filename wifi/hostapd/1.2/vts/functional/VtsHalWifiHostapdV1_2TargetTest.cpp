@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,8 @@
  * limitations under the License.
  */
 
-package android.hardware.graphics.common;
+#include <VtsHalHidlTargetTestEnvBase.h>
 
-import android.hardware.common.NativeHandle;
-import android.hardware.graphics.common.HardwareBufferDescription;
-
-/**
- * Stable AIDL counterpart of AHardwareBuffer.
- *
- * @note This is different from the public HardwareBuffer.
- * @sa +ndk libnativewindow#AHardwareBuffer
- */
-@VintfStability
-parcelable HardwareBuffer {
-    HardwareBufferDescription description;
-    NativeHandle handle;
-}
+// TODO(b/143892896): Remove this file after wifi_hidl_test_utils.cpp is
+// updated.
+::testing::VtsHalHidlTargetTestEnvBase* gEnv = nullptr;
