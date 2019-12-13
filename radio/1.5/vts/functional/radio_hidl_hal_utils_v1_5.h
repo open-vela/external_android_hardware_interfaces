@@ -22,7 +22,7 @@
 #include <condition_variable>
 #include <mutex>
 
-#include <android/hardware/radio/config/1.3/IRadioConfig.h>
+#include <android/hardware/radio/config/1.1/IRadioConfig.h>
 
 #include <android/hardware/radio/1.5/IRadio.h>
 #include <android/hardware/radio/1.5/IRadioIndication.h>
@@ -113,9 +113,6 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
 
     Return<void> supplyNetworkDepersonalizationResponse(const RadioResponseInfo& info,
                                                         int32_t remainingRetries);
-
-    Return<void> supplySimDepersonalizationResponse(const RadioResponseInfo& info,
-            ::android::hardware::radio::V1_5::PersoSubstate persoType, int32_t remainingRetries);
 
     Return<void> getCurrentCallsResponse(
             const RadioResponseInfo& info,
@@ -561,24 +558,6 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
             const RadioResponseInfo& info,
             const ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::BarringInfo>&
                     barringInfos);
-
-    Return<void> getVoiceRegistrationStateResponse_1_5(
-            const RadioResponseInfo& info,
-            const ::android::hardware::radio::V1_5::RegStateResult& regResponse);
-
-    Return<void> getDataRegistrationStateResponse_1_5(
-            const RadioResponseInfo& info,
-            const ::android::hardware::radio::V1_5::RegStateResult& regResponse);
-
-    Return<void> getCellInfoListResponse_1_5(
-            const RadioResponseInfo& info,
-            const ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::CellInfo>&
-                    cellInfo);
-
-    Return<void> setNetworkSelectionModeManualResponse_1_5(const RadioResponseInfo& info);
-
-    Return<void> sendCdmaSmsExpectMoreResponse(const RadioResponseInfo& info,
-                                               const SendSmsResult& sms);
 };
 
 /* Callback class for radio indication */
@@ -592,15 +571,6 @@ class RadioIndication_v1_5 : public ::android::hardware::radio::V1_5::IRadioIndi
 
     /* 1.5 Api */
     Return<void> uiccApplicationsEnablementChanged(RadioIndicationType type, bool enabled);
-
-    Return<void> networkScanResult_1_5(
-            RadioIndicationType type,
-            const ::android::hardware::radio::V1_5::NetworkScanResult& result);
-
-    Return<void> cellInfoList_1_5(
-            RadioIndicationType type,
-            const ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::CellInfo>&
-                    records);
 
     /* 1.4 Api */
     Return<void> currentEmergencyNumberList(

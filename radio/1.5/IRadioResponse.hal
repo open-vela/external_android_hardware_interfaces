@@ -17,14 +17,9 @@
 package android.hardware.radio@1.5;
 
 import @1.0::RadioResponseInfo;
-import @1.0::SendSmsResult;
 import @1.4::IRadioResponse;
 import @1.5::BarringInfo;
-import @1.5::CellInfo;
-import @1.5::RegStateResult;
 import @1.5::SetupDataCallResult;
-import @1.4::SetupDataCallResult;
-import @1.5::PersoSubstate;
 
 /**
  * Interface declaring response functions to solicited radio requests.
@@ -175,120 +170,4 @@ interface IRadioResponse extends @1.4::IRadioResponse {
      *   RadioError:MODEM_ERR
      */
     oneway getBarringInfoResponse(RadioResponseInfo info, vec<BarringInfo> barringInfos);
-
-    /**
-     * @param voiceRegResponse Current Voice registration response as defined by RegStateResult
-     *        in types.hal
-     *
-     * Valid errors returned:
-     *   RadioError:NONE
-     *   RadioError:RADIO_NOT_AVAILABLE
-     *   RadioError:INTERNAL_ERR
-     */
-    oneway getVoiceRegistrationStateResponse_1_5(RadioResponseInfo info,
-            RegStateResult voiceRegResponse);
-
-    /**
-     * @param info Response info struct containing response type, serial no. and error
-     * @param dataRegResponse Current Data registration response as defined by RegStateResult in
-     *        types.hal
-     *
-     * Valid errors returned:
-     *   RadioError:NONE
-     *   RadioError:RADIO_NOT_AVAILABLE
-     *   RadioError:INTERNAL_ERR
-     *   RadioError:NOT_PROVISIONED
-     */
-    oneway getDataRegistrationStateResponse_1_5(RadioResponseInfo info,
-            RegStateResult dataRegResponse);
-
-    /**
-     * This is identitcal to getCellInfoListResponse_1_4 but uses an updated version of CellInfo.
-     *
-     * @param info Response info struct containing response type, serial no. and error
-     * @param cellInfo List of current cell information known to radio
-     *
-     * Valid errors returned:
-     *   RadioError:NONE
-     *   RadioError:RADIO_NOT_AVAILABLE
-     *   RadioError:INTERNAL_ERR
-     */
-    oneway getCellInfoListResponse_1_5(RadioResponseInfo info, vec<CellInfo> cellInfo);
-
-
-    /**
-     * @param info Response info struct containing response type, serial no. and error
-     *
-     * Valid errors returned:
-     *   RadioError:NONE
-     *   RadioError:RADIO_NOT_AVAILABLE
-     *   RadioError:ILLEGAL_SIM_OR_ME
-     *   RadioError:OPERATION_NOT_ALLOWED
-     *   RadioError:INVALID_STATE
-     *   RadioError:NO_MEMORY
-     *   RadioError:INTERNAL_ERR
-     *   RadioError:SYSTEM_ERR
-     *   RadioError:INVALID_ARGUMENTS
-     *   RadioError:MODEM_ERR
-     *   RadioError:REQUEST_NOT_SUPPORTED
-     *   RadioError:NO_RESOURCES
-     *   RadioError:CANCELLED
-     *
-     * Returns RadioError:ILLEGAL_SIM_OR_ME when the failure is permanent and
-     * no retries needed, such as illegal SIM or ME.
-     */
-    oneway setNetworkSelectionModeManualResponse_1_5(RadioResponseInfo info);
-
-    /**
-     * @param info Response info struct containing response type, serial no. and error
-     * @param sms Response to sms sent as defined by SendSmsResult in types.hal
-     *
-     * Valid errors returned:
-     *   RadioError:NONE
-     *   RadioError:RADIO_NOT_AVAILABLE
-     *   RadioError:SMS_SEND_FAIL_RETRY
-     *   RadioError:NETWORK_REJECT
-     *   RadioError:INVALID_STATE
-     *   RadioError:INVALID_ARGUMENTS
-     *   RadioError:NO_MEMORY
-     *   RadioError:REQUEST_RATE_LIMITED
-     *   RadioError:INVALID_SMS_FORMAT
-     *   RadioError:SYSTEM_ERR
-     *   RadioError:FDN_CHECK_FAILURE
-     *   RadioError:ENCODING_ERR
-     *   RadioError:INVALID_SMSC_ADDRESS
-     *   RadioError:MODEM_ERR
-     *   RadioError:NETWORK_ERR
-     *   RadioError:INTERNAL_ERR
-     *   RadioError:REQUEST_NOT_SUPPORTED
-     *   RadioError:INVALID_MODEM_STATE
-     *   RadioError:NETWORK_NOT_READY
-     *   RadioError:OPERATION_NOT_ALLOWED
-     *   RadioError:NO_RESOURCES
-     *   RadioError:CANCELLED
-     *   RadioError:SIM_ABSENT
-     */
-    oneway sendCdmaSmsExpectMoreResponse(RadioResponseInfo info, SendSmsResult sms);
-
-    /**
-     * @param info Response info struct contatining response type, serial no. and error
-     * @param persoType SIM Personalisation type
-     * @param remainingRetries postiive values indicates number of retries remaining,
-     * must be equal to -1 if number of retries is infinite.
-     *
-     * Valid errors returned:
-     *   RadioError:NONE
-     *   RadioError:RADIO_NOT_AVAILABLE
-     *   RadioError:PASSWORD_INCORRECT (code is invalid)
-     *   RadioError:NO_MEMORY
-     *   RadioError:INVALID_SIM_STATE
-     *   RadioError:INTERNAL_ERR
-     *   RadioError:SYSTEM_ERR
-     *   RadioError:MODEM_ERR
-     *   RadioError:INVALID_ARGUMENTS
-     *   RadioError:NO_RESOURCES
-     *   RadioError:REQUEST_NOT_SUPPORTED
-     */
-    oneway supplySimDepersonalizationResponse(RadioResponseInfo info,
-        PersoSubstate persoType, int32_t remainingRetries);
 };
