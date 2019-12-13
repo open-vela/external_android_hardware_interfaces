@@ -87,7 +87,7 @@ static DrmHalVTSVendorModule_V1* getModuleForInstance(const std::string& instanc
         return new DrmHalVTSClearkeyModule();
     }
 
-    return static_cast<DrmHalVTSVendorModule_V1*>(DrmHalTest::gVendorModules->getModuleByName(instance));
+    return static_cast<DrmHalVTSVendorModule_V1*>(DrmHalTest::gVendorModules->getModule(instance));
 }
 
 /**
@@ -120,12 +120,21 @@ void DrmHalTest::SetUp() {
         GTEST_SKIP() << "No vendor module installed";
     }
 
+    if (instance == "clearkey") {
+        // TODO(b/147449315)
+        // Only the clearkey plugged into the "default" instance supports
+        // this test. Currently the "clearkey" instance fails some tests
+        // here.
+        GTEST_SKIP() << "Clearkey tests don't work with 'clearkey' instance yet.";
+    }
+
     ASSERT_EQ(instance, vendorModule->getServiceName());
     contentConfigurations = vendorModule->getContentConfigurations();
 
     // If drm scheme not installed skip subsequent tests
-    if (!drmFactory->isCryptoSchemeSupported(getVendorUUID())) {
-        GTEST_SKIP() << "vendor module drm scheme not supported";
+    if (drmFactory.get() == nullptr || !drmFactory->isCryptoSchemeSupported(getVendorUUID())) {
+        vendorModule->setInstalled(false);
+        return;
     }
 
     ASSERT_NE(nullptr, drmPlugin.get()) << "Can't find " << vendorModule->getServiceName() <<  " drm@1.2 plugin";
@@ -174,50 +183,6 @@ hidl_array<uint8_t, 16> DrmHalTest::getVendorUUID() {
     if (vendorModule == nullptr) return {};
     vector<uint8_t> uuid = vendorModule->getUUID();
     return hidl_array<uint8_t, 16>(&uuid[0]);
-}
-
-void DrmHalTest::provision() {
-    hidl_string certificateType;
-    hidl_string certificateAuthority;
-    hidl_vec<uint8_t> provisionRequest;
-    hidl_string defaultUrl;
-    auto res = drmPlugin->getProvisionRequest_1_2(
-            certificateType, certificateAuthority,
-            [&](StatusV1_2 status, const hidl_vec<uint8_t>& request,
-                const hidl_string& url) {
-                if (status == StatusV1_2::OK) {
-                    EXPECT_NE(request.size(), 0u);
-                    provisionRequest = request;
-                    defaultUrl = url;
-                } else if (status == StatusV1_2::ERROR_DRM_CANNOT_HANDLE) {
-                    EXPECT_EQ(0u, request.size());
-                }
-            });
-    EXPECT_OK(res);
-
-    if (provisionRequest.size() > 0) {
-        vector<uint8_t> response = vendorModule->handleProvisioningRequest(
-                provisionRequest, defaultUrl);
-        ASSERT_NE(0u, response.size());
-
-        auto res = drmPlugin->provideProvisionResponse(
-                response, [&](StatusV1_0 status, const hidl_vec<uint8_t>&,
-                              const hidl_vec<uint8_t>&) {
-                    EXPECT_EQ(StatusV1_0::OK, status);
-                });
-        EXPECT_OK(res);
-    }
-}
-
-SessionId DrmHalTest::openSession(SecurityLevel level, StatusV1_0 *err) {
-    SessionId sessionId;
-    auto res = drmPlugin->openSession_1_1(level,
-        [&](StatusV1_0 status, const hidl_vec<unsigned char> &id) {
-            *err = status;
-            sessionId = id;
-    });
-    EXPECT_OK(res);
-    return sessionId;
 }
 
 /**
