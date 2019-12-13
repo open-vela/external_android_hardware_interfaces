@@ -41,9 +41,17 @@ namespace V4_0 {
 
 namespace test {
 
-void KeymasterHidlTest::InitializeKeymaster() {
-    service_name_ = GetParam();
-    keymaster_ = IKeymasterDevice::getService(service_name_);
+sp<IKeymasterDevice> KeymasterHidlTest::keymaster_;
+std::vector<sp<IKeymasterDevice>> KeymasterHidlTest::all_keymasters_;
+uint32_t KeymasterHidlTest::os_version_;
+uint32_t KeymasterHidlTest::os_patch_level_;
+SecurityLevel KeymasterHidlTest::securityLevel_;
+hidl_string KeymasterHidlTest::name_;
+hidl_string KeymasterHidlTest::author_;
+
+void KeymasterHidlTest::SetUpTestCase() {
+    string service_name = KeymasterHidlEnvironment::Instance()->getServiceName<IKeymasterDevice>();
+    keymaster_ = ::testing::VtsHalHidlTargetTestBase::getService<IKeymasterDevice>(service_name);
     ASSERT_NE(keymaster_, nullptr);
 
     ASSERT_TRUE(keymaster_
@@ -54,22 +62,20 @@ void KeymasterHidlTest::InitializeKeymaster() {
                         author_ = author;
                     })
                     .isOk());
-}
-
-void KeymasterHidlTest::SetUp() {
-    InitializeKeymaster();
 
     os_version_ = ::keymaster::GetOsVersion();
     os_patch_level_ = ::keymaster::GetOsPatchlevel();
 
     auto service_manager = android::hidl::manager::V1_0::IServiceManager::getService();
     ASSERT_NE(nullptr, service_manager.get());
+
     all_keymasters_.push_back(keymaster_);
     service_manager->listByInterface(
         IKeymasterDevice::descriptor, [&](const hidl_vec<hidl_string>& names) {
             for (auto& name : names) {
-                if (name == service_name_) continue;
-                auto keymaster = IKeymasterDevice::getService(name);
+                if (name == service_name) continue;
+                auto keymaster =
+                    ::testing::VtsHalHidlTargetTestBase::getService<IKeymasterDevice>(name);
                 ASSERT_NE(keymaster, nullptr);
                 all_keymasters_.push_back(keymaster);
             }
@@ -211,8 +217,8 @@ void KeymasterHidlTest::CheckCreationDateTime(
             std::chrono::time_point<std::chrono::system_clock> reported_time{
                     std::chrono::milliseconds(sw_enforced[i].f.dateTime)};
             // The test is flaky for EC keys, so a buffer time of 120 seconds will be added.
-            EXPECT_LE(creation - std::chrono::seconds(120), reported_time);
-            EXPECT_LE(reported_time, now + std::chrono::seconds(1));
+            EXPECT_LE(creation - 120s, reported_time);
+            EXPECT_LE(reported_time, now + 1s);
         }
     }
 }
@@ -261,13 +267,6 @@ ErrorCode KeymasterHidlTest::GetCharacteristics(const HidlBuf& key_blob,
                                                 KeyCharacteristics* key_characteristics) {
     HidlBuf client_id, app_data;
     return GetCharacteristics(key_blob, client_id, app_data, key_characteristics);
-}
-
-ErrorCode KeymasterHidlTest::GetDebugInfo(DebugInfo* debug_info) {
-    EXPECT_TRUE(keymaster_->getDebugInfo([&](const DebugInfo& hidl_debug_info) {
-      *debug_info = hidl_debug_info;
-    }).isOk());
-    return ErrorCode::OK;
 }
 
 ErrorCode KeymasterHidlTest::Begin(KeyPurpose purpose, const HidlBuf& key_blob,
@@ -607,20 +606,6 @@ string KeymasterHidlTest::EncryptMessage(const string& message, BlockMode block_
                       .BlockMode(block_mode)
                       .Padding(padding)
                       .Authorization(TAG_NONCE, iv_in);
-    AuthorizationSet out_params;
-    string ciphertext = EncryptMessage(message, params, &out_params);
-    return ciphertext;
-}
-
-string KeymasterHidlTest::EncryptMessage(const string& message, BlockMode block_mode,
-                                         PaddingMode padding, uint8_t mac_length_bits,
-                                         const HidlBuf& iv_in) {
-    SCOPED_TRACE("EncryptMessage");
-    auto params = AuthorizationSetBuilder()
-                          .BlockMode(block_mode)
-                          .Padding(padding)
-                          .Authorization(TAG_MAC_LENGTH, mac_length_bits)
-                          .Authorization(TAG_NONCE, iv_in);
     AuthorizationSet out_params;
     string ciphertext = EncryptMessage(message, params, &out_params);
     return ciphertext;
