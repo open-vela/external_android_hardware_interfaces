@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 The Android Open Source Project
+ * Copyright (C) 2019 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,19 @@
  * limitations under the License.
  */
 
-package android.hardware.common;
-
-/**
- * Representation of a native handle.
- */
-@VintfStability
-parcelable NativeHandle {
-    ParcelFileDescriptor[] fds;
-    int[] ints;
+cc_binary {
+    name: "android.hardware.automotive.occupant_awareness@1.0-service_mock",
+    relative_install_path: "hw",
+    vendor: true,
+    srcs: [
+        "service.cpp",
+        "OccupantAwareness.cpp",
+        "DetectionGenerator.cpp",
+    ],
+    shared_libs: [
+        "libbase",
+        "libbinder_ndk",
+        "libutils",
+        "android.hardware.automotive.occupant_awareness-ndk_platform",
+    ],
 }

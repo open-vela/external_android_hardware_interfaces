@@ -120,8 +120,6 @@ convertLegacyFeatureToHidlStaIfaceCapability(uint64_t feature) {
             return HidlStaIfaceCaps::ND_OFFLOAD;
         case WIFI_FEATURE_MKEEP_ALIVE:
             return HidlStaIfaceCaps::KEEP_ALIVE;
-        case WIFI_FEATURE_INFRA_6G:
-            return HidlStaIfaceCaps::STA_6G;
     };
     CHECK(false) << "Unknown legacy feature: " << feature;
     return {};
@@ -316,7 +314,7 @@ legacy_hal::wifi_latency_mode convertHidlLatencyModeToLegacy(
 
 bool convertLegacyWifiMacInfoToHidl(
     const legacy_hal::WifiMacInfo& legacy_mac_info,
-    V1_2::IWifiChipEventCallback::RadioModeInfo* hidl_radio_mode_info) {
+    IWifiChipEventCallback::RadioModeInfo* hidl_radio_mode_info) {
     if (!hidl_radio_mode_info) {
         return false;
     }
@@ -325,8 +323,17 @@ bool convertLegacyWifiMacInfoToHidl(
     hidl_radio_mode_info->radioId = legacy_mac_info.wlan_mac_id;
     // Convert from bitmask of bands in the legacy HAL to enum value in
     // the HIDL interface.
-    if (legacy_mac_info.mac_band & legacy_hal::WLAN_MAC_2_4_BAND &&
-        legacy_mac_info.mac_band & legacy_hal::WLAN_MAC_5_0_BAND) {
+    if (legacy_mac_info.mac_band & legacy_hal::WLAN_MAC_6_0_BAND &&
+        legacy_mac_info.mac_band & legacy_hal::WLAN_MAC_5_0_BAND &&
+        legacy_mac_info.mac_band & legacy_hal::WLAN_MAC_2_4_BAND) {
+        hidl_radio_mode_info->bandInfo = WifiBand::BAND_24GHZ_5GHZ_6GHZ;
+    } else if (legacy_mac_info.mac_band & legacy_hal::WLAN_MAC_6_0_BAND &&
+               legacy_mac_info.mac_band & legacy_hal::WLAN_MAC_5_0_BAND) {
+        hidl_radio_mode_info->bandInfo = WifiBand::BAND_5GHZ_6GHZ;
+    } else if (legacy_mac_info.mac_band & legacy_hal::WLAN_MAC_6_0_BAND) {
+        hidl_radio_mode_info->bandInfo = WifiBand::BAND_6GHZ;
+    } else if (legacy_mac_info.mac_band & legacy_hal::WLAN_MAC_2_4_BAND &&
+               legacy_mac_info.mac_band & legacy_hal::WLAN_MAC_5_0_BAND) {
         hidl_radio_mode_info->bandInfo = WifiBand::BAND_24GHZ_5GHZ;
     } else if (legacy_mac_info.mac_band & legacy_hal::WLAN_MAC_2_4_BAND) {
         hidl_radio_mode_info->bandInfo = WifiBand::BAND_24GHZ;
@@ -348,15 +355,14 @@ bool convertLegacyWifiMacInfoToHidl(
 
 bool convertLegacyWifiMacInfosToHidl(
     const std::vector<legacy_hal::WifiMacInfo>& legacy_mac_infos,
-    std::vector<V1_2::IWifiChipEventCallback::RadioModeInfo>*
-        hidl_radio_mode_infos) {
+    std::vector<IWifiChipEventCallback::RadioModeInfo>* hidl_radio_mode_infos) {
     if (!hidl_radio_mode_infos) {
         return false;
     }
     *hidl_radio_mode_infos = {};
 
     for (const auto& legacy_mac_info : legacy_mac_infos) {
-        V1_2::IWifiChipEventCallback::RadioModeInfo hidl_radio_mode_info;
+        IWifiChipEventCallback::RadioModeInfo hidl_radio_mode_info;
         if (!convertLegacyWifiMacInfoToHidl(legacy_mac_info,
                                             &hidl_radio_mode_info)) {
             return false;
@@ -386,8 +392,7 @@ bool convertLegacyFeaturesToHidlStaCapabilities(
           WIFI_FEATURE_IE_WHITELIST, WIFI_FEATURE_SCAN_RAND,
           WIFI_FEATURE_INFRA_5G, WIFI_FEATURE_HOTSPOT, WIFI_FEATURE_PNO,
           WIFI_FEATURE_TDLS, WIFI_FEATURE_TDLS_OFFCHANNEL,
-          WIFI_FEATURE_CONFIG_NDO, WIFI_FEATURE_MKEEP_ALIVE,
-          WIFI_FEATURE_INFRA_6G}) {
+          WIFI_FEATURE_CONFIG_NDO, WIFI_FEATURE_MKEEP_ALIVE}) {
         if (feature & legacy_feature_set) {
             *hidl_caps |= convertLegacyFeatureToHidlStaIfaceCapability(feature);
         }
@@ -449,21 +454,21 @@ bool convertLegacyGscanCapabilitiesToHidl(
     return true;
 }
 
-legacy_hal::wifi_band convertHidlWifiBandToLegacy(WifiBand band) {
+legacy_hal::wifi_band convertHidlWifiBandToLegacy(V1_0::WifiBand band) {
     switch (band) {
-        case WifiBand::BAND_UNSPECIFIED:
+        case V1_0::WifiBand::BAND_UNSPECIFIED:
             return legacy_hal::WIFI_BAND_UNSPECIFIED;
-        case WifiBand::BAND_24GHZ:
+        case V1_0::WifiBand::BAND_24GHZ:
             return legacy_hal::WIFI_BAND_BG;
-        case WifiBand::BAND_5GHZ:
+        case V1_0::WifiBand::BAND_5GHZ:
             return legacy_hal::WIFI_BAND_A;
-        case WifiBand::BAND_5GHZ_DFS:
+        case V1_0::WifiBand::BAND_5GHZ_DFS:
             return legacy_hal::WIFI_BAND_A_DFS;
-        case WifiBand::BAND_5GHZ_WITH_DFS:
+        case V1_0::WifiBand::BAND_5GHZ_WITH_DFS:
             return legacy_hal::WIFI_BAND_A_WITH_DFS;
-        case WifiBand::BAND_24GHZ_5GHZ:
+        case V1_0::WifiBand::BAND_24GHZ_5GHZ:
             return legacy_hal::WIFI_BAND_ABG;
-        case WifiBand::BAND_24GHZ_5GHZ_WITH_DFS:
+        case V1_0::WifiBand::BAND_24GHZ_5GHZ_WITH_DFS:
             return legacy_hal::WIFI_BAND_ABG_WITH_DFS;
     };
     CHECK(false);
@@ -1127,9 +1132,9 @@ bool convertHidlNanEnableRequestToLegacy(
     legacy_request->disc_mac_addr_rand_interval_sec =
         hidl_request.configParams.macAddressRandomizationIntervalSec;
     legacy_request->config_2dot4g_rssi_close = 1;
-    if (hidl_request.configParams.bandSpecificConfig.size() != 2) {
+    if (hidl_request.configParams.bandSpecificConfig.size() != 3) {
         LOG(ERROR) << "convertHidlNanEnableRequestToLegacy: "
-                      "bandSpecificConfig.size() != 2";
+                      "bandSpecificConfig.size() != 3";
         return false;
     }
     legacy_request->rssi_close_2dot4g_val =
@@ -1262,16 +1267,20 @@ bool convertHidlNanEnableRequestToLegacy(
         hidl_request.debugConfigs
             .useSdfInBandVal[(size_t)NanBandIndex::NAN_BAND_5GHZ];
 
+    /* TODO: b/145609058
+     * Missing updates needed to legacy_hal::NanEnableRequest and conversion to
+     * it for 6GHz band */
+
     return true;
 }
 
-bool convertHidlNanEnableRequest_1_2ToLegacy(
+bool convertHidlNanEnableRequest_1_4ToLegacy(
     const NanEnableRequest& hidl_request1,
     const V1_2::NanConfigRequestSupplemental& hidl_request2,
     legacy_hal::NanEnableRequest* legacy_request) {
     if (!legacy_request) {
         LOG(ERROR)
-            << "convertHidlNanEnableRequest_1_2ToLegacy: null legacy_request";
+            << "convertHidlNanEnableRequest_1_4ToLegacy: null legacy_request";
         return false;
     }
 
@@ -1772,16 +1781,19 @@ bool convertHidlNanConfigRequestToLegacy(
     legacy_request->config_dw.dw_5g_interval_val =
         hidl_request.bandSpecificConfig[(size_t)NanBandIndex::NAN_BAND_5GHZ]
             .discoveryWindowIntervalVal;
+    /* TODO: b/145609058
+     * Missing updates needed to legacy_hal::NanConfigRequest and conversion to
+     * it for 6GHz band */
 
     return true;
 }
 
-bool convertHidlNanConfigRequest_1_2ToLegacy(
+bool convertHidlNanConfigRequest_1_4ToLegacy(
     const NanConfigRequest& hidl_request1,
     const V1_2::NanConfigRequestSupplemental& hidl_request2,
     legacy_hal::NanConfigRequest* legacy_request) {
     if (!legacy_request) {
-        LOG(ERROR) << "convertHidlNanConfigRequest_1_2ToLegacy: legacy_request "
+        LOG(ERROR) << "convertHidlNanConfigRequest_1_4ToLegacy: legacy_request "
                       "is null";
         return false;
     }
