@@ -17,10 +17,13 @@
 #include <radio_hidl_hal_utils_v1_0.h>
 
 void RadioHidlTest::SetUp() {
-    radio = IRadio::getService(GetParam());
+    radio = ::testing::VtsHalHidlTargetTestBase::getService<IRadio>(
+        RadioHidlEnvironment::Instance()->getServiceName<IRadio>(hidl_string(RADIO_SERVICE_NAME)));
     if (radio == NULL) {
         sleep(60);
-        radio = IRadio::getService(GetParam());
+        radio = ::testing::VtsHalHidlTargetTestBase::getService<IRadio>(
+            RadioHidlEnvironment::Instance()->getServiceName<IRadio>(
+                hidl_string(RADIO_SERVICE_NAME)));
     }
     ASSERT_NE(nullptr, radio.get());
 

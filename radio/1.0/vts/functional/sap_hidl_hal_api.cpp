@@ -19,7 +19,7 @@
 /*
  * Test ISap.connectReq() for the response returned.
  */
-TEST_P(SapHidlTest, connectReq) {
+TEST_F(SapHidlTest, connectReq) {
     token = GetRandomSerialNumber();
     int32_t maxMsgSize = 100;
 
@@ -35,7 +35,7 @@ TEST_P(SapHidlTest, connectReq) {
 /*
  * Test IRadio.disconnectReq() for the response returned
  */
-TEST_P(SapHidlTest, disconnectReq) {
+TEST_F(SapHidlTest, disconnectReq) {
     token = GetRandomSerialNumber();
 
     sap->disconnectReq(token);
@@ -46,7 +46,7 @@ TEST_P(SapHidlTest, disconnectReq) {
 /*
  * Test IRadio.apduReq() for the response returned.
  */
-TEST_P(SapHidlTest, apduReq) {
+TEST_F(SapHidlTest, apduReq) {
     token = GetRandomSerialNumber();
     SapApduType sapApduType = SapApduType::APDU;
     android::hardware::hidl_vec<uint8_t> command = {};
@@ -64,7 +64,7 @@ TEST_P(SapHidlTest, apduReq) {
 /*
  * Test IRadio.transferAtrReq() for the response returned.
  */
-TEST_P(SapHidlTest, transferAtrReq) {
+TEST_F(SapHidlTest, transferAtrReq) {
     token = GetRandomSerialNumber();
 
     sap->transferAtrReq(token);
@@ -80,7 +80,7 @@ TEST_P(SapHidlTest, transferAtrReq) {
 /*
  * Test IRadio.powerReq() for the response returned.
  */
-TEST_P(SapHidlTest, powerReq) {
+TEST_F(SapHidlTest, powerReq) {
     token = GetRandomSerialNumber();
     bool state = true;
 
@@ -97,7 +97,7 @@ TEST_P(SapHidlTest, powerReq) {
 /*
  * Test IRadio.resetSimReq() for the response returned.
  */
-TEST_P(SapHidlTest, resetSimReq) {
+TEST_F(SapHidlTest, resetSimReq) {
     token = GetRandomSerialNumber();
 
     sap->resetSimReq(token);
@@ -113,7 +113,7 @@ TEST_P(SapHidlTest, resetSimReq) {
 /*
  * Test IRadio.transferCardReaderStatusReq() for the response returned.
  */
-TEST_P(SapHidlTest, transferCardReaderStatusReq) {
+TEST_F(SapHidlTest, transferCardReaderStatusReq) {
     token = GetRandomSerialNumber();
 
     sap->transferCardReaderStatusReq(token);
@@ -127,7 +127,7 @@ TEST_P(SapHidlTest, transferCardReaderStatusReq) {
 /*
  * Test IRadio.setTransferProtocolReq() for the response returned.
  */
-TEST_P(SapHidlTest, setTransferProtocolReq) {
+TEST_F(SapHidlTest, setTransferProtocolReq) {
     token = GetRandomSerialNumber();
     SapTransferProtocol sapTransferProtocol = SapTransferProtocol::T0;
 
