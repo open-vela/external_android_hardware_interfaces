@@ -280,50 +280,39 @@ inline KeyParameter Authorization(TypedTag<tag_type, tag> ttag, Args&&... args) 
  */
 template <typename ValueT>
 class NullOr {
-    using internal_t = std::conditional_t<std::is_lvalue_reference<ValueT>::value,
-                                          std::remove_reference_t<ValueT>*, ValueT>;
-
+    template <typename T>
+    struct reference_initializer {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnull-dereference"
+        static T&& init() { return *static_cast<std::remove_reference_t<T>*>(nullptr); }
+#pragma GCC diagnostic pop
+    };
+    template <typename T>
     struct pointer_initializer {
-        static std::nullptr_t init() { return nullptr; }
+        static T init() { return nullptr; }
     };
+    template <typename T>
     struct value_initializer {
-        static ValueT init() { return ValueT(); }
+        static T init() { return T(); }
     };
-    struct value_pointer_deref_t {
-        static ValueT& deref(ValueT& v) { return v; }
-    };
-    struct reference_deref_t {
-        static auto& deref(internal_t v) { return *v; }
-    };
-    using initializer_t = std::conditional_t<std::is_lvalue_reference<ValueT>::value ||
-                                                     std::is_pointer<ValueT>::value,
-                                             pointer_initializer, value_initializer>;
-    using deref_t = std::conditional_t<std::is_lvalue_reference<ValueT>::value, reference_deref_t,
-                                       value_pointer_deref_t>;
+    template <typename T>
+    using initializer_t =
+        std::conditional_t<std::is_lvalue_reference<T>::value, reference_initializer<T>,
+                           std::conditional_t<std::is_pointer<T>::value, pointer_initializer<T>,
+                                              value_initializer<T>>>;
 
-  public:
-    NullOr() : value_(initializer_t::init()), null_(true) {}
-    template <typename T>
-    NullOr(T&& value, typename std::enable_if<
-                              !std::is_lvalue_reference<ValueT>::value &&
-                                      std::is_same<std::decay_t<ValueT>, std::decay_t<T>>::value,
-                              int>::type = 0)
-        : value_(std::forward<ValueT>(value)), null_(false) {}
-    template <typename T>
-    NullOr(T& value, typename std::enable_if<
-                             std::is_lvalue_reference<ValueT>::value &&
-                                     std::is_same<std::decay_t<ValueT>, std::decay_t<T>>::value,
-                             int>::type = 0)
-        : value_(&value), null_(false) {}
+   public:
+    NullOr() : value_(initializer_t<ValueT>::init()), null_(true) {}
+    NullOr(ValueT&& value) : value_(std::forward<ValueT>(value)), null_(false) {}
 
     bool isOk() const { return !null_; }
 
-    const ValueT& value() const& { return deref_t::deref(value_); }
-    ValueT& value() & { return deref_t::deref(value_); }
-    ValueT&& value() && { return std::move(deref_t::deref(value_)); }
+    const ValueT& value() const & { return value_; }
+    ValueT& value() & { return value_; }
+    ValueT&& value() && { return std::move(value_); }
 
-  private:
-    internal_t value_;
+   private:
+    ValueT value_;
     bool null_;
 };
 
