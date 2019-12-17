@@ -30,7 +30,6 @@ namespace V2_1 {
 namespace implementation {
 
 using GnssDataV2_1 = V2_1::IGnssMeasurementCallback::GnssData;
-using GnssDataV2_0 = V2_0::IGnssMeasurementCallback::GnssData;
 
 using ::android::sp;
 using ::android::hardware::hidl_array;
@@ -63,11 +62,9 @@ struct GnssMeasurement : public IGnssMeasurement {
   private:
     void start();
     void stop();
-    void reportMeasurement(const GnssDataV2_0&);
     void reportMeasurement(const GnssDataV2_1&);
 
-    static sp<V2_1::IGnssMeasurementCallback> sCallback_2_1;
-    static sp<V2_0::IGnssMeasurementCallback> sCallback_2_0;
+    static sp<IGnssMeasurementCallback> sCallback;
     std::atomic<long> mMinIntervalMillis;
     std::atomic<bool> mIsActive;
     std::thread mThread;
