@@ -81,14 +81,11 @@ class Demux : public IDemux {
     virtual Return<Result> disconnectCiCam() override;
 
     // Functions interacts with Tuner Service
-    void stopFrontendInput();
+    void stopBroadcastInput();
     Result removeFilter(uint32_t filterId);
-    bool attachRecordFilter(int filterId);
-    bool detachRecordFilter(int filterId);
     Result startFilterHandler(uint32_t filterId);
     void updateFilterOutput(uint16_t filterId, vector<uint8_t> data);
     uint16_t getFilterTpid(uint32_t filterId);
-    void setIsRecording(bool isRecording);
 
   private:
     // Tuner service
@@ -104,9 +101,9 @@ class Demux : public IDemux {
         uint32_t filterId;
     };
 
-    Result startFrontendInputLoop();
-    static void* __threadLoopFrontend(void* user);
-    void frontendInputThreadLoop();
+    Result startBroadcastInputLoop();
+    static void* __threadLoopBroadcast(void* user);
+    void broadcastInputThreadLoop();
 
     /**
      * To create a FilterMQ with the the next available Filter ID.
@@ -120,13 +117,9 @@ class Demux : public IDemux {
     /**
      * A dispatcher to read and dispatch input data to all the started filters.
      * Each filter handler handles the data filtering/output writing/filterEvent updating.
-     * Note that recording filters are not included.
      */
-    bool startBroadcastFilterDispatcher();
-    void startBroadcastTsFilter(vector<uint8_t> data);
-
-    void sendFrontendInputToRecord(vector<uint8_t> data);
-    bool startRecordFilterDispatcher();
+    bool startFilterDispatcher();
+    void startTsFilter(vector<uint8_t> data);
 
     uint32_t mDemuxId;
     uint32_t mCiCamId;
@@ -148,32 +141,18 @@ class Demux : public IDemux {
      */
     set<uint32_t> mUnusedFilterIds;
     /**
-     * Record all the attached record filter Ids.
-     * Any removed filter id should be removed from this set.
-     */
-    set<uint32_t> mRecordFilterIds;
-    /**
      * A list of created FilterMQ ptrs.
      * The array number is the filter ID.
      */
     std::map<uint32_t, sp<Filter>> mFilters;
 
-    /**
-     * Local reference to the opened DVR object.
-     */
-    sp<Dvr> mDvr;
-
     // Thread handlers
-    pthread_t mFrontendInputThread;
+    pthread_t mBroadcastInputThread;
     /**
      * If a specific filter's writing loop is still running
      */
-    bool mFrontendInputThreadRunning;
+    bool mBroadcastInputThreadRunning;
     bool mKeepFetchingDataFromFrontend;
-    /**
-     * If the dvr recording is running.
-     */
-    bool mIsRecording = false;
     /**
      * Lock to protect writes to the FMQs
      */
@@ -181,7 +160,7 @@ class Demux : public IDemux {
     /**
      * Lock to protect writes to the input status
      */
-    std::mutex mFrontendInputThreadLock;
+    std::mutex mBroadcastInputThreadLock;
 
     // temp handle single PES filter
     // TODO handle mulptiple Pes filters
