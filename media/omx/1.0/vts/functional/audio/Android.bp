@@ -21,7 +21,6 @@ cc_test {
         "VtsHalMediaOmxV1_0TargetAudioEncTest.cpp",
         "media_audio_hidl_test_common.cpp"
     ],
-    test_suites: ["general-tests"],
 }
 
 cc_test {
@@ -31,7 +30,6 @@ cc_test {
         "VtsHalMediaOmxV1_0TargetAudioDecTest.cpp",
         "media_audio_hidl_test_common.cpp"
     ],
-    test_suites: ["general-tests"],
 }
 
 
