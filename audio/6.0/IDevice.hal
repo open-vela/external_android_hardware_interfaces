@@ -168,6 +168,25 @@ interface IDevice {
             generates (Result retval, AudioPatchHandle patch);
 
     /**
+     * Updates an audio patch.
+     *
+     * Use of this function is preferred to releasing and re-creating a patch
+     * as the HAL module can figure out a way of switching the route without
+     * causing audio disruption.
+     *
+     * @param previousPatch handle of the previous patch to update.
+     * @param sources new patch sources.
+     * @param sinks new patch sinks.
+     * @return retval operation completion status.
+     * @return patch updated patch handle.
+     */
+    updateAudioPatch(
+            AudioPatchHandle previousPatch,
+            vec<AudioPortConfig> sources,
+            vec<AudioPortConfig> sinks) generates (
+                    Result retval, AudioPatchHandle patch);
+
+    /**
      * Release an audio patch.
      *
      * @param patch patch handle.
@@ -295,4 +314,28 @@ interface IDevice {
      */
     @exit
     close() generates (Result retval);
+
+    /**
+     * Applies an audio effect to an audio device.
+     *
+     * @param device identifies the sink or source device this effect must be applied to.
+     *               "device" is the AudioPortHandle indicated for the device when the audio
+     *                patch connecting that device was created.
+     * @param effectId effect ID (obtained from IEffectsFactory.createEffect) of
+     *                 the effect to add.
+     * @return retval operation completion status.
+     */
+    addDeviceEffect(AudioPortHandle device, uint64_t effectId) generates (Result retval);
+
+    /**
+     * Stops applying an audio effect to an audio device.
+     *
+     * @param device identifies the sink or source device this effect was applied to.
+     *               "device" is the AudioPortHandle indicated for the device when the audio
+     *               patch is created at the audio HAL.
+     * @param effectId effect ID (obtained from IEffectsFactory.createEffect) of
+     *                 the effect.
+     * @return retval operation completion status.
+     */
+    removeDeviceEffect(AudioPortHandle device, uint64_t effectId) generates (Result retval);
 };
