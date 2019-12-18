@@ -63,7 +63,7 @@ enum FrontendType : uint32_t {
     DVBS,
     /**
      * Digital Video Broadcasting - Terrestrial
-     * DVB Terresttrial Frontend Standard ETSI EN 300 468 V1.15.1 and
+     * DVB Terrestrial Frontend Standard ETSI EN 300 468 V1.15.1 and
      * ETSI EN 302 755 V1.4.1.
      */
     DVBT,
@@ -255,7 +255,7 @@ enum FrontendAtscModulation : uint32_t {
 };
 
 /**
- *  Signal Setting for ATSC Frontend.
+ *  Signal Settings for an ATSC Frontend.
  */
 struct FrontendAtscSettings {
     /**
@@ -868,7 +868,7 @@ enum FrontendIsdbsRolloff : uint32_t {
 };
 
 /**
- *  Modulaltion Type for ISDBS.
+ *  Modulation Type for ISDBS.
  */
 @export
 enum FrontendIsdbsModulation : uint32_t {
@@ -2230,8 +2230,6 @@ struct DemuxIpFilterSettings {
 
         DemuxFilterSectionSettings section;
 
-        DemuxFilterPesDataSettings pesData;
-
         /**
          * true if the data from IP subtype go to next filter directly
          */
@@ -2248,7 +2246,7 @@ struct DemuxTlvFilterSettings {
     /**
      * true if the filtered data is commpressed ip packet
      */
-    bool bIsCompressedIpPacket;
+    bool isCompressedIpPacket;
 
     safe_union FilterSettings {
         /**
