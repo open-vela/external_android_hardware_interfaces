@@ -62,9 +62,6 @@ class SupplicantStaIfaceHidlTest : public ::testing::VtsHalHidlTargetTestBase {
     int64_t pmkCacheExpirationTimeInSec;
     std::vector<uint8_t> serializedPmkCacheEntry;
 
-    // Data retrieved from BSS transition management frame.
-    ISupplicantStaIfaceCallback::BssTmData tmData;
-
     enum DppCallbackType {
         ANY_CALLBACK = -2,
         INVALID = -1,
@@ -232,10 +229,6 @@ class IfaceCallback : public ISupplicantStaIfaceCallback {
         const hidl_vec<uint8_t>& /* serializedEntry */) override {
         return Void();
     }
-    Return<void> onBssTmHandlingDone(
-        const ISupplicantStaIfaceCallback::BssTmData& /* data */) override {
-        return Void();
-    }
 };
 
 class IfacePmkCacheCallback : public IfaceCallback {
@@ -286,20 +279,6 @@ class IfaceDppCallback : public IfaceCallback {
    public:
     IfaceDppCallback(SupplicantStaIfaceHidlTest& parent) : parent_(parent){};
 };
-
-class IfaceBssTmHandlingDoneCallback : public IfaceCallback {
-    SupplicantStaIfaceHidlTest& parent_;
-    Return<void> onBssTmHandlingDone(
-        const ISupplicantStaIfaceCallback::BssTmData& data) override {
-        parent_.tmData = data;
-        return Void();
-    }
-
-   public:
-    IfaceBssTmHandlingDoneCallback(SupplicantStaIfaceHidlTest& parent)
-        : parent_(parent) {}
-};
-
 /*
  * RegisterCallback_1_3
  */
