@@ -304,9 +304,6 @@ enum AddressProperty : int32_t {
     DEPRECATED = 0x20,
 };
 
-/**
- * Describes a data link address for mobile data connection.
- */
 struct LinkAddress {
     /**
      * The format is IP address with optional "/"
@@ -337,7 +334,7 @@ struct LinkAddress {
 
 /**
  * Overwritten from @1.4::SetupDataCallResult in order to update the addresses to 1.5
- * version. In 1.5 the type of addresses changes to vector of LinkAddress.
+ * version.
  */
 struct SetupDataCallResult {
     /** Data call fail cause. DataCallFailCause.NONE if no error. */
