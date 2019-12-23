@@ -27,11 +27,8 @@
 #include <android/hardware/cas/native/1.0/IDescrambler.h>
 #include <android/hardware/cas/native/1.0/types.h>
 #include <binder/MemoryDealer.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
 #include <hidl/HidlSupport.h>
 #include <hidl/HidlTransportSupport.h>
-#include <hidl/ServiceManagement.h>
 #include <hidl/Status.h>
 #include <hidlmemory/FrameworkUtils.h>
 #include <utils/Condition.h>
@@ -254,14 +251,27 @@ void MediaCasListener::testSessionEventEcho(sp<ICas>& mediaCas, const hidl_vec<u
     EXPECT_TRUE(mEventData == eventData);
 }
 
-class MediaCasHidlTest : public testing::TestWithParam<std::string> {
+// Test environment for Cas HIDL HAL.
+class CasHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+  public:
+    // get the test environment singleton
+    static CasHidlEnvironment* Instance() {
+        static CasHidlEnvironment* instance = new CasHidlEnvironment;
+        return instance;
+    }
+
+    virtual void registerTestServices() override { registerTestService<IMediaCasService>(); }
+};
+
+class MediaCasHidlTest : public ::testing::VtsHalHidlTargetTestBase {
   public:
     virtual void SetUp() override {
-        mService = IMediaCasService::getService(GetParam());
+        mService = ::testing::VtsHalHidlTargetTestBase::getService<IMediaCasService>(
+                CasHidlEnvironment::Instance()->getServiceName<IMediaCasService>());
         ASSERT_NE(mService, nullptr);
     }
 
-    sp<IMediaCasService> mService = nullptr;
+    sp<IMediaCasService> mService;
 
   protected:
     static void description(const std::string& description) {
@@ -356,7 +366,7 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
         return ::testing::AssertionFailure();
     }
 
-    uint8_t* ipBuffer = static_cast<uint8_t*>(static_cast<void*>(mem->unsecurePointer()));
+    uint8_t* ipBuffer = static_cast<uint8_t*>(static_cast<void*>(mem->pointer()));
     memcpy(ipBuffer, kInBinaryBuffer, sizeof(kInBinaryBuffer));
 
     // hidlMemory is not to be passed out of scope!
@@ -443,7 +453,7 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
     return ::testing::AssertionResult(returnVoid.isOk());
 }
 
-TEST_P(MediaCasHidlTest, TestClearKeyApisWithSession) {
+TEST_F(MediaCasHidlTest, TestClearKeyApisWithSession) {
     description("Test that valid call sequences with SessionEvent send and receive");
 
     ASSERT_TRUE(createCasPlugin(CLEAR_KEY_SYSTEM_ID));
@@ -533,7 +543,7 @@ TEST_P(MediaCasHidlTest, TestClearKeyApisWithSession) {
     EXPECT_EQ(Status::OK, descrambleStatus);
 
     ASSERT_NE(nullptr, dataMemory.get());
-    uint8_t* opBuffer = static_cast<uint8_t*>(static_cast<void*>(dataMemory->unsecurePointer()));
+    uint8_t* opBuffer = static_cast<uint8_t*>(static_cast<void*>(dataMemory->pointer()));
 
     int compareResult =
             memcmp(static_cast<const void*>(opBuffer),
@@ -551,7 +561,11 @@ TEST_P(MediaCasHidlTest, TestClearKeyApisWithSession) {
 
 }  // anonymous namespace
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, MediaCasHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IMediaCasService::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(CasHidlEnvironment::Instance());
+    ::testing::InitGoogleTest(&argc, argv);
+    CasHidlEnvironment::Instance()->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    LOG(INFO) << "Test result = " << status;
+    return status;
+}
