@@ -17,7 +17,6 @@
 #ifndef SYSTEM_SECURITY_KEYSTORE_KM4_AUTHORIZATION_SET_H_
 #define SYSTEM_SECURITY_KEYSTORE_KM4_AUTHORIZATION_SET_H_
 
-#include <functional>
 #include <vector>
 
 #include <keymasterV4_0/keymaster_tags.h>
@@ -166,12 +165,11 @@ class AuthorizationSet {
      */
     bool Contains(Tag tag) const { return find(tag) != -1; }
 
-    template <TagType tag_type, Tag tag, typename ValueT, typename Comparator = std::equal_to<>>
-    bool Contains(TypedTag<tag_type, tag> ttag, const ValueT& value,
-                  Comparator cmp = Comparator()) const {
+    template <TagType tag_type, Tag tag, typename ValueT>
+    bool Contains(TypedTag<tag_type, tag> ttag, const ValueT& value) const {
         for (const auto& param : data_) {
             auto entry = authorizationValue(ttag, param);
-            if (entry.isOk() && cmp(static_cast<ValueT>(entry.value()), value)) return true;
+            if (entry.isOk() && static_cast<ValueT>(entry.value()) == value) return true;
         }
         return false;
     }
