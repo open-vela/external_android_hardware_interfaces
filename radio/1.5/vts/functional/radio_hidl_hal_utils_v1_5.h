@@ -22,7 +22,7 @@
 #include <condition_variable>
 #include <mutex>
 
-#include <android/hardware/radio/config/1.1/IRadioConfig.h>
+#include <android/hardware/radio/config/1.3/IRadioConfig.h>
 
 #include <android/hardware/radio/1.5/IRadio.h>
 #include <android/hardware/radio/1.5/IRadioIndication.h>
@@ -113,9 +113,6 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
 
     Return<void> supplyNetworkDepersonalizationResponse(const RadioResponseInfo& info,
                                                         int32_t remainingRetries);
-
-    Return<void> supplySimDepersonalizationResponse(const RadioResponseInfo& info,
-            ::android::hardware::radio::V1_5::PersoSubstate persoType, int32_t remainingRetries);
 
     Return<void> getCurrentCallsResponse(
             const RadioResponseInfo& info,
