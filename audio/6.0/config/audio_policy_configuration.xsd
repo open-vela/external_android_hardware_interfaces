@@ -66,7 +66,6 @@
     </xs:element>
     <xs:complexType name="globalConfiguration">
         <xs:attribute name="speaker_drc_enabled" type="xs:boolean" use="required"/>
-        <xs:attribute name="call_screen_mode_supported" type="xs:boolean" use="optional"/>
     </xs:complexType>
     <xs:complexType name="modules">
         <xs:annotation>
@@ -551,7 +550,6 @@
             <xs:enumeration value="AUDIO_STREAM_DTMF"/>
             <xs:enumeration value="AUDIO_STREAM_TTS"/>
             <xs:enumeration value="AUDIO_STREAM_ACCESSIBILITY"/>
-            <xs:enumeration value="AUDIO_STREAM_ASSISTANT"/>
             <xs:enumeration value="AUDIO_STREAM_REROUTING"/>
             <xs:enumeration value="AUDIO_STREAM_PATCH"/>
         </xs:restriction>
