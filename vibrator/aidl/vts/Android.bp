@@ -9,7 +9,7 @@ cc_test {
         "libbinder",
     ],
     static_libs: [
-        "android.hardware.vibrator-cpp",
+        "vintf-vibrator-cpp",
     ],
     test_suites: [
         "vts-core",
