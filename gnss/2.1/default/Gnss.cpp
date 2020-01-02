@@ -17,7 +17,6 @@
 #define LOG_TAG "Gnss"
 
 #include "Gnss.h"
-#include "GnssDebug.h"
 #include "GnssMeasurement.h"
 #include "GnssMeasurementCorrections.h"
 #include "Utils.h"
@@ -36,8 +35,6 @@ namespace implementation {
 
 sp<V2_1::IGnssCallback> Gnss::sGnssCallback_2_1 = nullptr;
 sp<V2_0::IGnssCallback> Gnss::sGnssCallback_2_0 = nullptr;
-sp<V1_1::IGnssCallback> Gnss::sGnssCallback_1_1 = nullptr;
-sp<V1_0::IGnssCallback> Gnss::sGnssCallback_1_0 = nullptr;
 
 Gnss::Gnss() : mMinIntervalMs(1000), mGnssConfiguration{new GnssConfiguration()} {}
 
@@ -58,13 +55,8 @@ Return<bool> Gnss::start() {
             auto svStatus = filterBlacklistedSatellitesV2_1(Utils::getMockSvInfoListV2_1());
             this->reportSvStatus(svStatus);
 
-            if (sGnssCallback_2_1 != nullptr || sGnssCallback_2_0 != nullptr) {
-                const auto location = Utils::getMockLocationV2_0();
-                this->reportLocation(location);
-            } else {
-                const auto location = Utils::getMockLocationV1_0();
-                this->reportLocation(location);
-            }
+            const auto location = Utils::getMockLocationV2_0();
+            this->reportLocation(location);
 
             std::this_thread::sleep_for(std::chrono::milliseconds(mMinIntervalMs));
         }
@@ -92,29 +84,9 @@ Return<bool> Gnss::stop() {
 }
 
 // Methods from V1_0::IGnss follow.
-Return<bool> Gnss::setCallback(const sp<V1_0::IGnssCallback>& callback) {
-    if (callback == nullptr) {
-        ALOGE("%s: Null callback ignored", __func__);
-        return false;
-    }
-
-    sGnssCallback_1_0 = callback;
-
-    uint32_t capabilities = 0x0 | V1_0::IGnssCallback::Capabilities::MEASUREMENTS |
-                            V1_0::IGnssCallback::Capabilities::SCHEDULING;
-    auto ret = sGnssCallback_1_0->gnssSetCapabilitesCb(capabilities);
-    if (!ret.isOk()) {
-        ALOGE("%s: Unable to invoke callback", __func__);
-    }
-
-    IGnssCallback::GnssSystemInfo gnssInfo = {.yearOfHw = 2018};
-
-    ret = sGnssCallback_1_0->gnssSetSystemInfoCb(gnssInfo);
-    if (!ret.isOk()) {
-        ALOGE("%s: Unable to invoke callback", __func__);
-    }
-
-    return true;
+Return<bool> Gnss::setCallback(const sp<V1_0::IGnssCallback>&) {
+    // TODO implement
+    return bool{};
 }
 
 Return<void> Gnss::cleanup() {
@@ -124,11 +96,13 @@ Return<void> Gnss::cleanup() {
 }
 
 Return<bool> Gnss::injectTime(int64_t, int64_t, int32_t) {
-    return true;
+    // TODO implement
+    return bool{};
 }
 
 Return<bool> Gnss::injectLocation(double, double, float) {
-    return true;
+    // TODO implement
+    return bool{};
 }
 
 Return<void> Gnss::deleteAidingData(V1_0::IGnss::GnssAidingData) {
@@ -137,10 +111,10 @@ Return<void> Gnss::deleteAidingData(V1_0::IGnss::GnssAidingData) {
 }
 
 Return<bool> Gnss::setPositionMode(V1_0::IGnss::GnssPositionMode,
-                                   V1_0::IGnss::GnssPositionRecurrence, uint32_t minIntervalMs,
-                                   uint32_t, uint32_t) {
-    mMinIntervalMs = minIntervalMs;
-    return true;
+                                   V1_0::IGnss::GnssPositionRecurrence, uint32_t, uint32_t,
+                                   uint32_t) {
+    // TODO implement
+    return bool{};
 }
 
 Return<sp<V1_0::IAGnssRil>> Gnss::getExtensionAGnssRil() {
@@ -164,8 +138,8 @@ Return<sp<V1_0::IGnssNi>> Gnss::getExtensionGnssNi() {
 }
 
 Return<sp<V1_0::IGnssMeasurement>> Gnss::getExtensionGnssMeasurement() {
-    ALOGD("Gnss::getExtensionGnssMeasurement");
-    return new GnssMeasurement();
+    // TODO implement
+    return ::android::sp<V1_0::IGnssMeasurement>{};
 }
 
 Return<sp<V1_0::IGnssNavigationMessage>> Gnss::getExtensionGnssNavigationMessage() {
@@ -184,7 +158,8 @@ Return<sp<V1_0::IGnssConfiguration>> Gnss::getExtensionGnssConfiguration() {
 }
 
 Return<sp<V1_0::IGnssDebug>> Gnss::getExtensionGnssDebug() {
-    return new V1_1::implementation::GnssDebug();
+    // TODO implement
+    return ::android::sp<V1_0::IGnssDebug>{};
 }
 
 Return<sp<V1_0::IGnssBatching>> Gnss::getExtensionGnssBatching() {
@@ -193,34 +168,9 @@ Return<sp<V1_0::IGnssBatching>> Gnss::getExtensionGnssBatching() {
 }
 
 // Methods from V1_1::IGnss follow.
-Return<bool> Gnss::setCallback_1_1(const sp<V1_1::IGnssCallback>& callback) {
-    if (callback == nullptr) {
-        ALOGE("%s: Null callback ignored", __func__);
-        return false;
-    }
-
-    sGnssCallback_1_1 = callback;
-
-    uint32_t capabilities = 0x0;
-    auto ret = sGnssCallback_1_1->gnssSetCapabilitesCb(capabilities);
-    if (!ret.isOk()) {
-        ALOGE("%s: Unable to invoke callback", __func__);
-    }
-
-    IGnssCallback::GnssSystemInfo gnssInfo = {.yearOfHw = 2018};
-
-    ret = sGnssCallback_1_1->gnssSetSystemInfoCb(gnssInfo);
-    if (!ret.isOk()) {
-        ALOGE("%s: Unable to invoke callback", __func__);
-    }
-
-    auto gnssName = "Google Mock GNSS Implementation v2.1";
-    ret = sGnssCallback_1_1->gnssNameCb(gnssName);
-    if (!ret.isOk()) {
-        ALOGE("%s: Unable to invoke callback", __func__);
-    }
-
-    return true;
+Return<bool> Gnss::setCallback_1_1(const sp<V1_1::IGnssCallback>&) {
+    // TODO implement
+    return bool{};
 }
 
 Return<bool> Gnss::setPositionMode_1_1(V1_0::IGnss::GnssPositionMode,
@@ -241,7 +191,8 @@ Return<sp<V1_1::IGnssMeasurement>> Gnss::getExtensionGnssMeasurement_1_1() {
 }
 
 Return<bool> Gnss::injectBestLocation(const V1_0::GnssLocation&) {
-    return true;
+    // TODO implement
+    return bool{};
 }
 
 // Methods from V2_0::IGnss follow.
@@ -378,25 +329,6 @@ void Gnss::reportSvStatus(const hidl_vec<GnssSvInfo>& svInfoList) const {
     auto ret = sGnssCallback_2_1->gnssSvStatusCb_2_1(svInfoList);
     if (!ret.isOk()) {
         ALOGE("%s: Unable to invoke callback", __func__);
-    }
-}
-
-void Gnss::reportLocation(const V1_0::GnssLocation& location) const {
-    std::unique_lock<std::mutex> lock(mMutex);
-    if (sGnssCallback_1_1 != nullptr) {
-        auto ret = sGnssCallback_1_1->gnssLocationCb(location);
-        if (!ret.isOk()) {
-            ALOGE("%s: Unable to invoke callback v1.1", __func__);
-        }
-        return;
-    }
-    if (sGnssCallback_1_0 == nullptr) {
-        ALOGE("%s: No non-null callback", __func__);
-        return;
-    }
-    auto ret = sGnssCallback_1_0->gnssLocationCb(location);
-    if (!ret.isOk()) {
-        ALOGE("%s: Unable to invoke callback v1.0", __func__);
     }
 }
 
