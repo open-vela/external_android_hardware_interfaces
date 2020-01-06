@@ -21,7 +21,7 @@
 
 #include <ui/GraphicBufferAllocator.h>
 #include <ui/GraphicBufferMapper.h>
-#include <utils/SystemClock.h>
+
 
 namespace android {
 namespace hardware {
@@ -240,23 +240,9 @@ Return<void> EvsCamera::getCameraInfo_1_1(getCameraInfo_1_1_cb _hidl_cb) {
 }
 
 
-Return<void> EvsCamera::getPhysicalCameraInfo(const hidl_string& id,
-                                              getCameraInfo_1_1_cb _hidl_cb) {
-    ALOGD("%s", __FUNCTION__);
-
-    // This works exactly same as getCameraInfo_1_1() in default implementation.
-    (void)id;
-    _hidl_cb(mDescription);
-    return Void();
-}
-
-
-Return<EvsResult> EvsCamera::doneWithFrame_1_1(const hidl_vec<BufferDesc_1_1>& buffers)  {
+Return<EvsResult> EvsCamera::doneWithFrame_1_1(const BufferDesc_1_1& bufDesc)  {
     std::lock_guard <std::mutex> lock(mAccessLock);
-
-    for (auto&& buffer : buffers) {
-        returnBuffer(buffer.bufferId, buffer.buffer.nativeHandle);
-    }
+    returnBuffer(bufDesc.bufferId, bufDesc.buffer.nativeHandle);
 
     return EvsResult::OK;
 }
@@ -504,17 +490,12 @@ void EvsCamera::generateFrames() {
             newBuffer.buffer.nativeHandle = mBuffers[idx].handle;
             newBuffer.pixelSize = sizeof(uint32_t);
             newBuffer.bufferId = idx;
-            newBuffer.deviceId = mDescription.v1.cameraId;
-            newBuffer.timestamp = elapsedRealtimeNano();
 
             // Write test data into the image buffer
             fillTestFrame(newBuffer);
 
             // Issue the (asynchronous) callback to the client -- can't be holding the lock
-            hidl_vec<BufferDesc_1_1> frames;
-            frames.resize(1);
-            frames[0] = newBuffer;
-            auto result = mStream->deliverFrame_1_1(frames);
+            auto result = mStream->deliverFrame_1_1(newBuffer);
             if (result.isOk()) {
                 ALOGD("Delivered %p as id %d",
                       newBuffer.buffer.nativeHandle.getNativeHandle(), newBuffer.bufferId);
@@ -546,7 +527,7 @@ void EvsCamera::generateFrames() {
     }
 
     // If we've been asked to stop, send an event to signal the actual end of stream
-    EvsEventDesc event;
+    EvsEvent event;
     event.aType = EvsEventType::STREAM_STOPPED;
     auto result = mStream->notify(event);
     if (!result.isOk()) {

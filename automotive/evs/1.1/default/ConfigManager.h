@@ -82,6 +82,9 @@ public:
         unordered_map<CameraParam,
                       tuple<int32_t, int32_t, int32_t>> controls;
 
+        /* List of supported frame rates */
+        unordered_set<int32_t> frameRates;
+
         /*
          * List of supported output stream configurations; each array stores
          * format, width, height, and direction values in the order.
@@ -99,15 +102,21 @@ public:
         camera_metadata_t *characteristics;
     };
 
-    class CameraGroupInfo : public CameraInfo {
+    class CameraGroup {
     public:
-        CameraGroupInfo() {}
+        CameraGroup() {}
 
         /* ID of member camera devices */
         unordered_set<string> devices;
 
         /* The capture operation of member camera devices are synchronized */
         bool synchronized = false;
+
+        /*
+         * List of stream configurations that are supposed by all camera devices
+         * in this group.
+         */
+        unordered_map<int32_t, RawStreamConfiguration> streamConfigurations;
     };
 
     class SystemInfo {
@@ -156,11 +165,11 @@ public:
     /*
      * Return a list of cameras
      *
-     * @return CameraGroupInfo
+     * @return CameraGroup
      *         A pointer to a camera group identified by a given id.
      */
-    unique_ptr<CameraGroupInfo>& getCameraGroupInfo(const string& gid) {
-        return mCameraGroupInfos[gid];
+    unique_ptr<CameraGroup>& getCameraGroup(const string& gid) {
+        return mCameraGroups[gid];
     }
 
 
@@ -194,8 +203,8 @@ private:
     /* Internal data structure for camera device information */
     unordered_map<string, unique_ptr<DisplayInfo>> mDisplayInfo;
 
-    /* Camera groups are stored in <groud id, CameraGroupInfo> hash map */
-    unordered_map<string, unique_ptr<CameraGroupInfo>> mCameraGroupInfos;
+    /* Camera groups are stored in <groud id, CameraGroup> hash map */
+    unordered_map<string, unique_ptr<CameraGroup>> mCameraGroups;
 
     /*
      * Camera positions are stored in <position, camera id set> hash map.
@@ -244,19 +253,16 @@ private:
     /*
      * read camera device information
      *
-     * @param  aCamera
-     *         A pointer to CameraInfo that will be completed by this
-     *         method.
-     *         aDeviceElem
+     * @param  aDeviceElem
      *         A pointer to "device" XML element that contains camera module
      *         capability info and its characteristics.
      *
-     * @return bool
-     *         Return false upon any failure in reading and processing camera
-     *         device information.
+     * @return unique_ptr<CameraInfo>
+     *         A pointer to CameraInfo class that contains camera module
+     *         capability and characteristics.  Please note that this transfers
+     *         the ownership of created CameraInfo to the caller.
      */
-    bool readCameraDeviceInfo(CameraInfo *aCamera,
-                              const XMLElement *aDeviceElem);
+    unique_ptr<CameraInfo> readCameraDeviceInfo(const XMLElement *aDeviceElem);
 
     /*
      * read camera metadata
@@ -274,7 +280,7 @@ private:
      *         Number of camera metadata entries
      */
     size_t readCameraCapabilities(const XMLElement * const aCapElem,
-                                  CameraInfo *aCamera,
+                                  unique_ptr<CameraInfo> &aCamera,
                                   size_t &dataSize);
 
     /*
@@ -292,7 +298,7 @@ private:
      *         Number of camera metadata entries
      */
     size_t readCameraMetadata(const XMLElement * const aParamElem,
-                              CameraInfo *aCamera,
+                              unique_ptr<CameraInfo> &aCamera,
                               size_t &dataSize);
 
     /*
@@ -310,9 +316,21 @@ private:
      *         or its size is not large enough to add all found camera metadata
      *         entries.
      */
-    bool constructCameraMetadata(CameraInfo *aCamera,
+    bool constructCameraMetadata(unique_ptr<CameraInfo> &aCamera,
                                  const size_t totalEntries,
                                  const size_t totalDataSize);
+
+    /*
+     * parse a comma-separated list of camera devices and add them to
+     * CameraGroup.
+     *
+     * @param  devices
+     *         A comma-separated list of camera device identifiers.
+     * @param  aGroup
+     *         Camera group which cameras will be added to.
+     */
+    void addCameraDevices(const char *devices,
+                          unique_ptr<CameraGroup> &aGroup);
 };
 #endif // CONFIG_MANAGER_H
 
