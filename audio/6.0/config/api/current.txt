@@ -252,7 +252,9 @@ package audio.policy.configuration.V6_0 {
 
   public class GlobalConfiguration {
     ctor public GlobalConfiguration();
+    method public boolean getCall_screen_mode_supported();
     method public boolean getSpeaker_drc_enabled();
+    method public void setCall_screen_mode_supported(boolean);
     method public void setSpeaker_drc_enabled(boolean);
   }
 
@@ -359,6 +361,7 @@ package audio.policy.configuration.V6_0 {
     method public String getRawName();
     enum_constant public static final audio.policy.configuration.V6_0.Stream AUDIO_STREAM_ACCESSIBILITY;
     enum_constant public static final audio.policy.configuration.V6_0.Stream AUDIO_STREAM_ALARM;
+    enum_constant public static final audio.policy.configuration.V6_0.Stream AUDIO_STREAM_ASSISTANT;
     enum_constant public static final audio.policy.configuration.V6_0.Stream AUDIO_STREAM_BLUETOOTH_SCO;
     enum_constant public static final audio.policy.configuration.V6_0.Stream AUDIO_STREAM_DTMF;
     enum_constant public static final audio.policy.configuration.V6_0.Stream AUDIO_STREAM_ENFORCED_AUDIBLE;
