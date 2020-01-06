@@ -215,7 +215,7 @@ static Return<ErrorStatus> ExecutePreparedModel(const sp<IPreparedModel>& prepar
                                                 hidl_vec<OutputShape>* outputShapes,
                                                 Timing* timing) {
     ErrorStatus result;
-    Return<void> ret = preparedModel->executeSynchronously_1_3(
+    Return<void> ret = preparedModel->executeSynchronously(
             request, measure,
             [&result, outputShapes, timing](ErrorStatus error, const hidl_vec<OutputShape>& shapes,
                                             const Timing& time) {
