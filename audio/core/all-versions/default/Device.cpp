@@ -18,6 +18,7 @@
 
 #include "core/default/Device.h"
 #include <HidlUtils.h>
+#include "common/all-versions/default/EffectMap.h"
 #include "core/default/Conversions.h"
 #include "core/default/StreamIn.h"
 #include "core/default/StreamOut.h"
@@ -25,6 +26,7 @@
 
 //#define LOG_NDEBUG 0
 
+#include <inttypes.h>
 #include <memory.h>
 #include <string.h>
 #include <algorithm>
@@ -267,12 +269,21 @@ Return<bool> Device::supportsAudioPatches() {
 Return<void> Device::createAudioPatch(const hidl_vec<AudioPortConfig>& sources,
                                       const hidl_vec<AudioPortConfig>& sinks,
                                       createAudioPatch_cb _hidl_cb) {
+    auto [retval, patch] = createOrUpdateAudioPatch(
+            static_cast<AudioPatchHandle>(AudioHandleConsts::AUDIO_PATCH_HANDLE_NONE), sources,
+            sinks);
+    _hidl_cb(retval, patch);
+    return Void();
+}
+
+std::tuple<Result, AudioPatchHandle> Device::createOrUpdateAudioPatch(
+        AudioPatchHandle patch, const hidl_vec<AudioPortConfig>& sources,
+        const hidl_vec<AudioPortConfig>& sinks) {
     Result retval(Result::NOT_SUPPORTED);
-    AudioPatchHandle patch = 0;
     if (version() >= AUDIO_DEVICE_API_VERSION_3_0) {
         std::unique_ptr<audio_port_config[]> halSources(HidlUtils::audioPortConfigsToHal(sources));
         std::unique_ptr<audio_port_config[]> halSinks(HidlUtils::audioPortConfigsToHal(sinks));
-        audio_patch_handle_t halPatch = AUDIO_PATCH_HANDLE_NONE;
+        audio_patch_handle_t halPatch = static_cast<audio_patch_handle_t>(patch);
         retval = analyzeStatus("create_audio_patch",
                                mDevice->create_audio_patch(mDevice, sources.size(), &halSources[0],
                                                            sinks.size(), &halSinks[0], &halPatch));
@@ -280,8 +291,7 @@ Return<void> Device::createAudioPatch(const hidl_vec<AudioPortConfig>& sources,
             patch = static_cast<AudioPatchHandle>(halPatch);
         }
     }
-    _hidl_cb(retval, patch);
-    return Void();
+    return {retval, patch};
 }
 
 Return<Result> Device::releaseAudioPatch(int32_t patch) {
@@ -403,6 +413,52 @@ Result Device::doClose() {
 Return<Result> Device::close() {
     return doClose();
 }
+
+Return<Result> Device::addDeviceEffect(AudioPortHandle device, uint64_t effectId) {
+    if (version() < AUDIO_DEVICE_API_VERSION_3_1 || mDevice->add_device_effect == nullptr) {
+        return Result::NOT_SUPPORTED;
+    }
+
+    effect_handle_t halEffect = EffectMap::getInstance().get(effectId);
+    if (halEffect != NULL) {
+        return analyzeStatus("add_device_effect",
+                             mDevice->add_device_effect(
+                                     mDevice, static_cast<audio_port_handle_t>(device), halEffect));
+    } else {
+        ALOGW("%s Invalid effect ID passed from client: %" PRIu64 "", __func__, effectId);
+        return Result::INVALID_ARGUMENTS;
+    }
+}
+
+Return<Result> Device::removeDeviceEffect(AudioPortHandle device, uint64_t effectId) {
+    if (version() < AUDIO_DEVICE_API_VERSION_3_1 || mDevice->remove_device_effect == nullptr) {
+        return Result::NOT_SUPPORTED;
+    }
+
+    effect_handle_t halEffect = EffectMap::getInstance().get(effectId);
+    if (halEffect != NULL) {
+        return analyzeStatus("remove_device_effect",
+                             mDevice->remove_device_effect(
+                                     mDevice, static_cast<audio_port_handle_t>(device), halEffect));
+    } else {
+        ALOGW("%s Invalid effect ID passed from client: %" PRIu64 "", __func__, effectId);
+        return Result::INVALID_ARGUMENTS;
+    }
+}
+
+Return<void> Device::updateAudioPatch(int32_t previousPatch,
+                                      const hidl_vec<AudioPortConfig>& sources,
+                                      const hidl_vec<AudioPortConfig>& sinks,
+                                      createAudioPatch_cb _hidl_cb) {
+    if (previousPatch != static_cast<int32_t>(AudioHandleConsts::AUDIO_PATCH_HANDLE_NONE)) {
+        auto [retval, patch] = createOrUpdateAudioPatch(previousPatch, sources, sinks);
+        _hidl_cb(retval, patch);
+    } else {
+        _hidl_cb(Result::INVALID_ARGUMENTS, previousPatch);
+    }
+    return Void();
+}
+
 #endif
 
 }  // namespace implementation
