@@ -55,11 +55,8 @@ constexpr IWifiChip::TxPowerScenario kPowerScenarioVoiceCall =
 class WifiChipHidlTest : public ::testing::TestWithParam<std::string> {
  public:
   virtual void SetUp() override {
-      // Make sure test starts with a clean state
-      stopWifi(GetInstanceName());
-
-      wifi_chip_ = IWifiChip::castFrom(getWifiChip(GetInstanceName()));
-      ASSERT_NE(nullptr, wifi_chip_.get());
+    wifi_chip_ = IWifiChip::castFrom(getWifiChip(GetInstanceName()));
+    ASSERT_NE(nullptr, wifi_chip_.get());
   }
 
   virtual void TearDown() override { stopWifi(GetInstanceName()); }
