@@ -79,6 +79,7 @@ class CommandWriterBase : public V2_2::CommandWriterBase {
 
     void setLayerPerFrameMetadataBlobs(
         const hidl_vec<IComposerClient::PerFrameMetadataBlob>& metadata) {
+        // in units of uint32_t's
         size_t commandLength = 0;
 
         if (metadata.size() > std::numeric_limits<uint32_t>::max()) {
@@ -86,12 +87,12 @@ class CommandWriterBase : public V2_2::CommandWriterBase {
             return;
         }
 
-        // number of blobs
-        commandLength += metadata.size();
+        // space for numElements
+        commandLength += 1;
 
         for (auto metadataBlob : metadata) {
-            commandLength += sizeof(int32_t);  // key of metadata blob
-            commandLength += 1;                // size information of metadata blob
+            commandLength += 1;  // key of metadata blob
+            commandLength += 1;  // size information of metadata blob
 
             // metadata content size
             size_t metadataSize = metadataBlob.blob.size() / sizeof(uint32_t);
@@ -119,16 +120,17 @@ class CommandWriterBase : public V2_2::CommandWriterBase {
     }
 
    protected:
-    void beginCommand_2_3(IComposerClient::Command command, uint16_t length) {
-        V2_2::CommandWriterBase::beginCommand_2_2(
-            static_cast<V2_2::IComposerClient::Command>(static_cast<int32_t>(command)), length);
-    }
-
     void writeBlob(uint32_t length, const unsigned char* blob) {
         memcpy(&mData[mDataWritten], blob, length);
         uint32_t numElements = length / 4;
         mDataWritten += numElements;
         mDataWritten += (length - (numElements * 4) > 0) ? 1 : 0;
+    }
+
+  private:
+    void beginCommand_2_3(IComposerClient::Command command, uint16_t length) {
+        V2_1::CommandWriterBase::beginCommand(
+                static_cast<V2_1::IComposerClient::Command>(static_cast<int32_t>(command)), length);
     }
 };
 
