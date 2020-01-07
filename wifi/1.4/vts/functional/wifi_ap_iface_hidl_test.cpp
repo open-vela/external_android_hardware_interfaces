@@ -38,9 +38,6 @@ extern WifiHidlEnvironment* gEnv;
 class WifiApIfaceHidlTest : public ::testing::TestWithParam<std::string> {
    public:
     virtual void SetUp() override {
-        // Make sure to start with a clean state
-        stopWifi(GetInstanceName());
-
         wifi_ap_iface_ =
             IWifiApIface::castFrom(getWifiApIface(GetInstanceName()));
         ASSERT_NE(nullptr, wifi_ap_iface_.get());
