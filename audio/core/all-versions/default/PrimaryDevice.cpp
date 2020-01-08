@@ -168,6 +168,21 @@ Return<Result> PrimaryDevice::setConnectedState(const DeviceAddress& address, bo
 Return<Result> PrimaryDevice::close() {
     return mDevice->close();
 }
+
+Return<Result> PrimaryDevice::addDeviceEffect(AudioPortHandle device, uint64_t effectId) {
+    return mDevice->addDeviceEffect(device, effectId);
+}
+
+Return<Result> PrimaryDevice::removeDeviceEffect(AudioPortHandle device, uint64_t effectId) {
+    return mDevice->removeDeviceEffect(device, effectId);
+}
+
+Return<void> PrimaryDevice::updateAudioPatch(int32_t previousPatch,
+                                             const hidl_vec<AudioPortConfig>& sources,
+                                             const hidl_vec<AudioPortConfig>& sinks,
+                                             updateAudioPatch_cb _hidl_cb) {
+    return mDevice->updateAudioPatch(previousPatch, sources, sinks, _hidl_cb);
+}
 #endif
 
 // Methods from ::android::hardware::audio::CPP_VERSION::IPrimaryDevice follow.
