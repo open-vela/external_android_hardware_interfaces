@@ -76,15 +76,14 @@ class CommandWriterBase : public V2_1::CommandWriterBase {
 
     static constexpr uint16_t kSetLayerFloatColorLength = 4;
     void setLayerFloatColor(IComposerClient::FloatColor color) {
-        beginCommand_2_2(IComposerClient::Command::SET_LAYER_FLOAT_COLOR,
-                         kSetLayerFloatColorLength);
+        beginCommand(IComposerClient::Command::SET_LAYER_FLOAT_COLOR, kSetLayerFloatColorLength);
         writeFloatColor(color);
         endCommand();
     }
 
     void setLayerPerFrameMetadata(const hidl_vec<IComposerClient::PerFrameMetadata>& metadataVec) {
-        beginCommand_2_2(IComposerClient::Command::SET_LAYER_PER_FRAME_METADATA,
-                         metadataVec.size() * 2);
+        beginCommand(IComposerClient::Command::SET_LAYER_PER_FRAME_METADATA,
+                     metadataVec.size() * 2);
         for (const auto& metadata : metadataVec) {
             writeSigned(static_cast<int32_t>(metadata.key));
             writeFloat(metadata.value);
