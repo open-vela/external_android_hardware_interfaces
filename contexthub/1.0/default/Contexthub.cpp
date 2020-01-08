@@ -155,12 +155,6 @@ Return<Result> Contexthub::sendMessageToHub(uint32_t hubId,
         .message = static_cast<const uint8_t *>(msg.msg.data()),
     };
 
-    // Use a dummy to prevent send_message with empty message from failing prematurely
-    static uint8_t dummy;
-    if (txMsg.message_len == 0 && txMsg.message == nullptr) {
-        txMsg.message = &dummy;
-    }
-
     ALOGI("Sending msg of type %" PRIu32 ", size %" PRIu32 " to app 0x%" PRIx64,
           txMsg.message_type,
           txMsg.message_len,
@@ -281,11 +275,11 @@ int Contexthub::handleOsMessage(sp<IContexthubCallback> cb,
                 result = TransactionResult::FAILURE;
             }
 
-            mIsTransactionPending = false;
             if (cb != nullptr) {
                 cb->handleTxnResult(mTransactionId, result);
             }
             retVal = 0;
+            mIsTransactionPending = false;
             break;
         }
 
@@ -383,7 +377,6 @@ int Contexthub::contextHubCb(uint32_t hubId,
 
         msg.appName = rxMsg->app_name.id;
         msg.msgType = rxMsg->message_type;
-        msg.hostEndPoint = static_cast<uint16_t>(HostEndPoint::BROADCAST);
         msg.msg = std::vector<uint8_t>(static_cast<const uint8_t *>(rxMsg->message),
                                        static_cast<const uint8_t *>(rxMsg->message) +
                                        rxMsg->message_len);
@@ -447,15 +440,18 @@ Return<Result> Contexthub::loadNanoApp(uint32_t hubId,
     // Data from the nanoapp header is passed through HIDL as explicit fields,
     // but the legacy HAL expects it prepended to the binary, therefore we must
     // reconstruct it here prior to passing to the legacy HAL.
+    uint32_t targetChreApiVersion =
+        (appBinary.targetChreApiMajorVersion << 24) |
+        (appBinary.targetChreApiMinorVersion << 16);
     const struct nano_app_binary_t header = {
         .header_version = htole32(1),
-        .magic = htole32(NANOAPP_MAGIC),
-        .app_id.id = htole64(appBinary.appId),
-        .app_version = htole32(appBinary.appVersion),
-        .flags = htole32(appBinary.flags),
-        .hw_hub_type = htole64(0),
-        .target_chre_api_major_version = appBinary.targetChreApiMajorVersion,
-        .target_chre_api_minor_version = appBinary.targetChreApiMinorVersion,
+        .magic          = htole32(NANOAPP_MAGIC),
+        .app_id.id      = htole64(appBinary.appId),
+        .app_version    = htole32(appBinary.appVersion),
+        .flags          = htole32(appBinary.flags),
+        .hw_hub_type    = htole64(0),
+        .reserved[0]    = htole32(targetChreApiVersion),
+        .reserved[1]    = 0,
     };
     const uint8_t *headerBytes = reinterpret_cast<const uint8_t *>(&header);
 

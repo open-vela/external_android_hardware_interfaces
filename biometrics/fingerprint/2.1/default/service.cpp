@@ -35,9 +35,7 @@ int main() {
     configureRpcThreadpool(1, true /*callerWillJoin*/);
 
     if (bio != nullptr) {
-        if (::android::OK != bio->registerAsService()) {
-            return 1;
-        }
+        bio->registerAsService();
     } else {
         ALOGE("Can't create instance of BiometricsFingerprint, nullptr");
     }

@@ -12,8 +12,9 @@ cc_library_shared {
     ],
     shared_libs: [
         "libdl",
-        "libbase",
+        "liblog",
         "libhidlbase",
+        "libhidltransport",
         "libutils",
         "android.hardware.renderscript@1.0",
     ],

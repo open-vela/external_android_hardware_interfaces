@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <VtsHalHidlTargetTestBase.h>
 #include <android-base/logging.h>
-#include <cutils/properties.h>
+#include <VtsHalHidlTargetTestBase.h>
 
 #include <android/hidl/manager/1.0/IServiceManager.h>
 #include <android/hidl/manager/1.0/IServiceNotification.h>
@@ -50,14 +49,13 @@ using ::android::hidl::manager::V1_0::IServiceNotification;
 using ::android::wifi_system::InterfaceTool;
 using ::android::wifi_system::SupplicantManager;
 
-extern WifiSupplicantHidlEnvironment* gEnv;
-
 namespace {
+const char kSupplicantServiceName[] = "default";
 
 // Helper function to initialize the driver and firmware to STA mode
 // using the vendor HAL HIDL interface.
-void initilializeDriverAndFirmware(const std::string& wifi_instance_name) {
-    sp<IWifiChip> wifi_chip = getWifiChip(wifi_instance_name);
+void initilializeDriverAndFirmware() {
+    sp<IWifiChip> wifi_chip = getWifiChip();
     ChipModeId mode_id;
     EXPECT_TRUE(configureChipToSupportIfaceType(
         wifi_chip, ::android::hardware::wifi::V1_0::IfaceType::STA, &mode_id));
@@ -65,9 +63,7 @@ void initilializeDriverAndFirmware(const std::string& wifi_instance_name) {
 
 // Helper function to deinitialize the driver and firmware
 // using the vendor HAL HIDL interface.
-void deInitilializeDriverAndFirmware(const std::string& wifi_instance_name) {
-    stopWifi(wifi_instance_name);
-}
+void deInitilializeDriverAndFirmware() { stopWifi(); }
 
 // Helper function to find any iface of the desired type exposed.
 bool findIfaceOfType(sp<ISupplicant> supplicant, IfaceType desired_type,
@@ -92,18 +88,6 @@ bool findIfaceOfType(sp<ISupplicant> supplicant, IfaceType desired_type,
         }
     }
     return false;
-}
-
-std::string getStaIfaceName() {
-    std::array<char, PROPERTY_VALUE_MAX> buffer;
-    property_get("wifi.interface", buffer.data(), "wlan0");
-    return buffer.data();
-}
-
-std::string getP2pIfaceName() {
-    std::array<char, PROPERTY_VALUE_MAX> buffer;
-    property_get("wifi.direct.interface", buffer.data(), "p2p0");
-    return buffer.data();
 }
 }  // namespace
 
@@ -156,117 +140,36 @@ class ServiceNotificationListener : public IServiceNotification {
     std::condition_variable condition_;
 };
 
-void stopSupplicant() { stopSupplicant(""); }
-
-void stopSupplicant(const std::string& wifi_instance_name) {
+void stopSupplicant() {
     SupplicantManager supplicant_manager;
 
     ASSERT_TRUE(supplicant_manager.StopSupplicant());
-    deInitilializeDriverAndFirmware(wifi_instance_name);
+    deInitilializeDriverAndFirmware();
     ASSERT_FALSE(supplicant_manager.IsSupplicantRunning());
 }
 
-// TODO(b/143892896): Remove old APIs after all supplicant tests are updated.
 void startSupplicantAndWaitForHidlService() {
-    startSupplicantAndWaitForHidlService("",
-                                         gEnv->getServiceName<ISupplicant>());
-}
-
-void startSupplicantAndWaitForHidlService(
-    const std::string& wifi_instance_name,
-    const std::string& supplicant_instance_name) {
-    initilializeDriverAndFirmware(wifi_instance_name);
+    initilializeDriverAndFirmware();
 
     android::sp<ServiceNotificationListener> notification_listener =
         new ServiceNotificationListener();
     ASSERT_TRUE(notification_listener->registerForHidlServiceNotifications(
-        supplicant_instance_name));
+        kSupplicantServiceName));
 
     SupplicantManager supplicant_manager;
     ASSERT_TRUE(supplicant_manager.StartSupplicant());
     ASSERT_TRUE(supplicant_manager.IsSupplicantRunning());
 
-    ASSERT_TRUE(notification_listener->waitForHidlService(
-        500, supplicant_instance_name));
+    ASSERT_TRUE(
+        notification_listener->waitForHidlService(200, kSupplicantServiceName));
 }
 
-bool is_1_1(const sp<ISupplicant>& supplicant) {
-    sp<::android::hardware::wifi::supplicant::V1_1::ISupplicant>
-        supplicant_1_1 =
-            ::android::hardware::wifi::supplicant::V1_1::ISupplicant::castFrom(
-                supplicant);
-    return supplicant_1_1.get() != nullptr;
-}
-
-void addSupplicantStaIface_1_1(const sp<ISupplicant>& supplicant) {
-    sp<::android::hardware::wifi::supplicant::V1_1::ISupplicant>
-        supplicant_1_1 =
-            ::android::hardware::wifi::supplicant::V1_1::ISupplicant::castFrom(
-                supplicant);
-    ASSERT_TRUE(supplicant_1_1.get());
-    ISupplicant::IfaceInfo info = {IfaceType::STA, getStaIfaceName()};
-    supplicant_1_1->addInterface(
-        info, [&](const SupplicantStatus& status,
-                  const sp<ISupplicantIface>& /* iface */) {
-            ASSERT_TRUE(
-                (SupplicantStatusCode::SUCCESS == status.code) ||
-                (SupplicantStatusCode::FAILURE_IFACE_EXISTS == status.code));
-        });
-}
-
-void addSupplicantP2pIface_1_1(const sp<ISupplicant>& supplicant) {
-    sp<::android::hardware::wifi::supplicant::V1_1::ISupplicant>
-        supplicant_1_1 =
-            ::android::hardware::wifi::supplicant::V1_1::ISupplicant::castFrom(
-                supplicant);
-    ASSERT_TRUE(supplicant_1_1.get());
-    ISupplicant::IfaceInfo info = {IfaceType::P2P, getP2pIfaceName()};
-    supplicant_1_1->addInterface(
-        info, [&](const SupplicantStatus& status,
-                  const sp<ISupplicantIface>& /* iface */) {
-            ASSERT_TRUE(
-                (SupplicantStatusCode::SUCCESS == status.code) ||
-                (SupplicantStatusCode::FAILURE_IFACE_EXISTS == status.code));
-        });
-}
-
-// TODO(b/143892896): Remove old APIs after all supplicant tests are updated.
 sp<ISupplicant> getSupplicant() {
-    sp<ISupplicant> supplicant =
-        ::testing::VtsHalHidlTargetTestBase::getService<ISupplicant>(
-            gEnv->getServiceName<ISupplicant>());
-    // For 1.1 supplicant, we need to add interfaces at initialization.
-    if (is_1_1(supplicant)) {
-        addSupplicantStaIface_1_1(supplicant);
-        if (gEnv->isP2pOn) {
-            addSupplicantP2pIface_1_1(supplicant);
-        }
-    }
-    return supplicant;
+    return ::testing::VtsHalHidlTargetTestBase::getService<ISupplicant>();
 }
 
-sp<ISupplicant> getSupplicant(const std::string& supplicant_instance_name,
-                              bool isP2pOn) {
-    sp<ISupplicant> supplicant =
-        ISupplicant::getService(supplicant_instance_name);
-    // For 1.1 supplicant, we need to add interfaces at initialization.
-    if (is_1_1(supplicant)) {
-        addSupplicantStaIface_1_1(supplicant);
-        if (isP2pOn) {
-            addSupplicantP2pIface_1_1(supplicant);
-        }
-    }
-    return supplicant;
-}
-
-// TODO(b/143892896): Remove old APIs after all supplicant tests are updated.
 sp<ISupplicantStaIface> getSupplicantStaIface() {
     sp<ISupplicant> supplicant = getSupplicant();
-    return getSupplicantStaIface(supplicant);
-}
-
-sp<ISupplicantStaIface> getSupplicantStaIface(
-    const sp<ISupplicant>& supplicant) {
     if (!supplicant.get()) {
         return nullptr;
     }
@@ -290,14 +193,8 @@ sp<ISupplicantStaIface> getSupplicantStaIface(
     return sta_iface;
 }
 
-// TODO(b/143892896): Remove old APIs after all supplicant tests are updated.
 sp<ISupplicantStaNetwork> createSupplicantStaNetwork() {
-    return createSupplicantStaNetwork(getSupplicant());
-}
-
-sp<ISupplicantStaNetwork> createSupplicantStaNetwork(
-    const sp<ISupplicant>& supplicant) {
-    sp<ISupplicantStaIface> sta_iface = getSupplicantStaIface(supplicant);
+    sp<ISupplicantStaIface> sta_iface = getSupplicantStaIface();
     if (!sta_iface.get()) {
         return nullptr;
     }
@@ -317,13 +214,8 @@ sp<ISupplicantStaNetwork> createSupplicantStaNetwork(
     return sta_network;
 }
 
-// TODO(b/143892896): Remove old APIs after all supplicant tests are updated.
 sp<ISupplicantP2pIface> getSupplicantP2pIface() {
-    return getSupplicantP2pIface(getSupplicant());
-}
-
-sp<ISupplicantP2pIface> getSupplicantP2pIface(
-    const sp<ISupplicant>& supplicant) {
+    sp<ISupplicant> supplicant = getSupplicant();
     if (!supplicant.get()) {
         return nullptr;
     }
@@ -347,12 +239,8 @@ sp<ISupplicantP2pIface> getSupplicantP2pIface(
     return p2p_iface;
 }
 
-// TODO(b/143892896): Remove old APIs after all supplicant tests are updated.
 bool turnOnExcessiveLogging() {
-    return turnOnExcessiveLogging(getSupplicant());
-}
-
-bool turnOnExcessiveLogging(const sp<ISupplicant>& supplicant) {
+    sp<ISupplicant> supplicant = getSupplicant();
     if (!supplicant.get()) {
         return false;
     }

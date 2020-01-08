@@ -23,14 +23,13 @@
 
 #include <android/log.h>
 #include <cutils/native_handle.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 #include <log/log.h>
 
 #include <android/hardware/audio/common/2.0/types.h>
 #include <android/hardware/soundtrigger/2.0/ISoundTriggerHw.h>
 #include <android/hardware/soundtrigger/2.0/types.h>
+
+#include <VtsHalHidlTargetTestBase.h>
 
 #define SHORT_TIMEOUT_PERIOD (1)
 
@@ -87,10 +86,11 @@ class Monitor {
 };
 
 // The main test class for Sound Trigger HIDL HAL.
-class SoundTriggerHidlTest : public ::testing::TestWithParam<std::string> {
+class SoundTriggerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
-      mSoundTriggerHal = ISoundTriggerHw::getService(GetParam());
+      mSoundTriggerHal =
+          ::testing::VtsHalHidlTargetTestBase::getService<ISoundTriggerHw>();
       ASSERT_NE(nullptr, mSoundTriggerHal.get());
       mCallback = new SoundTriggerHwCallback(*this);
       ASSERT_NE(nullptr, mCallback.get());
@@ -142,6 +142,15 @@ class SoundTriggerHidlTest : public ::testing::TestWithParam<std::string> {
   sp<SoundTriggerHwCallback> mCallback;
 };
 
+// A class for test environment setup (kept since this file is a template).
+class SoundTriggerHidlEnvironment : public ::testing::Environment {
+ public:
+  virtual void SetUp() {}
+  virtual void TearDown() {}
+
+ private:
+};
+
 /**
  * Test ISoundTriggerHw::getProperties() method
  *
@@ -151,7 +160,7 @@ class SoundTriggerHidlTest : public ::testing::TestWithParam<std::string> {
  *  - the implementation supports at least one sound model and one key phrase
  *  - the implementation supports at least VOICE_TRIGGER recognition mode
  */
-TEST_P(SoundTriggerHidlTest, GetProperties) {
+TEST_F(SoundTriggerHidlTest, GetProperties) {
   ISoundTriggerHw::Properties halProperties;
   Return<void> hidlReturn;
   int ret = -ENODEV;
@@ -178,7 +187,7 @@ TEST_P(SoundTriggerHidlTest, GetProperties) {
  * There is no way to verify that implementation actually can load a sound model because each
  * sound model is vendor specific.
  */
-TEST_P(SoundTriggerHidlTest, LoadInvalidModelFail) {
+TEST_F(SoundTriggerHidlTest, LoadInvalidModelFail) {
   Return<void> hidlReturn;
   int ret = -ENODEV;
   ISoundTriggerHw::PhraseSoundModel model;
@@ -204,7 +213,7 @@ TEST_P(SoundTriggerHidlTest, LoadInvalidModelFail) {
  * Verifies that:
  *  - the implementation returns error when passed a sound model with random data.
  */
-TEST_P(SoundTriggerHidlTest, LoadGenericSoundModelFail) {
+TEST_F(SoundTriggerHidlTest, LoadGenericSoundModelFail) {
   int ret = -ENODEV;
   ISoundTriggerHw::SoundModel model;
   SoundModelHandle handle = 0;
@@ -235,7 +244,7 @@ TEST_P(SoundTriggerHidlTest, LoadGenericSoundModelFail) {
  *  - the implementation returns an error when called without a valid loaded sound model
  *
  */
-TEST_P(SoundTriggerHidlTest, UnloadModelNoModelFail) {
+TEST_F(SoundTriggerHidlTest, UnloadModelNoModelFail) {
   Return<int32_t> hidlReturn(0);
   SoundModelHandle halHandle = 0;
 
@@ -255,7 +264,7 @@ TEST_P(SoundTriggerHidlTest, UnloadModelNoModelFail) {
  * There is no way to verify that implementation actually starts recognition because no model can
  * be loaded.
  */
-TEST_P(SoundTriggerHidlTest, StartRecognitionNoModelFail) {
+TEST_F(SoundTriggerHidlTest, StartRecognitionNoModelFail) {
     Return<int32_t> hidlReturn(0);
     SoundModelHandle handle = 0;
     PhraseRecognitionExtra phrase;
@@ -283,7 +292,7 @@ TEST_P(SoundTriggerHidlTest, StartRecognitionNoModelFail) {
  *  - the implementation returns an error when called without an active recognition running
  *
  */
-TEST_P(SoundTriggerHidlTest, StopRecognitionNoAStartFail) {
+TEST_F(SoundTriggerHidlTest, StopRecognitionNoAStartFail) {
     Return<int32_t> hidlReturn(0);
     SoundModelHandle handle = 0;
 
@@ -300,7 +309,7 @@ TEST_P(SoundTriggerHidlTest, StopRecognitionNoAStartFail) {
  *  - the implementation implements this optional method or indicates it is not support by
  *  returning -ENOSYS
  */
-TEST_P(SoundTriggerHidlTest, stopAllRecognitions) {
+TEST_F(SoundTriggerHidlTest, stopAllRecognitions) {
     Return<int32_t> hidlReturn(0);
 
     hidlReturn = mSoundTriggerHal->stopAllRecognitions();
@@ -309,7 +318,11 @@ TEST_P(SoundTriggerHidlTest, stopAllRecognitions) {
     EXPECT_TRUE(hidlReturn == 0 || hidlReturn == -ENOSYS);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, SoundTriggerHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(ISoundTriggerHw::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+
+int main(int argc, char** argv) {
+  ::testing::AddGlobalTestEnvironment(new SoundTriggerHidlEnvironment);
+  ::testing::InitGoogleTest(&argc, argv);
+  int status = RUN_ALL_TESTS();
+  ALOGI("Test result = %d", status);
+  return status;
+}

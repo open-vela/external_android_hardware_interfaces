@@ -33,8 +33,6 @@ support for ICameraDevice@1.0 will be removed with the Android R release.
 This HAL interface version only allows support at the LEGACY level for the
 android.hardware.camera2 API.
 
-Added in Android 8.0.
-
 Subsidiary HALs:
 
 #### ICameraDevice1PreviewCallback.hal@1.0:
@@ -64,8 +62,6 @@ The open() method actually opens the camera device for use, returning a Session
 interface for operating the active camera. It takes a Callback interface as an
 argument.
 
-Added in Android 8.0.
-
 Subsidiary HALs:
 
 #### ICameraDevice3Session.hal@3.2:
@@ -78,20 +74,3 @@ capture requests to it.
 
 Callback interface for sending completed captures and other asynchronous events
 from tehe HAL to the client.
-
-### ICameraDevice.hal@3.3:
-
-A minor revision to the ICameraDevice.hal@3.2.
-
-  - Adds support for overriding the output dataspace of a stream, which was
-    supported in the legacy camera HAL.
-
-Added in Android 8.1.
-
-### ICameraDevice.hal@3.4:
-
-A minor revision to the ICameraDevice.hal@3.3.
-
-  - Adds support for session parameters during stream configuration.
-
-Added in Android 9

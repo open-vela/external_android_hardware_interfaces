@@ -19,24 +19,20 @@
 /*
  * Test ISap.connectReq() for the response returned.
  */
-TEST_P(SapHidlTest, connectReq) {
-    token = GetRandomSerialNumber();
+TEST_F(SapHidlTest, connectReq) {
+    int32_t token = GetRandomSerialNumber();
     int32_t maxMsgSize = 100;
 
     sap->connectReq(token, maxMsgSize);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(sapCb->sapResponseToken, token);
-
-    // Modem side need time for connect to finish. Adding a waiting time to prevent
-    // disconnect being requested right after connect request.
-    sleep(1);
 }
 
 /*
  * Test IRadio.disconnectReq() for the response returned
  */
-TEST_P(SapHidlTest, disconnectReq) {
-    token = GetRandomSerialNumber();
+TEST_F(SapHidlTest, disconnectReq) {
+    int32_t token = GetRandomSerialNumber();
 
     sap->disconnectReq(token);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
@@ -46,8 +42,8 @@ TEST_P(SapHidlTest, disconnectReq) {
 /*
  * Test IRadio.apduReq() for the response returned.
  */
-TEST_P(SapHidlTest, apduReq) {
-    token = GetRandomSerialNumber();
+TEST_F(SapHidlTest, apduReq) {
+    int32_t token = GetRandomSerialNumber();
     SapApduType sapApduType = SapApduType::APDU;
     android::hardware::hidl_vec<uint8_t> command = {};
 
@@ -55,80 +51,81 @@ TEST_P(SapHidlTest, apduReq) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(sapCb->sapResponseToken, token);
 
-    ASSERT_TRUE(
-        CheckAnyOfErrors(sapCb->sapResultCode,
-                         {SapResultCode::GENERIC_FAILURE, SapResultCode::CARD_ALREADY_POWERED_OFF,
-                          SapResultCode::CARD_NOT_ACCESSSIBLE, SapResultCode::CARD_REMOVED}));
+    ASSERT_TRUE(SapResultCode::GENERIC_FAILURE == sapCb->sapResultCode ||
+                SapResultCode::CARD_NOT_ACCESSSIBLE == sapCb->sapResultCode ||
+                SapResultCode::CARD_ALREADY_POWERED_OFF == sapCb->sapResultCode ||
+                SapResultCode::CARD_REMOVED == sapCb->sapResultCode);
 }
 
 /*
  * Test IRadio.transferAtrReq() for the response returned.
  */
-TEST_P(SapHidlTest, transferAtrReq) {
-    token = GetRandomSerialNumber();
+TEST_F(SapHidlTest, transferAtrReq) {
+    int32_t token = GetRandomSerialNumber();
 
     sap->transferAtrReq(token);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(sapCb->sapResponseToken, token);
 
-    ASSERT_TRUE(
-        CheckAnyOfErrors(sapCb->sapResultCode,
-                         {SapResultCode::GENERIC_FAILURE, SapResultCode::DATA_NOT_AVAILABLE,
-                          SapResultCode::CARD_ALREADY_POWERED_OFF, SapResultCode::CARD_REMOVED}));
+    ASSERT_TRUE(SapResultCode::GENERIC_FAILURE == sapCb->sapResultCode ||
+                SapResultCode::DATA_NOT_AVAILABLE == sapCb->sapResultCode ||
+                SapResultCode::CARD_ALREADY_POWERED_OFF == sapCb->sapResultCode ||
+                SapResultCode::CARD_REMOVED == sapCb->sapResultCode);
 }
 
 /*
  * Test IRadio.powerReq() for the response returned.
  */
-TEST_P(SapHidlTest, powerReq) {
-    token = GetRandomSerialNumber();
+TEST_F(SapHidlTest, powerReq) {
+    int32_t token = GetRandomSerialNumber();
     bool state = true;
 
     sap->powerReq(token, state);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(sapCb->sapResponseToken, token);
 
-    ASSERT_TRUE(CheckAnyOfErrors(
-        sapCb->sapResultCode, {SapResultCode::GENERIC_FAILURE, SapResultCode::CARD_NOT_ACCESSSIBLE,
-                               SapResultCode::CARD_ALREADY_POWERED_OFF, SapResultCode::CARD_REMOVED,
-                               SapResultCode::CARD_ALREADY_POWERED_ON}));
+    ASSERT_TRUE(SapResultCode::GENERIC_FAILURE == sapCb->sapResultCode ||
+                SapResultCode::CARD_NOT_ACCESSSIBLE == sapCb->sapResultCode ||
+                SapResultCode::CARD_ALREADY_POWERED_OFF == sapCb->sapResultCode ||
+                SapResultCode::CARD_REMOVED == sapCb->sapResultCode ||
+                SapResultCode::CARD_ALREADY_POWERED_ON == sapCb->sapResultCode);
 }
 
 /*
  * Test IRadio.resetSimReq() for the response returned.
  */
-TEST_P(SapHidlTest, resetSimReq) {
-    token = GetRandomSerialNumber();
+TEST_F(SapHidlTest, resetSimReq) {
+    int32_t token = GetRandomSerialNumber();
 
     sap->resetSimReq(token);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(sapCb->sapResponseToken, token);
 
-    ASSERT_TRUE(
-        CheckAnyOfErrors(sapCb->sapResultCode,
-                         {SapResultCode::GENERIC_FAILURE, SapResultCode::CARD_NOT_ACCESSSIBLE,
-                          SapResultCode::CARD_ALREADY_POWERED_OFF, SapResultCode::CARD_REMOVED}));
+    ASSERT_TRUE(SapResultCode::GENERIC_FAILURE == sapCb->sapResultCode ||
+                SapResultCode::CARD_NOT_ACCESSSIBLE == sapCb->sapResultCode ||
+                SapResultCode::CARD_ALREADY_POWERED_OFF == sapCb->sapResultCode ||
+                SapResultCode::CARD_REMOVED == sapCb->sapResultCode);
 }
 
 /*
  * Test IRadio.transferCardReaderStatusReq() for the response returned.
  */
-TEST_P(SapHidlTest, transferCardReaderStatusReq) {
-    token = GetRandomSerialNumber();
+TEST_F(SapHidlTest, transferCardReaderStatusReq) {
+    int32_t token = GetRandomSerialNumber();
 
     sap->transferCardReaderStatusReq(token);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(sapCb->sapResponseToken, token);
 
-    ASSERT_TRUE(CheckAnyOfErrors(
-        sapCb->sapResultCode, {SapResultCode::GENERIC_FAILURE, SapResultCode::DATA_NOT_AVAILABLE}));
+    ASSERT_TRUE(SapResultCode::GENERIC_FAILURE == sapCb->sapResultCode ||
+                SapResultCode::DATA_NOT_AVAILABLE == sapCb->sapResultCode);
 }
 
 /*
  * Test IRadio.setTransferProtocolReq() for the response returned.
  */
-TEST_P(SapHidlTest, setTransferProtocolReq) {
-    token = GetRandomSerialNumber();
+TEST_F(SapHidlTest, setTransferProtocolReq) {
+    int32_t token = GetRandomSerialNumber();
     SapTransferProtocol sapTransferProtocol = SapTransferProtocol::T0;
 
     sap->setTransferProtocolReq(token, sapTransferProtocol);

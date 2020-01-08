@@ -16,12 +16,10 @@
 
 #define LOG_TAG "ConfigstoreHidlHalTest"
 
+#include <VtsHalHidlTargetTestBase.h>
 #include <android-base/logging.h>
 #include <android/hardware/configstore/1.0/ISurfaceFlingerConfigs.h>
 #include <android/hardware/configstore/1.0/types.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 #include <unistd.h>
 
 using ::android::hardware::configstore::V1_0::ISurfaceFlingerConfigs;
@@ -36,12 +34,13 @@ using ::android::sp;
 #define ASSERT_OK(ret) ASSERT_TRUE(ret.isOk())
 #define EXPECT_OK(ret) EXPECT_TRUE(ret.isOk())
 
-class ConfigstoreHidlTest : public ::testing::TestWithParam<std::string> {
+class ConfigstoreHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     sp<ISurfaceFlingerConfigs> sfConfigs;
 
     virtual void SetUp() override {
-        sfConfigs = ISurfaceFlingerConfigs::getService(GetParam());
+        sfConfigs = ::testing::VtsHalHidlTargetTestBase::getService<
+            ISurfaceFlingerConfigs>();
         ASSERT_NE(sfConfigs, nullptr);
     }
 
@@ -51,7 +50,7 @@ class ConfigstoreHidlTest : public ::testing::TestWithParam<std::string> {
 /**
  * Ensure all ISurfaceFlingerConfigs.hal function calls are successful.
  */
-TEST_P(ConfigstoreHidlTest, TestFunctionCalls) {
+TEST_F(ConfigstoreHidlTest, TestFunctionCalls) {
     bool tmp;
 
     Return<void> status = sfConfigs->vsyncEventPhaseOffsetNs(
@@ -106,7 +105,7 @@ TEST_P(ConfigstoreHidlTest, TestFunctionCalls) {
 /**
  * Ensure repeated call to the same function returns the same result.
  */
-TEST_P(ConfigstoreHidlTest, TestSameReturnValue) {
+TEST_F(ConfigstoreHidlTest, TestSameReturnValue) {
     int64_t original_ret;
     Return<void> status = sfConfigs->vsyncEventPhaseOffsetNs(
         [&original_ret](OptionalInt64 arg) { original_ret = arg.value; });
@@ -119,28 +118,9 @@ TEST_P(ConfigstoreHidlTest, TestSameReturnValue) {
     }
 }
 
-/**
- * Make sure the constrains of hasWideColorDisplay, hasHDRDisplay
- * are enforced.
- */
-TEST_P(ConfigstoreHidlTest, TestColorConstrainsBasic) {
-    bool hasWideColorDisplay;
-    bool hasHDRDisplay;
-
-    Return<void> status = sfConfigs->hasWideColorDisplay(
-        [&](OptionalBool arg) { hasWideColorDisplay = arg.specified; });
-    EXPECT_OK(status);
-
-    status = sfConfigs->hasHDRDisplay([&](OptionalBool arg) { hasHDRDisplay = arg.specified; });
-    EXPECT_OK(status);
-
-    // When hasHDRDisplay returns true, hasWideColorDisplay must also return true.
-    if (hasHDRDisplay) {
-        ASSERT_TRUE(hasWideColorDisplay);
-    }
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    LOG(INFO) << "Test result = " << status;
+    return status;
 }
-
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, ConfigstoreHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(ISurfaceFlingerConfigs::descriptor)),
-        android::hardware::PrintInstanceNameToString);
