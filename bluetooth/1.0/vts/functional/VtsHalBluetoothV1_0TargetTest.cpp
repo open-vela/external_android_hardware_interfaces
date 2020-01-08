@@ -25,6 +25,7 @@
 
 #include <VtsHalHidlTargetCallbackBase.h>
 #include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <queue>
 
 using ::android::hardware::bluetooth::V1_0::IBluetoothHci;
@@ -126,6 +127,23 @@ class ThroughputLogger {
   size_t total_bytes_;
   std::string task_;
   std::chrono::steady_clock::time_point start_time_;
+};
+
+// Test environment for Bluetooth HIDL HAL.
+class BluetoothHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+ public:
+  // get the test environment singleton
+  static BluetoothHidlEnvironment* Instance() {
+    static BluetoothHidlEnvironment* instance = new BluetoothHidlEnvironment;
+    return instance;
+  }
+
+  virtual void registerTestServices() override {
+    registerTestService<IBluetoothHci>();
+  }
+
+ private:
+  BluetoothHidlEnvironment() {}
 };
 
 // The main test class for Bluetooth HIDL HAL.
@@ -254,15 +272,6 @@ class BluetoothHidlTest : public ::testing::VtsHalHidlTargetTestBase {
   int max_sco_data_packet_length;
   int max_acl_data_packets;
   int max_sco_data_packets;
-};
-
-// A class for test environment setup (kept since this file is a template).
-class BluetoothHidlEnvironment : public ::testing::Environment {
- public:
-  virtual void SetUp() {}
-  virtual void TearDown() {}
-
- private:
 };
 
 // Discard NO-OPs from the event queue.
@@ -705,8 +714,9 @@ TEST_F(BluetoothHidlTest, LoopbackModeBandwidth) {
 }
 
 int main(int argc, char** argv) {
-  ::testing::AddGlobalTestEnvironment(new BluetoothHidlEnvironment);
+  ::testing::AddGlobalTestEnvironment(BluetoothHidlEnvironment::Instance());
   ::testing::InitGoogleTest(&argc, argv);
+  BluetoothHidlEnvironment::Instance()->init(&argc, argv);
   int status = RUN_ALL_TESTS();
   ALOGI("Test result = %d", status);
   return status;
