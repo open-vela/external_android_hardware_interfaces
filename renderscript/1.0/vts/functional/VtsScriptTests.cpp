@@ -22,7 +22,7 @@
  *
  * Calls: elementCreate, scriptIntrinsicCreate, scriptSetTimeZone
  */
-TEST_P(RenderscriptHidlTest, IntrinsicTest) {
+TEST_F(RenderscriptHidlTest, IntrinsicTest) {
     // uint8
     Element element = context->elementCreate(DataType::UNSIGNED_8, DataKind::USER, false, 1);
     EXPECT_NE(Element(0), element);
@@ -41,7 +41,7 @@ TEST_P(RenderscriptHidlTest, IntrinsicTest) {
  * scriptSetVarF, scriptSetVarD, elementCreate, typeCreate,
  * allocationCreateTyped, scriptSetVarObj, scriptSetVarV, scriptSetVarVE
  */
-TEST_P(RenderscriptHidlTest, ScriptVarTest) {
+TEST_F(RenderscriptHidlTest, ScriptVarTest) {
     hidl_vec<uint8_t> bitcode;
     bitcode.setToExternal((uint8_t*)bitCode, bitCodeLength);
     Script script = context->scriptCCreate("struct_test", "/data/local/tmp/", bitcode);
@@ -54,12 +54,12 @@ TEST_P(RenderscriptHidlTest, ScriptVarTest) {
                            [&](const hidl_vec<uint8_t>& _data){ resultI = *((int*)_data.data()); });
     EXPECT_EQ(100, resultI);
 
-    context->scriptSetVarJ(script, mExportVarIdx_var_long, 101L);
+    context->scriptSetVarJ(script, mExportVarIdx_var_long, 101l);
     int resultJ = 0;
     context->scriptGetVarV(script, mExportVarIdx_var_long, sizeof(long),
                            [&](const hidl_vec<uint8_t>& _data){
                                resultJ = *((long*)_data.data()); });
-    EXPECT_EQ(101L, resultJ);
+    EXPECT_EQ(101l, resultJ);
 
     context->scriptSetVarF(script, mExportVarIdx_var_float, 102.0f);
     int resultF = 0.0f;
@@ -132,7 +132,7 @@ TEST_P(RenderscriptHidlTest, ScriptVarTest) {
  *
  * Calls: scriptCCreate, scriptInvoke, scriptGetVarV, scriptInvokeV
  */
-TEST_P(RenderscriptHidlTest, ScriptInvokeTest) {
+TEST_F(RenderscriptHidlTest, ScriptInvokeTest) {
     hidl_vec<uint8_t> bitcode;
     bitcode.setToExternal((uint8_t*)bitCode, bitCodeLength);
     Script script = context->scriptCCreate("struct_test", "/data/local/tmp/", bitcode);
@@ -140,7 +140,7 @@ TEST_P(RenderscriptHidlTest, ScriptInvokeTest) {
 
     // invoke test
     int resultI = 0;
-    long resultJ = 0L;
+    long resultJ = 0l;
     float resultF = 0.0f;
     double resultD = 0.0;
     uint32_t resultV = 0u;
@@ -165,7 +165,7 @@ TEST_P(RenderscriptHidlTest, ScriptInvokeTest) {
                                resultVE = std::vector<int>(
                                    (int*)_data.data(), (int*)_data.data() + 2); });
     EXPECT_EQ(1, resultI);
-    EXPECT_EQ(2L, resultJ);
+    EXPECT_EQ(2l, resultJ);
     EXPECT_EQ(3.0f, resultF);
     EXPECT_EQ(4.0, resultD);
     EXPECT_EQ(5u, resultV);
@@ -191,7 +191,7 @@ TEST_P(RenderscriptHidlTest, ScriptInvokeTest) {
  * Calls: scriptCCreate, elementCreate, typeCreate, allocationCreateTyped,
  * allocation1DWrite, scriptForEach, allocationRead
  */
-TEST_P(RenderscriptHidlTest, ScriptForEachTest) {
+TEST_F(RenderscriptHidlTest, ScriptForEachTest) {
     hidl_vec<uint8_t> bitcode;
     bitcode.setToExternal((uint8_t*)bitCode, bitCodeLength);
     Script script = context->scriptCCreate("struct_test", "/data/local/tmp/", bitcode);
@@ -237,7 +237,7 @@ TEST_P(RenderscriptHidlTest, ScriptForEachTest) {
  * Calls: scriptCCreate, elementCreate, typeCreate, allocationCreateTyped,
  * allocation1DWrite, scriptReduce, contextFinish, allocationRead
  */
-TEST_P(RenderscriptHidlTest, ScriptReduceTest) {
+TEST_F(RenderscriptHidlTest, ScriptReduceTest) {
     hidl_vec<uint8_t> bitcode;
     bitcode.setToExternal((uint8_t*)bitCode, bitCodeLength);
     Script script = context->scriptCCreate("struct_test", "/data/local/tmp/", bitcode);
@@ -288,7 +288,7 @@ TEST_P(RenderscriptHidlTest, ScriptReduceTest) {
  * allocation1DWrite, scriptBindAllocation, scriptSetVarV, scriptBindAllocation,
  * allocationRead, scriptInvokeV, allocationRead
  */
-TEST_P(RenderscriptHidlTest, ScriptBindTest) {
+TEST_F(RenderscriptHidlTest, ScriptBindTest) {
     hidl_vec<uint8_t> bitcode;
     bitcode.setToExternal((uint8_t*)bitCode, bitCodeLength);
     Script script = context->scriptCCreate("struct_test", "/data/local/tmp/", bitcode);
@@ -333,7 +333,7 @@ TEST_P(RenderscriptHidlTest, ScriptBindTest) {
  * scriptGroupCreate, scriptGroupSetInput, scriptGroupSetOutput,
  * scriptGroupExecute, contextFinish, allocation2DRead
  */
-TEST_P(RenderscriptHidlTest, ScriptGroupTest) {
+TEST_F(RenderscriptHidlTest, ScriptGroupTest) {
     std::vector<uint8_t> dataIn(256 * 256 * 4, 128), dataOut(256 * 256 * 4, 0),
         zeros(256 * 256 * 4, 0);
     hidl_vec<uint8_t> _dataIn, _dataOut;
@@ -418,7 +418,7 @@ TEST_P(RenderscriptHidlTest, ScriptGroupTest) {
  * invokeClosureCreate, closureCreate, closureSetGlobal, scriptGroup2Create,
  * scriptGroupExecute, allocationRead
  */
-TEST_P(RenderscriptHidlTest, ScriptGroup2Test) {
+TEST_F(RenderscriptHidlTest, ScriptGroup2Test) {
     hidl_vec<uint8_t> bitcode;
     bitcode.setToExternal((uint8_t*)bitCode, bitCodeLength);
     Script script = context->scriptCCreate("struct_test", "/data/local/tmp/", bitcode);
@@ -495,7 +495,7 @@ TEST_P(RenderscriptHidlTest, ScriptGroup2Test) {
  * allocation1DWrite, scriptKernelIDCreate, closureCreate, closureSetArg,
  * scriptGroup2Create, scriptGroupExecute, allocationRead
  */
-TEST_P(RenderscriptHidlTest, ScriptGroup2KernelTest) {
+TEST_F(RenderscriptHidlTest, ScriptGroup2KernelTest) {
     hidl_vec<uint8_t> bitcode;
     bitcode.setToExternal((uint8_t*)bitCode, bitCodeLength);
     Script script = context->scriptCCreate("struct_test", "/data/local/tmp/", bitcode);

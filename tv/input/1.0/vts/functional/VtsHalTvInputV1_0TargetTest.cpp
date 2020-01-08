@@ -42,27 +42,11 @@ using ::android::sp;
 #define WAIT_FOR_EVENT_TIMEOUT 5
 #define DEFAULT_ID INT32_MIN
 
-// Test environment for TvInput HIDL HAL.
-class TvInputHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
- public:
-  // get the test environment singleton
-  static TvInputHidlEnvironment* Instance() {
-    static TvInputHidlEnvironment* instance = new TvInputHidlEnvironment;
-    return instance;
-  }
-
-  virtual void registerTestServices() override { registerTestService<ITvInput>(); }
-
- private:
-  TvInputHidlEnvironment() {}
-};
-
 /* The main test class for TV Input HIDL HAL. */
 class TvInputHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
-    tv_input_ = ::testing::VtsHalHidlTargetTestBase::getService<ITvInput>(
-          TvInputHidlEnvironment::Instance()->getServiceName<ITvInput>());
+    tv_input_ = ::testing::VtsHalHidlTargetTestBase::getService<ITvInput>();
     ASSERT_NE(tv_input_, nullptr);
     tv_input_callback_ = new TvInputCallback(*this);
     ASSERT_NE(tv_input_callback_, nullptr);
@@ -202,6 +186,15 @@ class TvInputHidlTest : public ::testing::VtsHalHidlTargetTestBase {
   std::mutex mutex_;
 };
 
+
+/* A class for test environment setup. */
+class TvInputHidlEnvironment : public ::testing::Environment {
+ public:
+  virtual void SetUp() {}
+  virtual void TearDown() {}
+
+ private:
+};
 
 /*
  * GetStreamConfigTest:
@@ -361,9 +354,8 @@ TEST_F(TvInputHidlTest, CloseStreamBeforeOpenTest) {
 }
 
 int main(int argc, char **argv) {
-  ::testing::AddGlobalTestEnvironment(TvInputHidlEnvironment::Instance());
+  ::testing::AddGlobalTestEnvironment(new TvInputHidlEnvironment);
   ::testing::InitGoogleTest(&argc, argv);
-  TvInputHidlEnvironment::Instance()->init(&argc, argv);
   int status = RUN_ALL_TESTS();
   ALOGI("Test result = %d", status);
   return status;
