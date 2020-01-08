@@ -40,9 +40,11 @@ CameraDevice::CameraDevice(
         mCameraDeviceNames(cameraDeviceNames) {
     mCameraIdInt = atoi(mCameraId.c_str());
     // Should not reach here as provider also validate ID
-    if (mCameraIdInt < 0 || mCameraIdInt >= module->getNumberOfCameras()) {
+    if (mCameraIdInt < 0) {
         ALOGE("%s: Invalid camera id: %s", __FUNCTION__, mCameraId.c_str());
         mInitFail = true;
+    } else if (mCameraIdInt >= mModule->getNumberOfCameras()) {
+        ALOGI("%s: Adding a new camera id: %s", __FUNCTION__, mCameraId.c_str());
     }
 
     mDeviceVersion = mModule->getDeviceVersion(mCameraIdInt);
@@ -99,7 +101,7 @@ Status CameraDevice::getHidlStatus(int status) {
 }
 
 // Methods from ::android::hardware::camera::device::V3_2::ICameraDevice follow.
-Return<void> CameraDevice::getResourceCost(getResourceCost_cb _hidl_cb)  {
+Return<void> CameraDevice::getResourceCost(ICameraDevice::getResourceCost_cb _hidl_cb)  {
     Status status = initStatus();
     CameraResourceCost resCost;
     if (status == Status::OK) {
@@ -139,7 +141,8 @@ Return<void> CameraDevice::getResourceCost(getResourceCost_cb _hidl_cb)  {
     return Void();
 }
 
-Return<void> CameraDevice::getCameraCharacteristics(getCameraCharacteristics_cb _hidl_cb)  {
+Return<void> CameraDevice::getCameraCharacteristics(
+        ICameraDevice::getCameraCharacteristics_cb _hidl_cb)  {
     Status status = initStatus();
     CameraMetadata cameraCharacteristics;
     if (status == Status::OK) {
@@ -170,14 +173,15 @@ Return<Status> CameraDevice::setTorchMode(TorchMode mode)  {
     return status;
 }
 
-Return<void> CameraDevice::open(const sp<ICameraDeviceCallback>& callback, open_cb _hidl_cb)  {
+Return<void> CameraDevice::open(const sp<ICameraDeviceCallback>& callback,
+        ICameraDevice::open_cb _hidl_cb)  {
     Status status = initStatus();
     sp<CameraDeviceSession> session = nullptr;
 
     if (callback == nullptr) {
         ALOGE("%s: cannot open camera %s. callback is null!",
                 __FUNCTION__, mCameraId.c_str());
-        _hidl_cb(Status::ILLEGAL_ARGUMENT, session);
+        _hidl_cb(Status::ILLEGAL_ARGUMENT, nullptr);
         return Void();
     }
 
@@ -186,7 +190,7 @@ Return<void> CameraDevice::open(const sp<ICameraDeviceCallback>& callback, open_
         // this must be a disconnected camera
         ALOGE("%s: cannot open camera %s. camera is disconnected!",
                 __FUNCTION__, mCameraId.c_str());
-        _hidl_cb(Status::CAMERA_DISCONNECTED, session);
+        _hidl_cb(Status::CAMERA_DISCONNECTED, nullptr);
         return Void();
     } else {
         mLock.lock();
@@ -239,7 +243,7 @@ Return<void> CameraDevice::open(const sp<ICameraDeviceCallback>& callback, open_
             return Void();
         }
 
-        session = new CameraDeviceSession(
+        session = createSession(
                 device, info.static_camera_characteristics, callback);
         if (session == nullptr) {
             ALOGE("%s: camera device session allocation failed", __FUNCTION__);
@@ -255,9 +259,19 @@ Return<void> CameraDevice::open(const sp<ICameraDeviceCallback>& callback, open_
             return Void();
         }
         mSession = session;
+
+        IF_ALOGV() {
+            session->getInterface()->interfaceChain([](
+                ::android::hardware::hidl_vec<::android::hardware::hidl_string> interfaceChain) {
+                    ALOGV("Session interface chain:");
+                    for (const auto& iface : interfaceChain) {
+                        ALOGV("  %s", iface.c_str());
+                    }
+                });
+        }
         mLock.unlock();
     }
-    _hidl_cb(status, session);
+    _hidl_cb(status, session->getInterface());
     return Void();
 }
 
@@ -286,6 +300,13 @@ Return<void> CameraDevice::dumpState(const ::android::hardware::hidl_handle& han
     session->dumpState(handle);
     return Void();
 }
+
+sp<CameraDeviceSession> CameraDevice::createSession(camera3_device_t* device,
+        const camera_metadata_t* deviceInfo,
+        const sp<ICameraDeviceCallback>& callback) {
+    return new CameraDeviceSession(device, deviceInfo, callback);
+}
+
 // End of methods from ::android::hardware::camera::device::V3_2::ICameraDevice.
 
 } // namespace implementation

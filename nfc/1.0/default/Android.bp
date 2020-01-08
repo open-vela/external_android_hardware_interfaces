@@ -12,13 +12,13 @@ cc_library_shared {
         "libcutils",
         "libutils",
         "libhidlbase",
-        "libhidltransport",
         "android.hardware.nfc@1.0",
     ],
 }
 
 cc_binary {
     name: "android.hardware.nfc@1.0-service",
+    defaults: ["hidl_defaults"],
     relative_install_path: "hw",
     proprietary: true,
     init_rc: ["android.hardware.nfc@1.0-service.rc"],
@@ -32,7 +32,6 @@ cc_binary {
         "libutils",
         "libhardware",
         "libhidlbase",
-        "libhidltransport",
         "android.hardware.nfc@1.0",
     ],
 
