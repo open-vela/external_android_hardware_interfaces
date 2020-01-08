@@ -97,27 +97,6 @@ static const uint8_t kInvalidUUID[16] = {
 
 static drm_vts::VendorModules* gVendorModules = nullptr;
 
-// Test environment for drm
-class DrmHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static DrmHidlEnvironment* Instance() {
-        static DrmHidlEnvironment* instance = new DrmHidlEnvironment;
-        return instance;
-    }
-
-    void registerTestServices() override {
-        registerTestService<ICryptoFactory>();
-        registerTestService<IDrmFactory>();
-        setServiceCombMode(::testing::HalServiceCombMode::NO_COMBINATION);
-    }
-
-   private:
-    DrmHidlEnvironment() {}
-
-    GTEST_DISALLOW_COPY_AND_ASSIGN_(DrmHidlEnvironment);
-};
-
 class DrmHalVendorFactoryTest : public testing::TestWithParam<std::string> {
    public:
     DrmHalVendorFactoryTest()
@@ -134,7 +113,7 @@ class DrmHalVendorFactoryTest : public testing::TestWithParam<std::string> {
               test_info->test_case_name(), test_info->name(),
               GetParam().c_str());
 
-        ASSERT_NE(nullptr, vendorModule.get());
+        ASSERT_NE(vendorModule, nullptr);
 
         // First try the binderized service name provided by the vendor module.
         // If that fails, which it can on non-binderized devices, try the default
@@ -144,14 +123,14 @@ class DrmHalVendorFactoryTest : public testing::TestWithParam<std::string> {
         if (drmFactory == nullptr) {
             drmFactory = VtsTestBase::getService<IDrmFactory>();
         }
-        ASSERT_NE(nullptr, drmFactory.get());
+        ASSERT_NE(drmFactory, nullptr);
 
         // Do the same for the crypto factory
         cryptoFactory = VtsTestBase::getService<ICryptoFactory>(name);
         if (cryptoFactory == nullptr) {
             cryptoFactory = VtsTestBase::getService<ICryptoFactory>();
         }
-        ASSERT_NE(nullptr, cryptoFactory.get());
+        ASSERT_NE(cryptoFactory, nullptr);
 
         // If drm scheme not installed skip subsequent tests
         if (!drmFactory->isCryptoSchemeSupported(getVendorUUID())) {
@@ -177,7 +156,7 @@ class DrmHalVendorFactoryTest : public testing::TestWithParam<std::string> {
 TEST_P(DrmHalVendorFactoryTest, ValidateConfigurations) {
     const char* kVendorStr = "Vendor module ";
     size_t count = 0;
-    for (const auto& config : contentConfigurations) {
+    for (auto config : contentConfigurations) {
         ASSERT_TRUE(config.name.size() > 0) << kVendorStr << "has no name";
         ASSERT_TRUE(config.serverUrl.size() > 0) << kVendorStr
                                                  << "has no serverUrl";
@@ -186,7 +165,7 @@ TEST_P(DrmHalVendorFactoryTest, ValidateConfigurations) {
         ASSERT_TRUE(config.mimeType.size() > 0) << kVendorStr
                                                 << "has no mime type";
         ASSERT_TRUE(config.keys.size() >= 1) << kVendorStr << "has no keys";
-        for (const auto& key : config.keys) {
+        for (auto key : config.keys) {
             ASSERT_TRUE(key.keyId.size() > 0) << kVendorStr
                                               << " has zero length keyId";
             ASSERT_TRUE(key.keyId.size() > 0) << kVendorStr
@@ -245,7 +224,7 @@ TEST_P(DrmHalVendorFactoryTest, InvalidContentTypeNotSupported) {
  */
 TEST_P(DrmHalVendorFactoryTest, ValidContentTypeSupported) {
     RETURN_IF_SKIPPED;
-    for (const auto& config : contentConfigurations) {
+    for (auto config : contentConfigurations) {
         EXPECT_TRUE(drmFactory->isContentTypeSupported(config.mimeType));
     }
 }
@@ -260,7 +239,7 @@ TEST_P(DrmHalVendorFactoryTest, CreateVendorDrmPlugin) {
             getVendorUUID(), packageName,
             [&](Status status, const sp<IDrmPlugin>& plugin) {
                 EXPECT_EQ(Status::OK, status);
-                EXPECT_NE(nullptr, plugin.get());
+                EXPECT_NE(plugin, nullptr);
             });
     EXPECT_OK(res);
 }
@@ -275,7 +254,7 @@ TEST_P(DrmHalVendorFactoryTest, CreateVendorCryptoPlugin) {
             getVendorUUID(), initVec,
             [&](Status status, const sp<ICryptoPlugin>& plugin) {
                 EXPECT_EQ(Status::OK, status);
-                EXPECT_NE(nullptr, plugin.get());
+                EXPECT_NE(plugin, nullptr);
             });
     EXPECT_OK(res);
 }
@@ -290,7 +269,7 @@ TEST_P(DrmHalVendorFactoryTest, CreateInvalidDrmPlugin) {
             kInvalidUUID, packageName,
             [&](Status status, const sp<IDrmPlugin>& plugin) {
                 EXPECT_EQ(Status::ERROR_DRM_CANNOT_HANDLE, status);
-                EXPECT_EQ(nullptr, plugin.get());
+                EXPECT_EQ(plugin, nullptr);
             });
     EXPECT_OK(res);
 }
@@ -305,7 +284,7 @@ TEST_P(DrmHalVendorFactoryTest, CreateInvalidCryptoPlugin) {
             kInvalidUUID, initVec,
             [&](Status status, const sp<ICryptoPlugin>& plugin) {
                 EXPECT_EQ(Status::ERROR_DRM_CANNOT_HANDLE, status);
-                EXPECT_EQ(nullptr, plugin.get());
+                EXPECT_EQ(plugin, nullptr);
             });
     EXPECT_OK(res);
 }
@@ -323,7 +302,7 @@ class DrmHalVendorPluginTest : public DrmHalVendorFactoryTest {
                 getVendorUUID(), packageName,
                 [this](Status status, const sp<IDrmPlugin>& plugin) {
                     EXPECT_EQ(Status::OK, status);
-                    ASSERT_NE(nullptr, plugin.get());
+                    ASSERT_NE(plugin, nullptr);
                     drmPlugin = plugin;
                 });
         ASSERT_OK(res);
@@ -333,7 +312,7 @@ class DrmHalVendorPluginTest : public DrmHalVendorFactoryTest {
                 getVendorUUID(), initVec,
                 [this](Status status, const sp<ICryptoPlugin>& plugin) {
                     EXPECT_EQ(Status::OK, status);
-                    ASSERT_NE(nullptr, plugin.get());
+                    ASSERT_NE(plugin, nullptr);
                     cryptoPlugin = plugin;
                 });
         ASSERT_OK(res);
@@ -610,7 +589,7 @@ TEST_P(DrmHalVendorPluginTest, RemoveKeysNewSession) {
  */
 TEST_P(DrmHalVendorPluginTest, RestoreKeys) {
     RETURN_IF_SKIPPED;
-    for (const auto& config : contentConfigurations) {
+    for (auto config : contentConfigurations) {
         if (config.policy.allowOffline) {
             auto sessionId = openSession();
             hidl_vec<uint8_t> keySetId =
@@ -645,7 +624,7 @@ TEST_P(DrmHalVendorPluginTest, RestoreKeysNull) {
  */
 TEST_P(DrmHalVendorPluginTest, RestoreKeysClosedSession) {
     RETURN_IF_SKIPPED;
-    for (const auto& config : contentConfigurations) {
+    for (auto config : contentConfigurations) {
         if (config.policy.allowOffline) {
             auto sessionId = openSession();
             hidl_vec<uint8_t> keySetId =
@@ -1022,8 +1001,8 @@ TEST_P(DrmHalVendorPluginTest, RequiresSecureDecoderInvalidMimeType) {
  */
 TEST_P(DrmHalVendorPluginTest, RequiresSecureDecoderConfig) {
     RETURN_IF_SKIPPED;
-    for (const auto& config : contentConfigurations) {
-        for (const auto& key : config.keys) {
+    for (auto config : contentConfigurations) {
+        for (auto key : config.keys) {
             if (key.isSecure) {
                 EXPECT_TRUE(cryptoPlugin->requiresSecureDecoderComponent(config.mimeType));
                 break;
@@ -1206,7 +1185,7 @@ TEST_P(DrmHalVendorPluginTest, NotifyResolution) {
 sp<IMemory> DrmHalVendorPluginTest::getDecryptMemory(size_t size,
                                                      size_t index) {
     sp<IAllocator> ashmemAllocator = IAllocator::getService("ashmem");
-    EXPECT_NE(nullptr, ashmemAllocator.get());
+    EXPECT_NE(ashmemAllocator, nullptr);
 
     hidl_memory hidlMemory;
     auto res = ashmemAllocator->allocate(
@@ -1219,7 +1198,7 @@ sp<IMemory> DrmHalVendorPluginTest::getDecryptMemory(size_t size,
     EXPECT_OK(res);
 
     sp<IMemory> mappedMemory = mapMemory(hidlMemory);
-    EXPECT_NE(nullptr, mappedMemory.get());
+    EXPECT_NE(mappedMemory, nullptr);
     res = cryptoPlugin->setSharedBufferBase(hidlMemory, index);
     EXPECT_OK(res);
     return mappedMemory;
@@ -1427,6 +1406,8 @@ void DrmHalVendorDecryptTest::aes_cbc_decrypt(uint8_t* dest, uint8_t* src,
     AES_set_encrypt_key(&key[0], 128, &decryptionKey);
 
     size_t offset = 0;
+    size_t num = 0;
+    size_t ecount_buf = 0;
     for (size_t i = 0; i < subSamples.size(); i++) {
         const SubSample& subSample = subSamples[i];
 
@@ -1471,7 +1452,7 @@ TEST_P(DrmHalVendorDecryptTest, QueryKeyStatusWithNoKeys) {
  */
 TEST_P(DrmHalVendorDecryptTest, QueryKeyStatus) {
     RETURN_IF_SKIPPED;
-    for (const auto& config : contentConfigurations) {
+    for (auto config : contentConfigurations) {
         auto sessionId = openSession();
         loadKeys(sessionId, config);
         auto keyStatus = queryKeyStatus(sessionId);
@@ -1485,8 +1466,8 @@ TEST_P(DrmHalVendorDecryptTest, QueryKeyStatus) {
  */
 TEST_P(DrmHalVendorDecryptTest, ClearSegmentTest) {
     RETURN_IF_SKIPPED;
-    for (const auto& config : contentConfigurations) {
-        for (const auto& key : config.keys) {
+    for (auto config : contentConfigurations) {
+        for (auto key : config.keys) {
             const size_t kSegmentSize = 1024;
             vector<uint8_t> iv(AES_BLOCK_SIZE, 0);
             const Pattern noPattern = {0, 0};
@@ -1513,8 +1494,8 @@ TEST_P(DrmHalVendorDecryptTest, ClearSegmentTest) {
  */
 TEST_P(DrmHalVendorDecryptTest, EncryptedAesCtrSegmentTest) {
     RETURN_IF_SKIPPED;
-    for (const auto& config : contentConfigurations) {
-        for (const auto& key : config.keys) {
+    for (auto config : contentConfigurations) {
+        for (auto key : config.keys) {
             const size_t kSegmentSize = 1024;
             vector<uint8_t> iv(AES_BLOCK_SIZE, 0);
             const Pattern noPattern = {0, 0};
@@ -1540,8 +1521,8 @@ TEST_P(DrmHalVendorDecryptTest, EncryptedAesCtrSegmentTest) {
  */
 TEST_P(DrmHalVendorDecryptTest, EncryptedAesCtrSegmentTestNoKeys) {
     RETURN_IF_SKIPPED;
-    for (const auto& config : contentConfigurations) {
-        for (const auto& key : config.keys) {
+    for (auto config : contentConfigurations) {
+        for (auto key : config.keys) {
             vector<uint8_t> iv(AES_BLOCK_SIZE, 0);
             const Pattern noPattern = {0, 0};
             const vector<SubSample> subSamples = {{.numBytesOfClearData = 256,
@@ -1567,8 +1548,8 @@ TEST_P(DrmHalVendorDecryptTest, EncryptedAesCtrSegmentTestNoKeys) {
  */
 TEST_P(DrmHalVendorDecryptTest, AttemptDecryptWithKeysRemoved) {
     RETURN_IF_SKIPPED;
-    for (const auto& config : contentConfigurations) {
-        for (const auto& key : config.keys) {
+    for (auto config : contentConfigurations) {
+        for (auto key : config.keys) {
             vector<uint8_t> iv(AES_BLOCK_SIZE, 0);
             const Pattern noPattern = {0, 0};
             const vector<SubSample> subSamples = {{.numBytesOfClearData = 256,
@@ -1619,10 +1600,6 @@ int main(int argc, char** argv) {
         std::cerr << "WARNING: No vendor modules found in " << kModulePath <<
                 ", all vendor tests will be skipped" << std::endl;
     }
-    ::testing::AddGlobalTestEnvironment(DrmHidlEnvironment::Instance());
     ::testing::InitGoogleTest(&argc, argv);
-    DrmHidlEnvironment::Instance()->init(&argc, argv);
-    int status = RUN_ALL_TESTS();
-    ALOGI("Test result = %d", status);
-    return status;
+    return RUN_ALL_TESTS();
 }
