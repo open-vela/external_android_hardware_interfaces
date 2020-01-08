@@ -14,25 +14,8 @@
  * limitations under the License.
  */
 
-#include <android-base/logging.h>
-
-#include <VtsHalHidlTargetTestBase.h>
-
 #include "supplicant_hidl_test_utils.h"
 
-class SupplicantHidlEnvironment : public ::testing::Environment {
-   public:
-    virtual void SetUp() override {
-        stopSupplicant();
-    }
-    virtual void TearDown() override {
-    }
-};
-
-int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(new SupplicantHidlEnvironment);
-    ::testing::InitGoogleTest(&argc, argv);
-    int status = RUN_ALL_TESTS();
-    LOG(INFO) << "Test result = " << status;
-    return status;
-}
+// TODO(b/143892896): Remove this file after wifi_hidl_test_utils.cpp is
+// updated.
+WifiSupplicantHidlEnvironment* gEnv = nullptr;

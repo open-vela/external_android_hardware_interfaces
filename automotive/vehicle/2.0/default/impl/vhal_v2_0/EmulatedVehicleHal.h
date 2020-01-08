@@ -30,8 +30,9 @@
 #include "vhal_v2_0/VehiclePropertyStore.h"
 
 #include "DefaultConfig.h"
+#include "EmulatedVehicleConnector.h"
+#include "GeneratorHub.h"
 #include "VehicleEmulator.h"
-#include "FakeValueGenerator.h"
 
 namespace android {
 namespace hardware {
@@ -44,7 +45,8 @@ namespace impl {
 /** Implementation of VehicleHal that connected to emulator instead of real vehicle network. */
 class EmulatedVehicleHal : public EmulatedVehicleHalIface {
 public:
-    EmulatedVehicleHal(VehiclePropertyStore* propStore);
+    EmulatedVehicleHal(VehiclePropertyStore* propStore,
+                       EmulatedVehicleClient* client);
     ~EmulatedVehicleHal() = default;
 
     //  Methods from VehicleHal
@@ -53,7 +55,7 @@ public:
     VehiclePropValuePtr get(const VehiclePropValue& requestedPropValue,
                             StatusCode* outStatus) override;
     StatusCode set(const VehiclePropValue& propValue) override;
-    StatusCode subscribe(int32_t property, int32_t areas, float sampleRate) override;
+    StatusCode subscribe(int32_t property, float sampleRate) override;
     StatusCode unsubscribe(int32_t property) override;
 
     //  Methods from EmulatedVehicleHalIface
@@ -66,16 +68,23 @@ private:
     }
 
     StatusCode handleGenerateFakeDataRequest(const VehiclePropValue& request);
-    void onFakeValueGenerated(int32_t propId, float value);
+    void onPropertyValue(const VehiclePropValue& value, bool updateStatus);
 
     void onContinuousPropertyTimer(const std::vector<int32_t>& properties);
     bool isContinuousProperty(int32_t propId) const;
+    void initStaticConfig();
+    void initObd2LiveFrame(const VehiclePropConfig& propConfig);
+    void initObd2FreezeFrame(const VehiclePropConfig& propConfig);
+    StatusCode fillObd2FreezeFrame(const VehiclePropValue& requestedPropValue,
+                                   VehiclePropValue* outValue);
+    StatusCode fillObd2DtcInfo(VehiclePropValue* outValue);
+    StatusCode clearObd2FreezeFrames(const VehiclePropValue& propValue);
 
-private:
+    /* Private members */
     VehiclePropertyStore* mPropStore;
     std::unordered_set<int32_t> mHvacPowerProps;
     RecurrentTimer mRecurrentTimer;
-    FakeValueGenerator mFakeValueGenerator;
+    EmulatedVehicleClient* mVehicleClient;
 };
 
 }  // impl

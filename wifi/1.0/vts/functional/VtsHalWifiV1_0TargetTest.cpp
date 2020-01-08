@@ -14,22 +14,8 @@
  * limitations under the License.
  */
 
-#include <android-base/logging.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 
-#include <VtsHalHidlTargetTestBase.h>
-
-#include "wifi_hidl_test_utils.h"
-
-WifiHidlEnvironment* gEnv;
-
-int main(int argc, char** argv) {
-    gEnv = new WifiHidlEnvironment();
-    ::testing::AddGlobalTestEnvironment(gEnv);
-    ::testing::InitGoogleTest(&argc, argv);
-    int status = gEnv->initFromOptions(argc, argv);
-    if (status == 0) {
-        status = RUN_ALL_TESTS();
-        LOG(INFO) << "Test result = " << status;
-    }
-    return status;
-}
+// TODO(b/143892896): Remove this file after wifi_hidl_test_utils.cpp is
+// updated.
+::testing::VtsHalHidlTargetTestEnvBase* gEnv = nullptr;

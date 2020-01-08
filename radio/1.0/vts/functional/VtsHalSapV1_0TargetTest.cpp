@@ -14,11 +14,17 @@
  * limitations under the License.
  */
 
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
 #include <sap_hidl_hal_utils.h>
 
+INSTANTIATE_TEST_SUITE_P(PerInstance, SapHidlTest,
+                         testing::ValuesIn(android::hardware::getAllHalInstanceNames(
+                                 ::android::hardware::radio::V1_0::ISap::descriptor)),
+                         android::hardware::PrintInstanceNameToString);
+
 int main(int argc, char** argv) {
-    // Add Sim-access Profile Hidl Environment
-    ::testing::AddGlobalTestEnvironment(new SapHidlEnvironment);
     ::testing::InitGoogleTest(&argc, argv);
 
     // setup seed for rand function
