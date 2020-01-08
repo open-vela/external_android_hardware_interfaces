@@ -33,14 +33,14 @@ cc_binary {
         "service.cpp"
     ],
     static_libs: [
-        "android.hardware.broadcastradio@common-utils-1x-lib",
-        "android.hardware.broadcastradio@common-utils-lib",
+        "android.hardware.broadcastradio@1.1-utils-lib",
     ],
     shared_libs: [
         "android.hardware.broadcastradio@1.0",
         "android.hardware.broadcastradio@1.1",
         "libbase",
         "libhidlbase",
+        "libhidltransport",
         "liblog",
         "libutils",
     ],
