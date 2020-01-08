@@ -39,11 +39,10 @@ namespace implementation {
 
 using ::android::hardware::audio::common::CPP_VERSION::implementation::HidlUtils;
 
-Device::Device(audio_hw_device_t* device) : mDevice(device) {}
+Device::Device(audio_hw_device_t* device) : mIsClosed(false), mDevice(device) {}
 
 Device::~Device() {
-    int status = audio_hw_device_close(mDevice);
-    ALOGW_IF(status, "Error closing audio hw device %p: %s", mDevice, strerror(-status));
+    (void)doClose();
     mDevice = nullptr;
 }
 
@@ -54,10 +53,14 @@ Result Device::analyzeStatus(const char* funcName, int status,
 
 void Device::closeInputStream(audio_stream_in_t* stream) {
     mDevice->close_input_stream(mDevice, stream);
+    LOG_ALWAYS_FATAL_IF(mOpenedStreamsCount == 0, "mOpenedStreamsCount is already 0");
+    --mOpenedStreamsCount;
 }
 
 void Device::closeOutputStream(audio_stream_out_t* stream) {
     mDevice->close_output_stream(mDevice, stream);
+    LOG_ALWAYS_FATAL_IF(mOpenedStreamsCount == 0, "mOpenedStreamsCount is already 0");
+    --mOpenedStreamsCount;
 }
 
 char* Device::halGetParameters(const char* keys) {
@@ -81,26 +84,29 @@ Return<Result> Device::setMasterVolume(float volume) {
         ALOGW("Can not set a master volume (%f) outside [0,1]", volume);
         return Result::INVALID_ARGUMENTS;
     }
-    return analyzeStatus("set_master_volume", mDevice->set_master_volume(mDevice, volume));
+    return analyzeStatus("set_master_volume", mDevice->set_master_volume(mDevice, volume),
+                         {ENOSYS} /*ignore*/);
 }
 
 Return<void> Device::getMasterVolume(getMasterVolume_cb _hidl_cb) {
     Result retval(Result::NOT_SUPPORTED);
     float volume = 0;
     if (mDevice->get_master_volume != NULL) {
-        retval = analyzeStatus("get_master_volume", mDevice->get_master_volume(mDevice, &volume));
+        retval = analyzeStatus("get_master_volume", mDevice->get_master_volume(mDevice, &volume),
+                               {ENOSYS} /*ignore*/);
     }
     _hidl_cb(retval, volume);
     return Void();
 }
 
 Return<Result> Device::setMicMute(bool mute) {
-    return analyzeStatus("set_mic_mute", mDevice->set_mic_mute(mDevice, mute));
+    return analyzeStatus("set_mic_mute", mDevice->set_mic_mute(mDevice, mute), {ENOSYS} /*ignore*/);
 }
 
 Return<void> Device::getMicMute(getMicMute_cb _hidl_cb) {
     bool mute = false;
-    Result retval = analyzeStatus("get_mic_mute", mDevice->get_mic_mute(mDevice, &mute));
+    Result retval = analyzeStatus("get_mic_mute", mDevice->get_mic_mute(mDevice, &mute),
+                                  {ENOSYS} /*ignore*/);
     _hidl_cb(retval, mute);
     return Void();
 }
@@ -108,7 +114,8 @@ Return<void> Device::getMicMute(getMicMute_cb _hidl_cb) {
 Return<Result> Device::setMasterMute(bool mute) {
     Result retval(Result::NOT_SUPPORTED);
     if (mDevice->set_master_mute != NULL) {
-        retval = analyzeStatus("set_master_mute", mDevice->set_master_mute(mDevice, mute));
+        retval = analyzeStatus("set_master_mute", mDevice->set_master_mute(mDevice, mute),
+                               {ENOSYS} /*ignore*/);
     }
     return retval;
 }
@@ -117,7 +124,8 @@ Return<void> Device::getMasterMute(getMasterMute_cb _hidl_cb) {
     Result retval(Result::NOT_SUPPORTED);
     bool mute = false;
     if (mDevice->get_master_mute != NULL) {
-        retval = analyzeStatus("get_master_mute", mDevice->get_master_mute(mDevice, &mute));
+        retval = analyzeStatus("get_master_mute", mDevice->get_master_mute(mDevice, &mute),
+                               {ENOSYS} /*ignore*/);
     }
     _hidl_cb(retval, mute);
     return Void();
@@ -159,6 +167,7 @@ std::tuple<Result, sp<IStreamOut>> Device::openOutputStreamImpl(int32_t ioHandle
     sp<IStreamOut> streamOut;
     if (status == OK) {
         streamOut = new StreamOut(this, halStream);
+        ++mOpenedStreamsCount;
     }
     HidlUtils::audioConfigFromHal(halConfig, suggestedConfig);
     return {analyzeStatus("open_output_stream", status, {EINVAL} /*ignore*/), streamOut};
@@ -185,6 +194,7 @@ std::tuple<Result, sp<IStreamIn>> Device::openInputStreamImpl(
     sp<IStreamIn> streamIn;
     if (status == OK) {
         streamIn = new StreamIn(this, halStream);
+        ++mOpenedStreamsCount;
     }
     HidlUtils::audioConfigFromHal(halConfig, suggestedConfig);
     return {analyzeStatus("open_input_stream", status, {EINVAL} /*ignore*/), streamIn};
@@ -378,8 +388,20 @@ Return<void> Device::getMicrophones(getMicrophones_cb _hidl_cb) {
 }
 
 Return<Result> Device::setConnectedState(const DeviceAddress& address, bool connected) {
-    auto key = connected ? AudioParameter::keyStreamConnect : AudioParameter::keyStreamDisconnect;
+    auto key = connected ? AudioParameter::keyDeviceConnect : AudioParameter::keyDeviceDisconnect;
     return setParam(key, address);
+}
+#endif
+
+Result Device::doClose() {
+    if (mIsClosed || mOpenedStreamsCount != 0) return Result::INVALID_STATE;
+    mIsClosed = true;
+    return analyzeStatus("close", audio_hw_device_close(mDevice));
+}
+
+#if MAJOR_VERSION >= 6
+Return<Result> Device::close() {
+    return doClose();
 }
 #endif
 
