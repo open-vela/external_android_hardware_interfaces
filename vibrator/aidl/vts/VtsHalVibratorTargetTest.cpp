@@ -49,9 +49,14 @@ const std::vector<EffectStrength> kInvalidEffectStrengths = {
         static_cast<EffectStrength>(static_cast<int8_t>(kEffectStrengths.back()) + 1),
 };
 
-const std::vector<CompositePrimitive> kCompositePrimitives{
-        android::enum_range<CompositePrimitive>().begin(),
-        android::enum_range<CompositePrimitive>().end()};
+// TODO(b/143992652): autogenerate
+const std::vector<CompositePrimitive> kCompositePrimitives = {
+        CompositePrimitive::NOOP,       CompositePrimitive::CLICK,
+        CompositePrimitive::THUD,       CompositePrimitive::SPIN,
+        CompositePrimitive::QUICK_RISE, CompositePrimitive::SLOW_RISE,
+        CompositePrimitive::QUICK_FALL,
+};
+// TODO(b/143992652): autogenerate
 
 const std::vector<CompositePrimitive> kInvalidPrimitives = {
         static_cast<CompositePrimitive>(static_cast<int32_t>(kCompositePrimitives.front()) - 1),
