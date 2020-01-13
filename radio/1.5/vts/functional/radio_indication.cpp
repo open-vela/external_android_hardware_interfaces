@@ -342,11 +342,3 @@ Return<void> RadioIndication_v1_5::registrationFailed(
         int32_t /*causeCode*/, int32_t /*additionalCauseCode*/) {
     return Void();
 }
-
-Return<void> RadioIndication_v1_5::barringInfoChanged(
-        RadioIndicationType /*type*/,
-        const ::android::hardware::radio::V1_5::CellIdentity& /*cellIdentity*/,
-        const ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::BarringInfo>&
-        /*barringInfos*/) {
-    return Void();
-}
