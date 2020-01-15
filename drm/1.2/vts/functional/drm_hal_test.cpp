@@ -17,9 +17,7 @@
 #define LOG_TAG "drm_hal_test@1.2"
 
 #include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
 #include <hidl/HidlSupport.h>
-#include <hidl/ServiceManagement.h>
 #include <log/log.h>
 #include <openssl/aes.h>
 
@@ -37,6 +35,7 @@ using ::android::hardware::drm::V1_2::OfflineLicenseState;
 using ::android::hardware::drm::V1_2::vts::DrmHalClearkeyTest;
 using ::android::hardware::drm::V1_2::vts::DrmHalPluginListener;
 using ::android::hardware::drm::V1_2::vts::DrmHalTest;
+using ::android::hardware::drm::V1_2::vts::DrmHidlEnvironment;
 using ::android::hardware::drm::V1_2::vts::kCallbackLostState;
 using ::android::hardware::drm::V1_2::vts::kCallbackKeysChange;
 
@@ -48,7 +47,6 @@ static const char* const kDrmErrorTestKey = "drmErrorTest";
 static const char* const kDrmErrorInvalidState = "invalidState";
 static const char* const kDrmErrorResourceContention = "resourceContention";
 static const SecurityLevel kSwSecureCrypto = SecurityLevel::SW_SECURE_CRYPTO;
-static const SecurityLevel kHwSecureAll = SecurityLevel::HW_SECURE_ALL;
 
 /**
  * Ensure drm factory supports module UUID Scheme
@@ -103,17 +101,35 @@ TEST_P(DrmHalTest, BadMimeNotSupported) {
  */
 TEST_P(DrmHalTest, DoProvisioning) {
     RETURN_IF_SKIPPED;
-    for (auto level : {kHwSecureAll, kSwSecureCrypto}) {
-        StatusV1_0 err = StatusV1_0::OK;
-        auto sid = openSession(level, &err);
-        if (err == StatusV1_0::OK) {
-            closeSession(sid);
-        } else if (err == StatusV1_0::ERROR_DRM_CANNOT_HANDLE) {
-            continue;
-        } else {
-            EXPECT_EQ(StatusV1_0::ERROR_DRM_NOT_PROVISIONED, err);
-            provision();
-        }
+    hidl_string certificateType;
+    hidl_string certificateAuthority;
+    hidl_vec<uint8_t> provisionRequest;
+    hidl_string defaultUrl;
+    auto res = drmPlugin->getProvisionRequest_1_2(
+            certificateType, certificateAuthority,
+            [&](StatusV1_2 status, const hidl_vec<uint8_t>& request,
+                const hidl_string& url) {
+                if (status == StatusV1_2::OK) {
+                    EXPECT_NE(request.size(), 0u);
+                    provisionRequest = request;
+                    defaultUrl = url;
+                } else if (status == StatusV1_2::ERROR_DRM_CANNOT_HANDLE) {
+                    EXPECT_EQ(0u, request.size());
+                }
+            });
+    EXPECT_OK(res);
+
+    if (provisionRequest.size() > 0) {
+        vector<uint8_t> response = vendorModule->handleProvisioningRequest(
+                provisionRequest, defaultUrl);
+        ASSERT_NE(0u, response.size());
+
+        auto res = drmPlugin->provideProvisionResponse(
+                response, [&](Status status, const hidl_vec<uint8_t>&,
+                              const hidl_vec<uint8_t>&) {
+                    EXPECT_EQ(Status::OK, status);
+                });
+        EXPECT_OK(res);
     }
 }
 
@@ -417,6 +433,7 @@ TEST_P(DrmHalTest, EncryptedAesCtrSegmentTestNoKeys) {
  */
 TEST_P(DrmHalClearkeyTest, BadLevelNotSupported) {
     RETURN_IF_SKIPPED;
+    const SecurityLevel kHwSecureAll = SecurityLevel::HW_SECURE_ALL;
     EXPECT_FALSE(drmFactory->isCryptoSchemeSupported_1_2(getVendorUUID(), kVideoMp4, kHwSecureAll));
 }
 
@@ -559,24 +576,17 @@ TEST_P(DrmHalClearkeyTest, DecryptWithKeyTooLong) {
  * Instantiate the set of test cases for each vendor module
  */
 
-static const std::set<std::string> kAllInstances = [] {
-    using ::android::hardware::drm::V1_2::ICryptoFactory;
-    using ::android::hardware::drm::V1_2::IDrmFactory;
+INSTANTIATE_TEST_CASE_P(
+        DrmHalTestClearkey, DrmHalTest,
+        testing::Values("clearkey"));
 
-    std::vector<std::string> drmInstances =
-            android::hardware::getAllHalInstanceNames(IDrmFactory::descriptor);
-    std::vector<std::string> cryptoInstances =
-            android::hardware::getAllHalInstanceNames(ICryptoFactory::descriptor);
-    std::set<std::string> allInstances;
-    allInstances.insert(drmInstances.begin(), drmInstances.end());
-    allInstances.insert(cryptoInstances.begin(), cryptoInstances.end());
-    return allInstances;
-}();
+INSTANTIATE_TEST_CASE_P(
+        DrmHalTestClearkeyExtended, DrmHalClearkeyTest,
+        testing::Values("clearkey"));
 
-INSTANTIATE_TEST_SUITE_P(PerInstance, DrmHalTest, testing::ValuesIn(kAllInstances),
-                         android::hardware::PrintInstanceNameToString);
-INSTANTIATE_TEST_SUITE_P(PerInstance, DrmHalClearkeyTest, testing::ValuesIn(kAllInstances),
-                         android::hardware::PrintInstanceNameToString);
+INSTANTIATE_TEST_CASE_P(
+        DrmHalTestVendor, DrmHalTest,
+        testing::ValuesIn(DrmHalTest::gVendorModules->getPathList()));
 
 int main(int argc, char** argv) {
 #if defined(__LP64__)
@@ -589,7 +599,9 @@ int main(int argc, char** argv) {
         std::cerr << "WARNING: No vendor modules found in " << kModulePath <<
                 ", all vendor tests will be skipped" << std::endl;
     }
+    ::testing::AddGlobalTestEnvironment(DrmHidlEnvironment::Instance());
     ::testing::InitGoogleTest(&argc, argv);
+    DrmHidlEnvironment::Instance()->init(&argc, argv);
     int status = RUN_ALL_TESTS();
     ALOGI("Test result = %d", status);
     return status;
