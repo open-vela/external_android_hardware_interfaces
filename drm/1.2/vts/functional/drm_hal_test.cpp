@@ -17,9 +17,7 @@
 #define LOG_TAG "drm_hal_test@1.2"
 
 #include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
 #include <hidl/HidlSupport.h>
-#include <hidl/ServiceManagement.h>
 #include <log/log.h>
 #include <openssl/aes.h>
 
@@ -37,6 +35,7 @@ using ::android::hardware::drm::V1_2::OfflineLicenseState;
 using ::android::hardware::drm::V1_2::vts::DrmHalClearkeyTest;
 using ::android::hardware::drm::V1_2::vts::DrmHalPluginListener;
 using ::android::hardware::drm::V1_2::vts::DrmHalTest;
+using ::android::hardware::drm::V1_2::vts::DrmHidlEnvironment;
 using ::android::hardware::drm::V1_2::vts::kCallbackLostState;
 using ::android::hardware::drm::V1_2::vts::kCallbackKeysChange;
 
@@ -577,24 +576,17 @@ TEST_P(DrmHalClearkeyTest, DecryptWithKeyTooLong) {
  * Instantiate the set of test cases for each vendor module
  */
 
-static const std::set<std::string> kAllInstances = [] {
-    using ::android::hardware::drm::V1_2::ICryptoFactory;
-    using ::android::hardware::drm::V1_2::IDrmFactory;
+INSTANTIATE_TEST_CASE_P(
+        DrmHalTestClearkey, DrmHalTest,
+        testing::Values("clearkey"));
 
-    std::vector<std::string> drmInstances =
-            android::hardware::getAllHalInstanceNames(IDrmFactory::descriptor);
-    std::vector<std::string> cryptoInstances =
-            android::hardware::getAllHalInstanceNames(ICryptoFactory::descriptor);
-    std::set<std::string> allInstances;
-    allInstances.insert(drmInstances.begin(), drmInstances.end());
-    allInstances.insert(cryptoInstances.begin(), cryptoInstances.end());
-    return allInstances;
-}();
+INSTANTIATE_TEST_CASE_P(
+        DrmHalTestClearkeyExtended, DrmHalClearkeyTest,
+        testing::Values("clearkey"));
 
-INSTANTIATE_TEST_SUITE_P(PerInstance, DrmHalTest, testing::ValuesIn(kAllInstances),
-                         android::hardware::PrintInstanceNameToString);
-INSTANTIATE_TEST_SUITE_P(PerInstance, DrmHalClearkeyTest, testing::ValuesIn(kAllInstances),
-                         android::hardware::PrintInstanceNameToString);
+INSTANTIATE_TEST_CASE_P(
+        DrmHalTestVendor, DrmHalTest,
+        testing::ValuesIn(DrmHalTest::gVendorModules->getPathList()));
 
 int main(int argc, char** argv) {
 #if defined(__LP64__)
@@ -607,7 +599,9 @@ int main(int argc, char** argv) {
         std::cerr << "WARNING: No vendor modules found in " << kModulePath <<
                 ", all vendor tests will be skipped" << std::endl;
     }
+    ::testing::AddGlobalTestEnvironment(DrmHidlEnvironment::Instance());
     ::testing::InitGoogleTest(&argc, argv);
+    DrmHidlEnvironment::Instance()->init(&argc, argv);
     int status = RUN_ALL_TESTS();
     ALOGI("Test result = %d", status);
     return status;
