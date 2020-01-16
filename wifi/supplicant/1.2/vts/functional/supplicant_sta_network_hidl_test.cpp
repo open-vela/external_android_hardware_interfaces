@@ -16,12 +16,8 @@
 
 #include <android-base/logging.h>
 
-#include <VtsCoreUtil.h>
-#include <android/hardware/wifi/1.0/IWifi.h>
-#include <android/hardware/wifi/1.1/IWifi.h>
+#include <VtsHalHidlTargetTestBase.h>
 #include <android/hardware/wifi/supplicant/1.1/ISupplicantStaNetwork.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 
 #include "supplicant_hidl_test_utils.h"
 #include "supplicant_hidl_test_utils_1_2.h"
@@ -30,20 +26,23 @@ using ::android::sp;
 using ::android::hardware::hidl_vec;
 using ::android::hardware::wifi::supplicant::V1_0::SupplicantStatus;
 using ::android::hardware::wifi::supplicant::V1_0::SupplicantStatusCode;
-using ::android::hardware::wifi::supplicant::V1_2::ISupplicant;
 using ::android::hardware::wifi::supplicant::V1_2::ISupplicantStaNetwork;
 // namespace {
 // constexpr uint8_t kTestIdentity[] = {0x45, 0x67, 0x98, 0x67, 0x56};
 // constexpr uint8_t kTestEncryptedIdentity[] = {0x35, 0x37, 0x58, 0x57, 0x26};
 //}  // namespace
 
-class SupplicantStaNetworkHidlTest : public SupplicantHidlTestBase {
+class SupplicantStaNetworkHidlTest
+    : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        SupplicantHidlTestBase::SetUp();
-        sta_network_ = createSupplicantStaNetwork_1_2(supplicant_);
+        startSupplicantAndWaitForHidlService();
+        EXPECT_TRUE(turnOnExcessiveLogging());
+        sta_network_ = createSupplicantStaNetwork_1_2();
         ASSERT_NE(sta_network_.get(), nullptr);
     }
+
+    virtual void TearDown() override { stopSupplicant(); }
 
    protected:
     // ISupplicantStaNetwork object used for all tests in this fixture.
@@ -53,7 +52,7 @@ class SupplicantStaNetworkHidlTest : public SupplicantHidlTestBase {
 /*
  * SetGetSaePassword
  */
-TEST_P(SupplicantStaNetworkHidlTest, SetGetSaePassword) {
+TEST_F(SupplicantStaNetworkHidlTest, SetGetSaePassword) {
     std::string password = "topsecret";
 
     sta_network_->setSaePassword(password, [](const SupplicantStatus &status) {
@@ -70,7 +69,7 @@ TEST_P(SupplicantStaNetworkHidlTest, SetGetSaePassword) {
 /*
  * SetGetSaePasswordId
  */
-TEST_P(SupplicantStaNetworkHidlTest, SetGetSaePasswordId) {
+TEST_F(SupplicantStaNetworkHidlTest, SetGetSaePasswordId) {
     std::string passwordId = "id1";
 
     sta_network_->setSaePasswordId(
@@ -88,7 +87,7 @@ TEST_P(SupplicantStaNetworkHidlTest, SetGetSaePasswordId) {
 /*
  * SetGetGroupMgmtCipher
  */
-TEST_P(SupplicantStaNetworkHidlTest, SetGetGroupMgmtCipher) {
+TEST_F(SupplicantStaNetworkHidlTest, SetGetGroupMgmtCipher) {
     uint32_t groupMgmtCipher =
         (uint32_t)ISupplicantStaNetwork::GroupMgmtCipherMask::BIP_GMAC_256;
 
@@ -108,7 +107,7 @@ TEST_P(SupplicantStaNetworkHidlTest, SetGetGroupMgmtCipher) {
 /*
  * SetGetKeyMgmt_1_2
  */
-TEST_P(SupplicantStaNetworkHidlTest, SetGetKeyMgmt_1_2) {
+TEST_F(SupplicantStaNetworkHidlTest, SetGetKeyMgmt_1_2) {
     uint32_t keyMgmt = (uint32_t)ISupplicantStaNetwork::KeyMgmtMask::SAE;
 
     sta_network_->setKeyMgmt_1_2(keyMgmt, [](const SupplicantStatus &status) {
@@ -125,7 +124,7 @@ TEST_P(SupplicantStaNetworkHidlTest, SetGetKeyMgmt_1_2) {
 /*
  * SetGetGroupCipher_1_2
  */
-TEST_P(SupplicantStaNetworkHidlTest, SetGetGroupCipher_1_2) {
+TEST_F(SupplicantStaNetworkHidlTest, SetGetGroupCipher_1_2) {
     uint32_t groupCipher =
         (uint32_t)ISupplicantStaNetwork::GroupCipherMask::GCMP_256;
 
@@ -145,7 +144,7 @@ TEST_P(SupplicantStaNetworkHidlTest, SetGetGroupCipher_1_2) {
 /*
  * SetGetPairwiseCipher_1_2
  */
-TEST_P(SupplicantStaNetworkHidlTest, SetGetPairwiseCipher_1_2) {
+TEST_F(SupplicantStaNetworkHidlTest, SetGetPairwiseCipher_1_2) {
     uint32_t pairwiseCipher =
         (uint32_t)ISupplicantStaNetwork::PairwiseCipherMask::GCMP_256;
 
@@ -165,7 +164,7 @@ TEST_P(SupplicantStaNetworkHidlTest, SetGetPairwiseCipher_1_2) {
 /*
  * EnableSuiteBEapOpenSslCiphers
  */
-TEST_P(SupplicantStaNetworkHidlTest, EnableSuiteBEapOpenSslCiphers) {
+TEST_F(SupplicantStaNetworkHidlTest, EnableSuiteBEapOpenSslCiphers) {
     sta_network_->enableSuiteBEapOpenSslCiphers(
         [](const SupplicantStatus &status) {
             EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
@@ -180,7 +179,7 @@ TEST_P(SupplicantStaNetworkHidlTest, EnableSuiteBEapOpenSslCiphers) {
 /*
  * EnableTlsSuiteBEapPhase1Param
  */
-TEST_P(SupplicantStaNetworkHidlTest, EnableTlsSuiteBEapPhase1Param) {
+TEST_F(SupplicantStaNetworkHidlTest, EnableTlsSuiteBEapPhase1Param) {
     sta_network_->enableTlsSuiteBEapPhase1Param(
         true, [](const SupplicantStatus &status) {
             EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
@@ -191,13 +190,3 @@ TEST_P(SupplicantStaNetworkHidlTest, EnableTlsSuiteBEapPhase1Param) {
             EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
         });
 }
-
-INSTANTIATE_TEST_CASE_P(
-    PerInstance, SupplicantStaNetworkHidlTest,
-    testing::Combine(
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(
-            android::hardware::wifi::V1_0::IWifi::descriptor)),
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(
-            android::hardware::wifi::supplicant::V1_2::ISupplicant::
-                descriptor))),
-    android::hardware::PrintInstanceTupleNameToString<>);
