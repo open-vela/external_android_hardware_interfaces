@@ -67,7 +67,6 @@
     <xs:complexType name="globalConfiguration">
         <xs:attribute name="speaker_drc_enabled" type="xs:boolean" use="required"/>
         <xs:attribute name="call_screen_mode_supported" type="xs:boolean" use="optional"/>
-        <xs:attribute name="engine_library" type="engineSuffix" use="optional"/>
     </xs:complexType>
     <xs:complexType name="modules">
         <xs:annotation>
@@ -625,10 +624,4 @@
             </xs:element>
         </xs:sequence>
     </xs:complexType>
-    <xs:simpleType name="engineSuffix">
-        <xs:restriction base="xs:string">
-            <xs:enumeration value="default"/>
-            <xs:enumeration value="configurable"/>
-        </xs:restriction>
-    </xs:simpleType>
 </xs:schema>
