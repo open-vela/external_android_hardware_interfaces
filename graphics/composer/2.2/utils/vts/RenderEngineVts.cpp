@@ -57,15 +57,7 @@ void TestRenderEngine::initGraphicBuffer(uint32_t width, uint32_t height, uint32
 void TestRenderEngine::drawLayers() {
     base::unique_fd bufferFence;
     base::unique_fd readyFence;
-
-    std::vector<const renderengine::LayerSettings*> compositionLayerPointers;
-    compositionLayerPointers.reserve(mCompositionLayers.size());
-    std::transform(mCompositionLayers.begin(), mCompositionLayers.end(),
-                   std::back_insert_iterator(compositionLayerPointers),
-                   [](renderengine::LayerSettings& settings) -> renderengine::LayerSettings* {
-                       return &settings;
-                   });
-    mRenderEngine->drawLayers(mDisplaySettings, compositionLayerPointers,
+    mRenderEngine->drawLayers(mDisplaySettings, mCompositionLayers,
                               mGraphicBuffer->getNativeBuffer(), true, std::move(bufferFence),
                               &readyFence);
     int fd = readyFence.release();
