@@ -34,6 +34,7 @@ namespace android::hardware::neuralnetworks::V1_3::vts::functional {
 using nn::ExecutionBurstController;
 using nn::RequestChannelSender;
 using nn::ResultChannelReceiver;
+using V1_0::ErrorStatus;
 using V1_0::Request;
 using V1_2::FmqRequestDatum;
 using V1_2::FmqResultDatum;
@@ -79,17 +80,16 @@ static void createBurst(const sp<IPreparedModel>& preparedModel, const sp<IBurst
     ASSERT_NE(nullptr, fmqResultDescriptor);
 
     // configure burst
-    V1_0::ErrorStatus errorStatus;
+    ErrorStatus errorStatus;
     sp<IBurstContext> burstContext;
     const Return<void> ret = preparedModel->configureExecutionBurst(
             callback, *fmqRequestDescriptor, *fmqResultDescriptor,
-            [&errorStatus, &burstContext](V1_0::ErrorStatus status,
-                                          const sp<IBurstContext>& context) {
+            [&errorStatus, &burstContext](ErrorStatus status, const sp<IBurstContext>& context) {
                 errorStatus = status;
                 burstContext = context;
             });
     ASSERT_TRUE(ret.isOk());
-    ASSERT_EQ(V1_0::ErrorStatus::NONE, errorStatus);
+    ASSERT_EQ(ErrorStatus::NONE, errorStatus);
     ASSERT_NE(nullptr, burstContext.get());
 
     // return values
@@ -144,7 +144,7 @@ static void validate(RequestChannelSender* sender, ResultChannelReceiver* receiv
     auto results = receiver->getBlocking();
     ASSERT_TRUE(results.has_value());
     const auto [status, outputShapes, timing] = std::move(*results);
-    EXPECT_NE(V1_0::ErrorStatus::NONE, status);
+    EXPECT_NE(ErrorStatus::NONE, status);
     EXPECT_EQ(0u, outputShapes.size());
     EXPECT_TRUE(badTiming(timing));
 }
@@ -302,15 +302,14 @@ static void validateBurstFmqLength(const sp<IPreparedModel>& preparedModel,
     // collect serialized result by running regular burst
     const auto [nRegular, outputShapesRegular, timingRegular, fallbackRegular] =
             controllerRegular->compute(request, MeasureTiming::NO, keys);
-    const V1_0::ErrorStatus statusRegular =
-            nn::convertToV1_0(nn::convertResultCodeToErrorStatus(nRegular));
+    const ErrorStatus statusRegular = nn::convertResultCodeToErrorStatus(nRegular);
     EXPECT_FALSE(fallbackRegular);
 
     // skip test if regular burst output isn't useful for testing a failure
     // caused by having too small of a length for the result FMQ
     const std::vector<FmqResultDatum> serialized =
             android::nn::serialize(statusRegular, outputShapesRegular, timingRegular);
-    if (statusRegular != V1_0::ErrorStatus::NONE ||
+    if (statusRegular != ErrorStatus::NONE ||
         serialized.size() <= kExecutionBurstChannelSmallLength) {
         return;
     }
@@ -319,9 +318,8 @@ static void validateBurstFmqLength(const sp<IPreparedModel>& preparedModel,
     // large enough to return the serialized result
     const auto [nSmall, outputShapesSmall, timingSmall, fallbackSmall] =
             controllerSmall->compute(request, MeasureTiming::NO, keys);
-    const V1_0::ErrorStatus statusSmall =
-            nn::convertToV1_0(nn::convertResultCodeToErrorStatus(nSmall));
-    EXPECT_NE(V1_0::ErrorStatus::NONE, statusSmall);
+    const ErrorStatus statusSmall = nn::convertResultCodeToErrorStatus(nSmall);
+    EXPECT_NE(ErrorStatus::NONE, statusSmall);
     EXPECT_EQ(0u, outputShapesSmall.size());
     EXPECT_TRUE(badTiming(timingSmall));
     EXPECT_FALSE(fallbackSmall);
