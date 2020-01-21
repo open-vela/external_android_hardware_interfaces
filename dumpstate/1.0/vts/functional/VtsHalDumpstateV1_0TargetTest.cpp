@@ -78,7 +78,6 @@ TEST_P(DumpstateHidlTest, TestOk) {
     ASSERT_EQ(1, read(fds[0], &buff, 1)) << "dumped nothing";
 
     native_handle_close(handle);
-    native_handle_delete(handle);
 }
 
 // Positive test: make sure dumpstateBoard() doesn't crash with two FDs.
@@ -97,7 +96,6 @@ TEST_P(DumpstateHidlTest, TestHandleWithTwoFds) {
     ASSERT_TRUE(status.isOk()) << "Status should be ok: " << status.description();
 
     native_handle_close(handle);
-    native_handle_delete(handle);
 }
 
 INSTANTIATE_TEST_SUITE_P(
