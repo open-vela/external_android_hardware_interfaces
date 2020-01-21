@@ -26,9 +26,6 @@ using android::sp;
 using android::String16;
 using android::hardware::rebootescrow::IRebootEscrow;
 
-#define SKIP_UNSUPPORTED \
-    if (rebootescrow == nullptr) GTEST_SKIP() << "Not supported on this device"
-
 /**
  * This tests that the key can be written, read, and removed. It does not test
  * that the key survives a reboot. That needs a host-based test.
@@ -39,6 +36,7 @@ class RebootEscrowAidlTest : public testing::TestWithParam<std::string> {
   public:
     virtual void SetUp() override {
         rebootescrow = android::waitForDeclaredService<IRebootEscrow>(String16(GetParam().c_str()));
+        ASSERT_NE(rebootescrow, nullptr);
     }
 
     sp<IRebootEscrow> rebootescrow;
@@ -61,8 +59,6 @@ class RebootEscrowAidlTest : public testing::TestWithParam<std::string> {
 };
 
 TEST_P(RebootEscrowAidlTest, StoreAndRetrieve_Success) {
-    SKIP_UNSUPPORTED;
-
     ASSERT_TRUE(rebootescrow->storeKey(KEY_1).isOk());
 
     std::vector<uint8_t> actualKey;
@@ -71,8 +67,6 @@ TEST_P(RebootEscrowAidlTest, StoreAndRetrieve_Success) {
 }
 
 TEST_P(RebootEscrowAidlTest, StoreAndRetrieve_SecondRetrieveSucceeds) {
-    SKIP_UNSUPPORTED;
-
     ASSERT_TRUE(rebootescrow->storeKey(KEY_1).isOk());
 
     std::vector<uint8_t> actualKey;
@@ -84,8 +78,6 @@ TEST_P(RebootEscrowAidlTest, StoreAndRetrieve_SecondRetrieveSucceeds) {
 }
 
 TEST_P(RebootEscrowAidlTest, StoreTwiceOverwrites_Success) {
-    SKIP_UNSUPPORTED;
-
     ASSERT_TRUE(rebootescrow->storeKey(KEY_1).isOk());
     ASSERT_TRUE(rebootescrow->storeKey(KEY_2).isOk());
 
@@ -95,8 +87,6 @@ TEST_P(RebootEscrowAidlTest, StoreTwiceOverwrites_Success) {
 }
 
 TEST_P(RebootEscrowAidlTest, StoreEmpty_AfterGetEmptyKey_Success) {
-    SKIP_UNSUPPORTED;
-
     rebootescrow->storeKey(KEY_1);
     rebootescrow->storeKey(EMPTY_KEY);
 
