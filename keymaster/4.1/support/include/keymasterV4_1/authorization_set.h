@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef HARDWARE_INTERFACES_KEYMASTER_V4_1_SUPPORT_INCLUDE_AUTHORIZATION_SET_H_
-#define HARDWARE_INTERFACES_KEYMASTER_V4_1_SUPPORT_INCLUDE_AUTHORIZATION_SET_H_
+#pragma once
 
 #include <keymasterV4_0/authorization_set.h>
 
@@ -28,5 +27,3 @@ using V4_0::AuthorizationSetBuilder;
 using V4_0::KeyParameter;
 
 }  // namespace android::hardware::keymaster::V4_1
-
-#endif  // HARDWARE_INTERFACES_KEYMASTER_V4_1_SUPPORT_INCLUDE_AUTHORIZATION_SET_H_
