@@ -486,14 +486,15 @@ void HalProxy::handlePendingWrites() {
                 }
             }
             lock.lock();
-            mSizePendingWriteEventsQueue -= numToWrite;
             if (pendingWriteEvents.size() > eventQueueSize) {
                 // TODO(b/143302327): Check if this erase operation is too inefficient. It will copy
                 // all the events ahead of it down to fill gap off array at front after the erase.
                 pendingWriteEvents.erase(pendingWriteEvents.begin(),
                                          pendingWriteEvents.begin() + eventQueueSize);
+                mSizePendingWriteEventsQueue -= eventQueueSize;
             } else {
                 mPendingWriteEventsQueue.pop();
+                mSizePendingWriteEventsQueue -= pendingWriteEvents.size();
             }
         }
     }
@@ -651,12 +652,12 @@ void HalProxyCallback::postEvents(const std::vector<Event>& events, ScopedWakelo
     if (numWakeupEvents > 0) {
         ALOG_ASSERT(wakelock.isLocked(),
                     "Wakeup events posted while wakelock unlocked for subhal"
-                    " w/ index %" PRId32 ".",
+                    " w/ index %zu.",
                     mSubHalIndex);
     } else {
         ALOG_ASSERT(!wakelock.isLocked(),
                     "No Wakeup events posted but wakelock locked for subhal"
-                    " w/ index %" PRId32 ".",
+                    " w/ index %zu.",
                     mSubHalIndex);
     }
     mHalProxy->postEventsToMessageQueue(processedEvents, numWakeupEvents, std::move(wakelock));

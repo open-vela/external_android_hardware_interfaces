@@ -17,21 +17,15 @@
 #include "rebootescrow-impl/RebootEscrow.h"
 
 #include <android-base/logging.h>
-#include <android-base/properties.h>
 #include <android/binder_manager.h>
 #include <android/binder_process.h>
 
 using aidl::android::hardware::rebootescrow::RebootEscrow;
 
-constexpr auto kRebootEscrowDeviceProperty = "ro.rebootescrow.device";
-constexpr auto kRebootEscrowDeviceDefault = "/dev/access-kregistry";
-
 int main() {
     ABinderProcess_setThreadPoolMaxThreadCount(0);
 
-    auto rebootEscrowDevicePath =
-            android::base::GetProperty(kRebootEscrowDeviceProperty, kRebootEscrowDeviceDefault);
-    auto re = ndk::SharedRefBase::make<RebootEscrow>(rebootEscrowDevicePath);
+    auto re = ndk::SharedRefBase::make<RebootEscrow>();
     const std::string instance = std::string() + RebootEscrow::descriptor + "/default";
     binder_status_t status = AServiceManager_addService(re->asBinder().get(), instance.c_str());
     CHECK(status == STATUS_OK);
