@@ -600,9 +600,6 @@ struct CellIdentityLte {
 
     /** Information about any closed subscriber group ID for this cell */
     OptionalCsgInfo optionalCsgInfo;
-
-    /** Bands used by the cell. */
-    vec<EutranBands> bands;
 };
 
 /**
@@ -618,8 +615,8 @@ struct CellIdentityNr {
     /** Additional PLMN-IDs beyond the primary PLMN broadcast for this cell */
     vec<string> additionalPlmns;
 
-    /** Bands used by the cell. */
-    vec<NgranBands> bands;
+    /** Band used by the cell */
+    NgranBands band;
 };
 
 struct CellInfoGsm {
