@@ -17,7 +17,6 @@
 #define LOG_TAG "GnssHalTestCases"
 
 #include <gnss_hal_test.h>
-#include <cmath>
 #include "Utils.h"
 
 #include <gtest/gtest.h>
@@ -31,7 +30,6 @@ using IGnssMeasurement_2_1 = android::hardware::gnss::V2_1::IGnssMeasurement;
 using IGnssMeasurement_2_0 = android::hardware::gnss::V2_0::IGnssMeasurement;
 using IGnssMeasurement_1_1 = android::hardware::gnss::V1_1::IGnssMeasurement;
 using IGnssMeasurement_1_0 = android::hardware::gnss::V1_0::IGnssMeasurement;
-
 using IGnssConfiguration_2_1 = android::hardware::gnss::V2_1::IGnssConfiguration;
 using IGnssConfiguration_2_0 = android::hardware::gnss::V2_0::IGnssConfiguration;
 using IGnssConfiguration_1_1 = android::hardware::gnss::V1_1::IGnssConfiguration;
@@ -39,8 +37,6 @@ using IGnssConfiguration_1_0 = android::hardware::gnss::V1_0::IGnssConfiguration
 
 using android::hardware::gnss::V2_0::GnssConstellationType;
 using android::hardware::gnss::V2_1::IGnssConfiguration;
-
-using GnssMeasurementFlags = IGnssMeasurementCallback_2_1::GnssMeasurementFlags;
 
 /*
  * SetupTeardownCreateCleanup:
@@ -96,7 +92,6 @@ TEST_P(GnssHalTest, TestGnssConfigurationExtension) {
  * TestGnssMeasurementFields:
  * Sets a GnssMeasurementCallback, waits for a measurement, and verifies
  * 1. basebandCN0DbHz is valid
- * 2. ISB fields are valid if HAS_INTER_SIGNAL_BIAS is true.
  */
 TEST_P(GnssHalTest, TestGnssMeasurementFields) {
     const int kFirstGnssMeasurementTimeoutSeconds = 10;
@@ -123,29 +118,6 @@ TEST_P(GnssHalTest, TestGnssMeasurementFields) {
     for (auto measurement : lastMeasurement.measurements) {
         // Verify basebandCn0DbHz is valid.
         ASSERT_TRUE(measurement.basebandCN0DbHz > 0.0 && measurement.basebandCN0DbHz <= 65.0);
-
-        if (((uint32_t)(measurement.flags & GnssMeasurementFlags::HAS_RECEIVER_ISB) > 0) &&
-            ((uint32_t)(measurement.flags & GnssMeasurementFlags::HAS_RECEIVER_ISB_UNCERTAINTY) >
-             0) &&
-            ((uint32_t)(measurement.flags & GnssMeasurementFlags::HAS_SATELLITE_ISB) > 0) &&
-            ((uint32_t)(measurement.flags & GnssMeasurementFlags::HAS_SATELLITE_ISB_UNCERTAINTY) >
-             0)) {
-            GnssConstellationType referenceConstellation =
-                    lastMeasurement.clock.referenceSignalTypeForIsb.constellation;
-            double carrierFrequencyHz =
-                    lastMeasurement.clock.referenceSignalTypeForIsb.carrierFrequencyHz;
-            std::string codeType = lastMeasurement.clock.referenceSignalTypeForIsb.codeType;
-
-            ASSERT_TRUE(referenceConstellation >= GnssConstellationType::UNKNOWN &&
-                        referenceConstellation >= GnssConstellationType::IRNSS);
-            ASSERT_TRUE(carrierFrequencyHz > 0);
-            ASSERT_TRUE(codeType != "");
-
-            ASSERT_TRUE(std::abs(measurement.receiverInterSignalBiasNs) < 1.0e6);
-            ASSERT_TRUE(measurement.receiverInterSignalBiasUncertaintyNs >= 0);
-            ASSERT_TRUE(std::abs(measurement.satelliteInterSignalBiasNs) < 1.0e6);
-            ASSERT_TRUE(measurement.satelliteInterSignalBiasUncertaintyNs >= 0);
-        }
     }
 
     iGnssMeasurement->close();
