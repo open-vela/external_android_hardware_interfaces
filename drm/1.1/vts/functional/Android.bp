@@ -18,7 +18,7 @@ cc_test {
     name: "VtsHalDrmV1_1TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
     srcs: [
-        "drm_hal_clearkey_test.cpp"
+        "drm_hal_clearkey_test.cpp",
     ],
     static_libs: [
         "android.hardware.drm@1.0",
@@ -29,6 +29,9 @@ cc_test {
         "libhidlmemory",
         "libnativehelper",
         "libssl",
-        "libcrypto",
+    ],
+    test_suites: [
+        "general-tests",
+        "vts-core",
     ],
 }
