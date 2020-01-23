@@ -20,7 +20,7 @@ cc_test {
     srcs: [
         "drm_hal_clearkey_test.cpp",
         "drm_hal_vendor_test.cpp",
-        "vendor_modules.cpp"
+        "vendor_modules.cpp",
     ],
     static_libs: [
         "android.hardware.drm@1.0",
@@ -30,6 +30,10 @@ cc_test {
         "libhidlmemory",
         "libnativehelper",
         "libssl",
-        "libcrypto",
+        "libcrypto_static",
+    ],
+    test_suites: [
+        "general-tests",
+        "vts-core",
     ],
 }
