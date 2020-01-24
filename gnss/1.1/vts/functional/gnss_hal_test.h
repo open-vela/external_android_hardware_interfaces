@@ -29,9 +29,8 @@
 using android::hardware::Return;
 using android::hardware::Void;
 
-using android::hardware::gnss::V1_0::GnssLocation;
-
 using android::hardware::gnss::V1_0::GnssConstellationType;
+using android::hardware::gnss::V1_0::GnssLocation;
 using android::hardware::gnss::V1_0::GnssLocationFlags;
 using android::hardware::gnss::V1_1::IGnss;
 using android::hardware::gnss::V1_1::IGnssCallback;
