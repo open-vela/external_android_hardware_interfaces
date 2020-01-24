@@ -36,14 +36,17 @@
 
 using ::android::hardware::drm::V1_0::EventType;
 using ::android::hardware::drm::V1_0::KeyedVector;
-using KeyStatusV1_0 = ::android::hardware::drm::V1_0::KeyStatus;
 using ::android::hardware::drm::V1_0::KeyType;
 using ::android::hardware::drm::V1_0::Mode;
 using ::android::hardware::drm::V1_0::Pattern;
 using ::android::hardware::drm::V1_0::SessionId;
 using ::android::hardware::drm::V1_0::SubSample;
 
+using KeyStatusV1_0 = ::android::hardware::drm::V1_0::KeyStatus;
+using StatusV1_0 = ::android::hardware::drm::V1_0::Status;
+
 using ::android::hardware::drm::V1_1::ICryptoFactory;
+using ::android::hardware::drm::V1_1::SecurityLevel;
 
 using StatusV1_2 = ::android::hardware::drm::V1_2::Status;
 
@@ -62,14 +65,6 @@ using std::vector;
 
 #define EXPECT_OK(ret) EXPECT_TRUE(ret.isOk())
 
-#define RETURN_IF_SKIPPED                                                                \
-    if (!vendorModule->isInstalled()) {                                                  \
-        GTEST_SKIP() << "This drm scheme not supported."                                 \
-                     << " library:" << GetParam()                                        \
-                     << " service-name:" << vendorModule->getServiceName() << std::endl; \
-        return;                                                                          \
-    }
-
 namespace android {
 namespace hardware {
 namespace drm {
@@ -85,6 +80,8 @@ class DrmHalTest : public ::testing::TestWithParam<std::string> {
 
    protected:
     hidl_array<uint8_t, 16> getVendorUUID();
+    void provision();
+    SessionId openSession(SecurityLevel level, StatusV1_0* err);
     SessionId openSession();
     void closeSession(const SessionId& sessionId);
     hidl_vec<uint8_t> loadKeys(const SessionId& sessionId,
@@ -131,9 +128,11 @@ class DrmHalClearkeyTest : public DrmHalTest {
    public:
      virtual void SetUp() override {
          DrmHalTest::SetUp();
-
-         if (vendorModule == nullptr) {
-             GTEST_SKIP() << "Instance not supported";
+         const uint8_t kClearKeyUUID[16] = {
+             0xE2, 0x71, 0x9D, 0x58, 0xA9, 0x85, 0xB3, 0xC9,
+             0x78, 0x1A, 0xB0, 0x30, 0xAF, 0x78, 0xD3, 0x0E};
+         if (!drmFactory->isCryptoSchemeSupported(kClearKeyUUID)) {
+             GTEST_SKIP() << "ClearKey not supported by " << GetParam();
          }
      }
     virtual void TearDown() override {}
