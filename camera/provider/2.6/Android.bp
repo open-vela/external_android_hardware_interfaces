@@ -7,7 +7,6 @@ hidl_interface {
         enabled: true,
     },
     srcs: [
-        "types.hal",
         "ICameraProvider.hal",
         "ICameraProviderCallback.hal",
     ],
