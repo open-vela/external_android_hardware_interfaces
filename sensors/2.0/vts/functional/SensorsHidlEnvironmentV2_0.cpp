@@ -129,8 +129,8 @@ void SensorsHidlEnvironmentV2_0::HidlTearDown() {
 
 void SensorsHidlEnvironmentV2_0::startPollingThread() {
     mStopThread = false;
-    mPollThread = std::thread(pollingThread, this);
     mEvents.reserve(MAX_RECEIVE_BUFFER_EVENT_COUNT);
+    mPollThread = std::thread(pollingThread, this);
 }
 
 void SensorsHidlEnvironmentV2_0::readEvents() {
