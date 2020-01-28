@@ -8,7 +8,10 @@ hidl_interface {
     },
     srcs: [
         "types.hal",
+        "IBuffer.hal",
         "IDevice.hal",
+        "IExecutionCallback.hal",
+        "IFencedExecutionCallback.hal",
         "IPreparedModel.hal",
         "IPreparedModelCallback.hal",
     ],
