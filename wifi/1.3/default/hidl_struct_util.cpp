@@ -1819,13 +1819,7 @@ bool convertHidlNanDataPathInitiatorRequestToLegacy(
         convertHidlNanDataPathChannelCfgToLegacy(
             hidl_request.channelRequestType);
     legacy_request->channel = hidl_request.channel;
-    if (strnlen(hidl_request.ifaceName.c_str(), IFNAMSIZ + 1) == IFNAMSIZ + 1) {
-        LOG(ERROR) << "convertHidlNanDataPathInitiatorRequestToLegacy: "
-                      "ifaceName too long";
-        return false;
-    }
-    strncpy(legacy_request->ndp_iface, hidl_request.ifaceName.c_str(),
-            IFNAMSIZ + 1);
+    strcpy(legacy_request->ndp_iface, hidl_request.ifaceName.c_str());
     legacy_request->ndp_cfg.security_cfg =
         (hidl_request.securityConfig.securityType !=
          NanDataPathSecurityType::OPEN)
@@ -1906,13 +1900,7 @@ bool convertHidlNanDataPathIndicationResponseToLegacy(
                                    ? legacy_hal::NAN_DP_REQUEST_ACCEPT
                                    : legacy_hal::NAN_DP_REQUEST_REJECT;
     legacy_request->ndp_instance_id = hidl_request.ndpInstanceId;
-    if (strnlen(hidl_request.ifaceName.c_str(), IFNAMSIZ + 1) == IFNAMSIZ + 1) {
-        LOG(ERROR) << "convertHidlNanDataPathIndicationResponseToLegacy: "
-                      "ifaceName too long";
-        return false;
-    }
-    strncpy(legacy_request->ndp_iface, hidl_request.ifaceName.c_str(),
-            IFNAMSIZ + 1);
+    strcpy(legacy_request->ndp_iface, hidl_request.ifaceName.c_str());
     legacy_request->ndp_cfg.security_cfg =
         (hidl_request.securityConfig.securityType !=
          NanDataPathSecurityType::OPEN)
