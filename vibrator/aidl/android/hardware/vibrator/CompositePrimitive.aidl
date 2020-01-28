@@ -49,9 +49,4 @@ enum CompositePrimitive {
      * A haptic effect that simulates quick downwards movement with gravity.
      */
     QUICK_FALL,
-    /**
-     * This very short effect should produce a light crisp sensation intended
-     * to be used repetitively for dynamic feedback.
-     */
-    LIGHT_TICK,
 }

@@ -31,7 +31,6 @@ cc_binary {
         "libhidlbase",
         "libkeymaster4",
         "libkeymaster41",
-        "libkeymaster4_1support",
         "liblog",
         "libutils",
     ],
