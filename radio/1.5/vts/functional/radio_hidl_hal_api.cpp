@@ -833,24 +833,23 @@ TEST_F(RadioHidlTest_v1_5, setupDataCall_1_5) {
 
     android::hardware::radio::V1_5::DataProfileInfo dataProfileInfo;
     memset(&dataProfileInfo, 0, sizeof(dataProfileInfo));
-    dataProfileInfo.profileId = DataProfileId::DEFAULT;
-    dataProfileInfo.apn = hidl_string("internet");
-    dataProfileInfo.protocol = PdpProtocolType::IP;
-    dataProfileInfo.roamingProtocol = PdpProtocolType::IP;
-    dataProfileInfo.authType = ApnAuthType::NO_PAP_NO_CHAP;
-    dataProfileInfo.user = hidl_string("username");
-    dataProfileInfo.password = hidl_string("password");
-    dataProfileInfo.type = DataProfileInfoType::THREE_GPP;
-    dataProfileInfo.maxConnsTime = 300;
-    dataProfileInfo.maxConns = 20;
-    dataProfileInfo.waitTime = 0;
-    dataProfileInfo.enabled = true;
+    dataProfileInfo.base.profileId = DataProfileId::DEFAULT;
+    dataProfileInfo.base.apn = hidl_string("internet");
+    dataProfileInfo.base.protocol = PdpProtocolType::IP;
+    dataProfileInfo.base.roamingProtocol = PdpProtocolType::IP;
+    dataProfileInfo.base.authType = ApnAuthType::NO_PAP_NO_CHAP;
+    dataProfileInfo.base.user = hidl_string("username");
+    dataProfileInfo.base.password = hidl_string("password");
+    dataProfileInfo.base.type = DataProfileInfoType::THREE_GPP;
+    dataProfileInfo.base.maxConnsTime = 300;
+    dataProfileInfo.base.maxConns = 20;
+    dataProfileInfo.base.waitTime = 0;
+    dataProfileInfo.base.enabled = true;
     dataProfileInfo.supportedApnTypesBitmap = 320;
-    dataProfileInfo.bearerBitmap = 161543;
-    dataProfileInfo.mtuV4 = 0;
-    dataProfileInfo.mtuV6 = 0;
-    dataProfileInfo.preferred = true;
-    dataProfileInfo.persistent = false;
+    dataProfileInfo.base.bearerBitmap = 161543;
+    dataProfileInfo.base.mtu = 0;
+    dataProfileInfo.base.preferred = true;
+    dataProfileInfo.base.persistent = false;
 
     bool roamingAllowed = false;
 
@@ -879,33 +878,29 @@ TEST_F(RadioHidlTest_v1_5, setupDataCall_1_5) {
     }
 }
 
-/*
- * Test IRadio.setInitialAttachApn_1_5() for the response returned.
- */
 TEST_F(RadioHidlTest_v1_5, setInitialAttachApn_1_5) {
     serial = GetRandomSerialNumber();
 
     // Create a dataProfileInfo
     android::hardware::radio::V1_5::DataProfileInfo dataProfileInfo;
     memset(&dataProfileInfo, 0, sizeof(dataProfileInfo));
-    dataProfileInfo.profileId = DataProfileId::DEFAULT;
-    dataProfileInfo.apn = hidl_string("internet");
-    dataProfileInfo.protocol = PdpProtocolType::IPV4V6;
-    dataProfileInfo.roamingProtocol = PdpProtocolType::IPV4V6;
-    dataProfileInfo.authType = ApnAuthType::NO_PAP_NO_CHAP;
-    dataProfileInfo.user = hidl_string("username");
-    dataProfileInfo.password = hidl_string("password");
-    dataProfileInfo.type = DataProfileInfoType::THREE_GPP;
-    dataProfileInfo.maxConnsTime = 300;
-    dataProfileInfo.maxConns = 20;
-    dataProfileInfo.waitTime = 0;
-    dataProfileInfo.enabled = true;
+    dataProfileInfo.base.profileId = DataProfileId::DEFAULT;
+    dataProfileInfo.base.apn = hidl_string("internet");
+    dataProfileInfo.base.protocol = PdpProtocolType::IPV4V6;
+    dataProfileInfo.base.roamingProtocol = PdpProtocolType::IPV4V6;
+    dataProfileInfo.base.authType = ApnAuthType::NO_PAP_NO_CHAP;
+    dataProfileInfo.base.user = hidl_string("username");
+    dataProfileInfo.base.password = hidl_string("password");
+    dataProfileInfo.base.type = DataProfileInfoType::THREE_GPP;
+    dataProfileInfo.base.maxConnsTime = 300;
+    dataProfileInfo.base.maxConns = 20;
+    dataProfileInfo.base.waitTime = 0;
+    dataProfileInfo.base.enabled = true;
     dataProfileInfo.supportedApnTypesBitmap = 320;
-    dataProfileInfo.bearerBitmap = 161543;
-    dataProfileInfo.mtuV4 = 0;
-    dataProfileInfo.mtuV6 = 0;
-    dataProfileInfo.preferred = true;
-    dataProfileInfo.persistent = false;
+    dataProfileInfo.base.bearerBitmap = 161543;
+    dataProfileInfo.base.mtu = 0;
+    dataProfileInfo.base.preferred = true;
+    dataProfileInfo.base.persistent = false;
 
     radio_v1_5->setInitialAttachApn_1_5(serial, dataProfileInfo);
 
@@ -922,33 +917,29 @@ TEST_F(RadioHidlTest_v1_5, setInitialAttachApn_1_5) {
     }
 }
 
-/*
- * Test IRadio.setDataProfile_1_5() for the response returned.
- */
 TEST_F(RadioHidlTest_v1_5, setDataProfile_1_5) {
     serial = GetRandomSerialNumber();
 
     // Create a dataProfileInfo
     android::hardware::radio::V1_5::DataProfileInfo dataProfileInfo;
     memset(&dataProfileInfo, 0, sizeof(dataProfileInfo));
-    dataProfileInfo.profileId = DataProfileId::DEFAULT;
-    dataProfileInfo.apn = hidl_string("internet");
-    dataProfileInfo.protocol = PdpProtocolType::IPV4V6;
-    dataProfileInfo.roamingProtocol = PdpProtocolType::IPV4V6;
-    dataProfileInfo.authType = ApnAuthType::NO_PAP_NO_CHAP;
-    dataProfileInfo.user = hidl_string("username");
-    dataProfileInfo.password = hidl_string("password");
-    dataProfileInfo.type = DataProfileInfoType::THREE_GPP;
-    dataProfileInfo.maxConnsTime = 300;
-    dataProfileInfo.maxConns = 20;
-    dataProfileInfo.waitTime = 0;
-    dataProfileInfo.enabled = true;
+    dataProfileInfo.base.profileId = DataProfileId::DEFAULT;
+    dataProfileInfo.base.apn = hidl_string("internet");
+    dataProfileInfo.base.protocol = PdpProtocolType::IPV4V6;
+    dataProfileInfo.base.roamingProtocol = PdpProtocolType::IPV4V6;
+    dataProfileInfo.base.authType = ApnAuthType::NO_PAP_NO_CHAP;
+    dataProfileInfo.base.user = hidl_string("username");
+    dataProfileInfo.base.password = hidl_string("password");
+    dataProfileInfo.base.type = DataProfileInfoType::THREE_GPP;
+    dataProfileInfo.base.maxConnsTime = 300;
+    dataProfileInfo.base.maxConns = 20;
+    dataProfileInfo.base.waitTime = 0;
+    dataProfileInfo.base.enabled = true;
     dataProfileInfo.supportedApnTypesBitmap = 320;
-    dataProfileInfo.bearerBitmap = 161543;
-    dataProfileInfo.mtuV4 = 0;
-    dataProfileInfo.mtuV6 = 0;
-    dataProfileInfo.preferred = true;
-    dataProfileInfo.persistent = true;
+    dataProfileInfo.base.bearerBitmap = 161543;
+    dataProfileInfo.base.mtu = 0;
+    dataProfileInfo.base.preferred = true;
+    dataProfileInfo.base.persistent = true;
 
     // Create a dataProfileInfoList
     android::hardware::hidl_vec<android::hardware::radio::V1_5::DataProfileInfo>
@@ -998,32 +989,6 @@ TEST_F(RadioHidlTest_v1_5, setRadioPower_1_5_emergencyCall_cancalled) {
 }
 
 /*
- * Test IRadio.setNetworkSelectionModeManual_1_5() for the response returned.
- */
-TEST_F(RadioHidlTest_v1_5, setNetworkSelectionModeManual_1_5) {
-    serial = GetRandomSerialNumber();
-
-    // can't camp on nonexistent MCCMNC, so we expect this to fail.
-    Return<void> res = radio_v1_5->setNetworkSelectionModeManual_1_5(
-            serial, "123456", android::hardware::radio::V1_5::RadioAccessNetworks::GERAN);
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
-    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
-    EXPECT_EQ(serial, radioRsp_v1_5->rspInfo.serial);
-
-    if (cardStatus.base.base.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_5->rspInfo.error,
-                                     {RadioError::NONE, RadioError::ILLEGAL_SIM_OR_ME,
-                                      RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE},
-                                     CHECK_GENERAL_ERROR));
-    } else if (cardStatus.base.base.cardState == CardState::PRESENT) {
-        ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_5->rspInfo.error,
-                                     {RadioError::NONE, RadioError::RADIO_NOT_AVAILABLE,
-                                      RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE},
-                                     CHECK_GENERAL_ERROR));
-    }
-}
-
-/*
  * Test IRadio.sendCdmaSmsExpectMore() for the response returned.
  */
 TEST_F(RadioHidlTest_v1_5, sendCdmaSmsExpectMore) {
@@ -1051,7 +1016,7 @@ TEST_F(RadioHidlTest_v1_5, sendCdmaSmsExpectMore) {
     cdmaSmsMessage.address = cdmaSmsAddress;
     cdmaSmsMessage.subAddress = cdmaSmsSubaddress;
     cdmaSmsMessage.bearerData =
-            (std::vector<uint8_t>){15, 0, 3, 32, 3, 16, 1, 8, 16, 53, 76, 68, 6, 51, 106, 0};
+        (std::vector<uint8_t>){15, 0, 3, 32, 3, 16, 1, 8, 16, 53, 76, 68, 6, 51, 106, 0};
 
     radio_v1_5->sendCdmaSmsExpectMore(serial, cdmaSmsMessage);
 
@@ -1061,8 +1026,8 @@ TEST_F(RadioHidlTest_v1_5, sendCdmaSmsExpectMore) {
 
     if (cardStatus.base.base.cardState == CardState::ABSENT) {
         ASSERT_TRUE(CheckAnyOfErrors(
-                radioRsp_v1_5->rspInfo.error,
-                {RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE, RadioError::SIM_ABSENT},
-                CHECK_GENERAL_ERROR));
+            radioRsp_v1_5->rspInfo.error,
+            {RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE, RadioError::SIM_ABSENT},
+            CHECK_GENERAL_ERROR));
     }
 }
