@@ -29,13 +29,11 @@
 #include <android/hardware/neuralnetworks/1.2/IPreparedModelCallback.h>
 #include <android/hardware/neuralnetworks/1.2/types.h>
 #include <android/hardware/neuralnetworks/1.3/IDevice.h>
-#include <android/hardware/neuralnetworks/1.3/IFencedExecutionCallback.h>
 #include <android/hardware/neuralnetworks/1.3/IPreparedModel.h>
 #include <android/hardware/neuralnetworks/1.3/IPreparedModelCallback.h>
 #include <android/hardware/neuralnetworks/1.3/types.h>
 #include <android/hidl/allocator/1.0/IAllocator.h>
 #include <android/hidl/memory/1.0/IMemory.h>
-#include <android/sync.h>
 #include <gtest/gtest.h>
 #include <hidlmemory/mapping.h>
 
@@ -72,20 +70,13 @@ using HidlToken = hidl_array<uint8_t, static_cast<uint32_t>(Constant::BYTE_SIZE_
 
 namespace {
 
-enum class Executor { ASYNC, SYNC, BURST, FENCED };
+enum class Executor { ASYNC, SYNC, BURST };
 
 enum class OutputType { FULLY_SPECIFIED, UNSPECIFIED, INSUFFICIENT };
 
 enum class MemoryType { SHARED, DEVICE };
 
 enum class IOType { INPUT, OUTPUT };
-
-static void waitForSyncFence(int syncFd) {
-    constexpr int kInfiniteTimeout = -1;
-    ASSERT_GT(syncFd, 0);
-    int r = sync_wait(syncFd, kInfiniteTimeout);
-    ASSERT_GE(r, 0);
-}
 
 struct TestConfig {
     Executor executor;
@@ -571,44 +562,9 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
 
             break;
         }
-        case Executor::FENCED: {
-            SCOPED_TRACE("fenced");
-            ErrorStatus result;
-            hidl_handle syncFenceHandle;
-            sp<IFencedExecutionCallback> fencedCallback;
-            Return<void> ret = preparedModel->executeFenced(
-                    request, {}, testConfig.measureTiming, {}, {},
-                    [&result, &syncFenceHandle, &fencedCallback](
-                            ErrorStatus error, const hidl_handle& handle,
-                            const sp<IFencedExecutionCallback>& callback) {
-                        result = error;
-                        syncFenceHandle = handle;
-                        fencedCallback = callback;
-                    });
-            ASSERT_TRUE(ret.isOk());
-            if (result != ErrorStatus::NONE) {
-                ASSERT_EQ(syncFenceHandle.getNativeHandle(), nullptr);
-                ASSERT_EQ(fencedCallback, nullptr);
-                executionStatus = ErrorStatus::GENERAL_FAILURE;
-            } else if (syncFenceHandle.getNativeHandle()) {
-                waitForSyncFence(syncFenceHandle.getNativeHandle()->data[0]);
-            }
-            if (result == ErrorStatus::NONE) {
-                ASSERT_NE(fencedCallback, nullptr);
-                Return<void> ret = fencedCallback->getExecutionInfo(
-                        [&executionStatus, &timing](ErrorStatus error, Timing t, Timing) {
-                            executionStatus = error;
-                            timing = t;
-                        });
-                ASSERT_TRUE(ret.isOk());
-            }
-            break;
-        }
     }
 
-    // The driver is allowed to reject executeFenced, and if they do, we should skip.
-    if ((testConfig.outputType != OutputType::FULLY_SPECIFIED ||
-         testConfig.executor == Executor::FENCED) &&
+    if (testConfig.outputType != OutputType::FULLY_SPECIFIED &&
         executionStatus == ErrorStatus::GENERAL_FAILURE) {
         if (skipped != nullptr) {
             *skipped = true;
@@ -692,11 +648,6 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
             executorList = {Executor::ASYNC, Executor::SYNC};
             memoryType = MemoryType::DEVICE;
         } break;
-        case TestKind::FENCED_COMPUTE: {
-            outputTypesList = {OutputType::FULLY_SPECIFIED};
-            measureTimingList = {MeasureTiming::NO, MeasureTiming::YES};
-            executorList = {Executor::FENCED};
-        } break;
         case TestKind::QUANTIZATION_COUPLING: {
             LOG(FATAL) << "Wrong TestKind for EvaluatePreparedModel";
             return;
@@ -720,8 +671,7 @@ void EvaluatePreparedCoupledModels(const sp<IDevice>& device,
                                    const TestModel& coupledModel) {
     const std::vector<OutputType> outputTypesList = {OutputType::FULLY_SPECIFIED};
     const std::vector<MeasureTiming> measureTimingList = {MeasureTiming::NO, MeasureTiming::YES};
-    const std::vector<Executor> executorList = {Executor::ASYNC, Executor::SYNC, Executor::BURST,
-                                                Executor::FENCED};
+    const std::vector<Executor> executorList = {Executor::ASYNC, Executor::SYNC, Executor::BURST};
 
     for (const OutputType outputType : outputTypesList) {
         for (const MeasureTiming measureTiming : measureTimingList) {
@@ -758,8 +708,7 @@ void Execute(const sp<IDevice>& device, const TestModel& testModel, TestKind tes
     switch (testKind) {
         case TestKind::GENERAL:
         case TestKind::DYNAMIC_SHAPE:
-        case TestKind::MEMORY_DOMAIN:
-        case TestKind::FENCED_COMPUTE: {
+        case TestKind::MEMORY_DOMAIN: {
             createPreparedModel(device, model, &preparedModel);
             if (preparedModel == nullptr) return;
             EvaluatePreparedModel(device, preparedModel, testModel, testKind);
@@ -822,9 +771,6 @@ class DynamicOutputShapeTest : public GeneratedTest {};
 // Tag for the memory domain tests
 class MemoryDomainTest : public GeneratedTest {};
 
-// Tag for the fenced compute tests
-class FencedComputeTest : public GeneratedTest {};
-
 // Tag for the dynamic output shape tests
 class QuantizationCouplingTest : public GeneratedTest {};
 
@@ -840,10 +786,6 @@ TEST_P(MemoryDomainTest, Test) {
     Execute(kDevice, kTestModel, /*testKind=*/TestKind::MEMORY_DOMAIN);
 }
 
-TEST_P(FencedComputeTest, Test) {
-    Execute(kDevice, kTestModel, /*testKind=*/TestKind::FENCED_COMPUTE);
-}
-
 TEST_P(QuantizationCouplingTest, Test) {
     Execute(kDevice, kTestModel, /*testKind=*/TestKind::QUANTIZATION_COUPLING);
 }
@@ -851,14 +793,10 @@ TEST_P(QuantizationCouplingTest, Test) {
 INSTANTIATE_GENERATED_TEST(GeneratedTest,
                            [](const TestModel& testModel) { return !testModel.expectFailure; });
 
-INSTANTIATE_GENERATED_TEST(DynamicOutputShapeTest, [](const TestModel& testModel) {
-    return !testModel.expectFailure && !testModel.hasScalarOutputs();
-});
-
-INSTANTIATE_GENERATED_TEST(MemoryDomainTest,
+INSTANTIATE_GENERATED_TEST(DynamicOutputShapeTest,
                            [](const TestModel& testModel) { return !testModel.expectFailure; });
 
-INSTANTIATE_GENERATED_TEST(FencedComputeTest,
+INSTANTIATE_GENERATED_TEST(MemoryDomainTest,
                            [](const TestModel& testModel) { return !testModel.expectFailure; });
 
 INSTANTIATE_GENERATED_TEST(QuantizationCouplingTest, [](const TestModel& testModel) {
