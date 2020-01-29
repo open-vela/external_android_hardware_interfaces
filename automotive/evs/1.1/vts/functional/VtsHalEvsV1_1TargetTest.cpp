@@ -117,7 +117,7 @@ public:
         pEnumerator = getService<IEvsEnumerator>(service_name);
         ASSERT_NE(pEnumerator.get(), nullptr);
 
-        mIsHwModule = pEnumerator->isHardware();
+        mIsHwModule = !service_name.compare(kEnumeratorName);
     }
 
     virtual void TearDown() override {

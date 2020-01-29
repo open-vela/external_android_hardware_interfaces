@@ -45,7 +45,6 @@
         <interface>
             <name>IEvsEnumerator</name>
             <instance>default</instance>
-            <regex-instance>[a-z]+/[0-9]+</regex-instance>
         </interface>
     </hal>
     <hal format="aidl" optional="true">
@@ -489,14 +488,6 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.vibrator</name>
-        <interface>
-            <name>IVibrator</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="hidl" optional="true">
-        <name>android.hardware.vibrator</name>
-        <version>1.0-3</version>
         <interface>
             <name>IVibrator</name>
             <instance>default</instance>
