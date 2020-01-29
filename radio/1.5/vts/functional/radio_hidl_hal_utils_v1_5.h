@@ -114,6 +114,9 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
     Return<void> supplyNetworkDepersonalizationResponse(const RadioResponseInfo& info,
                                                         int32_t remainingRetries);
 
+    Return<void> supplySimDepersonalizationResponse(const RadioResponseInfo& info,
+            ::android::hardware::radio::V1_5::PersoSubstate persoType, int32_t remainingRetries);
+
     Return<void> getCurrentCallsResponse(
             const RadioResponseInfo& info,
             const ::android::hardware::hidl_vec<::android::hardware::radio::V1_0::Call>& calls);
@@ -289,6 +292,8 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
     Return<void> sendBurstDtmfResponse(const RadioResponseInfo& info);
 
     Return<void> sendCdmaSmsResponse(const RadioResponseInfo& info, const SendSmsResult& sms);
+
+    Return<void> sendCdmaSmsExpectMoreResponse(const RadioResponseInfo& info, const SendSmsResult& sms);
 
     Return<void> acknowledgeLastIncomingCdmaSmsResponse(const RadioResponseInfo& info);
 
@@ -571,15 +576,6 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
             const RadioResponseInfo& info,
             const ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::CellInfo>&
                     cellInfo);
-
-    Return<void> setNetworkSelectionModeManualResponse_1_5(const RadioResponseInfo& info);
-
-    Return<void> sendCdmaSmsExpectMoreResponse(const RadioResponseInfo& info,
-                                               const SendSmsResult& sms);
-
-    Return<void> supplySimDepersonalizationResponse(
-            const RadioResponseInfo& info,
-            ::android::hardware::radio::V1_5::PersoSubstate persoType, int32_t remainingRetries);
 };
 
 /* Callback class for radio indication */

@@ -62,6 +62,13 @@ Return<void> RadioResponse_v1_5::supplyNetworkDepersonalizationResponse(
     return Void();
 }
 
+Return<void> RadioResponse_v1_5::supplySimDepersonalizationResponse(
+        const RadioResponseInfo& /*info*/,
+        ::android::hardware::radio::V1_5::PersoSubstate /*persoType*/,
+        int32_t /*remainingRetries*/) {
+    return Void();
+}
+
 Return<void> RadioResponse_v1_5::getCurrentCallsResponse(
         const RadioResponseInfo& /*info*/,
         const ::android::hardware::hidl_vec<::android::hardware::radio::V1_0::Call>& /*calls*/) {
@@ -410,6 +417,11 @@ Return<void> RadioResponse_v1_5::sendBurstDtmfResponse(const RadioResponseInfo& 
 }
 
 Return<void> RadioResponse_v1_5::sendCdmaSmsResponse(const RadioResponseInfo& /*info*/,
+                                                     const SendSmsResult& /*sms*/) {
+    return Void();
+}
+
+Return<void> RadioResponse_v1_5::sendCdmaSmsExpectMoreResponse(const RadioResponseInfo& /*info*/,
                                                      const SendSmsResult& /*sms*/) {
     return Void();
 }
@@ -990,24 +1002,5 @@ Return<void> RadioResponse_v1_5::getCellInfoListResponse_1_5(
         const RadioResponseInfo& /*info*/,
         const ::android::hardware::hidl_vec<
                 ::android::hardware::radio::V1_5::CellInfo>& /*cellInfo*/) {
-    return Void();
-}
-
-Return<void> RadioResponse_v1_5::setNetworkSelectionModeManualResponse_1_5(
-        const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_v1_5.notify(info.serial);
-    return Void();
-}
-
-Return<void> RadioResponse_v1_5::sendCdmaSmsExpectMoreResponse(const RadioResponseInfo& /*info*/,
-                                                               const SendSmsResult& /*sms*/) {
-    return Void();
-}
-
-Return<void> RadioResponse_v1_5::supplySimDepersonalizationResponse(
-        const RadioResponseInfo& /*info*/,
-        ::android::hardware::radio::V1_5::PersoSubstate /*persoType*/,
-        int32_t /*remainingRetries*/) {
     return Void();
 }
