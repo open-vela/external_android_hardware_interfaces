@@ -18,13 +18,13 @@
 
 #include "1.0/Utils.h"
 #include "1.3/Callbacks.h"
+#include "1.3/Utils.h"
 #include "GeneratedTestHarness.h"
 #include "VtsHalNeuralnetworks.h"
 
 namespace android::hardware::neuralnetworks::V1_3::vts::functional {
 
 using implementation::PreparedModelCallback;
-using V1_0::ErrorStatus;
 using V1_1::ExecutionPreference;
 using V1_2::SymmPerChannelQuantParams;
 using HidlToken =
@@ -44,13 +44,19 @@ static void validateGetSupportedOperations(const sp<IDevice>& device, const std:
 }
 
 static void validatePrepareModel(const sp<IDevice>& device, const std::string& message,
-                                 const Model& model, ExecutionPreference preference) {
+                                 const Model& model, ExecutionPreference preference,
+                                 bool testDeadline) {
     SCOPED_TRACE(message + " [prepareModel_1_3]");
 
+    OptionalTimePoint deadline;
+    if (testDeadline) {
+        deadline.nanoseconds(std::numeric_limits<uint64_t>::max());
+    }
+
     sp<PreparedModelCallback> preparedModelCallback = new PreparedModelCallback();
-    Return<ErrorStatus> prepareLaunchStatus =
-            device->prepareModel_1_3(model, preference, hidl_vec<hidl_handle>(),
-                                     hidl_vec<hidl_handle>(), HidlToken(), preparedModelCallback);
+    Return<ErrorStatus> prepareLaunchStatus = device->prepareModel_1_3(
+            model, preference, kDefaultPriority, deadline, hidl_vec<hidl_handle>(),
+            hidl_vec<hidl_handle>(), HidlToken(), preparedModelCallback);
     ASSERT_TRUE(prepareLaunchStatus.isOk());
     ASSERT_EQ(ErrorStatus::INVALID_ARGUMENT, static_cast<ErrorStatus>(prepareLaunchStatus));
 
@@ -73,12 +79,13 @@ static bool validExecutionPreference(ExecutionPreference preference) {
 // to the model does not leave this function.
 static void validate(const sp<IDevice>& device, const std::string& message, Model model,
                      const std::function<void(Model*)>& mutation,
-                     ExecutionPreference preference = ExecutionPreference::FAST_SINGLE_ANSWER) {
+                     ExecutionPreference preference = ExecutionPreference::FAST_SINGLE_ANSWER,
+                     bool testDeadline = false) {
     mutation(&model);
-    if (validExecutionPreference(preference)) {
+    if (validExecutionPreference(preference) && !testDeadline) {
         validateGetSupportedOperations(device, message, model);
     }
-    validatePrepareModel(device, message, model, preference);
+    validatePrepareModel(device, message, model, preference, testDeadline);
 }
 
 static uint32_t addOperand(Model* model) {
@@ -330,6 +337,7 @@ static bool mutateOperationOperandTypeSkip(size_t operand, OperandType type, con
         // - TRANSPOSE_CONV_2D filter type (arg 1) can be QUANT8_ASYMM or QUANT8_SYMM_PER_CHANNEL
         // - AXIS_ALIGNED_BBOX_TRANSFORM bounding boxes (arg 1) can be of
         //     TENSOR_QUANT8_ASYMM or TENSOR_QUANT8_ASYMM_SIGNED.
+        // - RANK's input can have any TENSOR_* type.
         switch (operation.type) {
             case OperationType::LSH_PROJECTION: {
                 if (operand == operation.inputs[1]) {
@@ -388,6 +396,20 @@ static bool mutateOperationOperandTypeSkip(size_t operand, OperandType type, con
             case OperationType::AXIS_ALIGNED_BBOX_TRANSFORM: {
                 if (operand == operation.inputs[1] &&
                     (type == OperandType::TENSOR_QUANT8_ASYMM ||
+                     type == OperandType::TENSOR_QUANT8_ASYMM_SIGNED)) {
+                    return true;
+                }
+            } break;
+            case OperationType::RANK: {
+                if (operand == operation.inputs[0] &&
+                    (type == OperandType::TENSOR_FLOAT16 || type == OperandType::TENSOR_FLOAT32 ||
+                     type == OperandType::TENSOR_INT32 ||
+                     type == OperandType::TENSOR_QUANT8_ASYMM ||
+                     type == OperandType::TENSOR_QUANT16_SYMM ||
+                     type == OperandType::TENSOR_BOOL8 ||
+                     type == OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL ||
+                     type == OperandType::TENSOR_QUANT16_ASYMM ||
+                     type == OperandType::TENSOR_QUANT8_SYMM ||
                      type == OperandType::TENSOR_QUANT8_ASYMM_SIGNED)) {
                     return true;
                 }
@@ -714,9 +736,19 @@ static void mutateExecutionPreferenceTest(const sp<IDevice>& device, const Model
     }
 }
 
+///////////////////////// DEADLINE /////////////////////////
+
+static void deadlineTest(const sp<IDevice>& device, const Model& model) {
+    const std::string message = "deadlineTest: deadline not supported";
+    const auto noop = [](Model*) {};
+    validate(device, message, model, noop, ExecutionPreference::FAST_SINGLE_ANSWER,
+             /*testDeadline=*/true);
+}
+
 ////////////////////////// ENTRY POINT //////////////////////////////
 
-void validateModel(const sp<IDevice>& device, const Model& model) {
+void validateModel(const sp<IDevice>& device, const Model& model,
+                   bool prepareModelDeadlineSupported) {
     mutateOperandTypeTest(device, model);
     mutateOperandRankTest(device, model);
     mutateOperandScaleTest(device, model);
@@ -732,6 +764,9 @@ void validateModel(const sp<IDevice>& device, const Model& model) {
     addOperationInputTest(device, model);
     addOperationOutputTest(device, model);
     mutateExecutionPreferenceTest(device, model);
+    if (!prepareModelDeadlineSupported) {
+        deadlineTest(device, model);
+    }
 }
 
 }  // namespace android::hardware::neuralnetworks::V1_3::vts::functional
