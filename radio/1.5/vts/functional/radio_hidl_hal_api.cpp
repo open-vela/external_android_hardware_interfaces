@@ -879,9 +879,6 @@ TEST_F(RadioHidlTest_v1_5, setupDataCall_1_5) {
     }
 }
 
-/*
- * Test IRadio.setInitialAttachApn_1_5() for the response returned.
- */
 TEST_F(RadioHidlTest_v1_5, setInitialAttachApn_1_5) {
     serial = GetRandomSerialNumber();
 
@@ -922,9 +919,6 @@ TEST_F(RadioHidlTest_v1_5, setInitialAttachApn_1_5) {
     }
 }
 
-/*
- * Test IRadio.setDataProfile_1_5() for the response returned.
- */
 TEST_F(RadioHidlTest_v1_5, setDataProfile_1_5) {
     serial = GetRandomSerialNumber();
 
@@ -998,32 +992,6 @@ TEST_F(RadioHidlTest_v1_5, setRadioPower_1_5_emergencyCall_cancalled) {
 }
 
 /*
- * Test IRadio.setNetworkSelectionModeManual_1_5() for the response returned.
- */
-TEST_F(RadioHidlTest_v1_5, setNetworkSelectionModeManual_1_5) {
-    serial = GetRandomSerialNumber();
-
-    // can't camp on nonexistent MCCMNC, so we expect this to fail.
-    Return<void> res = radio_v1_5->setNetworkSelectionModeManual_1_5(
-            serial, "123456", android::hardware::radio::V1_5::RadioAccessNetworks::GERAN);
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
-    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
-    EXPECT_EQ(serial, radioRsp_v1_5->rspInfo.serial);
-
-    if (cardStatus.base.base.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_5->rspInfo.error,
-                                     {RadioError::NONE, RadioError::ILLEGAL_SIM_OR_ME,
-                                      RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE},
-                                     CHECK_GENERAL_ERROR));
-    } else if (cardStatus.base.base.cardState == CardState::PRESENT) {
-        ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_5->rspInfo.error,
-                                     {RadioError::NONE, RadioError::RADIO_NOT_AVAILABLE,
-                                      RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE},
-                                     CHECK_GENERAL_ERROR));
-    }
-}
-
-/*
  * Test IRadio.sendCdmaSmsExpectMore() for the response returned.
  */
 TEST_F(RadioHidlTest_v1_5, sendCdmaSmsExpectMore) {
@@ -1051,7 +1019,7 @@ TEST_F(RadioHidlTest_v1_5, sendCdmaSmsExpectMore) {
     cdmaSmsMessage.address = cdmaSmsAddress;
     cdmaSmsMessage.subAddress = cdmaSmsSubaddress;
     cdmaSmsMessage.bearerData =
-            (std::vector<uint8_t>){15, 0, 3, 32, 3, 16, 1, 8, 16, 53, 76, 68, 6, 51, 106, 0};
+        (std::vector<uint8_t>){15, 0, 3, 32, 3, 16, 1, 8, 16, 53, 76, 68, 6, 51, 106, 0};
 
     radio_v1_5->sendCdmaSmsExpectMore(serial, cdmaSmsMessage);
 
@@ -1061,8 +1029,8 @@ TEST_F(RadioHidlTest_v1_5, sendCdmaSmsExpectMore) {
 
     if (cardStatus.base.base.cardState == CardState::ABSENT) {
         ASSERT_TRUE(CheckAnyOfErrors(
-                radioRsp_v1_5->rspInfo.error,
-                {RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE, RadioError::SIM_ABSENT},
-                CHECK_GENERAL_ERROR));
+            radioRsp_v1_5->rspInfo.error,
+            {RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE, RadioError::SIM_ABSENT},
+            CHECK_GENERAL_ERROR));
     }
 }
