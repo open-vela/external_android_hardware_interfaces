@@ -17,17 +17,21 @@
 package android.hardware.radio@1.5;
 
 import @1.0::ApnAuthType;
+import @1.0::CdmaSignalStrength;
 import @1.0::DataProfileId;
 import @1.0::DataProfileInfoType;
+import @1.0::EvdoSignalStrength;
 import @1.0::GsmSignalStrength;
 import @1.0::LteSignalStrength;
 import @1.0::PersoSubstate;
+import @1.0::RadioAccessFamily;
 import @1.0::RadioError;
 import @1.0::RegState;
 import @1.0::TimeStampType;
 import @1.1::EutranBands;
 import @1.1::GeranBands;
 import @1.1::RadioAccessNetworks;
+import @1.1::RadioAccessSpecifier;
 import @1.1::ScanStatus;
 import @1.1::ScanType;
 import @1.1::UtranBands;
@@ -39,6 +43,7 @@ import @1.2::CellIdentityTdscdma;
 import @1.2::CellIdentityLte;
 import @1.2::CellInfoCdma;
 import @1.2::IndicationFilter;
+import @1.2::NetworkScanRequest;
 import @1.2::TdscdmaSignalStrength;
 import @1.2::WcdmaSignalStrength;
 import @1.4::AccessNetwork;
@@ -46,11 +51,11 @@ import @1.4::ApnTypes;
 import @1.4::CellIdentityNr;
 import @1.4::DataCallFailCause;
 import @1.4::DataConnActiveStatus;
+import @1.4::DataProfileInfo;
 import @1.4::LteVopsInfo;
 import @1.4::NrIndicators;
 import @1.4::NrSignalStrength;
 import @1.4::PdpProtocolType;
-import @1.4::RadioAccessFamily;
 import @1.4::RadioTechnology;
 
 import android.hidl.safe_union@1.0::Monostate;
@@ -126,7 +131,7 @@ struct SignalThresholdInfo {
     /** Signal Measurement Type */
     SignalMeasurementType signalMeasurement;
 
-    /** A hysteresis time in milliseconds to prevent flapping. A value of 0 disables hysteresis. */
+    /** A hysteresis time in milliseconds to prevent flapping. A value of 0 disables hysteresis */
     int32_t hysteresisMs;
 
     /**
@@ -162,15 +167,11 @@ enum AccessNetwork : @1.4::AccessNetwork {
 };
 
 enum RadioAccessNetworks : @1.1::RadioAccessNetworks {
-    UNKNOWN = 0,
-    /** Next Generation Radio Access Network */
     NGRAN = 4,
-    /** CDMA 2000 Network */
-    CDMA2000 = 5,
 };
 
 /**
- * Overwritten from @1.1::RadioAccessSpecifier to add NGRAN and NgranBands.
+ * Overwritten from @1.1::RadioAccessSpecifier to add NGRAN and NgranBands
  */
 struct RadioAccessSpecifier {
     /**
@@ -259,7 +260,8 @@ enum UtranBands : @1.1::UtranBands {
 };
 
 /**
- * Overwritten from @1.2::NetworkScanRequest to update RadioAccessSpecifier to 1.5 version.
+ * Overwritten from @1.2::NetworkScanRequest to update
+ * RadioAccessSpecifier to 1.5 version
  */
 struct NetworkScanRequest {
     ScanType type;
@@ -322,10 +324,11 @@ enum ApnTypes : @1.4::ApnTypes {
 };
 
 /**
- * Overwritten from @1.4::DataProfileInfo to update ApnTypes to 1.5 version and replace mtu with
+ * Extended from @1.4::DataProfileInfo to update ApnTypes to 1.5 version and replace mtu with
  * mtuV4 and mtuV6. In the future, this must be extended instead of overwritten.
  */
 struct DataProfileInfo {
+
     /** ID of the data profile. */
     DataProfileId profileId;
 
@@ -438,8 +441,8 @@ struct LinkAddress {
 };
 
 /**
- * Overwritten from @1.4::SetupDataCallResult in order to update the addresses to 1.5 version.
- * In 1.5 the type of addresses changes to vector of LinkAddress, and mtu is replaced by
+ * Overwritten from @1.4::SetupDataCallResult in order to update the addresses to 1.5
+ * version. In 1.5 the type of addresses changes to vector of LinkAddress, and mtu is replaced by
  * mtuV4 and mtuV6.
  */
 struct SetupDataCallResult {
@@ -680,7 +683,7 @@ struct CellInfo {
     } ratSpecificInfo;
 };
 
-/** A union representing the CellIdentity of a single cell. */
+/** A union representing the CellIdentity of a single cell */
 safe_union CellIdentity {
     Monostate noinit;
 
@@ -701,7 +704,7 @@ safe_union CellIdentity {
  * -NGRAN - 3gpp 38.331 Sec 6.3.2 UAC-BarringInfo and 22.261 Sec 6.22.2.[2-3]
  */
 enum BarringServiceType : int32_t {
-    /** Applicable to UTRAN */
+    /** Applicabe to UTRAN */
     /** Barring for all CS services, including registration */
     CS_SERVICE,
     /** Barring for all PS services, including registration */
@@ -956,14 +959,14 @@ struct RegStateResult {
     string registeredPlmn;
 
     /**
-     * Access-technology-specific registration information, such as for CDMA2000.
+     * Access-technology-specific registration information, such as for Cdma2000.
      */
     safe_union AccessTechnologySpecificInfo {
         Monostate noinit;
 
         struct Cdma2000RegistrationInfo {
             /**
-             * Concurrent services support indicator. if registered on a CDMA system.
+             * concurrent services support indicator. if registered on a CDMA system.
              * false - Concurrent services not supported,
              * true - Concurrent services supported
              */
@@ -992,10 +995,10 @@ struct RegStateResult {
         struct EutranRegistrationInfo {
             /**
              * Network capabilities for voice over PS services. This info is valid only on LTE
-             * network and must be present when device is camped on LTE. VopsInfo must be empty when
+             * network and must be present when device is camped on LTE. vopsInfo must be empty when
              * device is camped only on 2G/3G.
              */
-            LteVopsInfo lteVopsInfo;
+            LteVopsInfo lteVopsInfo; // LTE network capability
 
             /**
              * The parameters of NR 5G Non-Standalone. This value is only valid on E-UTRAN,
@@ -1025,20 +1028,17 @@ struct NetworkScanResult {
 };
 
 /**
- * Additional personalization categories in addition to those specified in 3GPP TS 22.022 and
- * 3GPP2 C.S0068-0.
+ * Additional personalization categories in addition to those specified in 3GPP TS 22.022 and 3GPP2 C.S0068-0.
  */
 enum PersoSubstate : @1.0::PersoSubstate {
     SIM_SPN,
     SIM_SPN_PUK,
-    /** Equivalent Home PLMN */
-    SIM_SP_EHPLMN,
+    SIM_SP_EHPLMN,              // Equivalent Home PLMN
     SIM_SP_EHPLMN_PUK,
     SIM_ICCID,
     SIM_ICCID_PUK,
     SIM_IMPI,
     SIM_IMPI_PUK,
-    /** Network subset service provider */
-    SIM_NS_SP,
+    SIM_NS_SP,                  // Network subset service provider
     SIM_NS_SP_PUK,
 };

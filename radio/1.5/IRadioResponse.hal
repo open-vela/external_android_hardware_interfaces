@@ -217,26 +217,25 @@ interface IRadioResponse extends @1.4::IRadioResponse {
 
     /**
      * @param info Response info struct containing response type, serial no. and error
+     * @param persoType SIM Personalisation type
+     * @param remainingRetries Positive values indicates number of retries remaining,
+     * must be equal to -1 if number of retries are infinite.
      *
      * Valid errors returned:
      *   RadioError:NONE
      *   RadioError:RADIO_NOT_AVAILABLE
-     *   RadioError:ILLEGAL_SIM_OR_ME
-     *   RadioError:OPERATION_NOT_ALLOWED
-     *   RadioError:INVALID_STATE
+     *   RadioError:PASSWORD_INCORRECT (code is invalid)
      *   RadioError:NO_MEMORY
+     *   RadioError:INVALID_SIM_STATE
      *   RadioError:INTERNAL_ERR
      *   RadioError:SYSTEM_ERR
-     *   RadioError:INVALID_ARGUMENTS
      *   RadioError:MODEM_ERR
-     *   RadioError:REQUEST_NOT_SUPPORTED
+     *   RadioError:INVALID_ARGUMENTS
      *   RadioError:NO_RESOURCES
-     *   RadioError:CANCELLED
-     *
-     * Returns RadioError:ILLEGAL_SIM_OR_ME when the failure is permanent and
-     * no retries needed, such as illegal SIM or ME.
+     *   RadioError:REQUEST_NOT_SUPPORTED
      */
-    oneway setNetworkSelectionModeManualResponse_1_5(RadioResponseInfo info);
+    oneway supplySimDepersonalizationResponse(RadioResponseInfo info,
+        PersoSubstate persoType, int32_t remainingRetries);
 
     /**
      * @param info Response info struct containing response type, serial no. and error
@@ -268,26 +267,4 @@ interface IRadioResponse extends @1.4::IRadioResponse {
      *   RadioError:SIM_ABSENT
      */
     oneway sendCdmaSmsExpectMoreResponse(RadioResponseInfo info, SendSmsResult sms);
-
-    /**
-     * @param info Response info struct contatining response type, serial no. and error
-     * @param persoType SIM Personalisation type
-     * @param remainingRetries postiive values indicates number of retries remaining,
-     * must be equal to -1 if number of retries is infinite.
-     *
-     * Valid errors returned:
-     *   RadioError:NONE
-     *   RadioError:RADIO_NOT_AVAILABLE
-     *   RadioError:PASSWORD_INCORRECT (code is invalid)
-     *   RadioError:NO_MEMORY
-     *   RadioError:INVALID_SIM_STATE
-     *   RadioError:INTERNAL_ERR
-     *   RadioError:SYSTEM_ERR
-     *   RadioError:MODEM_ERR
-     *   RadioError:INVALID_ARGUMENTS
-     *   RadioError:NO_RESOURCES
-     *   RadioError:REQUEST_NOT_SUPPORTED
-     */
-    oneway supplySimDepersonalizationResponse(RadioResponseInfo info,
-        PersoSubstate persoType, int32_t remainingRetries);
 };
