@@ -67,10 +67,8 @@ static OptionalTimePoint makeOptionalTimePoint(DeadlineBoundType deadlineBoundTy
             deadline.nanosecondsSinceEpoch(nanosecondsSinceEpoch);
         } break;
         case DeadlineBoundType::UNLIMITED: {
-            const auto maxTime = std::chrono::time_point<std::chrono::steady_clock,
-                                                         std::chrono::nanoseconds>::max();
-            const uint64_t nanosecondsSinceEpoch = maxTime.time_since_epoch().count();
-            deadline.nanosecondsSinceEpoch(nanosecondsSinceEpoch);
+            uint64_t unlimited = std::numeric_limits<uint64_t>::max();
+            deadline.nanosecondsSinceEpoch(unlimited);
         } break;
     }
     return deadline;
@@ -171,7 +169,7 @@ static MaybeResults executeAsynchronously(const sp<IPreparedModel>& preparedMode
 
     // launch execution
     const sp<ExecutionCallback> callback = new ExecutionCallback();
-    Return<ErrorStatus> ret = preparedModel->execute_1_3(request, measure, deadline, {}, callback);
+    Return<ErrorStatus> ret = preparedModel->execute_1_3(request, measure, deadline, callback);
     EXPECT_TRUE(ret.isOk());
     EXPECT_EQ(ErrorStatus::NONE, ret.withDefault(ErrorStatus::GENERAL_FAILURE));
     if (!ret.isOk() || ret != ErrorStatus::NONE) return std::nullopt;
@@ -198,7 +196,7 @@ static MaybeResults executeSynchronously(const sp<IPreparedModel>& preparedModel
 
     // run execution
     const Return<void> ret =
-            preparedModel->executeSynchronously_1_3(request, measure, deadline, {}, cb);
+            preparedModel->executeSynchronously_1_3(request, measure, deadline, cb);
     EXPECT_TRUE(ret.isOk());
     if (!ret.isOk()) return std::nullopt;
 
@@ -239,13 +237,12 @@ void runExecutionTest(const sp<IPreparedModel>& preparedModel, const TestModel& 
 
     // If the model output operands are fully specified, outputShapes must be either
     // either empty, or have the same number of elements as the number of outputs.
-    ASSERT_TRUE(outputShapes.size() == 0 ||
-                outputShapes.size() == testModel.main.outputIndexes.size());
+    ASSERT_TRUE(outputShapes.size() == 0 || outputShapes.size() == testModel.outputIndexes.size());
 
     // Go through all outputs, check returned output shapes.
     for (uint32_t i = 0; i < outputShapes.size(); i++) {
         EXPECT_TRUE(outputShapes[i].isSufficient);
-        const auto& expect = testModel.main.operands[testModel.main.outputIndexes[i]].dimensions;
+        const auto& expect = testModel.operands[testModel.outputIndexes[i]].dimensions;
         const std::vector<uint32_t> actual = outputShapes[i].dimensions;
         EXPECT_EQ(expect, actual);
     }
