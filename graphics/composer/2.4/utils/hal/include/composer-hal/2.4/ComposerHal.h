@@ -73,6 +73,16 @@ class ComposerHal : public V2_3::hal::ComposerHal {
             Display display,
             std::vector<IComposerClient::ContentType>* outSupportedContentTypes) = 0;
     virtual Error setContentType(Display display, IComposerClient::ContentType contentType) = 0;
+    virtual Error validateDisplay_2_4(
+            Display display, std::vector<Layer>* outChangedLayers,
+            std::vector<IComposerClient::Composition>* outCompositionTypes,
+            uint32_t* outDisplayRequestMask, std::vector<Layer>* outRequestedLayers,
+            std::vector<uint32_t>* outRequestMasks,
+            IComposerClient::ClientTargetProperty* outClientTargetProperty) = 0;
+    virtual Error setLayerGenericMetadata(Display display, Layer layer, const std::string& key,
+                                          bool mandatory, const std::vector<uint8_t>& value) = 0;
+    virtual Error getLayerGenericMetadataKeys(
+            std::vector<IComposerClient::LayerGenericMetadataKey>* outKeys) = 0;
 };
 
 }  // namespace hal

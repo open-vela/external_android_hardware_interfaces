@@ -43,6 +43,7 @@ using common::V1_2::Hdr;
 using common::V1_2::PixelFormat;
 using V2_1::Config;
 using V2_1::Display;
+using V2_1::Layer;
 using V2_4::Error;
 
 // HwcHalImpl implements V2_*::hal::ComposerHal on top of hwcomposer2
@@ -218,6 +219,87 @@ class HwcHalImpl : public V2_3::passthrough::detail::HwcHalImpl<Hal> {
         return Error::NONE;
     }
 
+    Error validateDisplay_2_4(
+            Display display, std::vector<Layer>* outChangedLayers,
+            std::vector<IComposerClient::Composition>* outCompositionTypes,
+            uint32_t* outDisplayRequestMask, std::vector<Layer>* outRequestedLayers,
+            std::vector<uint32_t>* outRequestMasks,
+            IComposerClient::ClientTargetProperty* outClientTargetProperty) override {
+        auto err = static_cast<Error>(BaseType2_1::validateDisplay(
+                display, outChangedLayers, outCompositionTypes, outDisplayRequestMask,
+                outRequestedLayers, outRequestMasks));
+        if (err != Error::NONE) {
+            return err;
+        }
+
+        if (mDispatch.getClientTargetProperty) {
+            hwc_client_target_property_t clientTargetProperty;
+            err = static_cast<Error>(
+                    mDispatch.getClientTargetProperty(mDevice, display, &clientTargetProperty));
+            outClientTargetProperty->pixelFormat =
+                    static_cast<PixelFormat>(clientTargetProperty.pixelFormat);
+            outClientTargetProperty->dataspace =
+                    static_cast<Dataspace>(clientTargetProperty.dataspace);
+        }
+
+        return err;
+    }
+
+    Error setLayerGenericMetadata(Display display, Layer layer, const std::string& key,
+                                  bool mandatory, const std::vector<uint8_t>& value) override {
+        if (!mDispatch.setLayerGenericMetadata) {
+            return Error::UNSUPPORTED;
+        }
+
+        if (key.size() > std::numeric_limits<uint32_t>::max()) {
+            return Error::BAD_PARAMETER;
+        }
+
+        if (value.size() > std::numeric_limits<uint32_t>::max()) {
+            return Error::BAD_PARAMETER;
+        }
+
+        int32_t error = mDispatch.setLayerGenericMetadata(
+                mDevice, display, layer, static_cast<uint32_t>(key.size()), key.c_str(), mandatory,
+                static_cast<uint32_t>(value.size()), value.data());
+        return static_cast<Error>(error);
+    }
+
+    Error getLayerGenericMetadataKeys(
+            std::vector<IComposerClient::LayerGenericMetadataKey>* outKeys) override {
+        if (!mDispatch.getLayerGenericMetadataKey) {
+            return Error::UNSUPPORTED;
+        }
+
+        std::vector<IComposerClient::LayerGenericMetadataKey> keys;
+
+        uint32_t index = 0;
+        uint32_t keyLength = 0;
+        while (true) {
+            mDispatch.getLayerGenericMetadataKey(mDevice, index, &keyLength, nullptr, nullptr);
+            if (keyLength == 0) {
+                break;
+            }
+
+            IComposerClient::LayerGenericMetadataKey key;
+            std::string keyName;
+            keyName.resize(keyLength);
+            mDispatch.getLayerGenericMetadataKey(mDevice, index, &keyLength, keyName.data(),
+                                                 &key.mandatory);
+            key.name = keyName;
+            keys.emplace_back(std::move(key));
+
+            // Only attempt to load the first 100 keys to avoid an infinite loop
+            // if something goes wrong
+            if (++index > 100) {
+                break;
+            }
+        }
+
+        *outKeys = std::move(keys);
+        return Error::NONE;
+    }
+
   protected:
     bool initDispatch() override {
         if (!BaseType2_3::initDispatch()) {
@@ -238,6 +320,13 @@ class HwcHalImpl : public V2_3::passthrough::detail::HwcHalImpl<Hal> {
         this->initOptionalDispatch(HWC2_FUNCTION_GET_SUPPORTED_CONTENT_TYPES,
                                    &mDispatch.getSupportedContentTypes);
         this->initOptionalDispatch(HWC2_FUNCTION_SET_CONTENT_TYPE, &mDispatch.setContentType);
+        this->initOptionalDispatch(HWC2_FUNCTION_GET_CLIENT_TARGET_PROPERTY,
+                                   &mDispatch.getClientTargetProperty);
+        this->initOptionalDispatch(HWC2_FUNCTION_SET_LAYER_GENERIC_METADATA,
+                                   &mDispatch.setLayerGenericMetadata);
+        this->initOptionalDispatch(HWC2_FUNCTION_GET_LAYER_GENERIC_METADATA_KEY,
+                                   &mDispatch.getLayerGenericMetadataKey);
+
         return true;
     }
 
@@ -289,6 +378,9 @@ class HwcHalImpl : public V2_3::passthrough::detail::HwcHalImpl<Hal> {
         HWC2_PFN_SET_AUTO_LOW_LATENCY_MODE setAutoLowLatencyMode;
         HWC2_PFN_GET_SUPPORTED_CONTENT_TYPES getSupportedContentTypes;
         HWC2_PFN_SET_CONTENT_TYPE setContentType;
+        HWC2_PFN_GET_CLIENT_TARGET_PROPERTY getClientTargetProperty;
+        HWC2_PFN_SET_LAYER_GENERIC_METADATA setLayerGenericMetadata;
+        HWC2_PFN_GET_LAYER_GENERIC_METADATA_KEY getLayerGenericMetadataKey;
     } mDispatch = {};
 
     hal::ComposerHal::EventCallback_2_4* mEventCallback_2_4 = nullptr;
