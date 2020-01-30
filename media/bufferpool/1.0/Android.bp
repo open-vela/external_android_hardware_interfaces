@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.media.bufferpool@1.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IAccessor.hal",
@@ -14,3 +17,4 @@ hidl_interface {
     ],
     gen_java: false,
 }
+

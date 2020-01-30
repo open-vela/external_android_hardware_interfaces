@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.power@1.2",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IPower.hal",
@@ -14,3 +17,4 @@ hidl_interface {
     ],
     gen_java: true,
 }
+

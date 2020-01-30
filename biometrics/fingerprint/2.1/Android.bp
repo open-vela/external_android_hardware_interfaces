@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.biometrics.fingerprint@2.1",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IBiometricsFingerprint.hal",
@@ -13,3 +16,4 @@ hidl_interface {
     ],
     gen_java: true,
 }
+
