@@ -18,10 +18,10 @@
 
 #include <android/hardware/health/1.0/IHealth.h>
 #include <android/hardware/health/1.0/types.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 #include <log/log.h>
+
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 
 using HealthConfig = ::android::hardware::health::V1_0::HealthConfig;
 using HealthInfo = ::android::hardware::health::V1_0::HealthInfo;
@@ -30,10 +30,25 @@ using Result = ::android::hardware::health::V1_0::Result;
 
 using ::android::sp;
 
-class HealthHidlTest : public ::testing::TestWithParam<std::string> {
+// Test environment for Health HIDL HAL.
+class HealthHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static HealthHidlEnvironment* Instance() {
+        static HealthHidlEnvironment* instance = new HealthHidlEnvironment;
+        return instance;
+    }
+
+    virtual void registerTestServices() override { registerTestService<IHealth>(); }
+   private:
+    HealthHidlEnvironment() {}
+};
+
+class HealthHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        health = IHealth::getService(GetParam());
+        health = ::testing::VtsHalHidlTargetTestBase::getService<IHealth>(
+            HealthHidlEnvironment::Instance()->getServiceName<IHealth>());
         ASSERT_NE(health, nullptr);
         health->init(config,
                      [&](const auto& halConfigOut) { config = halConfigOut; });
@@ -46,7 +61,7 @@ class HealthHidlTest : public ::testing::TestWithParam<std::string> {
 /**
  * Ensure EnergyCounter call returns positive energy counter or NOT_SUPPORTED
  */
-TEST_P(HealthHidlTest, TestEnergyCounter) {
+TEST_F(HealthHidlTest, TestEnergyCounter) {
     Result result;
     int64_t energy = 0;
     health->energyCounter([&](Result ret, int64_t energyOut) {
@@ -58,7 +73,11 @@ TEST_P(HealthHidlTest, TestEnergyCounter) {
     ASSERT_TRUE(result != Result::SUCCESS || energy > 0);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, HealthHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IHealth::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char **argv) {
+    ::testing::AddGlobalTestEnvironment(HealthHidlEnvironment::Instance());
+    ::testing::InitGoogleTest(&argc, argv);
+    HealthHidlEnvironment::Instance()->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    ALOGI("Test result = %d", status);
+    return status;
+}
