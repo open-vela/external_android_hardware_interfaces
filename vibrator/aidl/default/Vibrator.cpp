@@ -139,9 +139,6 @@ ndk::ScopedAStatus Vibrator::compose(const std::vector<CompositeEffect>& composi
         return ndk::ScopedAStatus::fromExceptionCode(EX_ILLEGAL_ARGUMENT);
     }
 
-    std::vector<CompositePrimitive> supported;
-    getSupportedPrimitives(&supported);
-
     for (auto& e : composite) {
         if (e.delayMs > kComposeDelayMaxMs) {
             return ndk::ScopedAStatus::fromExceptionCode(EX_ILLEGAL_ARGUMENT);
@@ -149,7 +146,8 @@ ndk::ScopedAStatus Vibrator::compose(const std::vector<CompositeEffect>& composi
         if (e.scale <= 0.0f || e.scale > 1.0f) {
             return ndk::ScopedAStatus::fromExceptionCode(EX_ILLEGAL_ARGUMENT);
         }
-        if (std::find(supported.begin(), supported.end(), e.primitive) == supported.end()) {
+        if (e.primitive < CompositePrimitive::NOOP ||
+            e.primitive > CompositePrimitive::LIGHT_TICK) {
             return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
         }
     }
