@@ -15,12 +15,11 @@
  */
 
 #define LOG_TAG "vr_hidl_hal_test"
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/logging.h>
 #include <android/hardware/vr/1.0/IVr.h>
-#include <gtest/gtest.h>
 #include <hardware/vr.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 #include <log/log.h>
 
 using ::android::hardware::vr::V1_0::IVr;
@@ -28,11 +27,24 @@ using ::android::hardware::Return;
 using ::android::hardware::Void;
 using ::android::sp;
 
+// Test environment for Vr HIDL HAL.
+class VrHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+ public:
+  // get the test environment singleton
+  static VrHidlEnvironment* Instance() {
+    static VrHidlEnvironment* instance = new VrHidlEnvironment;
+    return instance;
+  }
+
+  virtual void registerTestServices() override { registerTestService<IVr>(); }
+};
+
 // The main test class for VR HIDL HAL.
-class VrHidlTest : public ::testing::TestWithParam<std::string> {
+class VrHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   void SetUp() override {
-    vr = IVr::getService(GetParam());
+    vr = ::testing::VtsHalHidlTargetTestBase::getService<IVr>(
+        VrHidlEnvironment::Instance()->getServiceName<IVr>());
     ASSERT_NE(vr, nullptr);
   }
 
@@ -42,19 +54,19 @@ class VrHidlTest : public ::testing::TestWithParam<std::string> {
 };
 
 // Sanity check that Vr::init does not crash.
-TEST_P(VrHidlTest, Init) {
+TEST_F(VrHidlTest, Init) {
   EXPECT_TRUE(vr->init().isOk());
 }
 
 // Sanity check Vr::setVrMode is able to enable and disable VR mode.
-TEST_P(VrHidlTest, SetVrMode) {
+TEST_F(VrHidlTest, SetVrMode) {
   EXPECT_TRUE(vr->init().isOk());
   EXPECT_TRUE(vr->setVrMode(true).isOk());
   EXPECT_TRUE(vr->setVrMode(false).isOk());
 }
 
 // Sanity check that Vr::init and Vr::setVrMode can be used in any order.
-TEST_P(VrHidlTest, ReInit) {
+TEST_F(VrHidlTest, ReInit) {
   EXPECT_TRUE(vr->init().isOk());
   EXPECT_TRUE(vr->setVrMode(true).isOk());
   EXPECT_TRUE(vr->init().isOk());
@@ -63,8 +75,11 @@ TEST_P(VrHidlTest, ReInit) {
   EXPECT_TRUE(vr->setVrMode(false).isOk());
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, VrHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IVr::descriptor)),
-        android::hardware::PrintInstanceNameToString);
-
+int main(int argc, char **argv) {
+  ::testing::AddGlobalTestEnvironment(VrHidlEnvironment::Instance());
+  ::testing::InitGoogleTest(&argc, argv);
+  VrHidlEnvironment::Instance()->init(&argc, argv);
+  int status = RUN_ALL_TESTS();
+  ALOGI("Test result = %d", status);
+  return status;
+}
