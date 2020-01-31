@@ -56,6 +56,9 @@ class RadioResponse_v1_2 : public ::android::hardware::radio::V1_2::IRadioRespon
 
     RadioResponseInfo rspInfo;
 
+    // Data
+    ::android::hardware::radio::V1_2::DataRegStateResult dataRegResp;
+
     RadioResponse_v1_2(RadioHidlTest_v1_2& parent_v1_2);
     virtual ~RadioResponse_v1_2() = default;
 
@@ -619,7 +622,10 @@ class RadioHidlTest_v1_2 : public ::testing::VtsHalHidlTargetTestBase {
     /* Update Sim Card Status */
     void updateSimCardStatus();
 
-   public:
+    /* Stop Network Scan Command */
+    void stopNetworkScan();
+
+  public:
     virtual void SetUp() override;
 
     /* Used as a mechanism to inform the test about data/event callback */
