@@ -42,8 +42,6 @@ namespace V2_4 {
 namespace vts {
 namespace {
 
-using namespace std::chrono_literals;
-
 using common::V1_0::BufferUsage;
 using common::V1_1::RenderIntent;
 using common::V1_2::ColorMode;
@@ -528,7 +526,7 @@ TEST_P(GraphicsComposerHidlTest, setAutoLowLatencyMode) {
             EXPECT_EQ(Error::UNSUPPORTED,
                       mComposerClient->setAutoLowLatencyMode(mPrimaryDisplay, false));
             GTEST_SUCCEED() << "Auto Low Latency Mode is not supported on display "
-                            << std::to_string(display) << ", skipping test";
+                            << to_string(display) << ", skipping test";
             return;
         }
 
@@ -582,7 +580,7 @@ void GraphicsComposerHidlTest::Test_setContentTypeForDisplay(
     if (!contentTypeSupport) {
         EXPECT_EQ(Error::UNSUPPORTED, mComposerClient->setContentType(display, contentType));
         GTEST_SUCCEED() << contentTypeStr << " content type is not supported on display "
-                        << std::to_string(display) << ", skipping test";
+                        << to_string(display) << ", skipping test";
         return;
     }
 
@@ -628,7 +626,7 @@ INSTANTIATE_TEST_SUITE_P(
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IComposer::descriptor)),
         android::hardware::PrintInstanceNameToString);
 
-TEST_P(GraphicsComposerHidlCommandTest, getLayerGenericMetadataKeys) {
+TEST_F(GraphicsComposerHidlCommandTest, getLayerGenericMetadataKeys) {
     std::vector<IComposerClient::LayerGenericMetadataKey> keys;
     mComposerClient->getLayerGenericMetadataKeys(&keys);
 

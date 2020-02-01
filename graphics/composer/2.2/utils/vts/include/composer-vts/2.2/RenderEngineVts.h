@@ -24,6 +24,8 @@
 #include <ui/Rect.h>
 #include <ui/Region.h>
 
+#include <VtsHalHidlTargetTestBase.h>
+
 namespace android {
 namespace hardware {
 namespace graphics {
