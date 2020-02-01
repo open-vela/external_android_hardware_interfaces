@@ -201,18 +201,13 @@ TEST_P(IdentityCredentialStoreHidlTest, createAndRetrieveCredential) {
     ASSERT_NE(writableCredential, nullptr);
 
     string challenge = "attestationChallenge";
-    // TODO: set it to something random and check it's in the cert chain
-    vector<uint8_t> attestationApplicationId = {};
     vector<uint8_t> attestationChallenge(challenge.begin(), challenge.end());
     vector<uint8_t> attestationCertificate;
     writableCredential->getAttestationCertificate(
-            attestationApplicationId, attestationChallenge,
-            [&](const Result& _result, const hidl_vec<hidl_vec<uint8_t>>& _splitCertChain) {
+            attestationChallenge,
+            [&](const Result& _result, const hidl_vec<uint8_t>& _attestationCertificate) {
                 result = _result;
-                vector<vector<uint8_t>> splitCerts;
-                std::copy(_splitCertChain.begin(), _splitCertChain.end(),
-                          std::back_inserter(splitCerts));
-                attestationCertificate = support::certificateChainJoin(splitCerts);
+                attestationCertificate = _attestationCertificate;
             });
     EXPECT_EQ("", result.message);
     ASSERT_EQ(ResultCode::OK, result.code);
