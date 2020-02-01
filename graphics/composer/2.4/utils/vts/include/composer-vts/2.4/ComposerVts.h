@@ -19,6 +19,7 @@
 #include <memory>
 #include <vector>
 
+#include <VtsHalHidlTargetTestBase.h>
 #include <android/hardware/graphics/composer/2.4/IComposer.h>
 #include <android/hardware/graphics/composer/2.4/IComposerClient.h>
 #include <composer-vts/2.3/ComposerVts.h>
