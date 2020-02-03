@@ -113,11 +113,34 @@ ndk::ScopedAStatus Vibrator::getCompositionSizeMax(int32_t* maxSize) {
     return ndk::ScopedAStatus::ok();
 }
 
+ndk::ScopedAStatus Vibrator::getSupportedPrimitives(std::vector<CompositePrimitive>* supported) {
+    *supported = {
+            CompositePrimitive::NOOP,       CompositePrimitive::CLICK,
+            CompositePrimitive::THUD,       CompositePrimitive::SPIN,
+            CompositePrimitive::QUICK_RISE, CompositePrimitive::SLOW_RISE,
+            CompositePrimitive::QUICK_FALL, CompositePrimitive::LIGHT_TICK,
+    };
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Vibrator::getPrimitiveDuration(CompositePrimitive primitive,
+                                                  int32_t* durationMs) {
+    if (primitive != CompositePrimitive::NOOP) {
+        *durationMs = 100;
+    } else {
+        *durationMs = 0;
+    }
+    return ndk::ScopedAStatus::ok();
+}
+
 ndk::ScopedAStatus Vibrator::compose(const std::vector<CompositeEffect>& composite,
                                      const std::shared_ptr<IVibratorCallback>& callback) {
     if (composite.size() > kComposeSizeMax) {
         return ndk::ScopedAStatus::fromExceptionCode(EX_ILLEGAL_ARGUMENT);
     }
+
+    std::vector<CompositePrimitive> supported;
+    getSupportedPrimitives(&supported);
 
     for (auto& e : composite) {
         if (e.delayMs > kComposeDelayMaxMs) {
@@ -126,8 +149,7 @@ ndk::ScopedAStatus Vibrator::compose(const std::vector<CompositeEffect>& composi
         if (e.scale <= 0.0f || e.scale > 1.0f) {
             return ndk::ScopedAStatus::fromExceptionCode(EX_ILLEGAL_ARGUMENT);
         }
-        if (e.primitive < CompositePrimitive::NOOP ||
-            e.primitive > CompositePrimitive::QUICK_FALL) {
+        if (std::find(supported.begin(), supported.end(), e.primitive) == supported.end()) {
             return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
         }
     }
