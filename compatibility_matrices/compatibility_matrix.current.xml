@@ -9,7 +9,6 @@
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.audio</name>
-        <version>5.0</version>
         <version>6.0</version>
         <interface>
             <name>IDevicesFactory</name>
@@ -18,7 +17,6 @@
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.audio.effect</name>
-        <version>5.0</version>
         <version>6.0</version>
         <interface>
             <name>IEffectsFactory</name>
@@ -46,13 +44,6 @@
         <version>1.0</version>
         <interface>
             <name>IEvsEnumerator</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.automotive.occupant_awareness</name>
-        <interface>
-            <name>IOccupantAwareness</name>
             <instance>default</instance>
         </interface>
     </hal>
@@ -130,7 +121,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.cas</name>
-        <version>1.1-2</version>
+        <version>1.1</version>
         <interface>
             <name>IMediaCasService</name>
             <instance>default</instance>
@@ -162,7 +153,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.drm</name>
-        <version>1.0-3</version>
+        <version>1.0-2</version>
         <interface>
             <name>ICryptoFactory</name>
             <regex-instance>.*</regex-instance>
@@ -174,7 +165,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.dumpstate</name>
-        <version>1.0</version>
+        <version>1.1</version>
         <interface>
             <name>IDumpstateDevice</name>
             <instance>default</instance>
@@ -196,7 +187,7 @@
          - test DeviceManifestTest#GnssHalVersionCompatibility.
         -->
         <version>1.1</version>
-        <version>2.0-1</version>
+        <version>2.0</version>
         <interface>
             <name>IGnss</name>
             <instance>default</instance>
@@ -204,8 +195,8 @@
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.graphics.allocator</name>
+        <version>2.0</version>
         <version>3.0</version>
-        <version>4.0</version>
         <interface>
             <name>IAllocator</name>
             <instance>default</instance>
@@ -213,7 +204,7 @@
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.graphics.composer</name>
-        <version>2.1-4</version>
+        <version>2.1-3</version>
         <interface>
             <name>IComposer</name>
             <instance>default</instance>
@@ -221,8 +212,8 @@
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.graphics.mapper</name>
+        <version>2.1</version>
         <version>3.0</version>
-        <version>4.0</version>
         <interface>
             <name>IMapper</name>
             <instance>default</instance>
@@ -287,7 +278,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.media.c2</name>
-        <version>1.0-1</version>
+        <version>1.0</version>
         <interface>
             <name>IComponentStore</name>
             <regex-instance>default[0-9]*</regex-instance>
@@ -338,9 +329,8 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="hidl" optional="true">
+    <hal format="aidl" optional="true">
         <name>android.hardware.power</name>
-        <version>1.0-3</version>
         <interface>
             <name>IPower</name>
             <instance>default</instance>
@@ -388,16 +378,9 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.rebootescrow</name>
-        <interface>
-            <name>IRebootEscrow</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.secure_element</name>
-        <version>1.0</version>
+        <version>1.0-2</version>
         <interface>
             <name>ISecureElement</name>
             <regex-instance>eSE[1-9][0-9]*</regex-instance>
@@ -415,7 +398,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.soundtrigger</name>
-        <version>2.0-3</version>
+        <version>2.0-2</version>
         <interface>
             <name>ISoundTriggerHw</name>
             <instance>default</instance>
@@ -486,14 +469,6 @@
         </interface>
     </hal>
     <hal format="hidl" optional="true">
-        <name>android.hardware.vibrator</name>
-        <version>1.0-3</version>
-        <interface>
-            <name>IVibrator</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="hidl" optional="true">
         <name>android.hardware.vr</name>
         <version>1.0</version>
         <interface>
@@ -511,7 +486,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.wifi</name>
-        <version>1.0-4</version>
+        <version>1.0-3</version>
         <interface>
             <name>IWifi</name>
             <instance>default</instance>
@@ -519,7 +494,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.wifi.hostapd</name>
-        <version>1.0-2</version>
+        <version>1.0-1</version>
         <interface>
             <name>IHostapd</name>
             <instance>default</instance>
@@ -527,7 +502,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.wifi.supplicant</name>
-        <version>1.0-3</version>
+        <version>1.0-2</version>
         <interface>
             <name>ISupplicant</name>
             <instance>default</instance>
