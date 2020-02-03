@@ -290,8 +290,6 @@ Return<void> HalProxy::debug(const hidl_handle& fd, const hidl_vec<hidl_string>&
     stream << "  Wakelock ref count: " << mWakelockRefCount << std::endl;
     stream << "  # of events on pending write writes queue: " << mSizePendingWriteEventsQueue
            << std::endl;
-    stream << " Most events seen on pending write events queue: "
-           << mMostEventsObservedPendingWriteEventsQueue << std::endl;
     if (!mPendingWriteEventsQueue.empty()) {
         stream << "  Size of events list on front of pending writes queue: "
                << mPendingWriteEventsQueue.front().first.size() << std::endl;
@@ -573,8 +571,6 @@ void HalProxy::postEventsToMessageQueue(const std::vector<Event>& events, size_t
         std::vector<Event> eventsLeft(events.begin() + numToWrite, events.end());
         mPendingWriteEventsQueue.push({eventsLeft, numWakeupEvents});
         mSizePendingWriteEventsQueue += numLeft;
-        mMostEventsObservedPendingWriteEventsQueue =
-                std::max(mMostEventsObservedPendingWriteEventsQueue, mSizePendingWriteEventsQueue);
         mEventQueueWriteCV.notify_one();
     }
 }
