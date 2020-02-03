@@ -80,13 +80,6 @@ enum class MemoryType { SHARED, DEVICE };
 
 enum class IOType { INPUT, OUTPUT };
 
-static void waitForSyncFence(int syncFd) {
-    constexpr int kInfiniteTimeout = -1;
-    ASSERT_GT(syncFd, 0);
-    int r = sync_wait(syncFd, kInfiniteTimeout);
-    ASSERT_GE(r, 0);
-}
-
 struct TestConfig {
     Executor executor;
     MeasureTiming measureTiming;
@@ -574,29 +567,33 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
         case Executor::FENCED: {
             SCOPED_TRACE("fenced");
             ErrorStatus result;
-            hidl_handle syncFenceHandle;
-            sp<IFencedExecutionCallback> fencedCallback;
+            hidl_handle sync_fence_handle;
+            sp<IFencedExecutionCallback> fenced_callback;
             Return<void> ret = preparedModel->executeFenced(
-                    request, {}, testConfig.measureTiming, {}, {},
-                    [&result, &syncFenceHandle, &fencedCallback](
+                    request, {}, testConfig.measureTiming,
+                    [&result, &sync_fence_handle, &fenced_callback](
                             ErrorStatus error, const hidl_handle& handle,
                             const sp<IFencedExecutionCallback>& callback) {
                         result = error;
-                        syncFenceHandle = handle;
-                        fencedCallback = callback;
+                        sync_fence_handle = handle;
+                        fenced_callback = callback;
                     });
             ASSERT_TRUE(ret.isOk());
             if (result != ErrorStatus::NONE) {
-                ASSERT_EQ(syncFenceHandle.getNativeHandle(), nullptr);
-                ASSERT_EQ(fencedCallback, nullptr);
+                ASSERT_EQ(sync_fence_handle.getNativeHandle(), nullptr);
+                ASSERT_EQ(fenced_callback, nullptr);
                 executionStatus = ErrorStatus::GENERAL_FAILURE;
-            } else if (syncFenceHandle.getNativeHandle()) {
-                waitForSyncFence(syncFenceHandle.getNativeHandle()->data[0]);
+            } else if (sync_fence_handle.getNativeHandle()) {
+                constexpr int kInfiniteTimeout = -1;
+                int sync_fd = sync_fence_handle.getNativeHandle()->data[0];
+                ASSERT_GT(sync_fd, 0);
+                int r = sync_wait(sync_fd, kInfiniteTimeout);
+                ASSERT_GE(r, 0);
             }
             if (result == ErrorStatus::NONE) {
-                ASSERT_NE(fencedCallback, nullptr);
-                Return<void> ret = fencedCallback->getExecutionInfo(
-                        [&executionStatus, &timing](ErrorStatus error, Timing t, Timing) {
+                ASSERT_NE(fenced_callback, nullptr);
+                Return<void> ret = fenced_callback->getExecutionInfo(
+                        [&executionStatus, &timing](ErrorStatus error, Timing t) {
                             executionStatus = error;
                             timing = t;
                         });
