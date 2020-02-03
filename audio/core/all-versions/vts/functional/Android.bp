@@ -19,13 +19,12 @@ cc_defaults {
     defaults: ["VtsHalTargetTestDefaults"],
     static_libs: [
         "android.hardware.audio.common.test.utility",
-        "libaudiofoundation",
         "libaudiopolicycomponents",
         "libmedia_helper",
         "libxml2",
     ],
     shared_libs: [
-        "libbinder",
+        "libaudiofoundation",
         "libfmq",
     ],
     header_libs: [
