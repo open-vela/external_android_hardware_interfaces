@@ -369,11 +369,6 @@ class WifiLegacyHal {
     wifi_error setCountryCode(const std::string& iface_name,
                               std::array<int8_t, 2> code);
 
-    // interface functions.
-    wifi_error createVirtualInterface(const std::string& ifname,
-                                      wifi_interface_type iftype);
-    wifi_error deleteVirtualInterface(const std::string& ifname);
-
    private:
     // Retrieve interface handles for all the available interfaces.
     wifi_error retrieveIfaceHandles();
@@ -385,9 +380,6 @@ class WifiLegacyHal {
     std::pair<wifi_error, std::vector<wifi_cached_scan_results>>
     getGscanCachedResults(const std::string& iface_name);
     void invalidate();
-    // Handles wifi (error) status of Virtual interface create/delete
-    wifi_error handleVirtualInterfaceCreateOrDeleteStatus(
-        const std::string& ifname, wifi_error status);
 
     // Global function table of legacy HAL.
     wifi_hal_fn global_func_table_;
