@@ -21,7 +21,6 @@
 #include <VtsHalHidlTargetTestBase.h>
 
 #include <android/hardware/gnss/1.1/IGnssConfiguration.h>
-#include <cutils/properties.h>
 
 using android::hardware::hidl_vec;
 
@@ -33,12 +32,6 @@ using android::hardware::gnss::V1_0::GnssLocation;
 using android::hardware::gnss::V1_0::IGnssDebug;
 using android::hardware::gnss::V1_1::IGnssConfiguration;
 using android::hardware::gnss::V1_1::IGnssMeasurement;
-
-static bool IsAutomotiveDevice() {
-  char buffer[PROPERTY_VALUE_MAX] = {0};
-  property_get("ro.hardware.type", buffer, "");
-  return strncmp(buffer, "automotive", PROPERTY_VALUE_MAX) == 0;
-}
 
 /*
  * SetupTeardownCreateCleanup:
@@ -372,7 +365,6 @@ TEST_F(GnssHalTest, BlacklistConstellationWithLocationOff) {
     sources.resize(1);
     sources[0] = source_to_blacklist;
 
-    // setBlacklist when location is off.
     auto result = gnss_configuration_hal->setBlacklist(sources);
     ASSERT_TRUE(result.isOk());
     EXPECT_TRUE(result);
@@ -420,7 +412,6 @@ TEST_F(GnssHalTest, BlacklistConstellationWithLocationOn) {
     }
 
     const int kLocationsToAwait = 3;
-    // Find first non-GPS constellation to blacklist
     GnssConstellationType constellation_to_blacklist = startLocationAndGetNonGpsConstellation();
 
     IGnssConfiguration::BlacklistedSource source_to_blacklist;
@@ -436,7 +427,6 @@ TEST_F(GnssHalTest, BlacklistConstellationWithLocationOn) {
     sources.resize(1);
     sources[0] = source_to_blacklist;
 
-    // setBlacklist when location is off.
     auto result = gnss_configuration_hal->setBlacklist(sources);
     ASSERT_TRUE(result.isOk());
     EXPECT_TRUE(result);
@@ -497,7 +487,7 @@ TEST_F(GnssHalTest, InjectBestLocation) {
 TEST_F(GnssHalTest, GnssDebugValuesSanityTest) {
     auto gnssDebug = gnss_hal_->getExtensionGnssDebug();
     ASSERT_TRUE(gnssDebug.isOk());
-    if (!IsAutomotiveDevice() && info_called_count_ > 0 && last_info_.yearOfHw >= 2017) {
+    if (info_called_count_ > 0 && last_info_.yearOfHw >= 2017) {
         sp<IGnssDebug> iGnssDebug = gnssDebug;
         EXPECT_NE(iGnssDebug, nullptr);
 
