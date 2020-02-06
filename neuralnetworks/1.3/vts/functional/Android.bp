@@ -16,7 +16,7 @@
 
 cc_library_static {
     name: "VtsHalNeuralNetworksV1_3_utils",
-    defaults: ["neuralnetworks_vts_functional_defaults"],
+    defaults: ["VtsHalTargetTestDefaults"],
     export_include_dirs: ["include"],
     srcs: [
         "Callbacks.cpp",
@@ -35,7 +35,7 @@ cc_library_static {
 
 cc_test {
     name: "VtsHalNeuralnetworksV1_3TargetTest",
-    defaults: ["neuralnetworks_vts_functional_defaults"],
+    defaults: ["VtsHalTargetTestDefaults"],
     srcs: [
         "BasicTests.cpp",
         "CompilationCachingTests.cpp",
