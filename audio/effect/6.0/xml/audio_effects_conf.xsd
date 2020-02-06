@@ -255,8 +255,10 @@
     </xs:annotation>
     <xs:complexContent>
       <xs:extension base="aec:streamProcessingType">
-         <xs:attribute name="address" type="xs:string" use="required"/>
-         <xs:attribute name="type" type="aec:deviceType" use="required"/>
+         <xs:complexType>
+             <xs:attribute name="address" type="xs:string" use="required"/>
+             <xs:attribute name="type" type="aec:deviceType" use="required"/>
+         </xs:complexType>
       </xs:extension>
     </xs:complexContent>
   </xs:complexType>
