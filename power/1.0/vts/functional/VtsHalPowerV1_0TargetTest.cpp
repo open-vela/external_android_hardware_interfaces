@@ -21,9 +21,9 @@
 
 #include <android-base/unique_fd.h>
 #include <android/hardware/power/1.0/IPower.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 
 #include <fcntl.h>
 #include <algorithm>
@@ -45,10 +45,23 @@ using std::vector;
 #define AVAILABLE_GOVERNORS_PATH \
   "/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors"
 
-class PowerHidlTest : public testing::TestWithParam<std::string> {
+// Test environment for Power HIDL HAL.
+class PowerHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static PowerHidlEnvironment* Instance() {
+        static PowerHidlEnvironment* instance = new PowerHidlEnvironment;
+        return instance;
+    }
+
+    virtual void registerTestServices() override { registerTestService<IPower>(); }
+};
+
+class PowerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
-      power = IPower::getService(GetParam());
+      power = ::testing::VtsHalHidlTargetTestBase::getService<IPower>(
+          PowerHidlEnvironment::Instance()->getServiceName<IPower>());
       ASSERT_NE(power, nullptr);
   }
 
@@ -58,7 +71,7 @@ class PowerHidlTest : public testing::TestWithParam<std::string> {
 };
 
 // Sanity check Power::setInteractive.
-TEST_P(PowerHidlTest, SetInteractive) {
+TEST_F(PowerHidlTest, SetInteractive) {
   Return<void> ret;
 
   ret = power->setInteractive(true);
@@ -70,7 +83,7 @@ TEST_P(PowerHidlTest, SetInteractive) {
 
 // Test Power::setInteractive and Power::powerHint(Launch)
 // with each available CPU governor, if available
-TEST_P(PowerHidlTest, TryDifferentGovernors) {
+TEST_F(PowerHidlTest, TryDifferentGovernors) {
   Return<void> ret;
 
   unique_fd fd1(open(CPU_GOVERNOR_PATH, O_RDWR));
@@ -112,7 +125,7 @@ TEST_P(PowerHidlTest, TryDifferentGovernors) {
 }
 
 // Sanity check Power::powerHint on good and bad inputs.
-TEST_P(PowerHidlTest, PowerHint) {
+TEST_F(PowerHidlTest, PowerHint) {
   PowerHint badHint = static_cast<PowerHint>(0xA);
   auto hints = {PowerHint::VSYNC,         PowerHint::INTERACTION,
                 PowerHint::VIDEO_ENCODE,  PowerHint::VIDEO_DECODE,
@@ -150,7 +163,7 @@ TEST_P(PowerHidlTest, PowerHint) {
 }
 
 // Sanity check Power::setFeature() on good and bad inputs.
-TEST_P(PowerHidlTest, SetFeature) {
+TEST_F(PowerHidlTest, SetFeature) {
   Return<void> ret;
   ret = power->setFeature(Feature::POWER_FEATURE_DOUBLE_TAP_TO_WAKE, true);
   ASSERT_TRUE(ret.isOk());
@@ -165,7 +178,7 @@ TEST_P(PowerHidlTest, SetFeature) {
 }
 
 // Sanity check Power::getPlatformLowPowerStats().
-TEST_P(PowerHidlTest, GetPlatformLowPowerStats) {
+TEST_F(PowerHidlTest, GetPlatformLowPowerStats) {
   hidl_vec<PowerStatePlatformSleepState> vec;
   Status s;
   auto cb = [&vec, &s](hidl_vec<PowerStatePlatformSleepState> states,
@@ -178,7 +191,11 @@ TEST_P(PowerHidlTest, GetPlatformLowPowerStats) {
   ASSERT_TRUE(s == Status::SUCCESS || s == Status::FILESYSTEM_ERROR);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, PowerHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IPower::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char **argv) {
+    ::testing::AddGlobalTestEnvironment(PowerHidlEnvironment::Instance());
+    ::testing::InitGoogleTest(&argc, argv);
+    PowerHidlEnvironment::Instance()->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    LOG(INFO) << "Test result = " << status;
+    return status;
+}
