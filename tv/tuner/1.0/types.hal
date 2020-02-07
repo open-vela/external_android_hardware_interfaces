@@ -785,7 +785,6 @@ enum FrontendDvbtTransmissionMode : uint32_t {
 /**
  *   Physical Layer Pipe (PLP) Mode for DVBT.
  */
-@export
 enum FrontendDvbtPlpMode : uint32_t {
     UNDEFINED,
     AUTO,
@@ -1210,7 +1209,6 @@ safe_union FrontendSettings {
 /**
  *  Scan type for Frontend.
  */
-@export
 enum FrontendScanType : uint32_t {
     SCAN_UNDEFINED = 0,
     SCAN_AUTO = 1 << 0,
@@ -1220,7 +1218,6 @@ enum FrontendScanType : uint32_t {
 /**
  *  Scan Message Type for Frontend.
  */
-@export
 enum FrontendScanMessageType : uint32_t {
     /**
      * Scan locked the signal.
