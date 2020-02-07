@@ -25,7 +25,8 @@ namespace android::hardware::automotive::can::V1_0::implementation {
 struct CanController : public ICanController {
     Return<void> getSupportedInterfaceTypes(getSupportedInterfaceTypes_cb _hidl_cb) override;
 
-    Return<ICanController::Result> upInterface(const ICanController::BusConfig& config) override;
+    Return<ICanController::Result> upInterface(
+            const ICanController::BusConfiguration& config) override;
     Return<bool> downInterface(const hidl_string& name) override;
 
   private:
