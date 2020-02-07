@@ -76,7 +76,6 @@ constexpr int WHEEL_FRONT_LEFT = (int)VehicleAreaWheel::LEFT_FRONT;
 constexpr int WHEEL_FRONT_RIGHT = (int)VehicleAreaWheel::RIGHT_FRONT;
 constexpr int WHEEL_REAR_LEFT = (int)VehicleAreaWheel::LEFT_REAR;
 constexpr int WHEEL_REAR_RIGHT = (int)VehicleAreaWheel::RIGHT_REAR;
-constexpr int INITIAL_USER_INFO = (int)VehicleProperty::INITIAL_USER_INFO;
 
 /**
  * This property is used for test purpose to generate fake events. Here is the test package that
@@ -991,16 +990,6 @@ const ConfigDeclaration kVehicleProperties[]{
                                   (int)VehicleVendorPermission::PERMISSION_DEFAULT},
                  },
          .initialValue = {.int32Values = {1}}},
-
-        {
-                .config =
-                        {
-                                .prop = toInt(VehicleProperty::INITIAL_USER_INFO),
-                                .access = VehiclePropertyAccess::READ_WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-        },
-
 };
 
 }  // impl
