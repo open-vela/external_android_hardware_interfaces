@@ -57,7 +57,6 @@ public:
     StatusCode set(const VehiclePropValue& propValue) override;
     StatusCode subscribe(int32_t property, float sampleRate) override;
     StatusCode unsubscribe(int32_t property) override;
-    bool dump(const hidl_handle& fd, const hidl_vec<hidl_string>& options) override;
 
     //  Methods from EmulatedVehicleHalIface
     bool setPropertyFromVehicle(const VehiclePropValue& propValue) override;
