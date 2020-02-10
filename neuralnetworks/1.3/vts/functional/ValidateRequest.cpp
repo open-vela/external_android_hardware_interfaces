@@ -61,7 +61,7 @@ static void validate(const sp<IPreparedModel>& preparedModel, const std::string&
 
     OptionalTimePoint deadline;
     if (testDeadline) {
-        deadline.nanoseconds(std::numeric_limits<uint64_t>::max());
+        deadline.nanosecondsSinceEpoch(std::numeric_limits<uint64_t>::max());
     }
 
     // asynchronous
@@ -142,16 +142,14 @@ static void validate(const sp<IPreparedModel>& preparedModel, const std::string&
     // dispatch
     {
         SCOPED_TRACE(message + " [executeFenced]");
-        Return<void> ret = preparedModel->executeFenced(
-                request, {}, MeasureTiming::NO, {}, {},
-                [](ErrorStatus error, const hidl_handle& handle,
-                   const sp<IFencedExecutionCallback>& callback) {
-                    if (error != ErrorStatus::DEVICE_UNAVAILABLE) {
-                        ASSERT_EQ(ErrorStatus::INVALID_ARGUMENT, error);
-                    }
-                    ASSERT_EQ(handle.getNativeHandle(), nullptr);
-                    ASSERT_EQ(callback, nullptr);
-                });
+        Return<void> ret =
+                preparedModel->executeFenced(request, {}, MeasureTiming::NO, deadline, {},
+                                             [](ErrorStatus error, const hidl_handle& handle,
+                                                const sp<IFencedExecutionCallback>& callback) {
+                                                 ASSERT_EQ(ErrorStatus::INVALID_ARGUMENT, error);
+                                                 ASSERT_EQ(handle.getNativeHandle(), nullptr);
+                                                 ASSERT_EQ(callback, nullptr);
+                                             });
         ASSERT_TRUE(ret.isOk());
     }
 }
