@@ -42,26 +42,39 @@ namespace V4_0 {
 
 namespace test {
 
-using namespace std::literals::chrono_literals;
+void KeymasterHidlTest::InitializeKeymaster() {
+    service_name_ = GetParam();
+    keymaster_ = IKeymasterDevice::getService(service_name_);
+    ASSERT_NE(keymaster_, nullptr);
 
-void KeymasterHidlTest::InitializeKeymaster(sp<IKeymasterDevice> keymaster) {
-    ASSERT_NE(keymaster, nullptr);
-    keymaster_ = keymaster;
     ASSERT_TRUE(keymaster_
-                        ->getHardwareInfo([&](SecurityLevel securityLevel, const hidl_string& name,
-                                              const hidl_string& author) {
-                            securityLevel_ = securityLevel;
-                            name_ = name;
-                            author_ = author;
-                        })
-                        .isOk());
+                    ->getHardwareInfo([&](SecurityLevel securityLevel, const hidl_string& name,
+                                          const hidl_string& author) {
+                        securityLevel_ = securityLevel;
+                        name_ = name;
+                        author_ = author;
+                    })
+                    .isOk());
+}
+
+void KeymasterHidlTest::SetUpTestCase() {
+    InitializeKeymaster();
 
     os_version_ = support::getOsVersion();
     os_patch_level_ = support::getOsPatchlevel();
-}
 
-void KeymasterHidlTest::SetUp() {
-    InitializeKeymaster(IKeymasterDevice::getService(GetParam()));
+    auto service_manager = android::hidl::manager::V1_0::IServiceManager::getService();
+    ASSERT_NE(nullptr, service_manager.get());
+    all_keymasters_.push_back(keymaster_);
+    service_manager->listByInterface(
+        IKeymasterDevice::descriptor, [&](const hidl_vec<hidl_string>& names) {
+            for (auto& name : names) {
+                if (name == service_name_) continue;
+                auto keymaster = IKeymasterDevice::getService(name);
+                ASSERT_NE(keymaster, nullptr);
+                all_keymasters_.push_back(keymaster);
+            }
+        });
 }
 
 ErrorCode KeymasterHidlTest::GenerateKey(const AuthorizationSet& key_desc, HidlBuf* key_blob,
@@ -126,7 +139,7 @@ ErrorCode KeymasterHidlTest::ImportWrappedKey(string wrapped_key, string wrappin
                                               string masking_key,
                                               const AuthorizationSet& unwrapping_params) {
     ErrorCode error;
-    EXPECT_EQ(ErrorCode::OK, ImportKey(wrapping_key_desc, KeyFormat::PKCS8, wrapping_key));
+    ImportKey(wrapping_key_desc, KeyFormat::PKCS8, wrapping_key);
     EXPECT_TRUE(keymaster_
                     ->importWrappedKey(HidlBuf(wrapped_key), key_blob_, HidlBuf(masking_key),
                                        unwrapping_params.hidl_data(), 0 /* passwordSid */,
@@ -195,9 +208,7 @@ void KeymasterHidlTest::CheckGetCharacteristics(const HidlBuf& key_blob, const H
     HidlBuf empty_buf = {};
     EXPECT_EQ(ErrorCode::OK,
               GetCharacteristics(key_blob, client_id, app_data, key_characteristics));
-    if (SecLevel() != SecurityLevel::SOFTWARE) {
-        EXPECT_GT(key_characteristics->hardwareEnforced.size(), 0);
-    }
+    EXPECT_GT(key_characteristics->hardwareEnforced.size(), 0);
     EXPECT_GT(key_characteristics->softwareEnforced.size(), 0);
 
     EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
@@ -637,25 +648,23 @@ std::vector<uint32_t> KeymasterHidlTest::ValidKeySizes(Algorithm algorithm) {
     switch (algorithm) {
         case Algorithm::RSA:
             switch (SecLevel()) {
-                case SecurityLevel::SOFTWARE:
                 case SecurityLevel::TRUSTED_ENVIRONMENT:
                     return {2048, 3072, 4096};
                 case SecurityLevel::STRONGBOX:
                     return {2048};
                 default:
-                    ADD_FAILURE() << "Invalid security level " << uint32_t(SecLevel());
+                    CHECK(false) << "Invalid security level " << uint32_t(SecLevel());
                     break;
             }
             break;
         case Algorithm::EC:
             switch (SecLevel()) {
-                case SecurityLevel::SOFTWARE:
                 case SecurityLevel::TRUSTED_ENVIRONMENT:
                     return {224, 256, 384, 521};
                 case SecurityLevel::STRONGBOX:
                     return {256};
                 default:
-                    ADD_FAILURE() << "Invalid security level " << uint32_t(SecLevel());
+                    CHECK(false) << "Invalid security level " << uint32_t(SecLevel());
                     break;
             }
             break;
@@ -670,27 +679,25 @@ std::vector<uint32_t> KeymasterHidlTest::ValidKeySizes(Algorithm algorithm) {
             return retval;
         }
         default:
-            ADD_FAILURE() << "Invalid Algorithm: " << algorithm;
+            CHECK(false) << "Invalid Algorithm: " << algorithm;
             return {};
     }
-    ADD_FAILURE() << "Should be impossible to get here";
+    CHECK(false) << "Should be impossible to get here";
     return {};
 }
-
 std::vector<uint32_t> KeymasterHidlTest::InvalidKeySizes(Algorithm algorithm) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        switch (algorithm) {
-            case Algorithm::RSA:
-                return {3072, 4096};
-            case Algorithm::EC:
-                return {224, 384, 521};
-            case Algorithm::AES:
-                return {192};
-            default:
-                return {};
-        }
+    if (SecLevel() == SecurityLevel::TRUSTED_ENVIRONMENT) return {};
+    CHECK(SecLevel() == SecurityLevel::STRONGBOX);
+    switch (algorithm) {
+        case Algorithm::RSA:
+            return {3072, 4096};
+        case Algorithm::EC:
+            return {224, 384, 521};
+        case Algorithm::AES:
+            return {192};
+        default:
+            return {};
     }
-    return {};
 }
 
 std::vector<EcCurve> KeymasterHidlTest::ValidCurves() {
@@ -709,7 +716,6 @@ std::vector<EcCurve> KeymasterHidlTest::InvalidCurves() {
 
 std::vector<Digest> KeymasterHidlTest::ValidDigests(bool withNone, bool withMD5) {
     switch (SecLevel()) {
-        case SecurityLevel::SOFTWARE:
         case SecurityLevel::TRUSTED_ENVIRONMENT:
             if (withNone) {
                 if (withMD5)
@@ -735,10 +741,10 @@ std::vector<Digest> KeymasterHidlTest::ValidDigests(bool withNone, bool withMD5)
                 return {Digest::SHA_2_256};
             break;
         default:
-            ADD_FAILURE() << "Invalid security level " << uint32_t(SecLevel());
+            CHECK(false) << "Invalid security level " << uint32_t(SecLevel());
             break;
     }
-    ADD_FAILURE() << "Should be impossible to get here";
+    CHECK(false) << "Should be impossible to get here";
     return {};
 }
 

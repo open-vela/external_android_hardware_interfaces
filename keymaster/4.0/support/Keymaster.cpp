@@ -14,18 +14,19 @@
  ** limitations under the License.
  */
 
-#include <keymasterV4_1/Keymaster.h>
+#include <keymasterV4_0/Keymaster.h>
 
 #include <iomanip>
 
 #include <android-base/logging.h>
 #include <android/hidl/manager/1.2/IServiceManager.h>
+#include <keymasterV4_0/Keymaster3.h>
+#include <keymasterV4_0/Keymaster4.h>
 #include <keymasterV4_0/key_param_output.h>
 #include <keymasterV4_0/keymaster_utils.h>
-#include <keymasterV4_1/Keymaster3.h>
-#include <keymasterV4_1/Keymaster4.h>
 
-namespace android::hardware {
+namespace android {
+namespace hardware {
 
 template <class T>
 std::ostream& operator<<(std::ostream& os, const hidl_vec<T>& vec) {
@@ -56,7 +57,6 @@ std::ostream& operator<<(std::ostream& os, const hidl_array<uint8_t, N>& vec) {
 }
 
 namespace keymaster {
-
 namespace V4_0 {
 
 std::ostream& operator<<(std::ostream& os, const HmacSharingParameters& params) {
@@ -66,9 +66,7 @@ std::ostream& operator<<(std::ostream& os, const HmacSharingParameters& params) 
     return os;
 }
 
-}  // namespace V4_0
-
-namespace V4_1::support {
+namespace support {
 
 using ::android::sp;
 using ::android::hidl::manager::V1_2::IServiceManager;
@@ -83,7 +81,7 @@ std::ostream& operator<<(std::ostream& os, const Keymaster& keymaster) {
 
 template <typename Wrapper>
 std::vector<std::unique_ptr<Keymaster>> enumerateDevices(
-        const sp<IServiceManager>& serviceManager) {
+    const sp<IServiceManager>& serviceManager) {
     Keymaster::KeymasterSet result;
 
     bool foundDefault = false;
@@ -143,14 +141,14 @@ Keymaster::KeymasterSet Keymaster::enumerateAvailableDevices() {
 }
 
 static hidl_vec<HmacSharingParameters> getHmacParameters(
-        const Keymaster::KeymasterSet& keymasters) {
+    const Keymaster::KeymasterSet& keymasters) {
     std::vector<HmacSharingParameters> params_vec;
     params_vec.reserve(keymasters.size());
     for (auto& keymaster : keymasters) {
         if (keymaster->halVersion().majorVersion < 4) continue;
         auto rc = keymaster->getHmacSharingParameters([&](auto error, auto& params) {
-            CHECK(error == V4_0::ErrorCode::OK)
-                    << "Failed to get HMAC parameters from " << *keymaster << " error " << error;
+            CHECK(error == ErrorCode::OK)
+                << "Failed to get HMAC parameters from " << *keymaster << " error " << error;
             params_vec.push_back(params);
         });
         CHECK(rc.isOk()) << "Failed to communicate with " << *keymaster
@@ -172,18 +170,18 @@ static void computeHmac(const Keymaster::KeymasterSet& keymasters,
         if (keymaster->halVersion().majorVersion < 4) continue;
         LOG(DEBUG) << "Computing HMAC for " << *keymaster;
         auto rc = keymaster->computeSharedHmac(
-                params, [&](V4_0::ErrorCode error, const hidl_vec<uint8_t>& curSharingCheck) {
-                    CHECK(error == V4_0::ErrorCode::OK) << "Failed to get HMAC parameters from "
-                                                        << *keymaster << " error " << error;
-                    if (firstKeymaster) {
-                        sharingCheck = curSharingCheck;
-                        firstKeymaster = false;
-                    }
-                    if (curSharingCheck != sharingCheck)
-                        LOG(WARNING) << "HMAC computation failed for " << *keymaster  //
-                                     << " Expected: " << sharingCheck                 //
-                                     << " got: " << curSharingCheck;
-                });
+            params, [&](ErrorCode error, const hidl_vec<uint8_t>& curSharingCheck) {
+                CHECK(error == ErrorCode::OK)
+                    << "Failed to get HMAC parameters from " << *keymaster << " error " << error;
+                if (firstKeymaster) {
+                    sharingCheck = curSharingCheck;
+                    firstKeymaster = false;
+                }
+                if (curSharingCheck != sharingCheck)
+                    LOG(WARNING) << "HMAC computation failed for " << *keymaster  //
+                                 << " Expected: " << sharingCheck                 //
+                                 << " got: " << curSharingCheck;
+            });
         CHECK(rc.isOk()) << "Failed to communicate with " << *keymaster
                          << " error: " << rc.description();
     }
@@ -193,6 +191,8 @@ void Keymaster::performHmacKeyAgreement(const KeymasterSet& keymasters) {
     computeHmac(keymasters, getHmacParameters(keymasters));
 }
 
-}  // namespace V4_1::support
+}  // namespace support
+}  // namespace V4_0
 }  // namespace keymaster
-}  // namespace android::hardware
+}  // namespace hardware
+}  // namespace android
