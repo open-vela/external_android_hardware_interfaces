@@ -182,7 +182,6 @@ static float getInvalidScale(OperandType type) {
         case OperandType::TENSOR_FLOAT16:
         case OperandType::TENSOR_FLOAT32:
         case OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL:
-        case OperandType::SUBGRAPH:
             return 1.0f;
         case OperandType::TENSOR_INT32:
             return -1.0f;
@@ -221,7 +220,6 @@ static std::vector<int32_t> getInvalidZeroPoints(OperandType type) {
         case OperandType::TENSOR_FLOAT32:
         case OperandType::TENSOR_INT32:
         case OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL:
-        case OperandType::SUBGRAPH:
             return {1};
         case OperandType::TENSOR_QUANT8_ASYMM:
             return {-1, 256};
@@ -529,15 +527,9 @@ static bool removeOperandSkip(size_t operand, const Model& model) {
                 }
             }
         }
-        // BIDIRECTIONAL_SEQUENCE_LSTM and BIDIRECTIONAL_SEQUENCE_RNN can have
-        // either one, two, three or four outputs depending on their
-        // mergeOutputs parameter and if state outputs are provided.
-        // UNIDIRECTIONAL_SEQUENCE_LSTM and UNIDIRECTIONAL_SEQUENCE_RNN can have
-        // either one or three outputs depending on whether state outputs are
-        // provided.
-        if (operation.type == OperationType::UNIDIRECTIONAL_SEQUENCE_LSTM ||
-            operation.type == OperationType::UNIDIRECTIONAL_SEQUENCE_RNN ||
-            operation.type == OperationType::BIDIRECTIONAL_SEQUENCE_LSTM ||
+        // BIDIRECTIONAL_SEQUENCE_LSTM and BIDIRECTIONAL_SEQUENCE_RNN can have either one or two
+        // outputs depending on their mergeOutputs parameter.
+        if (operation.type == OperationType::BIDIRECTIONAL_SEQUENCE_LSTM ||
             operation.type == OperationType::BIDIRECTIONAL_SEQUENCE_RNN) {
             for (const size_t outOprand : operation.outputs) {
                 if (operand == outOprand) {
