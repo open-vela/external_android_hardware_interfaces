@@ -61,7 +61,7 @@ static void validate(const sp<IPreparedModel>& preparedModel, const std::string&
 
     OptionalTimePoint deadline;
     if (testDeadline) {
-        deadline.nanosecondsSinceEpoch(std::numeric_limits<uint64_t>::max());
+        deadline.nanoseconds(std::numeric_limits<uint64_t>::max());
     }
 
     // asynchronous
