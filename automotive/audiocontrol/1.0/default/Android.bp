@@ -29,5 +29,10 @@ cc_binary {
         "liblog",
         "libutils",
     ],
-    vintf_fragments: ["audiocontrol_manifest.xml"],
+
+    cflags: [
+        "-DLOG_TAG=\"AudCntrlDrv\"",
+        "-O0",
+        "-g",
+    ],
 }
