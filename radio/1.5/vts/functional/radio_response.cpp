@@ -62,6 +62,13 @@ Return<void> RadioResponse_v1_5::supplyNetworkDepersonalizationResponse(
     return Void();
 }
 
+Return<void> RadioResponse_v1_5::supplySimDepersonalizationResponse(
+        const RadioResponseInfo& /*info*/,
+        ::android::hardware::radio::V1_5::PersoSubstate /*persoType*/,
+        int32_t /*remainingRetries*/) {
+    return Void();
+}
+
 Return<void> RadioResponse_v1_5::getCurrentCallsResponse(
         const RadioResponseInfo& /*info*/,
         const ::android::hardware::hidl_vec<::android::hardware::radio::V1_0::Call>& /*calls*/) {
@@ -894,13 +901,6 @@ Return<void> RadioResponse_v1_5::setSignalStrengthReportingCriteriaResponse_1_5(
     return Void();
 }
 
-Return<void> RadioResponse_v1_5::setLinkCapacityReportingCriteriaResponse_1_5(
-        const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_v1_5.notify(info.serial);
-    return Void();
-}
-
 Return<void> RadioResponse_v1_5::enableUiccApplicationsResponse(const RadioResponseInfo& info) {
     rspInfo = info;
     parent_v1_5.notify(info.serial);
@@ -970,54 +970,9 @@ Return<void> RadioResponse_v1_5::setIndicationFilterResponse_1_5(const RadioResp
 
 Return<void> RadioResponse_v1_5::getBarringInfoResponse(
         const RadioResponseInfo& info,
-        const ::android::hardware::radio::V1_5::CellIdentity& cellIdentity,
         const ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::BarringInfo>&
-                barringInfos) {
-    this->barringCellIdentity = cellIdentity;
-    this->barringInfos = barringInfos;
+        /*barringInfos*/) {
     rspInfo = info;
     parent_v1_5.notify(info.serial);
-    return Void();
-}
-
-Return<void> RadioResponse_v1_5::getVoiceRegistrationStateResponse_1_5(
-        const RadioResponseInfo& info,
-        const ::android::hardware::radio::V1_5::RegStateResult& /*regResponse*/) {
-    rspInfo = info;
-    parent_v1_5.notify(info.serial);
-    return Void();
-}
-
-Return<void> RadioResponse_v1_5::getDataRegistrationStateResponse_1_5(
-        const RadioResponseInfo& info,
-        const ::android::hardware::radio::V1_5::RegStateResult& /*regResponse*/) {
-    rspInfo = info;
-    parent_v1_5.notify(info.serial);
-    return Void();
-}
-
-Return<void> RadioResponse_v1_5::getCellInfoListResponse_1_5(
-        const RadioResponseInfo& /*info*/,
-        const ::android::hardware::hidl_vec<
-                ::android::hardware::radio::V1_5::CellInfo>& /*cellInfo*/) {
-    return Void();
-}
-
-Return<void> RadioResponse_v1_5::setNetworkSelectionModeManualResponse_1_5(
-        const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_v1_5.notify(info.serial);
-    return Void();
-}
-
-Return<void> RadioResponse_v1_5::sendCdmaSmsExpectMoreResponse(const RadioResponseInfo& /*info*/,
-                                                               const SendSmsResult& /*sms*/) {
-    return Void();
-}
-
-Return<void> RadioResponse_v1_5::supplySimDepersonalizationResponse(
-        const RadioResponseInfo& /*info*/,
-        ::android::hardware::radio::V1_5::PersoSubstate /*persoType*/,
-        int32_t /*remainingRetries*/) {
     return Void();
 }
