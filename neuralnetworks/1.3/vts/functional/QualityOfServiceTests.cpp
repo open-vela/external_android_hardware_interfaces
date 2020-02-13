@@ -67,10 +67,8 @@ static OptionalTimePoint makeOptionalTimePoint(DeadlineBoundType deadlineBoundTy
             deadline.nanosecondsSinceEpoch(nanosecondsSinceEpoch);
         } break;
         case DeadlineBoundType::UNLIMITED: {
-            const auto maxTime = std::chrono::time_point<std::chrono::steady_clock,
-                                                         std::chrono::nanoseconds>::max();
-            const uint64_t nanosecondsSinceEpoch = maxTime.time_since_epoch().count();
-            deadline.nanosecondsSinceEpoch(nanosecondsSinceEpoch);
+            uint64_t unlimited = std::numeric_limits<uint64_t>::max();
+            deadline.nanosecondsSinceEpoch(unlimited);
         } break;
     }
     return deadline;
