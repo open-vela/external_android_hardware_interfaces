@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-#include "SensorsHidlEnvironmentV2_X.h"
+#include "SensorsHidlEnvironmentV2_0.h"
 
 #include <android/hardware/sensors/2.0/types.h>
-#include <android/hardware/sensors/2.1/types.h>
-
 #include <log/log.h>
 
 #include <algorithm>
@@ -28,19 +26,17 @@ using ::android::hardware::EventFlag;
 using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::hardware::sensors::V1_0::Result;
+using ::android::hardware::sensors::V1_0::SensorInfo;
 using ::android::hardware::sensors::V2_0::EventQueueFlagBits;
-using ::android::hardware::sensors::V2_1::SensorInfo;
-#ifdef SENSORS_HAL_2_1
-using ::android::hardware::sensors::V2_1::ISensors;
-#else
 using ::android::hardware::sensors::V2_0::ISensors;
-#endif
-using ::android::hardware::sensors::V2_1::ISensorsCallback;
+using ::android::hardware::sensors::V2_0::ISensorsCallback;
 
 template <typename EnumType>
 constexpr typename std::underlying_type<EnumType>::type asBaseType(EnumType value) {
     return static_cast<typename std::underlying_type<EnumType>::type>(value);
 }
+
+constexpr size_t SensorsHidlEnvironmentV2_0::MAX_RECEIVE_BUFFER_EVENT_COUNT;
 
 void SensorsHalDeathRecipient::serviceDied(
         uint64_t /* cookie */,
@@ -49,34 +45,48 @@ void SensorsHalDeathRecipient::serviceDied(
     FAIL() << "Sensors HAL died during test";
 }
 
-bool SensorsHidlEnvironmentV2_X::resetHal() {
+struct SensorsCallback : ISensorsCallback {
+    Return<void> onDynamicSensorsConnected(const hidl_vec<SensorInfo>& /* sensorInfos */) {
+        return Return<void>();
+    }
+
+    Return<void> onDynamicSensorsDisconnected(const hidl_vec<int32_t>& /* sensorHandles */) {
+        return Return<void>();
+    }
+};
+
+bool SensorsHidlEnvironmentV2_0::resetHal() {
     bool succeed = false;
     do {
-        mSensors = wrapISensors(ISensors::getService(mServiceName));
+        mSensors = ISensors::getService(mServiceName);
         if (mSensors == nullptr) {
             break;
         }
         mSensors->linkToDeath(mDeathRecipient, 0 /* cookie */);
 
         // Initialize FMQs
+        mEventQueue = std::make_unique<EventMessageQueue>(MAX_RECEIVE_BUFFER_EVENT_COUNT,
+                                                          true /* configureEventFlagWord */);
+
         mWakeLockQueue = std::make_unique<WakeLockQueue>(MAX_RECEIVE_BUFFER_EVENT_COUNT,
                                                          true /* configureEventFlagWord */);
 
-        if (mWakeLockQueue == nullptr) {
+        if (mEventQueue == nullptr || mWakeLockQueue == nullptr) {
             break;
         }
 
         EventFlag::deleteEventFlag(&mEventQueueFlag);
-        EventFlag::createEventFlag(mSensors->getEventQueue()->getEventFlagWord(), &mEventQueueFlag);
+        EventFlag::createEventFlag(mEventQueue->getEventFlagWord(), &mEventQueueFlag);
         if (mEventQueueFlag == nullptr) {
             break;
         }
 
-        mSensors->initialize(*mWakeLockQueue->getDesc(), new NoOpSensorsCallback());
+        mSensors->initialize(*mEventQueue->getDesc(), *mWakeLockQueue->getDesc(),
+                             new SensorsCallback());
 
         std::vector<SensorInfo> sensorList;
         if (!mSensors->getSensorsList([&](const hidl_vec<SensorInfo>& list) { sensorList = list; })
-                     .isOk()) {
+                 .isOk()) {
             break;
         }
 
@@ -103,7 +113,7 @@ bool SensorsHidlEnvironmentV2_X::resetHal() {
     return succeed;
 }
 
-void SensorsHidlEnvironmentV2_X::HidlTearDown() {
+void SensorsHidlEnvironmentV2_0::HidlTearDown() {
     mStopThread = true;
 
     if (mEventQueueFlag != nullptr) {
@@ -117,25 +127,25 @@ void SensorsHidlEnvironmentV2_X::HidlTearDown() {
     }
 }
 
-void SensorsHidlEnvironmentV2_X::startPollingThread() {
+void SensorsHidlEnvironmentV2_0::startPollingThread() {
     mStopThread = false;
     mEvents.reserve(MAX_RECEIVE_BUFFER_EVENT_COUNT);
     mPollThread = std::thread(pollingThread, this);
 }
 
-void SensorsHidlEnvironmentV2_X::readEvents() {
-    size_t availableEvents = mSensors->getEventQueue()->availableToRead();
+void SensorsHidlEnvironmentV2_0::readEvents() {
+    size_t availableEvents = mEventQueue->availableToRead();
 
     if (availableEvents == 0) {
         uint32_t eventFlagState = 0;
 
         mEventQueueFlag->wait(asBaseType(EventQueueFlagBits::READ_AND_PROCESS), &eventFlagState);
-        availableEvents = mSensors->getEventQueue()->availableToRead();
+        availableEvents = mEventQueue->availableToRead();
     }
 
     size_t eventsToRead = std::min(availableEvents, mEventBuffer.size());
     if (eventsToRead > 0) {
-        if (mSensors->getEventQueue()->read(mEventBuffer.data(), eventsToRead)) {
+        if (mEventQueue->read(mEventBuffer.data(), eventsToRead)) {
             mEventQueueFlag->wake(asBaseType(EventQueueFlagBits::EVENTS_READ));
             for (size_t i = 0; i < eventsToRead; i++) {
                 addEvent(mEventBuffer[i]);
@@ -144,7 +154,7 @@ void SensorsHidlEnvironmentV2_X::readEvents() {
     }
 }
 
-void SensorsHidlEnvironmentV2_X::pollingThread(SensorsHidlEnvironmentV2_X* env) {
+void SensorsHidlEnvironmentV2_0::pollingThread(SensorsHidlEnvironmentV2_0* env) {
     ALOGD("polling thread start");
 
     while (!env->mStopThread.load()) {

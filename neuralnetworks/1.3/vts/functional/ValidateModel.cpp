@@ -182,7 +182,6 @@ static float getInvalidScale(OperandType type) {
         case OperandType::TENSOR_FLOAT16:
         case OperandType::TENSOR_FLOAT32:
         case OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL:
-        case OperandType::SUBGRAPH:
             return 1.0f;
         case OperandType::TENSOR_INT32:
             return -1.0f;
@@ -221,7 +220,6 @@ static std::vector<int32_t> getInvalidZeroPoints(OperandType type) {
         case OperandType::TENSOR_FLOAT32:
         case OperandType::TENSOR_INT32:
         case OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL:
-        case OperandType::SUBGRAPH:
             return {1};
         case OperandType::TENSOR_QUANT8_ASYMM:
             return {-1, 256};
