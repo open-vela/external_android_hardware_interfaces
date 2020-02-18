@@ -211,7 +211,7 @@ TEST_F(CanControllerHalTest, FailEmptyName) {
     const std::string name = "";
 
     assertRegistered(name, false);
-    if (!up(InterfaceType::VIRTUAL, name, "vcan57", ICanController::Result::UNKNOWN_ERROR)) {
+    if (!up(InterfaceType::VIRTUAL, name, "vcan57", ICanController::Result::BAD_SERVICE_NAME)) {
         GTEST_SKIP();
     }
     assertRegistered(name, false);
@@ -222,7 +222,7 @@ TEST_F(CanControllerHalTest, FailBadName) {
     const std::string name = "ab012345678901234567890123456789c";
 
     assertRegistered(name, false);
-    if (!up(InterfaceType::VIRTUAL, name, "vcan57", ICanController::Result::UNKNOWN_ERROR)) {
+    if (!up(InterfaceType::VIRTUAL, name, "vcan57", ICanController::Result::BAD_SERVICE_NAME)) {
         GTEST_SKIP();
     }
     assertRegistered(name, false);
