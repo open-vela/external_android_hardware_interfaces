@@ -27,5 +27,5 @@ interface IContexthub extends @1.0::IContexthub {
      * @param setting User setting that has been modified.
      * @param newValue The update value of the user setting.
      */
-    onSettingChanged(Setting setting, SettingValue newValue);
+    oneway onSettingChanged(Setting setting, SettingValue newValue);
 };
