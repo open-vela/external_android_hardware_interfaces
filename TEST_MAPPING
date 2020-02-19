@@ -1,0 +1,14 @@
+{
+  "presubmit": [
+    {
+      "name": "vts_treble_vintf_framework_test"
+    },
+    {
+      "name": "vts_treble_vintf_vendor_test"
+    },
+    {
+      "name": "hal_implementation_test"
+    }
+  ]
+}
+
