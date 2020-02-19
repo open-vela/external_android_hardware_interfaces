@@ -23,6 +23,7 @@ cc_library {
         "include",
     ],
     shared_libs: [
+        "android.hardware.identity@1.0",
         "libcrypto",
         "libbase",
         "libhidlbase",
@@ -40,6 +41,7 @@ cc_test {
     ],
     shared_libs: [
         "android.hardware.identity-support-lib",
+        "android.hardware.identity@1.0",
         "libcrypto",
         "libbase",
         "libhidlbase",
