@@ -34,52 +34,45 @@ using V1_2::Timing;
 using HidlToken =
         hidl_array<uint8_t, static_cast<uint32_t>(V1_2::Constant::BYTE_SIZE_OF_CACHE_TOKEN)>;
 
-enum class DeadlineBoundType { NOW, UNLIMITED, SHORT };
-constexpr std::array<DeadlineBoundType, 3> deadlineBounds = {
-        DeadlineBoundType::NOW, DeadlineBoundType::UNLIMITED, DeadlineBoundType::SHORT};
+enum class DeadlineBoundType { NOW, UNLIMITED };
+constexpr std::array<DeadlineBoundType, 2> deadlineBounds = {DeadlineBoundType::NOW,
+                                                             DeadlineBoundType::UNLIMITED};
 std::string toString(DeadlineBoundType type) {
     switch (type) {
         case DeadlineBoundType::NOW:
             return "NOW";
         case DeadlineBoundType::UNLIMITED:
             return "UNLIMITED";
-        case DeadlineBoundType::SHORT:
-            return "SHORT";
     }
     LOG(FATAL) << "Unrecognized DeadlineBoundType: " << static_cast<int>(type);
     return {};
 }
-
-constexpr auto kShortDuration = std::chrono::milliseconds{5};
 
 using Results = std::tuple<ErrorStatus, hidl_vec<OutputShape>, Timing>;
 using MaybeResults = std::optional<Results>;
 
 using ExecutionFunction =
         std::function<MaybeResults(const sp<IPreparedModel>& preparedModel, const Request& request,
-                                   const OptionalTimePoint& deadline)>;
+                                   DeadlineBoundType deadlineBound)>;
 
-static OptionalTimePoint makeDeadline(DeadlineBoundType deadlineBoundType) {
-    const auto getNanosecondsSinceEpoch = [](const auto& time) -> uint64_t {
-        const auto timeSinceEpoch = time.time_since_epoch();
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(timeSinceEpoch).count();
-    };
-
-    std::chrono::steady_clock::time_point timePoint;
-    switch (deadlineBoundType) {
-        case DeadlineBoundType::NOW:
-            timePoint = std::chrono::steady_clock::now();
-            break;
-        case DeadlineBoundType::UNLIMITED:
-            timePoint = std::chrono::steady_clock::time_point::max();
-            break;
-        case DeadlineBoundType::SHORT:
-            timePoint = std::chrono::steady_clock::now() + kShortDuration;
-            break;
-    }
-
+static OptionalTimePoint makeOptionalTimePoint(DeadlineBoundType deadlineBoundType) {
     OptionalTimePoint deadline;
-    deadline.nanosecondsSinceEpoch(getNanosecondsSinceEpoch(timePoint));
+    switch (deadlineBoundType) {
+        case DeadlineBoundType::NOW: {
+            const auto currentTime = std::chrono::steady_clock::now();
+            const auto currentTimeInNanoseconds =
+                    std::chrono::time_point_cast<std::chrono::nanoseconds>(currentTime);
+            const uint64_t nanosecondsSinceEpoch =
+                    currentTimeInNanoseconds.time_since_epoch().count();
+            deadline.nanosecondsSinceEpoch(nanosecondsSinceEpoch);
+        } break;
+        case DeadlineBoundType::UNLIMITED: {
+            const auto maxTime = std::chrono::time_point<std::chrono::steady_clock,
+                                                         std::chrono::nanoseconds>::max();
+            const uint64_t nanosecondsSinceEpoch = maxTime.time_since_epoch().count();
+            deadline.nanosecondsSinceEpoch(nanosecondsSinceEpoch);
+        } break;
+    }
     return deadline;
 }
 
@@ -87,7 +80,7 @@ void runPrepareModelTest(const sp<IDevice>& device, const Model& model, Priority
                          std::optional<DeadlineBoundType> deadlineBound) {
     OptionalTimePoint deadline;
     if (deadlineBound.has_value()) {
-        deadline = makeDeadline(deadlineBound.value());
+        deadline = makeOptionalTimePoint(deadlineBound.value());
     }
 
     // see if service can handle model
@@ -138,8 +131,7 @@ void runPrepareModelTest(const sp<IDevice>& device, const Model& model, Priority
                 // deadline has already passed when the driver would launch the
                 // execution. In this case, the driver must return
                 // MISSED_DEADLINE_*.
-                EXPECT_TRUE(prepareReturnStatus == ErrorStatus::NONE ||
-                            prepareReturnStatus == ErrorStatus::MISSED_DEADLINE_TRANSIENT ||
+                EXPECT_TRUE(prepareReturnStatus == ErrorStatus::MISSED_DEADLINE_TRANSIENT ||
                             prepareReturnStatus == ErrorStatus::MISSED_DEADLINE_PERSISTENT);
                 break;
             case DeadlineBoundType::UNLIMITED:
@@ -148,19 +140,13 @@ void runPrepareModelTest(const sp<IDevice>& device, const Model& model, Priority
                 // of the switch statement.
                 EXPECT_EQ(ErrorStatus::NONE, prepareReturnStatus);
                 break;
-            case DeadlineBoundType::SHORT:
-                // Either the driver successfully completed the task in time or
-                // it aborted within the compliance time.
-                EXPECT_TRUE(prepareReturnStatus == ErrorStatus::NONE ||
-                            prepareReturnStatus == ErrorStatus::MISSED_DEADLINE_TRANSIENT ||
-                            prepareReturnStatus == ErrorStatus::MISSED_DEADLINE_PERSISTENT);
-                break;
         }
     }
     ASSERT_EQ(prepareReturnStatus == ErrorStatus::NONE, preparedModel.get() != nullptr);
 }
 
-void runPrepareModelTests(const sp<IDevice>& device, const Model& model) {
+void runPrepareModelTests(const sp<IDevice>& device, const Model& model,
+                          bool supportsPrepareModelDeadline) {
     // test priority
     for (auto priority : hidl_enum_range<Priority>{}) {
         SCOPED_TRACE("priority: " + toString(priority));
@@ -169,17 +155,19 @@ void runPrepareModelTests(const sp<IDevice>& device, const Model& model) {
     }
 
     // test deadline
-    for (auto deadlineBound : deadlineBounds) {
-        SCOPED_TRACE("deadlineBound: " + toString(deadlineBound));
-        runPrepareModelTest(device, model, kDefaultPriority, deadlineBound);
+    if (supportsPrepareModelDeadline) {
+        for (auto deadlineBound : deadlineBounds) {
+            SCOPED_TRACE("deadlineBound: " + toString(deadlineBound));
+            runPrepareModelTest(device, model, kDefaultPriority, deadlineBound);
+        }
     }
 }
 
 static MaybeResults executeAsynchronously(const sp<IPreparedModel>& preparedModel,
-                                          const Request& request,
-                                          const OptionalTimePoint& deadline) {
+                                          const Request& request, DeadlineBoundType deadlineBound) {
     SCOPED_TRACE("asynchronous");
     const MeasureTiming measure = MeasureTiming::NO;
+    const OptionalTimePoint deadline = makeOptionalTimePoint(deadlineBound);
 
     // launch execution
     const sp<ExecutionCallback> callback = new ExecutionCallback();
@@ -199,10 +187,10 @@ static MaybeResults executeAsynchronously(const sp<IPreparedModel>& preparedMode
 }
 
 static MaybeResults executeSynchronously(const sp<IPreparedModel>& preparedModel,
-                                         const Request& request,
-                                         const OptionalTimePoint& deadline) {
+                                         const Request& request, DeadlineBoundType deadlineBound) {
     SCOPED_TRACE("synchronous");
     const MeasureTiming measure = MeasureTiming::NO;
+    const OptionalTimePoint deadline = makeOptionalTimePoint(deadlineBound);
 
     // configure results callback
     MaybeResults results;
@@ -221,10 +209,9 @@ static MaybeResults executeSynchronously(const sp<IPreparedModel>& preparedModel
 void runExecutionTest(const sp<IPreparedModel>& preparedModel, const TestModel& testModel,
                       const Request& request, bool synchronous, DeadlineBoundType deadlineBound) {
     const ExecutionFunction execute = synchronous ? executeSynchronously : executeAsynchronously;
-    const auto deadline = makeDeadline(deadlineBound);
 
     // Perform execution and unpack results.
-    const auto results = execute(preparedModel, request, deadline);
+    const auto results = execute(preparedModel, request, deadlineBound);
     if (!results.has_value()) return;
     const auto& [status, outputShapes, timing] = results.value();
 
@@ -239,8 +226,7 @@ void runExecutionTest(const sp<IPreparedModel>& preparedModel, const TestModel& 
             // deadline has already passed when the driver would launch the
             // execution. In this case, the driver must return
             // MISSED_DEADLINE_*.
-            ASSERT_TRUE(status == ErrorStatus::NONE ||
-                        status == ErrorStatus::MISSED_DEADLINE_TRANSIENT ||
+            ASSERT_TRUE(status == ErrorStatus::MISSED_DEADLINE_TRANSIENT ||
                         status == ErrorStatus::MISSED_DEADLINE_PERSISTENT);
             return;
         case DeadlineBoundType::UNLIMITED:
@@ -248,13 +234,6 @@ void runExecutionTest(const sp<IPreparedModel>& preparedModel, const TestModel& 
             // proceed normally. In this case, check it normally by breaking out
             // of the switch statement.
             ASSERT_EQ(ErrorStatus::NONE, status);
-            break;
-        case DeadlineBoundType::SHORT:
-            // Either the driver successfully completed the task in time or
-            // it aborted within the compliance time.
-            EXPECT_TRUE(status == ErrorStatus::NONE ||
-                        status == ErrorStatus::MISSED_DEADLINE_TRANSIENT ||
-                        status == ErrorStatus::MISSED_DEADLINE_PERSISTENT);
             break;
     }
 
@@ -289,27 +268,32 @@ void runExecutionTests(const sp<IPreparedModel>& preparedModel, const TestModel&
     }
 }
 
-void runTests(const sp<IDevice>& device, const TestModel& testModel) {
+void runTests(const sp<IDevice>& device, const TestModel& testModel,
+              std::pair<bool, bool> supportsDeadlines) {
     // setup
+    const auto [supportsPrepareModelDeadline, supportsExecutionDeadline] = supportsDeadlines;
+    if (!supportsPrepareModelDeadline && !supportsExecutionDeadline) return;
     const Model model = createModel(testModel);
 
     // run prepare model tests
-    runPrepareModelTests(device, model);
+    runPrepareModelTests(device, model, supportsPrepareModelDeadline);
 
-    // prepare model
-    sp<IPreparedModel> preparedModel;
-    createPreparedModel(device, model, &preparedModel);
-    if (preparedModel == nullptr) return;
+    if (supportsExecutionDeadline) {
+        // prepare model
+        sp<IPreparedModel> preparedModel;
+        createPreparedModel(device, model, &preparedModel);
+        if (preparedModel == nullptr) return;
 
-    // run execution tests
-    const Request request = nn::convertToV1_3(createRequest(testModel));
-    runExecutionTests(preparedModel, testModel, request);
+        // run execution tests
+        const Request request = nn::convertToV1_3(createRequest(testModel));
+        runExecutionTests(preparedModel, testModel, request);
+    }
 }
 
 class DeadlineTest : public GeneratedTestBase {};
 
 TEST_P(DeadlineTest, Test) {
-    runTests(kDevice, kTestModel);
+    runTests(kDevice, kTestModel, mSupportsDeadlines);
 }
 
 INSTANTIATE_GENERATED_TEST(DeadlineTest,
