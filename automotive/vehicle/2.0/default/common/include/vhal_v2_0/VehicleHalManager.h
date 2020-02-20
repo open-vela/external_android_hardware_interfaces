@@ -73,9 +73,7 @@ public:
                                    int32_t propId)  override;
     Return<void> debugDump(debugDump_cb _hidl_cb = nullptr) override;
 
-    Return<void> debug(const hidl_handle& fd, const hidl_vec<hidl_string>& options) override;
-
-  private:
+private:
     using VehiclePropValuePtr = VehicleHal::VehiclePropValuePtr;
     // Returns true if needs to call again shortly.
     using RetriableAction = std::function<bool()>;
@@ -97,22 +95,6 @@ public:
     bool checkWritePermission(const VehiclePropConfig &config) const;
     bool checkReadPermission(const VehiclePropConfig &config) const;
     void onAllClientsUnsubscribed(int32_t propertyId);
-
-    // Dump and commands
-    // TODO: most functions below (exception dump() and cmdSetOne()) should be const, but they rely
-    // on IVehicle.get(), which isn't...
-    void cmdDump(int fd, const hidl_vec<hidl_string>& options);
-    void cmdDumpOneProperty(int fd, int32_t prop, int32_t areaId);
-    void cmdDumpOneProperty(int fd, int rowNumber, const VehiclePropConfig& config);
-
-    static bool checkArgumentsSize(int fd, const hidl_vec<hidl_string>& options, size_t minSize);
-    static bool checkCallerHasWritePermissions(int fd);
-    static bool safelyParseInt(int fd, int index, std::string s, int* out);
-    void cmdHelp(int fd) const;
-    void cmdListAllProperties(int fd) const;
-    void cmdDumpAllProperties(int fd);
-    void cmdDumpSpecificProperties(int fd, const hidl_vec<hidl_string>& options);
-    void cmdSetOneProperty(int fd, const hidl_vec<hidl_string>& options);
 
     static bool isSubscribable(const VehiclePropConfig& config,
                                SubscribeFlags flags);
