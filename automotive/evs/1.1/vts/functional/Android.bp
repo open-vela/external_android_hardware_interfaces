@@ -18,16 +18,12 @@ cc_test {
     name: "VtsHalEvsV1_1TargetTest",
     srcs: [
         "FrameHandler.cpp",
-        "FrameHandlerUltrasonics.cpp",
         "VtsHalEvsV1_1TargetTest.cpp",
     ],
     defaults: ["VtsHalTargetTestDefaults"],
     shared_libs: [
         "libui",
         "libcamera_metadata",
-        "libhidlmemory",
-        "android.hidl.allocator@1.0",
-        "android.hidl.memory@1.0",
     ],
     static_libs: [
         "android.hardware.automotive.evs@1.0",
@@ -38,7 +34,7 @@ cc_test {
         "android.hardware.graphics.common@1.2",
         "android.hardware.camera.device@3.2",
     ],
-    test_suites: ["vts-core"],
+    test_suites: ["general-tests"],
     cflags: [
         "-O0",
         "-g",
