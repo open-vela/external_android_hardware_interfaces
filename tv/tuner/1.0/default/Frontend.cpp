@@ -81,10 +81,6 @@ Return<Result> Frontend::stopTune() {
 Return<Result> Frontend::scan(const FrontendSettings& /* settings */, FrontendScanType /* type */) {
     ALOGV("%s", __FUNCTION__);
 
-    FrontendScanMessage msg;
-    msg.isLocked(true);
-    mCallback->onScanMessage(FrontendScanMessageType::LOCKED, msg);
-
     return Result::SUCCESS;
 }
 
