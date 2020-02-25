@@ -36,6 +36,7 @@ class GeneratedTestBase : public testing::TestWithParam<GeneratedTestParam> {
     void SetUp() override;
     const sp<IDevice> kDevice = getData(std::get<NamedDevice>(GetParam()));
     const test_helper::TestModel& kTestModel = *getData(std::get<NamedModel>(GetParam()));
+    std::pair<bool, bool> mSupportsDeadlines;
 };
 
 using FilterFn = std::function<bool(const test_helper::TestModel&)>;
@@ -69,9 +70,7 @@ enum class TestKind {
     // Tests if quantized model with TENSOR_QUANT8_ASYMM produces the same result
     // (OK/SKIPPED/FAILED) as the model with all such tensors converted to
     // TENSOR_QUANT8_ASYMM_SIGNED.
-    QUANTIZATION_COUPLING,
-    // Runs a test model and verifies that MISSED_DEADLINE_* is returned.
-    INTINITE_LOOP_TIMEOUT
+    QUANTIZATION_COUPLING
 };
 
 void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& preparedModel,
