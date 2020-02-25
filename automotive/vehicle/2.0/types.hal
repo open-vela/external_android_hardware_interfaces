@@ -320,25 +320,6 @@ enum VehicleProperty : int32_t {
         | VehicleArea:GLOBAL),
 
     /**
-     * Multiple EV port locations
-     *
-     * Implement this property if the vehicle has multiple EV ports.
-     * Port locations are defined in PortLocationType.
-     * For example, a car has one port in front left and one port in rear left:
-     *   int32Values[0] = PortLocationType::FRONT_LEFT
-     *   int32Values[0] = PortLocationType::REAR_LEFT
-     *
-     * @change_mode VehiclePropertyChangeMode:STATIC
-     * @access VehiclePropertyAccess:READ
-     * @data_enum PortLocationType
-     */
-    INFO_MULTI_EV_PORT_LOCATIONS = (
-        0x010C
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:INT32_VEC
-        | VehicleArea:GLOBAL),
-
-    /**
      * Current odometer value of the vehicle
      *
      * @change_mode VehiclePropertyChangeMode:CONTINUOUS
@@ -1428,33 +1409,6 @@ enum VehicleProperty : int32_t {
      */
     HW_KEY_INPUT = (
         0x0A10
-        | VehiclePropertyGroup:SYSTEM
-        | VehiclePropertyType:INT32_VEC
-        | VehicleArea:GLOBAL),
-
-    /**
-     * Property to feed H/W rotary events to android
-     *
-     * int32Values[0] : RotaryInputType identifying which rotary knob rotated
-     * int32Values[1] : number of detents (clicks), positive for clockwise,
-     *                  negative for counterclockwise
-     * int32Values[2] : target display defined in VehicleDisplay. Events not
-     *                  tied to specific display must be sent to
-     *                  VehicleDisplay#MAIN.
-     * int32values[3 .. 3 + abs(number of detents) - 2]:
-     *                  nanosecond deltas between pairs of consecutive detents,
-     *                  if the number of detents is > 1 or < -1
-     *
-     * VehiclePropValue.timestamp: when the rotation occurred. If the number of
-     *                             detents is > 1 or < -1, this is when the
-     *                             first detent of rotation occurred.
-     *
-     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
-     * @data_enum RotaryInputType
-     * @access VehiclePropertyAccess:READ
-     */
-    HW_ROTARY_INPUT = (
-        0x0A20
         | VehiclePropertyGroup:SYSTEM
         | VehiclePropertyType:INT32_VEC
         | VehicleArea:GLOBAL),
@@ -4697,18 +4651,3 @@ struct UserIdentificationSetAssociation {
 
     UserIdentificationAssociationSetValue value;
 };
-
-/**
- * A rotary control which can rotate without limits. These controls use HW_ROTARY_INPUT to report
- * relative clockwise or counterclockwise motion. They have no absolute position.
- */
-enum RotaryInputType : int32_t {
-    /**
-      * Main rotary control, typically in the center console, used to navigate the user interface.
-      */
-    ROTARY_INPUT_TYPE_SYSTEM_NAVIGATION = 0,
-
-    /** Volume control for adjusting audio volume. */
-    ROTARY_INPUT_TYPE_AUDIO_VOLUME = 1,
-};
-
