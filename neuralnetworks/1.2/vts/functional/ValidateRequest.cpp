@@ -22,6 +22,7 @@
 #include "ExecutionBurstController.h"
 #include "GeneratedTestHarness.h"
 #include "TestHarness.h"
+#include "Utils.h"
 #include "VtsHalNeuralnetworks.h"
 
 namespace android::hardware::neuralnetworks::V1_2::vts::functional {
@@ -29,8 +30,6 @@ namespace android::hardware::neuralnetworks::V1_2::vts::functional {
 using implementation::ExecutionCallback;
 using V1_0::ErrorStatus;
 using V1_0::Request;
-
-using ExecutionMutation = std::function<void(Request*)>;
 
 ///////////////////////// UTILITY FUNCTIONS /////////////////////////
 
@@ -40,11 +39,11 @@ static bool badTiming(Timing timing) {
 
 // Primary validation function. This function will take a valid request, apply a
 // mutation to it to invalidate the request, then pass it to interface calls
-// that use the request.
+// that use the request. Note that the request here is passed by value, and any
+// mutation to the request does not leave this function.
 static void validate(const sp<IPreparedModel>& preparedModel, const std::string& message,
-                     const Request& originalRequest, const ExecutionMutation& mutate) {
-    Request request = originalRequest;
-    mutate(&request);
+                     Request request, const std::function<void(Request*)>& mutation) {
+    mutation(&request);
 
     // We'd like to test both with timing requested and without timing
     // requested. Rather than running each test both ways, we'll decide whether
@@ -108,7 +107,7 @@ static void validate(const sp<IPreparedModel>& preparedModel, const std::string&
 
         // execute and verify
         const auto [n, outputShapes, timing, fallback] = burst->compute(request, measure, keys);
-        const ErrorStatus status = nn::legacyConvertResultCodeToErrorStatus(n);
+        const ErrorStatus status = nn::convertToV1_0(nn::convertResultCodeToErrorStatus(n));
         EXPECT_EQ(ErrorStatus::INVALID_ARGUMENT, status);
         EXPECT_EQ(outputShapes.size(), 0);
         EXPECT_TRUE(badTiming(timing));
