@@ -107,6 +107,32 @@ static std::optional<V1_0::CanMessage> parseCanMessage(const std::string& msg) {
         return canmsg;
     }
 
+    V1_0::CanMessage canmsg = {};
+    canmsg.id = msgid;
+    if (msgid > 0x7FF) {
+        canmsg.isExtendedId = true;
+    }
+
+    if (android::base::StartsWith(payloadStr, "R")) {
+        canmsg.remoteTransmissionRequest = true;
+
+        /* The CAN bus HAL doesn't define a data length code (DLC) field, since it is inferrred
+         * from the payload size. RTR messages indicate to the receiver how many bytes they are
+         * expecting to receive back via the DLC sent with the RTR frame. */
+        if (payloadStr.size() <= 1) return canmsg;
+
+        unsigned int dlc = 0;
+
+        /* The maximum DLC for CAN-FD is 64 bytes and CAN 2.0 is 8 bytes. Limit the size of the DLC
+         * to something memory safe and let the HAL determine if the DLC is valid. */
+        if (!android::base::ParseUint(payloadStr.substr(1), &dlc, 10000u)) {
+            std::cerr << "Invalid DLC for RTR frame!" << std::endl;
+            return std::nullopt;
+        }
+        canmsg.payload.resize(dlc);
+        return canmsg;
+    }
+
     std::vector<uint8_t> payload;
     if (payloadStr.size() % 2 != 0) return std::nullopt;
     for (size_t i = 0; i < payloadStr.size(); i += 2) {
