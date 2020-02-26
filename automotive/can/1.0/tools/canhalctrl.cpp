@@ -19,7 +19,6 @@
 #include <android/hardware/automotive/can/1.0/ICanController.h>
 #include <android/hidl/manager/1.2/IServiceManager.h>
 #include <hidl-utils/hidl-utils.h>
-#include <libcanhaltools/libcanhaltools.h>
 
 #include <iostream>
 #include <string>
@@ -43,17 +42,34 @@ static void usage() {
     std::cerr << " bus name - name under which ICanBus will be published" << std::endl;
 }
 
+static hidl_vec<hidl_string> getControlServices() {
+    auto manager = hidl::manager::V1_2::IServiceManager::getService();
+    hidl_vec<hidl_string> services;
+    manager->listManifestByInterface(ICanController::descriptor, hidl_utils::fill(&services));
+    if (services.size() == 0) {
+        std::cerr << "No ICanController services registered (missing privileges?)" << std::endl;
+        exit(-1);
+    }
+    return services;
+}
+
+static bool isSupported(sp<ICanController> ctrl, ICanController::InterfaceType iftype) {
+    hidl_vec<ICanController::InterfaceType> supported;
+    if (!ctrl->getSupportedInterfaceTypes(hidl_utils::fill(&supported)).isOk()) return false;
+    return supported.contains(iftype);
+}
+
 static int up(const std::string& busName, ICanController::InterfaceType type,
               const std::string& interface, uint32_t bitrate) {
     bool anySupported = false;
-    for (auto&& service : libcanhaltools::getControlServices()) {
+    for (auto&& service : getControlServices()) {
         auto ctrl = ICanController::getService(service);
         if (ctrl == nullptr) {
             std::cerr << "Couldn't open ICanController/" << service;
             continue;
         }
 
-        if (!libcanhaltools::isSupported(ctrl, type)) continue;
+        if (!isSupported(ctrl, type)) continue;
         anySupported = true;
 
         ICanController::BusConfig config = {};
@@ -96,7 +112,7 @@ static int up(const std::string& busName, ICanController::InterfaceType type,
 }
 
 static int down(const std::string& busName) {
-    for (auto&& service : libcanhaltools::getControlServices()) {
+    for (auto&& service : getControlServices()) {
         auto ctrl = ICanController::getService(service);
         if (ctrl == nullptr) continue;
 
