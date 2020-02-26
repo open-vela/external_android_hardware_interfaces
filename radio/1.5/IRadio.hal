@@ -16,16 +16,16 @@
 
 package android.hardware.radio@1.5;
 
+import @1.0::CdmaSmsMessage;
 import @1.2::DataRequestReason;
 import @1.4::IRadio;
-import @1.4::DataProfileInfo;
 import @1.5::AccessNetwork;
-import @1.5::BarringInfo;
 import @1.5::DataProfileInfo;
 import @1.5::IndicationFilter;
 import @1.5::LinkAddress;
 import @1.5::NetworkScanRequest;
 import @1.5::PersoSubstate;
+import @1.5::RadioAccessNetworks;
 import @1.5::RadioAccessSpecifier;
 import @1.5::SignalThresholdInfo;
 
@@ -67,6 +67,35 @@ interface IRadio extends @1.4::IRadio {
      */
     oneway setSignalStrengthReportingCriteria_1_5(int32_t serial,
             SignalThresholdInfo signalThresholdInfo, AccessNetwork accessNetwork);
+
+    /**
+     * Sets the link capacity reporting criteria.
+     *
+     * The resulting reporting criteria are the AND of all the supplied criteria.
+     *
+     * Note: Reporting criteria must be individually set for each RAN. If unset, reporting criteria
+     * for that RAN are implementation-defined.
+     *
+     * Response callback is IRadioResponse.setLinkCapacityReportingCriteriaResponse_1_5().
+     *
+     * @param serial Serial number of request.
+     * @param hysteresisMs A hysteresis time in milliseconds to prevent flapping. A value of 0
+     *     disables hysteresis.
+     * @param hysteresisDlKbps An interval in kbps defining the required magnitude change between DL
+     *     reports. hysteresisDlKbps must be smaller than the smallest threshold delta. A value of 0
+     *     disables hysteresis.
+     * @param hysteresisUlKbps An interval in kbps defining the required magnitude change between UL
+     *     reports. hysteresisUlKbps must be smaller than the smallest threshold delta. A value of 0
+     *     disables hysteresis.
+     * @param thresholdsDownlinkKbps A vector of trigger thresholds in kbps for downlink reports. A
+     *     vector size of 0 disables the use of DL thresholds for reporting.
+     * @param thresholdsUplinkKbps A vector of trigger thresholds in kbps for uplink reports. A
+     *     vector size of 0 disables the use of UL thresholds for reporting.
+     * @param accessNetwork The type of network for which to apply these thresholds.
+     */
+    oneway setLinkCapacityReportingCriteria_1_5(int32_t serial, int32_t hysteresisMs,
+            int32_t hysteresisDlKbps, int32_t hysteresisUlKbps, vec<int32_t> thresholdsDownlinkKbps,
+            vec<int32_t> thresholdsUplinkKbps, AccessNetwork accessNetwork);
 
     /**
      * Enable or disable UiccApplications on the SIM. If disabled:
@@ -116,13 +145,13 @@ interface IRadio extends @1.4::IRadio {
             vec<RadioAccessSpecifier> specifiers);
 
     /**
-     * Starts a network scan
+     * Starts a network scan.
      *
      * @param serial Serial number of request.
      * @param request Defines the radio networks/bands/channels which need to be scanned.
      *
-     * Same API as @1.4::IRadio.startNetworkScan_1_4, except using
-     * 1.5 version of NetworkScanRequest
+     * Same API as @1.4::IRadio.startNetworkScan_1_4, except using the
+     * 1.5 NetworkScanRequest as the input param.
      */
     oneway startNetworkScan_1_5(int32_t serial, NetworkScanRequest request);
 
@@ -164,14 +193,14 @@ interface IRadio extends @1.4::IRadio {
      * Response function is IRadioResponse.setupDataCallResponse_1_5()
      *
      * Note this API is the same as the 1.4 version except using the
-     * 1.5 AccessNetwork, DataProfileInto, and link addresses as the input param.
+     * 1.5 AccessNetwork, DataProfileInto, and LinkAddress as the input param.
      */
     oneway setupDataCall_1_5(int32_t serial, AccessNetwork accessNetwork,
             DataProfileInfo dataProfileInfo, bool roamingAllowed,
             DataRequestReason reason, vec<LinkAddress> addresses, vec<string> dnses);
 
     /**
-     * Set an apn to initial attach network
+     * Set an APN to initial attach network.
      *
      * @param serial Serial number of request.
      * @param dataProfileInfo data profile containing APN settings
@@ -187,7 +216,7 @@ interface IRadio extends @1.4::IRadio {
      * Send data profiles of the current carrier to the modem.
      *
      * @param serial Serial number of request.
-     * @param profiles Array of DataProfile to set.
+     * @param profiles Array of DataProfileInfo to set.
      *
      * Response callback is IRadioResponse.setDataProfileResponse_1_5()
      *
@@ -209,7 +238,8 @@ interface IRadio extends @1.4::IRadio {
      * 1) Emergency call is completed; or
      * 2) Another setRadioPower_1_5 is issued with forEmergencyCall being false or
      * preferredForEmergencyCall being false; or
-     * 3) Timeout after a long period of time.
+     * 3) Timeout after 30 seconds if dial or emergencyDial is not called.
+     * Once one of these conditions is reached, the modem should move into normal operation.
      *
      * @param serial Serial number of request.
      * @param powerOn To turn on radio -> on = true, to turn off radio -> on = false.
@@ -228,7 +258,7 @@ interface IRadio extends @1.4::IRadio {
      *
      * Prevents the reporting of specified unsolicited indications from the radio. This is used
      * for power saving in instances when those indications are not needed. If unset, defaults to
-     * @1.2::IndicationFilter:ALL.
+     * @1.5::IndicationFilter:ALL.
      *
      * @param serial Serial number of request.
      * @param indicationFilter 32-bit bitmap of IndicationFilter. Bits set to 1 indicate the
@@ -246,6 +276,53 @@ interface IRadio extends @1.4::IRadio {
      * Response callback is IRadioResponse.getBarringInfoResponse()
      */
     oneway getBarringInfo(int32_t serial);
+
+    /**
+     * Request current voice registration state.
+     *
+     * @param serial Serial number of request.
+     *
+     * Response function is IRadioResponse.getVoiceRegistrationStateResponse_1_5()
+     */
+    oneway getVoiceRegistrationState_1_5(int32_t serial);
+
+    /**
+     * Request current data registration state.
+     *
+     * @param serial Serial number of request.
+     *
+     * Response function is IRadioResponse.getDataRegistrationStateResponse_1_5()
+     */
+    oneway getDataRegistrationState_1_5(int32_t serial);
+
+    /*
+     * Manually select a specified network.
+     * This request must not respond until the new operator is selected and registered.
+     * Per TS 23.122, the RAN is just the initial suggested value.
+     * If registration fails, the RAN is not available afterwards, or the RAN is not within
+     * the network types specified by IRadio::setPreferredNetworkTypeBitmap, then the modem
+     * will need to select the next best RAN for network registration.
+     *
+     * @param serial Serial number of request.
+     * @param operatorNumeric String specifying MCCMNC of network to select (eg "310170").
+     * @param ran Initial suggested radio access network type. If value is UNKNOWN, the modem
+     *     will select the next best RAN for network registration.
+     *
+     * Response function is IRadioResponse.setNetworkSelectionModeManualResponse_1_5()
+     */
+    oneway setNetworkSelectionModeManual_1_5(int32_t serial, string operatorNumeric,
+            RadioAccessNetworks ran);
+
+    /**
+     * Send an SMS message. Identical to sendCdmaSms,
+     * except that more messages are expected to be sent soon.
+     *
+     * @param serial Serial number of request.
+     * @param sms Cdma Sms to be sent described by CdmaSmsMessage in types.hal
+     *
+     * Response callback is IRadioResponse.sendCdmaSMSExpectMoreResponse()
+     */
+    oneway sendCdmaSmsExpectMore(int32_t serial, CdmaSmsMessage sms);
 
     /**
      * Requests that deactivates one category of the device personalization.
