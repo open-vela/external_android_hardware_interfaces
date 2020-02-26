@@ -23,6 +23,7 @@
 #include "ExecutionBurstServer.h"
 #include "GeneratedTestHarness.h"
 #include "TestHarness.h"
+#include "Utils.h"
 
 #include <android-base/logging.h>
 #include <chrono>
@@ -301,7 +302,8 @@ static void validateBurstFmqLength(const sp<IPreparedModel>& preparedModel,
     // collect serialized result by running regular burst
     const auto [nRegular, outputShapesRegular, timingRegular, fallbackRegular] =
             controllerRegular->compute(request, MeasureTiming::NO, keys);
-    const V1_0::ErrorStatus statusRegular = nn::legacyConvertResultCodeToErrorStatus(nRegular);
+    const V1_0::ErrorStatus statusRegular =
+            nn::convertToV1_0(nn::convertResultCodeToErrorStatus(nRegular));
     EXPECT_FALSE(fallbackRegular);
 
     // skip test if regular burst output isn't useful for testing a failure
@@ -317,7 +319,8 @@ static void validateBurstFmqLength(const sp<IPreparedModel>& preparedModel,
     // large enough to return the serialized result
     const auto [nSmall, outputShapesSmall, timingSmall, fallbackSmall] =
             controllerSmall->compute(request, MeasureTiming::NO, keys);
-    const V1_0::ErrorStatus statusSmall = nn::legacyConvertResultCodeToErrorStatus(nSmall);
+    const V1_0::ErrorStatus statusSmall =
+            nn::convertToV1_0(nn::convertResultCodeToErrorStatus(nSmall));
     EXPECT_NE(V1_0::ErrorStatus::NONE, statusSmall);
     EXPECT_EQ(0u, outputShapesSmall.size());
     EXPECT_TRUE(badTiming(timingSmall));
