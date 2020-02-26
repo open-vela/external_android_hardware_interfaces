@@ -727,10 +727,8 @@ TEST_P(GraphicsMapperHidlTest, FlushRereadBasic) {
 
     int fence;
     ASSERT_NO_FATAL_FAILURE(fence = mGralloc->flushLockedBuffer(writeBufferHandle));
-    if (fence >= 0) {
-        ASSERT_EQ(0, sync_wait(fence, 3500));
-        close(fence);
-    }
+    ASSERT_EQ(0, sync_wait(fence, 3500));
+    close(fence);
 
     ASSERT_NO_FATAL_FAILURE(mGralloc->rereadLockedBuffer(readBufferHandle));
 
