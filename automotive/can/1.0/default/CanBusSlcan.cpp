@@ -131,7 +131,7 @@ ICanController::Result CanBusSlcan::preUp() {
         return ICanController::Result::UNKNOWN_ERROR;
     }
 
-    // TODO(b/144775286): set open flag & support listen only
+    // set open flag TODO: also support listen only
     if (write(mFd.get(), slcanprotocol::kOpenCommand.c_str(),
               slcanprotocol::kOpenCommand.length()) <= 0) {
         PLOG(ERROR) << "Failed to set open flag";
