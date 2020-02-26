@@ -86,6 +86,10 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
     // Whether Uicc applications are enabled or not.
     bool areUiccApplicationsEnabled;
 
+    // Barring Info Response
+    ::android::hardware::radio::V1_5::CellIdentity barringCellIdentity;
+    ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::BarringInfo> barringInfos;
+
     RadioResponse_v1_5(RadioHidlTest_v1_5& parent_v1_5);
     virtual ~RadioResponse_v1_5() = default;
 
@@ -113,9 +117,6 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
 
     Return<void> supplyNetworkDepersonalizationResponse(const RadioResponseInfo& info,
                                                         int32_t remainingRetries);
-
-    Return<void> supplySimDepersonalizationResponse(const RadioResponseInfo& info,
-            ::android::hardware::radio::V1_5::PersoSubstate persoType, int32_t remainingRetries);
 
     Return<void> getCurrentCallsResponse(
             const RadioResponseInfo& info,
@@ -534,6 +535,8 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
     /* 1.5 Api */
     Return<void> setSignalStrengthReportingCriteriaResponse_1_5(const RadioResponseInfo& info);
 
+    Return<void> setLinkCapacityReportingCriteriaResponse_1_5(const RadioResponseInfo& info);
+
     Return<void> enableUiccApplicationsResponse(const RadioResponseInfo& info);
 
     Return<void> areUiccApplicationsEnabledResponse(const RadioResponseInfo& info, bool enabled);
@@ -559,8 +562,31 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
 
     Return<void> getBarringInfoResponse(
             const RadioResponseInfo& info,
+            const ::android::hardware::radio::V1_5::CellIdentity& cellIdentity,
             const ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::BarringInfo>&
                     barringInfos);
+
+    Return<void> getVoiceRegistrationStateResponse_1_5(
+            const RadioResponseInfo& info,
+            const ::android::hardware::radio::V1_5::RegStateResult& regResponse);
+
+    Return<void> getDataRegistrationStateResponse_1_5(
+            const RadioResponseInfo& info,
+            const ::android::hardware::radio::V1_5::RegStateResult& regResponse);
+
+    Return<void> getCellInfoListResponse_1_5(
+            const RadioResponseInfo& info,
+            const ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::CellInfo>&
+                    cellInfo);
+
+    Return<void> setNetworkSelectionModeManualResponse_1_5(const RadioResponseInfo& info);
+
+    Return<void> sendCdmaSmsExpectMoreResponse(const RadioResponseInfo& info,
+                                               const SendSmsResult& sms);
+
+    Return<void> supplySimDepersonalizationResponse(
+            const RadioResponseInfo& info,
+            ::android::hardware::radio::V1_5::PersoSubstate persoType, int32_t remainingRetries);
 };
 
 /* Callback class for radio indication */
@@ -574,6 +600,15 @@ class RadioIndication_v1_5 : public ::android::hardware::radio::V1_5::IRadioIndi
 
     /* 1.5 Api */
     Return<void> uiccApplicationsEnablementChanged(RadioIndicationType type, bool enabled);
+
+    Return<void> networkScanResult_1_5(
+            RadioIndicationType type,
+            const ::android::hardware::radio::V1_5::NetworkScanResult& result);
+
+    Return<void> cellInfoList_1_5(
+            RadioIndicationType type,
+            const ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::CellInfo>&
+                    records);
 
     /* 1.4 Api */
     Return<void> currentEmergencyNumberList(

@@ -15,11 +15,12 @@
 //
 
 cc_library_static {
-    name: "VtsHalNeuralNetworksV1_3Callbacks",
-    defaults: ["VtsHalTargetTestDefaults"],
+    name: "VtsHalNeuralNetworksV1_3_utils",
+    defaults: ["neuralnetworks_vts_functional_defaults"],
     export_include_dirs: ["include"],
     srcs: [
         "Callbacks.cpp",
+        "Utils.cpp",
     ],
     static_libs: [
         "android.hardware.neuralnetworks@1.0",
@@ -29,16 +30,17 @@ cc_library_static {
     ],
     header_libs: [
         "libbase_headers",
-    ]
+    ],
 }
 
 cc_test {
     name: "VtsHalNeuralnetworksV1_3TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
+    defaults: ["neuralnetworks_vts_functional_defaults"],
     srcs: [
         "BasicTests.cpp",
         "CompilationCachingTests.cpp",
         "GeneratedTestHarness.cpp",
+        "QualityOfServiceTests.cpp",
         "TestAssertions.cpp",
         "ValidateBurst.cpp",
         "ValidateModel.cpp",
@@ -50,6 +52,9 @@ cc_test {
         "libnativewindow",
     ],
     static_libs: [
+        "VtsHalNeuralNetworksV1_0_utils",
+        "VtsHalNeuralNetworksV1_2Callbacks",
+        "VtsHalNeuralNetworksV1_3_utils",
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
         "android.hardware.neuralnetworks@1.2",
@@ -60,9 +65,7 @@ cc_test {
         "libhidlmemory",
         "libneuralnetworks_generated_test_harness",
         "libneuralnetworks_utils",
-        "VtsHalNeuralNetworksV1_0_utils",
-        "VtsHalNeuralNetworksV1_2Callbacks",
-        "VtsHalNeuralNetworksV1_3Callbacks",
+        "libsync",
     ],
     whole_static_libs: [
         "neuralnetworks_generated_V1_0_example",
