@@ -626,28 +626,21 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
             ErrorStatus result;
             hidl_handle syncFenceHandle;
             sp<IFencedExecutionCallback> fencedCallback;
-            auto callbackFunc = [&result, &syncFenceHandle, &fencedCallback](
-                                        ErrorStatus error, const hidl_handle& handle,
-                                        const sp<IFencedExecutionCallback>& callback) {
-                result = error;
-                syncFenceHandle = handle;
-                fencedCallback = callback;
-            };
-            Return<void> ret =
-                    preparedModel->executeFenced(request, {}, testConfig.measureTiming, {},
-                                                 loopTimeoutDuration, {}, callbackFunc);
+            Return<void> ret = preparedModel->executeFenced(
+                    request, {}, testConfig.measureTiming, {}, loopTimeoutDuration, {},
+                    [&result, &syncFenceHandle, &fencedCallback](
+                            ErrorStatus error, const hidl_handle& handle,
+                            const sp<IFencedExecutionCallback>& callback) {
+                        result = error;
+                        syncFenceHandle = handle;
+                        fencedCallback = callback;
+                    });
             ASSERT_TRUE(ret.isOk());
             if (result != ErrorStatus::NONE) {
                 ASSERT_EQ(syncFenceHandle.getNativeHandle(), nullptr);
                 ASSERT_EQ(fencedCallback, nullptr);
                 executionStatus = ErrorStatus::GENERAL_FAILURE;
             } else if (syncFenceHandle.getNativeHandle()) {
-                // If a sync fence is returned, try start another run waiting for the sync fence.
-                ret = preparedModel->executeFenced(request, {syncFenceHandle},
-                                                   testConfig.measureTiming, {},
-                                                   loopTimeoutDuration, {}, callbackFunc);
-                ASSERT_TRUE(ret.isOk());
-                ASSERT_EQ(result, ErrorStatus::NONE);
                 waitForSyncFence(syncFenceHandle.getNativeHandle()->data[0]);
             }
             if (result == ErrorStatus::NONE) {
@@ -751,7 +744,7 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
         case TestKind::MEMORY_DOMAIN: {
             outputTypesList = {OutputType::FULLY_SPECIFIED};
             measureTimingList = {MeasureTiming::NO};
-            executorList = {Executor::ASYNC, Executor::SYNC, Executor::FENCED};
+            executorList = {Executor::ASYNC, Executor::SYNC};
             memoryType = MemoryType::DEVICE;
         } break;
         case TestKind::FENCED_COMPUTE: {
