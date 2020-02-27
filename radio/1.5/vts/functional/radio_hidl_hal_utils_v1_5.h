@@ -14,14 +14,10 @@
  * limitations under the License.
  */
 
-#pragma once
-
 #include <android-base/logging.h>
 
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
-#include <utils/Log.h>
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -803,8 +799,24 @@ class RadioIndication_v1_5 : public ::android::hardware::radio::V1_5::IRadioIndi
             /*barringInfos*/);
 };
 
+// Test environment for Radio HIDL HAL.
+class RadioHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+  public:
+    // get the test environment singleton
+    static RadioHidlEnvironment* Instance() {
+        static RadioHidlEnvironment* instance = new RadioHidlEnvironment;
+        return instance;
+    }
+    virtual void registerTestServices() override {
+        registerTestService<::android::hardware::radio::V1_5::IRadio>();
+    }
+
+  private:
+    RadioHidlEnvironment() {}
+};
+
 // The main test class for Radio HIDL.
-class RadioHidlTest_v1_5 : public ::testing::TestWithParam<std::string> {
+class RadioHidlTest_v1_5 : public ::testing::VtsHalHidlTargetTestBase {
   protected:
     std::mutex mtx_;
     std::condition_variable cv_;
