@@ -17,7 +17,19 @@
 #include <radio_hidl_hal_utils_v1_5.h>
 
 void RadioHidlTest_v1_5::SetUp() {
-    radio_v1_5 = android::hardware::radio::V1_5::IRadio::getService(GetParam());
+    radio_v1_5 = ::testing::VtsHalHidlTargetTestBase::getService<
+            ::android::hardware::radio::V1_5::IRadio>(
+            RadioHidlEnvironment::Instance()
+                    ->getServiceName<::android::hardware::radio::V1_5::IRadio>(
+                            hidl_string(RADIO_SERVICE_NAME)));
+    if (radio_v1_5 == NULL) {
+        sleep(60);
+        radio_v1_5 = ::testing::VtsHalHidlTargetTestBase::getService<
+                ::android::hardware::radio::V1_5::IRadio>(
+                RadioHidlEnvironment::Instance()
+                        ->getServiceName<::android::hardware::radio::V1_5::IRadio>(
+                                hidl_string(RADIO_SERVICE_NAME)));
+    }
     ASSERT_NE(nullptr, radio_v1_5.get());
 
     radioRsp_v1_5 = new (std::nothrow) RadioResponse_v1_5(*this);
@@ -36,8 +48,10 @@ void RadioHidlTest_v1_5::SetUp() {
     EXPECT_EQ(RadioError::NONE, radioRsp_v1_5->rspInfo.error);
 
     sp<::android::hardware::radio::config::V1_1::IRadioConfig> radioConfig =
-            ::android::hardware::radio::config::V1_1::IRadioConfig::getService();
-    /* Enforce Vts testing with RadioConfig is existed. */
+            ::testing::VtsHalHidlTargetTestBase::getService<
+                    ::android::hardware::radio::config::V1_1::IRadioConfig>();
+
+    /* Enforce Vts tesing with RadioConfig is existed. */
     ASSERT_NE(nullptr, radioConfig.get());
 
     /* Enforce Vts Testing with Sim Status Present only. */
