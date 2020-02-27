@@ -74,7 +74,7 @@ namespace {
 
 enum class Executor { ASYNC, SYNC, BURST, FENCED };
 
-enum class OutputType { FULLY_SPECIFIED, UNSPECIFIED, INSUFFICIENT, MISSED_DEADLINE };
+enum class OutputType { FULLY_SPECIFIED, UNSPECIFIED, INSUFFICIENT };
 
 enum class MemoryType { SHARED, DEVICE };
 
@@ -495,18 +495,16 @@ static std::vector<TestBuffer> getOutputBuffers(const TestModel& testModel, cons
 
 static Return<ErrorStatus> ExecutePreparedModel(const sp<IPreparedModel>& preparedModel,
                                                 const Request& request, MeasureTiming measure,
-                                                const OptionalTimeoutDuration& loopTimeoutDuration,
                                                 sp<ExecutionCallback>& callback) {
-    return preparedModel->execute_1_3(request, measure, {}, loopTimeoutDuration, callback);
+    return preparedModel->execute_1_3(request, measure, {}, {}, callback);
 }
 static Return<ErrorStatus> ExecutePreparedModel(const sp<IPreparedModel>& preparedModel,
                                                 const Request& request, MeasureTiming measure,
-                                                const OptionalTimeoutDuration& loopTimeoutDuration,
                                                 hidl_vec<OutputShape>* outputShapes,
                                                 Timing* timing) {
     ErrorStatus result;
     Return<void> ret = preparedModel->executeSynchronously_1_3(
-            request, measure, {}, loopTimeoutDuration,
+            request, measure, {}, {},
             [&result, outputShapes, timing](ErrorStatus error, const hidl_vec<OutputShape>& shapes,
                                             const Timing& time) {
                 result = error;
@@ -547,17 +545,6 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
         makeOutputInsufficientSize(/*outputIndex=*/0, &request);
     }
 
-    OptionalTimeoutDuration loopTimeoutDuration;
-    // OutputType::MISSED_DEADLINE is only used by
-    // TestKind::INTINITE_LOOP_TIMEOUT tests to verify that an infinite loop is
-    // aborted after a timeout.
-    if (testConfig.outputType == OutputType::MISSED_DEADLINE) {
-        // Override the default loop timeout duration with a small value to
-        // speed up test execution.
-        constexpr uint64_t kMillisecond = 1'000'000;
-        loopTimeoutDuration.nanoseconds(1 * kMillisecond);
-    }
-
     ErrorStatus executionStatus;
     hidl_vec<OutputShape> outputShapes;
     Timing timing;
@@ -567,9 +554,8 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
 
             // launch execution
             sp<ExecutionCallback> executionCallback = new ExecutionCallback();
-            Return<ErrorStatus> executionLaunchStatus =
-                    ExecutePreparedModel(preparedModel, request, testConfig.measureTiming,
-                                         loopTimeoutDuration, executionCallback);
+            Return<ErrorStatus> executionLaunchStatus = ExecutePreparedModel(
+                    preparedModel, request, testConfig.measureTiming, executionCallback);
             ASSERT_TRUE(executionLaunchStatus.isOk());
             EXPECT_EQ(ErrorStatus::NONE, static_cast<ErrorStatus>(executionLaunchStatus));
 
@@ -585,9 +571,8 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
             SCOPED_TRACE("synchronous");
 
             // execute
-            Return<ErrorStatus> executionReturnStatus =
-                    ExecutePreparedModel(preparedModel, request, testConfig.measureTiming,
-                                         loopTimeoutDuration, &outputShapes, &timing);
+            Return<ErrorStatus> executionReturnStatus = ExecutePreparedModel(
+                    preparedModel, request, testConfig.measureTiming, &outputShapes, &timing);
             ASSERT_TRUE(executionReturnStatus.isOk());
             executionStatus = static_cast<ErrorStatus>(executionReturnStatus);
 
@@ -627,7 +612,7 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
             hidl_handle syncFenceHandle;
             sp<IFencedExecutionCallback> fencedCallback;
             Return<void> ret = preparedModel->executeFenced(
-                    request, {}, testConfig.measureTiming, {}, loopTimeoutDuration, {},
+                    request, {}, testConfig.measureTiming, {}, {}, {},
                     [&result, &syncFenceHandle, &fencedCallback](
                             ErrorStatus error, const hidl_handle& handle,
                             const sp<IFencedExecutionCallback>& callback) {
@@ -701,11 +686,6 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
             ASSERT_EQ(outputShapes.size(), testModel.main.outputIndexes.size());
             ASSERT_FALSE(outputShapes[0].isSufficient);
             return;
-        case OutputType::MISSED_DEADLINE:
-            ASSERT_TRUE(executionStatus == ErrorStatus::MISSED_DEADLINE_TRANSIENT ||
-                        executionStatus == ErrorStatus::MISSED_DEADLINE_PERSISTENT)
-                    << "executionStatus = " << executionStatus;
-            return;
     }
 
     // Go through all outputs, check returned output shapes.
@@ -755,12 +735,6 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
         case TestKind::QUANTIZATION_COUPLING: {
             LOG(FATAL) << "Wrong TestKind for EvaluatePreparedModel";
             return;
-        } break;
-        case TestKind::INTINITE_LOOP_TIMEOUT: {
-            outputTypesList = {OutputType::MISSED_DEADLINE};
-            measureTimingList = {MeasureTiming::NO, MeasureTiming::YES};
-            // Burst does not support V1_3 loop timeout.
-            executorList = {Executor::ASYNC, Executor::SYNC, Executor::FENCED};
         } break;
     }
 
@@ -820,8 +794,7 @@ void Execute(const sp<IDevice>& device, const TestModel& testModel, TestKind tes
         case TestKind::GENERAL:
         case TestKind::DYNAMIC_SHAPE:
         case TestKind::MEMORY_DOMAIN:
-        case TestKind::FENCED_COMPUTE:
-        case TestKind::INTINITE_LOOP_TIMEOUT: {
+        case TestKind::FENCED_COMPUTE: {
             createPreparedModel(device, model, &preparedModel);
             if (preparedModel == nullptr) return;
             EvaluatePreparedModel(device, preparedModel, testModel, testKind);
@@ -858,6 +831,12 @@ void Execute(const sp<IDevice>& device, const TestModel& testModel, TestKind tes
 void GeneratedTestBase::SetUp() {
     testing::TestWithParam<GeneratedTestParam>::SetUp();
     ASSERT_NE(kDevice, nullptr);
+
+    const Return<void> ret =
+            kDevice->supportsDeadlines([this](bool prepareModelDeadline, bool executionDeadline) {
+                mSupportsDeadlines = {prepareModelDeadline, executionDeadline};
+            });
+    ASSERT_TRUE(ret.isOk());
 }
 
 std::vector<NamedModel> getNamedModels(const FilterFn& filter) {
@@ -884,31 +863,24 @@ class FencedComputeTest : public GeneratedTest {};
 // Tag for the dynamic output shape tests
 class QuantizationCouplingTest : public GeneratedTest {};
 
-// Tag for the loop timeout tests
-class InfiniteLoopTimeoutTest : public GeneratedTest {};
-
 TEST_P(GeneratedTest, Test) {
-    Execute(kDevice, kTestModel, TestKind::GENERAL);
+    Execute(kDevice, kTestModel, /*testKind=*/TestKind::GENERAL);
 }
 
 TEST_P(DynamicOutputShapeTest, Test) {
-    Execute(kDevice, kTestModel, TestKind::DYNAMIC_SHAPE);
+    Execute(kDevice, kTestModel, /*testKind=*/TestKind::DYNAMIC_SHAPE);
 }
 
 TEST_P(MemoryDomainTest, Test) {
-    Execute(kDevice, kTestModel, TestKind::MEMORY_DOMAIN);
+    Execute(kDevice, kTestModel, /*testKind=*/TestKind::MEMORY_DOMAIN);
 }
 
 TEST_P(FencedComputeTest, Test) {
-    Execute(kDevice, kTestModel, TestKind::FENCED_COMPUTE);
+    Execute(kDevice, kTestModel, /*testKind=*/TestKind::FENCED_COMPUTE);
 }
 
 TEST_P(QuantizationCouplingTest, Test) {
-    Execute(kDevice, kTestModel, TestKind::QUANTIZATION_COUPLING);
-}
-
-TEST_P(InfiniteLoopTimeoutTest, Test) {
-    Execute(kDevice, kTestModel, TestKind::INTINITE_LOOP_TIMEOUT);
+    Execute(kDevice, kTestModel, /*testKind=*/TestKind::QUANTIZATION_COUPLING);
 }
 
 INSTANTIATE_GENERATED_TEST(GeneratedTest,
@@ -926,10 +898,6 @@ INSTANTIATE_GENERATED_TEST(FencedComputeTest,
 
 INSTANTIATE_GENERATED_TEST(QuantizationCouplingTest, [](const TestModel& testModel) {
     return testModel.hasQuant8CoupledOperands() && testModel.main.operations.size() == 1;
-});
-
-INSTANTIATE_GENERATED_TEST(InfiniteLoopTimeoutTest, [](const TestModel& testModel) {
-    return testModel.isInfiniteLoopTimeoutTest();
 });
 
 }  // namespace android::hardware::neuralnetworks::V1_3::vts::functional

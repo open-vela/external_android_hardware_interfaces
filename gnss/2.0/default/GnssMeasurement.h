@@ -59,6 +59,7 @@ struct GnssMeasurement : public IGnssMeasurement {
    private:
     void start();
     void stop();
+    GnssData getMockMeasurement();
     void reportMeasurement(const GnssData&);
 
     static sp<IGnssMeasurementCallback> sCallback;
