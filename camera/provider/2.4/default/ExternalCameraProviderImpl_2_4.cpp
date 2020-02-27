@@ -44,19 +44,17 @@ const int kMaxDevicePathLen = 256;
 const char* kDevicePath = "/dev/";
 constexpr char kPrefix[] = "video";
 constexpr int kPrefixLen = sizeof(kPrefix) - 1;
-constexpr int kDevicePrefixLen = sizeof(kDevicePath) + kPrefixLen + 1;
 
-bool matchDeviceName(int cameraIdOffset,
-                     const hidl_string& deviceName, std::string* deviceVersion,
-                     std::string* cameraDevicePath) {
+bool matchDeviceName(const hidl_string& deviceName, std::string* deviceVersion,
+                     std::string* cameraId) {
     std::string deviceNameStd(deviceName.c_str());
     std::smatch sm;
     if (std::regex_match(deviceNameStd, sm, kDeviceNameRE)) {
         if (deviceVersion != nullptr) {
             *deviceVersion = sm[1];
         }
-        if (cameraDevicePath != nullptr) {
-            *cameraDevicePath = "/dev/video" + std::to_string(std::stoi(sm[2]) - cameraIdOffset);
+        if (cameraId != nullptr) {
+            *cameraId = sm[2];
         }
         return true;
     }
@@ -148,9 +146,8 @@ Return<void> ExternalCameraProviderImpl_2_4::getCameraDeviceInterface_V3_x(
         const hidl_string& cameraDeviceName,
         ICameraProvider::getCameraDeviceInterface_V3_x_cb _hidl_cb) {
 
-    std::string cameraDevicePath, deviceVersion;
-    bool match = matchDeviceName(mCfg.cameraIdOffset, cameraDeviceName,
-                                 &deviceVersion, &cameraDevicePath);
+    std::string cameraId, deviceVersion;
+    bool match = matchDeviceName(cameraDeviceName, &deviceVersion, &cameraId);
     if (!match) {
         _hidl_cb(Status::ILLEGAL_ARGUMENT, nullptr);
         return Void();
@@ -167,19 +164,19 @@ Return<void> ExternalCameraProviderImpl_2_4::getCameraDeviceInterface_V3_x(
         case 4: {
             ALOGV("Constructing v3.4 external camera device");
             deviceImpl = new device::V3_4::implementation::ExternalCameraDevice(
-                    cameraDevicePath, mCfg);
+                    cameraId, mCfg);
             break;
         }
         case 5: {
             ALOGV("Constructing v3.5 external camera device");
             deviceImpl = new device::V3_5::implementation::ExternalCameraDevice(
-                    cameraDevicePath, mCfg);
+                    cameraId, mCfg);
             break;
         }
         case 6: {
             ALOGV("Constructing v3.6 external camera device");
             deviceImpl = new device::V3_6::implementation::ExternalCameraDevice(
-                    cameraDevicePath, mCfg);
+                    cameraId, mCfg);
             break;
         }
         default:
@@ -189,7 +186,7 @@ Return<void> ExternalCameraProviderImpl_2_4::getCameraDeviceInterface_V3_x(
     }
 
     if (deviceImpl == nullptr || deviceImpl->isInitFailed()) {
-        ALOGE("%s: camera device %s init failed!", __FUNCTION__, cameraDevicePath.c_str());
+        ALOGE("%s: camera device %s init failed!", __FUNCTION__, cameraId.c_str());
         _hidl_cb(Status::INTERNAL_ERROR, nullptr);
         return Void();
     }
@@ -213,14 +210,12 @@ void ExternalCameraProviderImpl_2_4::addExternalCamera(const char* devName) {
     ALOGI("ExtCam: adding %s to External Camera HAL!", devName);
     Mutex::Autolock _l(mLock);
     std::string deviceName;
-    std::string cameraId = std::to_string(mCfg.cameraIdOffset +
-                                          std::atoi(devName + kDevicePrefixLen));
     if (mPreferredHal3MinorVersion == 6) {
-        deviceName = std::string("device@3.6/external/") + cameraId;
+        deviceName = std::string("device@3.6/external/") + devName;
     } else if (mPreferredHal3MinorVersion == 5) {
-        deviceName = std::string("device@3.5/external/") + cameraId;
+        deviceName = std::string("device@3.5/external/") + devName;
     } else {
-        deviceName = std::string("device@3.4/external/") + cameraId;
+        deviceName = std::string("device@3.4/external/") + devName;
     }
     mCameraStatusMap[deviceName] = CameraDeviceStatus::PRESENT;
     if (mCallbacks != nullptr) {
@@ -264,14 +259,12 @@ void ExternalCameraProviderImpl_2_4::deviceAdded(const char* devName) {
 void ExternalCameraProviderImpl_2_4::deviceRemoved(const char* devName) {
     Mutex::Autolock _l(mLock);
     std::string deviceName;
-    std::string cameraId = std::to_string(mCfg.cameraIdOffset +
-                                          std::atoi(devName + kDevicePrefixLen));
     if (mPreferredHal3MinorVersion == 6) {
-        deviceName = std::string("device@3.6/external/") + cameraId;
+        deviceName = std::string("device@3.6/external/") + devName;
     } else if (mPreferredHal3MinorVersion == 5) {
-        deviceName = std::string("device@3.5/external/") + cameraId;
+        deviceName = std::string("device@3.5/external/") + devName;
     } else {
-        deviceName = std::string("device@3.4/external/") + cameraId;
+        deviceName = std::string("device@3.4/external/") + devName;
     }
     if (mCameraStatusMap.find(deviceName) != mCameraStatusMap.end()) {
         mCameraStatusMap.erase(deviceName);
