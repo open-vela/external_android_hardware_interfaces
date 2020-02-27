@@ -238,8 +238,7 @@ interface IRadio extends @1.4::IRadio {
      * 1) Emergency call is completed; or
      * 2) Another setRadioPower_1_5 is issued with forEmergencyCall being false or
      * preferredForEmergencyCall being false; or
-     * 3) Timeout after 30 seconds if dial or emergencyDial is not called.
-     * Once one of these conditions is reached, the modem should move into normal operation.
+     * 3) Timeout after a long period of time.
      *
      * @param serial Serial number of request.
      * @param powerOn To turn on radio -> on = true, to turn off radio -> on = false.
@@ -325,15 +324,11 @@ interface IRadio extends @1.4::IRadio {
     oneway sendCdmaSmsExpectMore(int32_t serial, CdmaSmsMessage sms);
 
     /**
-     * Request that deactivates one category of device personalization. Device personalization
-     * generally binds the device so it can only be used on one carrier or even one carrier subnet
-     * (See TS 22.022). When the user has gained the rights to unbind the device (at the end of a
-     * contract period or other event), the controlKey will be delivered to either the user for
-     * manual entry or to a carrier app on the device for automatic entry.
+     * Requests that deactivates one category of the device personalization.
      *
      * @param serial Serial number of request.
      * @param persoType SIM personalization type.
-     * @param controlKey the unlock code for removing persoType personalization from this device
+     * @param controlKey depersonalization code corresponding to persoType
      *
      * Response function is IRadioResponse.supplySimDepersonalizationResponse()
      */
