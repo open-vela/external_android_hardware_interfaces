@@ -86,6 +86,10 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
     // Whether Uicc applications are enabled or not.
     bool areUiccApplicationsEnabled;
 
+    // Barring Info Response
+    ::android::hardware::radio::V1_5::CellIdentity barringCellIdentity;
+    ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::BarringInfo> barringInfos;
+
     RadioResponse_v1_5(RadioHidlTest_v1_5& parent_v1_5);
     virtual ~RadioResponse_v1_5() = default;
 
@@ -558,6 +562,7 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
 
     Return<void> getBarringInfoResponse(
             const RadioResponseInfo& info,
+            const ::android::hardware::radio::V1_5::CellIdentity& cellIdentity,
             const ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::BarringInfo>&
                     barringInfos);
 
