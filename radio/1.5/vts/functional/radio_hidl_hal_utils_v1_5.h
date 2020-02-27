@@ -14,10 +14,14 @@
  * limitations under the License.
  */
 
+#pragma once
+
 #include <android-base/logging.h>
 
-#include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
+#include <utils/Log.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -85,6 +89,10 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
 
     // Whether Uicc applications are enabled or not.
     bool areUiccApplicationsEnabled;
+
+    // Barring Info Response
+    ::android::hardware::radio::V1_5::CellIdentity barringCellIdentity;
+    ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::BarringInfo> barringInfos;
 
     RadioResponse_v1_5(RadioHidlTest_v1_5& parent_v1_5);
     virtual ~RadioResponse_v1_5() = default;
@@ -558,6 +566,7 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
 
     Return<void> getBarringInfoResponse(
             const RadioResponseInfo& info,
+            const ::android::hardware::radio::V1_5::CellIdentity& cellIdentity,
             const ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::BarringInfo>&
                     barringInfos);
 
@@ -794,24 +803,8 @@ class RadioIndication_v1_5 : public ::android::hardware::radio::V1_5::IRadioIndi
             /*barringInfos*/);
 };
 
-// Test environment for Radio HIDL HAL.
-class RadioHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-  public:
-    // get the test environment singleton
-    static RadioHidlEnvironment* Instance() {
-        static RadioHidlEnvironment* instance = new RadioHidlEnvironment;
-        return instance;
-    }
-    virtual void registerTestServices() override {
-        registerTestService<::android::hardware::radio::V1_5::IRadio>();
-    }
-
-  private:
-    RadioHidlEnvironment() {}
-};
-
 // The main test class for Radio HIDL.
-class RadioHidlTest_v1_5 : public ::testing::VtsHalHidlTargetTestBase {
+class RadioHidlTest_v1_5 : public ::testing::TestWithParam<std::string> {
   protected:
     std::mutex mtx_;
     std::condition_variable cv_;
