@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2016 The Android Open Source Project
+// Copyright (C) 2020 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,23 +14,15 @@
 // limitations under the License.
 //
 
-cc_test {
-    name: "VtsHalEvsV1_0TargetTest",
-    srcs: [
-        "VtsHalEvsV1_0TargetTest.cpp",
-        "FrameHandler.cpp",
-    ],
-    defaults: ["VtsHalTargetTestDefaults"],
-    shared_libs: [
-        "libui",
-    ],
-    static_libs: [
-        "android.hardware.automotive.evs@1.0",
-        "android.hardware.automotive.evs@common-default-lib",
-    ],
-    test_suites: ["general-tests"],
-    cflags: [
-        "-O0",
-        "-g",
-    ],
+cc_library_static {
+    name: "android.hardware.automotive.can@1.x-config-format",
+    defaults: ["android.hardware.automotive.can@defaults"],
+    proto: {
+        export_proto_headers: true,
+        type: "full",
+    },
+    strip: {
+        keep_symbols: true,
+    },
+    srcs: ["canbus_config.proto"],
 }
