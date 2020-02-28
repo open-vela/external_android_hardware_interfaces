@@ -21,7 +21,7 @@
 /*
  * Test IRadio.setSignalStrengthReportingCriteria_1_5() with invalid hysteresisDb
  */
-TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_invalidHysteresisDb) {
+TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_invalidHysteresisDb) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::SignalThresholdInfo signalThresholdInfo;
@@ -46,7 +46,7 @@ TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_invalidHystere
 /*
  * Test IRadio.setSignalStrengthReportingCriteria_1_5() with empty thresholds
  */
-TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_EmptyThresholds) {
+TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_EmptyThresholds) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::SignalThresholdInfo signalThresholdInfo;
@@ -70,7 +70,7 @@ TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_EmptyThreshold
 /*
  * Test IRadio.setSignalStrengthReportingCriteria_1_5() for GERAN
  */
-TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Geran) {
+TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Geran) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::SignalThresholdInfo signalThresholdInfo;
@@ -95,7 +95,7 @@ TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Geran) {
 /*
  * Test IRadio.setSignalStrengthReportingCriteria_1_5() for UTRAN
  */
-TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Utran) {
+TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Utran) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::SignalThresholdInfo signalThresholdInfo;
@@ -120,7 +120,7 @@ TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Utran) {
 /*
  * Test IRadio.setSignalStrengthReportingCriteria_1_5() for EUTRAN
  */
-TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Eutran_RSRP) {
+TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Eutran_RSRP) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::SignalThresholdInfo signalThresholdInfo;
@@ -145,7 +145,7 @@ TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Eutran_RSRP) {
 /*
  * Test IRadio.setSignalStrengthReportingCriteria_1_5() for EUTRAN
  */
-TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Eutran_RSRQ) {
+TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Eutran_RSRQ) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::SignalThresholdInfo signalThresholdInfo;
@@ -170,7 +170,7 @@ TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Eutran_RSRQ) {
 /*
  * Test IRadio.setSignalStrengthReportingCriteria_1_5() for EUTRAN
  */
-TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Eutran_RSSNR) {
+TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Eutran_RSSNR) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::SignalThresholdInfo signalThresholdInfo;
@@ -191,7 +191,7 @@ TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Eutran_RSSNR) 
 /*
  * Test IRadio.setSignalStrengthReportingCriteria_1_5() for CDMA2000
  */
-TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Cdma2000) {
+TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Cdma2000) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::SignalThresholdInfo signalThresholdInfo;
@@ -216,7 +216,7 @@ TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Cdma2000) {
 /*
  * Test IRadio.setSignalStrengthReportingCriteria_1_5() for NGRAN_SSRSRP
  */
-TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSRSRP) {
+TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSRSRP) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::SignalThresholdInfo signalThresholdInfo;
@@ -241,7 +241,7 @@ TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSRSRP) 
 /*
  * Test IRadio.setSignalStrengthReportingCriteria_1_5() for NGRAN_SSRSRQ
  */
-TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSRSRQ) {
+TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSRSRQ) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::SignalThresholdInfo signalThresholdInfo;
@@ -266,7 +266,7 @@ TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSRSRQ) 
 /*
  * Test IRadio.setSignalStrengthReportingCriteria_1_5() for EUTRAN
  */
-TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Disable_RSSNR) {
+TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Disable_RSSNR) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::SignalThresholdInfo signalThresholdInfo;
@@ -287,7 +287,7 @@ TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_Disable_RSSNR)
 /*
  * Test IRadio.setSignalStrengthReportingCriteria_1_5() for NGRAN_SSSINR
  */
-TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSSINR) {
+TEST_F(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSSINR) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::SignalThresholdInfo signalThresholdInfo;
@@ -312,7 +312,7 @@ TEST_P(RadioHidlTest_v1_5, setSignalStrengthReportingCriteria_1_5_NGRAN_SSSINR) 
 /*
  * Test IRadio.setLinkCapacityReportingCriteria_1_5() invalid hysteresisDlKbps
  */
-TEST_P(RadioHidlTest_v1_5, setLinkCapacityReportingCriteria_1_5_invalidHysteresisDlKbps) {
+TEST_F(RadioHidlTest_v1_5, setLinkCapacityReportingCriteria_1_5_invalidHysteresisDlKbps) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_5->setLinkCapacityReportingCriteria_1_5(
@@ -337,7 +337,7 @@ TEST_P(RadioHidlTest_v1_5, setLinkCapacityReportingCriteria_1_5_invalidHysteresi
 /*
  * Test IRadio.setLinkCapacityReportingCriteria_1_5() invalid hysteresisUlKbps
  */
-TEST_P(RadioHidlTest_v1_5, setLinkCapacityReportingCriteria_1_5_invalidHysteresisUlKbps) {
+TEST_F(RadioHidlTest_v1_5, setLinkCapacityReportingCriteria_1_5_invalidHysteresisUlKbps) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_5->setLinkCapacityReportingCriteria_1_5(
@@ -362,7 +362,7 @@ TEST_P(RadioHidlTest_v1_5, setLinkCapacityReportingCriteria_1_5_invalidHysteresi
 /*
  * Test IRadio.setLinkCapacityReportingCriteria_1_5() empty params
  */
-TEST_P(RadioHidlTest_v1_5, setLinkCapacityReportingCriteria_1_5_emptyParams) {
+TEST_F(RadioHidlTest_v1_5, setLinkCapacityReportingCriteria_1_5_emptyParams) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_5->setLinkCapacityReportingCriteria_1_5(
@@ -383,7 +383,7 @@ TEST_P(RadioHidlTest_v1_5, setLinkCapacityReportingCriteria_1_5_emptyParams) {
 /*
  * Test IRadio.setLinkCapacityReportingCriteria_1_5() for GERAN
  */
-TEST_P(RadioHidlTest_v1_5, setLinkCapacityReportingCriteria_1_5_Geran) {
+TEST_F(RadioHidlTest_v1_5, setLinkCapacityReportingCriteria_1_5_Geran) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_5->setLinkCapacityReportingCriteria_1_5(
@@ -406,7 +406,7 @@ TEST_P(RadioHidlTest_v1_5, setLinkCapacityReportingCriteria_1_5_Geran) {
  * Test IRadio.enableUiccApplications() for the response returned.
  * For SIM ABSENT case.
  */
-TEST_P(RadioHidlTest_v1_5, togglingUiccApplicationsSimAbsent) {
+TEST_F(RadioHidlTest_v1_5, togglingUiccApplicationsSimAbsent) {
     // This test case only test SIM ABSENT case.
     if (cardStatus.base.base.cardState != CardState::ABSENT) return;
 
@@ -433,7 +433,7 @@ TEST_P(RadioHidlTest_v1_5, togglingUiccApplicationsSimAbsent) {
  * Test IRadio.enableUiccApplications() for the response returned.
  * For SIM PRESENT case.
  */
-TEST_P(RadioHidlTest_v1_5, togglingUiccApplicationsSimPresent) {
+TEST_F(RadioHidlTest_v1_5, togglingUiccApplicationsSimPresent) {
     // This test case only test SIM ABSENT case.
     if (cardStatus.base.base.cardState != CardState::PRESENT) return;
 
@@ -479,7 +479,7 @@ TEST_P(RadioHidlTest_v1_5, togglingUiccApplicationsSimPresent) {
 /*
  * Test IRadio.areUiccApplicationsEnabled() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_5, areUiccApplicationsEnabled) {
+TEST_F(RadioHidlTest_v1_5, areUiccApplicationsEnabled) {
     // Disable Uicc applications.
     serial = GetRandomSerialNumber();
     radio_v1_5->areUiccApplicationsEnabled(serial);
@@ -499,7 +499,7 @@ TEST_P(RadioHidlTest_v1_5, areUiccApplicationsEnabled) {
 /*
  * Test IRadio.setSystemSelectionChannels_1_5() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_5, setSystemSelectionChannels_1_5) {
+TEST_F(RadioHidlTest_v1_5, setSystemSelectionChannels_1_5) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
@@ -537,7 +537,7 @@ TEST_P(RadioHidlTest_v1_5, setSystemSelectionChannels_1_5) {
 /*
  * Test IRadio.startNetworkScan_1_5() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_5, startNetworkScan) {
+TEST_F(RadioHidlTest_v1_5, startNetworkScan) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
@@ -578,7 +578,7 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan) {
 /*
  * Test IRadio.startNetworkScan_1_5() with invalid specifier.
  */
-TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidArgument) {
+TEST_F(RadioHidlTest_v1_5, startNetworkScan_InvalidArgument) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::NetworkScanRequest request = {.type = ScanType::ONE_SHOT,
@@ -605,7 +605,7 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidArgument) {
 /*
  * Test IRadio.startNetworkScan_1_5() with invalid interval (lower boundary).
  */
-TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidInterval1) {
+TEST_F(RadioHidlTest_v1_5, startNetworkScan_InvalidInterval1) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
@@ -644,7 +644,7 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidInterval1) {
 /*
  * Test IRadio.startNetworkScan_1_5() with invalid interval (upper boundary).
  */
-TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidInterval2) {
+TEST_F(RadioHidlTest_v1_5, startNetworkScan_InvalidInterval2) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
@@ -683,7 +683,7 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidInterval2) {
 /*
  * Test IRadio.startNetworkScan_1_5() with invalid max search time (lower boundary).
  */
-TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidMaxSearchTime1) {
+TEST_F(RadioHidlTest_v1_5, startNetworkScan_InvalidMaxSearchTime1) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
@@ -722,7 +722,7 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidMaxSearchTime1) {
 /*
  * Test IRadio.startNetworkScan_1_5() with invalid max search time (upper boundary).
  */
-TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidMaxSearchTime2) {
+TEST_F(RadioHidlTest_v1_5, startNetworkScan_InvalidMaxSearchTime2) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
@@ -761,7 +761,7 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidMaxSearchTime2) {
 /*
  * Test IRadio.startNetworkScan_1_5() with invalid periodicity (lower boundary).
  */
-TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidPeriodicity1) {
+TEST_F(RadioHidlTest_v1_5, startNetworkScan_InvalidPeriodicity1) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
@@ -800,7 +800,7 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidPeriodicity1) {
 /*
  * Test IRadio.startNetworkScan_1_5() with invalid periodicity (upper boundary).
  */
-TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidPeriodicity2) {
+TEST_F(RadioHidlTest_v1_5, startNetworkScan_InvalidPeriodicity2) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
@@ -839,7 +839,7 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidPeriodicity2) {
 /*
  * Test IRadio.startNetworkScan_1_5() with valid periodicity
  */
-TEST_P(RadioHidlTest_v1_5, startNetworkScan_GoodRequest1) {
+TEST_F(RadioHidlTest_v1_5, startNetworkScan_GoodRequest1) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
@@ -878,7 +878,7 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_GoodRequest1) {
 /*
  * Test IRadio.startNetworkScan_1_5() with valid periodicity and plmns
  */
-TEST_P(RadioHidlTest_v1_5, startNetworkScan_GoodRequest2) {
+TEST_F(RadioHidlTest_v1_5, startNetworkScan_GoodRequest2) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
@@ -918,7 +918,7 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_GoodRequest2) {
 /*
  * Test IRadio.setupDataCall_1_5() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_5, setupDataCall_1_5) {
+TEST_F(RadioHidlTest_v1_5, setupDataCall_1_5) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_5::AccessNetwork accessNetwork =
@@ -975,7 +975,7 @@ TEST_P(RadioHidlTest_v1_5, setupDataCall_1_5) {
 /*
  * Test IRadio.setInitialAttachApn_1_5() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_5, setInitialAttachApn_1_5) {
+TEST_F(RadioHidlTest_v1_5, setInitialAttachApn_1_5) {
     serial = GetRandomSerialNumber();
 
     // Create a dataProfileInfo
@@ -1018,7 +1018,7 @@ TEST_P(RadioHidlTest_v1_5, setInitialAttachApn_1_5) {
 /*
  * Test IRadio.setDataProfile_1_5() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_5, setDataProfile_1_5) {
+TEST_F(RadioHidlTest_v1_5, setDataProfile_1_5) {
     serial = GetRandomSerialNumber();
 
     // Create a dataProfileInfo
@@ -1065,7 +1065,7 @@ TEST_P(RadioHidlTest_v1_5, setDataProfile_1_5) {
 /*
  * Test IRadio.setRadioPower_1_5() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_5, setRadioPower_1_5_emergencyCall_cancelled) {
+TEST_F(RadioHidlTest_v1_5, setRadioPower_1_5_emergencyCall_cancelled) {
     // Set radio power to off.
     serial = GetRandomSerialNumber();
     radio_v1_5->setRadioPower_1_5(serial, false, false, false);
@@ -1096,7 +1096,7 @@ TEST_P(RadioHidlTest_v1_5, setRadioPower_1_5_emergencyCall_cancelled) {
 /*
  * Test IRadio.setNetworkSelectionModeManual_1_5() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_5, setNetworkSelectionModeManual_1_5) {
+TEST_F(RadioHidlTest_v1_5, setNetworkSelectionModeManual_1_5) {
     serial = GetRandomSerialNumber();
 
     // can't camp on nonexistent MCCMNC, so we expect this to fail.
@@ -1122,7 +1122,7 @@ TEST_P(RadioHidlTest_v1_5, setNetworkSelectionModeManual_1_5) {
 /*
  * Test IRadio.sendCdmaSmsExpectMore() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_5, sendCdmaSmsExpectMore) {
+TEST_F(RadioHidlTest_v1_5, sendCdmaSmsExpectMore) {
     serial = GetRandomSerialNumber();
 
     // Create a CdmaSmsAddress
@@ -1147,7 +1147,7 @@ TEST_P(RadioHidlTest_v1_5, sendCdmaSmsExpectMore) {
     cdmaSmsMessage.address = cdmaSmsAddress;
     cdmaSmsMessage.subAddress = cdmaSmsSubaddress;
     cdmaSmsMessage.bearerData =
-            (std::vector<uint8_t>){15, 0, 3, 32, 3, 16, 1, 8, 16, 53, 76, 68, 6, 51, 106, 0};
+        (std::vector<uint8_t>){15, 0, 3, 32, 3, 16, 1, 8, 16, 53, 76, 68, 6, 51, 106, 0};
 
     radio_v1_5->sendCdmaSmsExpectMore(serial, cdmaSmsMessage);
 
@@ -1157,115 +1157,8 @@ TEST_P(RadioHidlTest_v1_5, sendCdmaSmsExpectMore) {
 
     if (cardStatus.base.base.cardState == CardState::ABSENT) {
         ASSERT_TRUE(CheckAnyOfErrors(
-                radioRsp_v1_5->rspInfo.error,
-                {RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE, RadioError::SIM_ABSENT},
-                CHECK_GENERAL_ERROR));
+            radioRsp_v1_5->rspInfo.error,
+            {RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE, RadioError::SIM_ABSENT},
+            CHECK_GENERAL_ERROR));
     }
-}
-
-/*
- * Test IRadio.getBarringInfo() for the response returned.
- */
-TEST_P(RadioHidlTest_v1_5, getBarringInfo) {
-    serial = GetRandomSerialNumber();
-
-    Return<void> res = radio_v1_5->getBarringInfo(serial);
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
-    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
-    EXPECT_EQ(serial, radioRsp_v1_5->rspInfo.serial);
-
-    ASSERT_TRUE(radioRsp_v1_5->barringInfos.size() > 0);
-
-    std::set<BarringInfo::ServiceType> reportedServices;
-
-    // validate that the service types are in range
-    for (const auto& info : radioRsp_v1_5->barringInfos) {
-        ASSERT_TRUE((info.serviceType >= BarringInfo::ServiceType::CS_SERVICE &&
-                     info.serviceType <= BarringInfo::ServiceType::SMS) ||
-                    (info.serviceType >= BarringInfo::ServiceType::OPERATOR_1 &&
-                     info.serviceType <= BarringInfo::ServiceType::OPERATOR_32));
-        reportedServices.insert(info.serviceType);
-
-        // Any type that is "conditional" must have sane values for conditional barring
-        // factor and time.
-        switch (info.barringType) {
-            case BarringInfo::BarringType::NONE:  // fall through
-            case BarringInfo::BarringType::UNCONDITIONAL:
-                break;
-            case BarringInfo::BarringType::CONDITIONAL: {
-                const int32_t barringFactor = info.barringTypeSpecificInfo.conditional().factor;
-                ASSERT_TRUE(barringFactor >= 0 && barringFactor <= 100);
-                ASSERT_TRUE(info.barringTypeSpecificInfo.conditional().timeSeconds > 0);
-                break;
-            }
-            default:
-                FAIL();
-        }
-    }
-
-    // Certain types of barring are relevant for certain RANs. Ensure that only the right
-    // types are reported. Note that no types are required, simply that for a given technology
-    // only certain types are valid. This is one way to sanity check that implementations are
-    // not providing information that they don't have.
-    static const std::set<BarringInfo::ServiceType> UTRA_SERVICES{
-            BarringInfo::ServiceType::CS_SERVICE, BarringInfo::ServiceType::PS_SERVICE,
-            BarringInfo::ServiceType::CS_VOICE,   BarringInfo::ServiceType::EMERGENCY,
-            BarringInfo::ServiceType::SMS,
-    };
-
-    static const std::set<BarringInfo::ServiceType> EUTRA_SERVICES{
-            BarringInfo::ServiceType::MO_SIGNALLING, BarringInfo::ServiceType::MO_DATA,
-            BarringInfo::ServiceType::CS_FALLBACK,   BarringInfo::ServiceType::MMTEL_VOICE,
-            BarringInfo::ServiceType::MMTEL_VIDEO,   BarringInfo::ServiceType::EMERGENCY,
-            BarringInfo::ServiceType::SMS,
-    };
-
-    static const std::set<BarringInfo::ServiceType> NGRA_SERVICES = {
-            BarringInfo::ServiceType::MO_SIGNALLING, BarringInfo::ServiceType::MO_DATA,
-            BarringInfo::ServiceType::CS_FALLBACK,   BarringInfo::ServiceType::MMTEL_VOICE,
-            BarringInfo::ServiceType::MMTEL_VIDEO,   BarringInfo::ServiceType::EMERGENCY,
-            BarringInfo::ServiceType::SMS,           BarringInfo::ServiceType::OPERATOR_1,
-            BarringInfo::ServiceType::OPERATOR_2,    BarringInfo::ServiceType::OPERATOR_3,
-            BarringInfo::ServiceType::OPERATOR_4,    BarringInfo::ServiceType::OPERATOR_5,
-            BarringInfo::ServiceType::OPERATOR_6,    BarringInfo::ServiceType::OPERATOR_7,
-            BarringInfo::ServiceType::OPERATOR_8,    BarringInfo::ServiceType::OPERATOR_9,
-            BarringInfo::ServiceType::OPERATOR_10,   BarringInfo::ServiceType::OPERATOR_11,
-            BarringInfo::ServiceType::OPERATOR_12,   BarringInfo::ServiceType::OPERATOR_13,
-            BarringInfo::ServiceType::OPERATOR_14,   BarringInfo::ServiceType::OPERATOR_15,
-            BarringInfo::ServiceType::OPERATOR_16,   BarringInfo::ServiceType::OPERATOR_17,
-            BarringInfo::ServiceType::OPERATOR_18,   BarringInfo::ServiceType::OPERATOR_19,
-            BarringInfo::ServiceType::OPERATOR_20,   BarringInfo::ServiceType::OPERATOR_21,
-            BarringInfo::ServiceType::OPERATOR_22,   BarringInfo::ServiceType::OPERATOR_23,
-            BarringInfo::ServiceType::OPERATOR_24,   BarringInfo::ServiceType::OPERATOR_25,
-            BarringInfo::ServiceType::OPERATOR_26,   BarringInfo::ServiceType::OPERATOR_27,
-            BarringInfo::ServiceType::OPERATOR_28,   BarringInfo::ServiceType::OPERATOR_29,
-            BarringInfo::ServiceType::OPERATOR_30,   BarringInfo::ServiceType::OPERATOR_31,
-    };
-
-    const std::set<BarringInfo::ServiceType>* compareTo = nullptr;
-
-    switch (radioRsp_v1_5->barringCellIdentity.getDiscriminator()) {
-        case android::hardware::radio::V1_5::CellIdentity::hidl_discriminator::wcdma:
-            // fall through
-        case android::hardware::radio::V1_5::CellIdentity::hidl_discriminator::tdscdma:
-            compareTo = &UTRA_SERVICES;
-            break;
-        case android::hardware::radio::V1_5::CellIdentity::hidl_discriminator::lte:
-            compareTo = &EUTRA_SERVICES;
-            break;
-        case android::hardware::radio::V1_5::CellIdentity::hidl_discriminator::nr:
-            compareTo = &NGRA_SERVICES;
-            break;
-
-        case android::hardware::radio::V1_5::CellIdentity::hidl_discriminator::cdma:
-            // fall through
-        default:
-            FAIL();
-            break;
-    }
-
-    std::set<BarringInfo::ServiceType> diff;
-
-    std::set_difference(reportedServices.begin(), reportedServices.end(), compareTo->begin(),
-                        compareTo->end(), std::inserter(diff, diff.begin()));
 }
