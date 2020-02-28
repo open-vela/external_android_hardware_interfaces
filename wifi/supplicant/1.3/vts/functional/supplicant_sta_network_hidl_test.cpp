@@ -290,14 +290,23 @@ TEST_P(SupplicantStaNetworkHidlTest, SetGetWapiCertSuite) {
  * SetEapErp
  */
 TEST_P(SupplicantStaNetworkHidlTest, SetEapErp) {
-    if (!isFilsSupported(sta_iface_)) {
-        GTEST_SKIP()
-            << "Skipping test since driver/supplicant doesn't support FILS";
-    }
+    uint32_t keyMgmtMask = 0;
+    sta_iface_->getKeyMgmtCapabilities_1_3(
+        [&](const SupplicantStatus &status, uint32_t keyMgmtMaskInternal) {
+            EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
+            keyMgmtMask = keyMgmtMaskInternal;
+        });
 
-    sta_network_->setEapErp(true, [](const SupplicantStatus &status) {
-        EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
-    });
+    SupplicantStatusCode expectedStatusCode =
+        (keyMgmtMask & (ISupplicantStaNetwork::KeyMgmtMask::FILS_SHA256 |
+                        ISupplicantStaNetwork::KeyMgmtMask::FILS_SHA384))
+            ? SupplicantStatusCode::SUCCESS
+            : SupplicantStatusCode::FAILURE_UNKNOWN;
+
+    sta_network_->setEapErp(
+        true, [expectedStatusCode](const SupplicantStatus &status) {
+            EXPECT_EQ(expectedStatusCode, status.code);
+        });
 }
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantStaNetworkHidlTest,

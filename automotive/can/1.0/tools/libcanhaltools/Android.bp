@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2016 The Android Open Source Project
+// Copyright (C) 2020 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,23 +14,19 @@
 // limitations under the License.
 //
 
-cc_test {
-    name: "VtsHalEvsV1_0TargetTest",
+cc_library_static {
+    name: "android.hardware.automotive.can@libcanhaltools",
+    defaults: ["android.hardware.automotive.can@defaults"],
+    vendor_available: true,
     srcs: [
-        "VtsHalEvsV1_0TargetTest.cpp",
-        "FrameHandler.cpp",
+        "libcanhaltools.cpp",
     ],
-    defaults: ["VtsHalTargetTestDefaults"],
+    export_include_dirs: ["include"],
     shared_libs: [
-        "libui",
+        "android.hardware.automotive.can@1.0",
+        "libhidlbase",
     ],
-    static_libs: [
-        "android.hardware.automotive.evs@1.0",
-        "android.hardware.automotive.evs@common-default-lib",
-    ],
-    test_suites: ["general-tests"],
-    cflags: [
-        "-O0",
-        "-g",
+    header_libs: [
+        "android.hardware.automotive.can@hidl-utils-lib",
     ],
 }
