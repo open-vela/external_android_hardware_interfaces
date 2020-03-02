@@ -16,17 +16,12 @@
 
 #define LOG_TAG "WritableIdentityCredential"
 
-#include "WritableIdentityCredential.h"
-#include "IdentityCredentialStore.h"
-
 #include <android/hardware/identity/support/IdentityCredentialSupport.h>
 
 #include <android-base/logging.h>
 
 #include <cppbor/cppbor.h>
 #include <cppbor/cppbor_parse.h>
-
-#include <utility>
 
 #include "IdentityCredentialStore.h"
 #include "Util.h"
@@ -38,6 +33,26 @@ using ::std::optional;
 using namespace ::android::hardware::identity;
 
 bool WritableIdentityCredential::initialize() {
+    optional<vector<uint8_t>> keyPair = support::createEcKeyPair();
+    if (!keyPair) {
+        LOG(ERROR) << "Error creating credentialKey";
+        return false;
+    }
+
+    optional<vector<uint8_t>> pubKey = support::ecKeyPairGetPublicKey(keyPair.value());
+    if (!pubKey) {
+        LOG(ERROR) << "Error getting public part of credentialKey";
+        return false;
+    }
+    credentialPubKey_ = pubKey.value();
+
+    optional<vector<uint8_t>> privKey = support::ecKeyPairGetPrivateKey(keyPair.value());
+    if (!privKey) {
+        LOG(ERROR) << "Error getting private part of credentialKey";
+        return false;
+    }
+    credentialPrivKey_ = privKey.value();
+
     optional<vector<uint8_t>> random = support::getRandom(16);
     if (!random) {
         LOG(ERROR) << "Error creating storageKey";
@@ -48,54 +63,88 @@ bool WritableIdentityCredential::initialize() {
     return true;
 }
 
-// This function generates the attestation certificate using the passed in
-// |attestationApplicationId| and |attestationChallenge|.  It will generate an
-// attestation certificate with current time and expires one year from now.  The
-// certificate shall contain all values as specified in hal.
+// TODO: use |attestationApplicationId| and |attestationChallenge| and also
+//       ensure the returned certificate chain satisfy the requirements listed in
+//       the docs for IWritableIdentityCredential::getAttestationCertificate()
+//
 ndk::ScopedAStatus WritableIdentityCredential::getAttestationCertificate(
-        const vector<int8_t>& attestationApplicationId,  //
-        const vector<int8_t>& attestationChallenge,      //
-        vector<Certificate>* outCertificateChain) {
-    if (!credentialPrivKey_.empty() || !credentialPubKey_.empty() || !certificateChain_.empty()) {
+        const vector<int8_t>& /*attestationApplicationId*/,
+        const vector<int8_t>& /*attestationChallenge*/, vector<Certificate>* outCertificateChain) {
+    // For now, we dynamically generate an attestion key on each and every
+    // request and use that to sign CredentialKey. In a real implementation this
+    // would look very differently.
+    optional<vector<uint8_t>> attestationKeyPair = support::createEcKeyPair();
+    if (!attestationKeyPair) {
         return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
-                IIdentityCredentialStore::STATUS_FAILED,
-                "Error attestation certificate previously generated"));
+                IIdentityCredentialStore::STATUS_FAILED, "Error creating attestationKey"));
     }
 
-    vector<uint8_t> challenge(attestationChallenge.begin(), attestationChallenge.end());
-    vector<uint8_t> appId(attestationApplicationId.begin(), attestationApplicationId.end());
-
-    optional<std::pair<vector<uint8_t>, vector<vector<uint8_t>>>> keyAttestationPair =
-            support::createEcKeyPairAndAttestation(challenge, appId);
-    if (!keyAttestationPair) {
-        LOG(ERROR) << "Error creating credentialKey and attestation";
+    optional<vector<uint8_t>> attestationPubKey =
+            support::ecKeyPairGetPublicKey(attestationKeyPair.value());
+    if (!attestationPubKey) {
         return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                 IIdentityCredentialStore::STATUS_FAILED,
-                "Error creating credentialKey and attestation"));
+                "Error getting public part of attestationKey"));
     }
 
-    vector<uint8_t> keyPair = keyAttestationPair.value().first;
-    certificateChain_ = keyAttestationPair.value().second;
-
-    optional<vector<uint8_t>> pubKey = support::ecKeyPairGetPublicKey(keyPair);
-    if (!pubKey) {
+    optional<vector<uint8_t>> attestationPrivKey =
+            support::ecKeyPairGetPrivateKey(attestationKeyPair.value());
+    if (!attestationPrivKey) {
         return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                 IIdentityCredentialStore::STATUS_FAILED,
-                "Error getting public part of credentialKey"));
+                "Error getting private part of attestationKey"));
     }
-    credentialPubKey_ = pubKey.value();
 
-    optional<vector<uint8_t>> privKey = support::ecKeyPairGetPrivateKey(keyPair);
-    if (!privKey) {
+    string serialDecimal;
+    string issuer;
+    string subject;
+    time_t validityNotBefore = time(nullptr);
+    time_t validityNotAfter = validityNotBefore + 365 * 24 * 3600;
+
+    // First create a certificate for |credentialPubKey| which is signed by
+    // |attestationPrivKey|.
+    //
+    serialDecimal = "0";  // TODO: set serial to |attestationChallenge|
+    issuer = "Android Open Source Project";
+    subject = "Android IdentityCredential CredentialKey";
+    optional<vector<uint8_t>> credentialPubKeyCertificate = support::ecPublicKeyGenerateCertificate(
+            credentialPubKey_, attestationPrivKey.value(), serialDecimal, issuer, subject,
+            validityNotBefore, validityNotAfter);
+    if (!credentialPubKeyCertificate) {
         return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                 IIdentityCredentialStore::STATUS_FAILED,
-                "Error getting private part of credentialKey"));
+                "Error creating certificate for credentialPubKey"));
     }
-    credentialPrivKey_ = privKey.value();
 
-    // convert from vector<vector<uint8_t>>> to vector<Certificate>*
+    // This is followed by a certificate for |attestationPubKey| self-signed by
+    // |attestationPrivKey|.
+    serialDecimal = "0";  // TODO: set serial
+    issuer = "Android Open Source Project";
+    subject = "Android IdentityCredential AttestationKey";
+    optional<vector<uint8_t>> attestationKeyCertificate = support::ecPublicKeyGenerateCertificate(
+            attestationPubKey.value(), attestationPrivKey.value(), serialDecimal, issuer, subject,
+            validityNotBefore, validityNotAfter);
+    if (!attestationKeyCertificate) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_FAILED,
+                "Error creating certificate for attestationPubKey"));
+    }
+
+    // Concatenate the certificates to form the chain.
+    vector<uint8_t> certificateChain;
+    certificateChain.insert(certificateChain.end(), credentialPubKeyCertificate.value().begin(),
+                            credentialPubKeyCertificate.value().end());
+    certificateChain.insert(certificateChain.end(), attestationKeyCertificate.value().begin(),
+                            attestationKeyCertificate.value().end());
+
+    optional<vector<vector<uint8_t>>> splitCertChain =
+            support::certificateChainSplit(certificateChain);
+    if (!splitCertChain) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_FAILED, "Error splitting certificate chain"));
+    }
     *outCertificateChain = vector<Certificate>();
-    for (const vector<uint8_t>& cert : certificateChain_) {
+    for (const vector<uint8_t>& cert : splitCertChain.value()) {
         Certificate c = Certificate();
         c.encodedCertificate = byteStringToSigned(cert);
         outCertificateChain->push_back(std::move(c));
