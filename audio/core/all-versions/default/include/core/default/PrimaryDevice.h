@@ -96,6 +96,11 @@ struct PrimaryDevice : public IPrimaryDevice {
     Return<void> getMicrophones(getMicrophones_cb _hidl_cb) override;
     Return<Result> setConnectedState(const DeviceAddress& address, bool connected) override;
 #endif
+#if MAJOR_VERSION >= 6
+    Return<Result> close() override;
+    Return<Result> addDeviceEffect(AudioPortHandle device, uint64_t effectId) override;
+    Return<Result> removeDeviceEffect(AudioPortHandle device, uint64_t effectId) override;
+#endif
 
     Return<void> debug(const hidl_handle& fd, const hidl_vec<hidl_string>& options) override;
 

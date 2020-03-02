@@ -20,9 +20,9 @@
 #include "sensors-vts-utils/SensorEventsChecker.h"
 #include "sensors-vts-utils/SensorsHidlEnvironmentBase.h"
 
-#include <VtsHalHidlTargetTestBase.h>
 #include <android/hardware/sensors/1.0/ISensors.h>
 #include <android/hardware/sensors/1.0/types.h>
+#include <gtest/gtest.h>
 
 #include <unordered_set>
 #include <vector>
@@ -44,8 +44,8 @@ using ::android::hardware::sensors::V1_0::SensorType;
 using ::android::hardware::sensors::V1_0::SharedMemInfo;
 using ::android::hardware::sensors::V1_0::SharedMemType;
 
-class SensorsHidlTestBase : public ::testing::VtsHalHidlTargetTestBase {
-   public:
+class SensorsHidlTestBase : public testing::TestWithParam<std::string> {
+  public:
     virtual SensorsHidlEnvironmentBase* getEnvironment() = 0;
     virtual void SetUp() override {}
 
