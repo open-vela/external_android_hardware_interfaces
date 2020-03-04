@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2018 The Android Open Source Project
+// Copyright (C) 2020 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,18 +14,21 @@
 // limitations under the License.
 //
 
-cc_test {
-    name: "VtsHalConfirmationUIV1_0TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
+cc_binary {
+    name: "canhalconfigurator",
+    init_rc: ["canhalconfigurator.rc"],
+    defaults: ["android.hardware.automotive.can@defaults"],
     srcs: [
-        "VtsHalConfirmationUIV1_0TargetTest.cpp",
+        "canhalconfigurator.cpp",
+        "canprototools.cpp",
+    ],
+    shared_libs: [
+        "android.hardware.automotive.can@1.0",
+        "libhidlbase",
+        "libprotobuf-cpp-full",
     ],
     static_libs: [
-        "android.hardware.confirmationui@1.0",
-        "android.hardware.keymaster@4.0",
-        "libcrypto_static",
-        "libcn-cbor",
-        "android.hardware.confirmationui-support-lib",
+        "android.hardware.automotive.can@1.x-config-format",
+        "android.hardware.automotive.can@libcanhaltools",
     ],
-    test_suites: ["general-tests"],
 }
