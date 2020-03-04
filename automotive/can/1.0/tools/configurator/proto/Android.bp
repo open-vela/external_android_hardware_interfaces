@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2018 The Android Open Source Project
+// Copyright (C) 2020 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,18 +14,15 @@
 // limitations under the License.
 //
 
-cc_test {
-    name: "VtsHalConfirmationUIV1_0TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
-    srcs: [
-        "VtsHalConfirmationUIV1_0TargetTest.cpp",
-    ],
-    static_libs: [
-        "android.hardware.confirmationui@1.0",
-        "android.hardware.keymaster@4.0",
-        "libcrypto_static",
-        "libcn-cbor",
-        "android.hardware.confirmationui-support-lib",
-    ],
-    test_suites: ["general-tests"],
+cc_library_static {
+    name: "android.hardware.automotive.can@1.x-config-format",
+    defaults: ["android.hardware.automotive.can@defaults"],
+    proto: {
+        export_proto_headers: true,
+        type: "full",
+    },
+    strip: {
+        keep_symbols: true,
+    },
+    srcs: ["canbus_config.proto"],
 }

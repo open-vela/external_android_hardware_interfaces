@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2018 The Android Open Source Project
+// Copyright (C) 2020 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,18 +14,19 @@
 // limitations under the License.
 //
 
-cc_test {
-    name: "VtsHalConfirmationUIV1_0TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
+cc_library_static {
+    name: "android.hardware.automotive.can@libcanhaltools",
+    defaults: ["android.hardware.automotive.can@defaults"],
+    vendor_available: true,
     srcs: [
-        "VtsHalConfirmationUIV1_0TargetTest.cpp",
+        "libcanhaltools.cpp",
     ],
-    static_libs: [
-        "android.hardware.confirmationui@1.0",
-        "android.hardware.keymaster@4.0",
-        "libcrypto_static",
-        "libcn-cbor",
-        "android.hardware.confirmationui-support-lib",
+    export_include_dirs: ["include"],
+    shared_libs: [
+        "android.hardware.automotive.can@1.0",
+        "libhidlbase",
     ],
-    test_suites: ["general-tests"],
+    header_libs: [
+        "android.hardware.automotive.can@hidl-utils-lib",
+    ],
 }
