@@ -20,7 +20,11 @@
 
 #include <android/hardware/automotive/vehicle/2.0/types.h>
 
-namespace android::hardware::automotive::vehicle::V2_0 {
+namespace android {
+namespace hardware {
+namespace automotive {
+namespace vehicle {
+namespace V2_0 {
 
 /**
  *  Vehicle HAL talks to the vehicle through a client, instead of accessing
@@ -62,4 +66,8 @@ class IVehicleClient {
     }
 };
 
-}  // namespace android::hardware::automotive::vehicle::V2_0
+}  // namespace V2_0
+}  // namespace vehicle
+}  // namespace automotive
+}  // namespace hardware
+}  // namespace android
