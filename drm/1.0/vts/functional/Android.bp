@@ -24,7 +24,7 @@ cc_library_static {
         "vendor_modules.cpp",
     ],
     static_libs: [
-       "android.hardware.drm@1.0-helper",
+        "android.hardware.drm@1.0-helper",
     ],
     export_include_dirs: ["include"],
 }
@@ -43,12 +43,12 @@ cc_library_static {
         "android.hardware.drm@1.0",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
+        "libcrypto",
         "libhidlmemory",
         "libnativehelper",
     ],
     static_libs: [
         "android.hardware.drm@1.0-helper",
-        "libcrypto_static",
         "libdrmvtshelper",
     ],
     export_shared_lib_headers: [
@@ -76,14 +76,28 @@ cc_test {
         "android.hardware.drm@1.0",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
+        "libcrypto",
         "libhidlmemory",
         "libnativehelper",
     ],
     static_libs: [
         "android.hardware.drm@1.0-helper",
-        "libcrypto_static",
         "libdrmvtshelper",
     ],
+    arch: {
+        arm: {
+            data: [":libvtswidevine-arm-prebuilts"],
+        },
+        arm64: {
+            data: [":libvtswidevine-arm64-prebuilts"],
+        },
+        x86: {
+            data: [":libvtswidevine-x86-prebuilts"],
+        },
+        x86_64: {
+            data: [":libvtswidevine-x86_64-prebuilts"],
+        },
+    },
     test_suites: [
         "general-tests",
         "vts-core",
