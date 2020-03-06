@@ -49,8 +49,8 @@ Return<V1_0::IGnssMeasurement::GnssMeasurementStatus> GnssMeasurement::setCallba
 
 Return<void> GnssMeasurement::close() {
     ALOGD("close");
-    stop();
     std::unique_lock<std::mutex> lock(mMutex);
+    stop();
     sCallback = nullptr;
     return Void();
 }
