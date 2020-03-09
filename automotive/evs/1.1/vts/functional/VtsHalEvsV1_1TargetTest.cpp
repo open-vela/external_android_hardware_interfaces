@@ -38,15 +38,16 @@ static const float kNanoToSeconds = 0.000000001f;
 
 #include <hidl/HidlTransportSupport.h>
 #include <hwbinder/ProcessState.h>
+#include <log/log.h>
 #include <utils/Errors.h>
 #include <utils/StrongPointer.h>
 
+#include <android/log.h>
 #include <android/hardware/automotive/evs/1.1/IEvsCamera.h>
 #include <android/hardware/automotive/evs/1.1/IEvsCameraStream.h>
 #include <android/hardware/automotive/evs/1.1/IEvsEnumerator.h>
 #include <android/hardware/automotive/evs/1.1/IEvsDisplay.h>
 #include <android/hardware/camera/device/3.2/ICameraDevice.h>
-#include <android-base/logging.h>
 #include <system/camera_metadata.h>
 #include <ui/DisplayConfig.h>
 #include <ui/DisplayState.h>
@@ -119,12 +120,11 @@ protected:
         // Get the camera list
         pEnumerator->getCameraList_1_1(
             [this](hidl_vec <CameraDesc> cameraList) {
-                LOG(INFO) << "Camera list callback received "
-                          << cameraList.size()
-                          << " cameras";
+                ALOGI("Camera list callback received %zu cameras",
+                      cameraList.size());
                 cameraInfo.reserve(cameraList.size());
                 for (auto&& cam: cameraList) {
-                    LOG(INFO) << "Found camera " << cam.v1.cameraId;
+                    ALOGI("Found camera %s", cam.v1.cameraId.c_str());
                     cameraInfo.push_back(cam);
                 }
             }
@@ -137,12 +137,10 @@ protected:
 
         // Get the ultrasonics array list
         pEnumerator->getUltrasonicsArrayList([this](hidl_vec<UltrasonicsArrayDesc> ultraList) {
-            LOG(INFO) << "Ultrasonics array list callback received "
-                      << ultraList.size()
-                      << " arrays";
+            ALOGI("Ultrasonics array list callback received %zu arrays", ultraList.size());
             ultrasonicsArraysInfo.reserve(ultraList.size());
             for (auto&& ultraArray : ultraList) {
-                LOG(INFO) << "Found ultrasonics array " << ultraArray.ultrasonicsArrayId;
+                ALOGI("Found ultrasonics array %s", ultraArray.ultrasonicsArrayId.c_str());
                 ultrasonicsArraysInfo.push_back(ultraArray);
             }
         });
@@ -197,7 +195,7 @@ protected:
         if (!flag) {
             // EVS assumes that the device w/o a valid metadata is a physical
             // device.
-            LOG(INFO) << id << " is not a logical camera device.";
+            ALOGI("%s is not a logical camera device.", id.c_str());
             physicalCameras.emplace(id);
             return physicalCameras;
         }
@@ -207,9 +205,7 @@ protected:
         int rc = find_camera_metadata_ro_entry(metadata,
                                                ANDROID_LOGICAL_MULTI_CAMERA_PHYSICAL_IDS,
                                                &entry);
-        if (rc != 0) {
-            LOG(ERROR) << "No physical camera ID is found for a logical camera device";
-        }
+        ALOGE_IF(rc, "No physical camera ID is found for a logical camera device");
 
         const uint8_t *ids = entry.data.u8;
         size_t start = 0;
@@ -223,10 +219,7 @@ protected:
             }
         }
 
-        LOG(INFO) << id
-                  << " consists of "
-                  << physicalCameras.size()
-                  << " physical camera devices";
+        ALOGI("%s consists of %d physical camera devices.", id.c_str(), (int)physicalCameras.size());
         return physicalCameras;
     }
 
@@ -254,7 +247,7 @@ protected:
  * call to closeCamera.  Then repeats the test to ensure all cameras can be reopened.
  */
 TEST_P(EvsHidlTest, CameraOpenClean) {
-    LOG(INFO) << "Starting CameraOpenClean test";
+    ALOGI("Starting CameraOpenClean test");
 
     // Get the camera list
     loadCameraList();
@@ -268,7 +261,7 @@ TEST_P(EvsHidlTest, CameraOpenClean) {
         bool isLogicalCam = false;
         auto devices = getPhysicalCameraIds(cam.v1.cameraId, isLogicalCam);
         if (mIsHwModule && isLogicalCam) {
-            LOG(INFO) << "Skip a logical device, " << cam.v1.cameraId << " for HW target.";
+            ALOGI("Skip a logical device %s for HW module", cam.v1.cameraId.c_str());
             continue;
         }
 
@@ -293,7 +286,7 @@ TEST_P(EvsHidlTest, CameraOpenClean) {
 
             // Verify that this camera self-identifies correctly
             pCam->getCameraInfo_1_1([&cam](CameraDesc desc) {
-                                        LOG(DEBUG) << "Found camera " << desc.v1.cameraId;
+                                        ALOGD("Found camera %s", desc.v1.cameraId.c_str());
                                         EXPECT_EQ(cam.v1.cameraId, desc.v1.cameraId);
                                     }
             );
@@ -323,7 +316,7 @@ TEST_P(EvsHidlTest, CameraOpenClean) {
  * the system to be tolerant of shutdown/restart race conditions.
  */
 TEST_P(EvsHidlTest, CameraOpenAggressive) {
-    LOG(INFO) << "Starting CameraOpenAggressive test";
+    ALOGI("Starting CameraOpenAggressive test");
 
     // Get the camera list
     loadCameraList();
@@ -337,7 +330,7 @@ TEST_P(EvsHidlTest, CameraOpenAggressive) {
         bool isLogicalCam = false;
         getPhysicalCameraIds(cam.v1.cameraId, isLogicalCam);
         if (mIsHwModule && isLogicalCam) {
-            LOG(INFO) << "Skip a logical device, " << cam.v1.cameraId << " for HW target.";
+            ALOGI("Skip a logical device %s for HW module", cam.v1.cameraId.c_str());
             continue;
         }
 
@@ -352,7 +345,7 @@ TEST_P(EvsHidlTest, CameraOpenAggressive) {
 
         // Verify that this camera self-identifies correctly
         pCam->getCameraInfo_1_1([&cam](CameraDesc desc) {
-                                    LOG(DEBUG) << "Found camera " << desc.v1.cameraId;
+                                    ALOGD("Found camera %s", desc.v1.cameraId.c_str());
                                     EXPECT_EQ(cam.v1.cameraId, desc.v1.cameraId);
                                 }
         );
@@ -381,7 +374,7 @@ TEST_P(EvsHidlTest, CameraOpenAggressive) {
 
         // Verify that the second camera instance self-identifies correctly
         pCam2->getCameraInfo_1_1([&cam](CameraDesc desc) {
-                                     LOG(DEBUG) << "Found camera " << desc.v1.cameraId;
+                                     ALOGD("Found camera %s", desc.v1.cameraId.c_str());
                                      EXPECT_EQ(cam.v1.cameraId, desc.v1.cameraId);
                                  }
         );
@@ -400,7 +393,7 @@ TEST_P(EvsHidlTest, CameraOpenAggressive) {
  * Measure and qualify the stream start up time and streaming frame rate of each reported camera
  */
 TEST_P(EvsHidlTest, CameraStreamPerformance) {
-    LOG(INFO) << "Starting CameraStreamPerformance test";
+    ALOGI("Starting CameraStreamPerformance test");
 
     // Get the camera list
     loadCameraList();
@@ -414,7 +407,7 @@ TEST_P(EvsHidlTest, CameraStreamPerformance) {
         bool isLogicalCam = false;
         auto devices = getPhysicalCameraIds(cam.v1.cameraId, isLogicalCam);
         if (mIsHwModule && isLogicalCam) {
-            LOG(INFO) << "Skip a logical device " << cam.v1.cameraId;
+            ALOGI("Skip a logical device %s", cam.v1.cameraId.c_str());
             continue;
         }
 
@@ -451,10 +444,8 @@ TEST_P(EvsHidlTest, CameraStreamPerformance) {
                   kMaxStreamStartMilliseconds * devices.size());
         printf("%s: Measured time to first frame %0.2f ms\n",
                cam.v1.cameraId.c_str(), timeToFirstFrame * kNanoToMilliseconds);
-        LOG(INFO) << cam.v1.cameraId
-                  << ": Measured time to first frame "
-                  << std::scientific << timeToFirstFrame * kNanoToMilliseconds
-                  << " ms.";
+        ALOGI("%s: Measured time to first frame %0.2f ms",
+              cam.v1.cameraId.c_str(), timeToFirstFrame * kNanoToMilliseconds);
 
         // Check aspect ratio
         unsigned width = 0, height = 0;
@@ -477,9 +468,7 @@ TEST_P(EvsHidlTest, CameraStreamPerformance) {
         nsecs_t runTime = end - firstFrame;
         float framesPerSecond = framesReceived / (runTime * kNanoToSeconds);
         printf("Measured camera rate %3.2f fps\n", framesPerSecond);
-        LOG(INFO) << "Measured camera rate "
-                  << std::scientific << framesPerSecond
-                  << " fps.";
+        ALOGI("Measured camera rate %3.2f fps", framesPerSecond);
         EXPECT_GE(framesPerSecond, kMinimumFramesPerSecond);
 
         // Explicitly release the camera
@@ -494,7 +483,7 @@ TEST_P(EvsHidlTest, CameraStreamPerformance) {
  * than one frame time.  The camera must cleanly skip frames until the client is ready again.
  */
 TEST_P(EvsHidlTest, CameraStreamBuffering) {
-    LOG(INFO) << "Starting CameraStreamBuffering test";
+    ALOGI("Starting CameraStreamBuffering test");
 
     // Arbitrary constant (should be > 1 and less than crazy)
     static const unsigned int kBuffersToHold = 6;
@@ -511,7 +500,7 @@ TEST_P(EvsHidlTest, CameraStreamBuffering) {
         bool isLogicalCam = false;
         getPhysicalCameraIds(cam.v1.cameraId, isLogicalCam);
         if (mIsHwModule && isLogicalCam) {
-            LOG(INFO) << "Skip a logical device " << cam.v1.cameraId << " for HW target.";
+            ALOGI("Skip a logical device %s for HW module", cam.v1.cameraId.c_str());
             continue;
         }
 
@@ -579,7 +568,7 @@ TEST_P(EvsHidlTest, CameraStreamBuffering) {
  * which a human could observe to see the operation of the system on the physical display.
  */
 TEST_P(EvsHidlTest, CameraToDisplayRoundTrip) {
-    LOG(INFO) << "Starting CameraToDisplayRoundTrip test";
+    ALOGI("Starting CameraToDisplayRoundTrip test");
 
     // Get the camera list
     loadCameraList();
@@ -598,14 +587,14 @@ TEST_P(EvsHidlTest, CameraToDisplayRoundTrip) {
     // Request exclusive access to the first EVS display
     sp<IEvsDisplay_1_1> pDisplay = pEnumerator->openDisplay_1_1(targetDisplayId);
     ASSERT_NE(pDisplay, nullptr);
-    LOG(INFO) << "Display " << targetDisplayId << " is alreay in use.";
+    ALOGI("Display %d is in use.", targetDisplayId);
 
     // Get the display descriptor
     pDisplay->getDisplayInfo_1_1([](const auto& config, const auto& state) {
         android::DisplayConfig* pConfig = (android::DisplayConfig*)config.data();
         const auto width = pConfig->resolution.getWidth();
         const auto height = pConfig->resolution.getHeight();
-        LOG(INFO) << "    Resolution: " << width << "x" << height;
+        ALOGI("    Resolution: %dx%d", width, height);
         ASSERT_GT(width, 0);
         ASSERT_GT(height, 0);
 
@@ -618,7 +607,7 @@ TEST_P(EvsHidlTest, CameraToDisplayRoundTrip) {
         bool isLogicalCam = false;
         getPhysicalCameraIds(cam.v1.cameraId, isLogicalCam);
         if (mIsHwModule && isLogicalCam) {
-            LOG(INFO) << "Skip a logical device " << cam.v1.cameraId << " for HW target.";
+            ALOGI("Skip a logical device %s for HW module", cam.v1.cameraId.c_str());
             continue;
         }
 
@@ -678,7 +667,7 @@ TEST_P(EvsHidlTest, CameraToDisplayRoundTrip) {
  * underlying camera.
  */
 TEST_P(EvsHidlTest, MultiCameraStream) {
-    LOG(INFO) << "Starting MultiCameraStream test";
+    ALOGI("Starting MultiCameraStream test");
 
     if (mIsHwModule) {
         // This test is not for HW module implementation.
@@ -746,9 +735,7 @@ TEST_P(EvsHidlTest, MultiCameraStream) {
         nsecs_t runTime = end - firstFrame;
         float framesPerSecond0 = framesReceived0 / (runTime * kNanoToSeconds);
         float framesPerSecond1 = framesReceived1 / (runTime * kNanoToSeconds);
-        LOG(INFO) << "Measured camera rate "
-                  << std::scientific << framesPerSecond0 << " fps and "
-                  << framesPerSecond1 << " fps";
+        ALOGI("Measured camera rate %3.2f fps and %3.2f fps", framesPerSecond0, framesPerSecond1);
         EXPECT_GE(framesPerSecond0, kMinimumFramesPerSecond);
         EXPECT_GE(framesPerSecond1, kMinimumFramesPerSecond);
 
@@ -787,7 +774,7 @@ TEST_P(EvsHidlTest, MultiCameraStream) {
  * Verify that a client can adjust a camera parameter.
  */
 TEST_P(EvsHidlTest, CameraParameter) {
-    LOG(INFO) << "Starting CameraParameter test";
+    ALOGI("Starting CameraParameter test");
 
     // Get the camera list
     loadCameraList();
@@ -804,7 +791,7 @@ TEST_P(EvsHidlTest, CameraParameter) {
         if (isLogicalCam) {
             // TODO(b/145465724): Support camera parameter programming on
             // logical devices.
-            LOG(INFO) << "Skip a logical device " << cam.v1.cameraId;
+            ALOGI("Skip a logical device %s", cam.v1.cameraId.c_str());
             continue;
         }
 
@@ -931,7 +918,7 @@ TEST_P(EvsHidlTest, CameraParameter) {
  * terminates or releases a role.
  */
 TEST_P(EvsHidlTest, CameraMasterRelease) {
-    LOG(INFO) << "Starting CameraMasterRelease test";
+    ALOGI("Starting CameraMasterRelease test");
 
     if (mIsHwModule) {
         // This test is not for HW module implementation.
@@ -952,7 +939,7 @@ TEST_P(EvsHidlTest, CameraMasterRelease) {
         if (isLogicalCam) {
             // TODO(b/145465724): Support camera parameter programming on
             // logical devices.
-            LOG(INFO) << "Skip a logical device " << cam.v1.cameraId;
+            ALOGI("Skip a logical device %s", cam.v1.cameraId.c_str());
             continue;
         }
 
@@ -1025,7 +1012,7 @@ TEST_P(EvsHidlTest, CameraMasterRelease) {
                 EvsEventDesc aTargetEvent;
                 aTargetEvent.aType = EvsEventType::MASTER_RELEASED;
                 if (!frameHandlerNonMaster->waitForEvent(aTargetEvent, aNotification, true)) {
-                    LOG(WARNING) << "A timer is expired before a target event is fired.";
+                    ALOGW("A timer is expired before a target event is fired.");
                 }
 
             }
@@ -1070,7 +1057,7 @@ TEST_P(EvsHidlTest, CameraMasterRelease) {
                 EvsEventDesc aTargetEvent;
                 aTargetEvent.aType = EvsEventType::MASTER_RELEASED;
                 if (!frameHandlerMaster->waitForEvent(aTargetEvent, aNotification, true)) {
-                    LOG(WARNING) << "A timer is expired before a target event is fired.";
+                    ALOGW("A timer is expired before a target event is fired.");
                 }
 
             }
@@ -1112,7 +1099,7 @@ TEST_P(EvsHidlTest, CameraMasterRelease) {
  * camera parameters.
  */
 TEST_P(EvsHidlTest, MultiCameraParameter) {
-    LOG(INFO) << "Starting MultiCameraParameter test";
+    ALOGI("Starting MultiCameraParameter test");
 
     if (mIsHwModule) {
         // This test is not for HW module implementation.
@@ -1133,7 +1120,7 @@ TEST_P(EvsHidlTest, MultiCameraParameter) {
         if (isLogicalCam) {
             // TODO(b/145465724): Support camera parameter programming on
             // logical devices.
-            LOG(INFO) << "Skip a logical device " << cam.v1.cameraId;
+            ALOGI("Skip a logical device %s", cam.v1.cameraId.c_str());
             continue;
         }
 
@@ -1269,7 +1256,7 @@ TEST_P(EvsHidlTest, MultiCameraParameter) {
                     aTargetEvent.payload[0] = static_cast<uint32_t>(cmd);
                     aTargetEvent.payload[1] = val0;
                     if (!frameHandlerMaster->waitForEvent(aTargetEvent, aNotification0)) {
-                        LOG(WARNING) << "A timer is expired before a target event is fired.";
+                        ALOGW("A timer is expired before a target event is fired.");
                     }
                 }
             );
@@ -1286,7 +1273,7 @@ TEST_P(EvsHidlTest, MultiCameraParameter) {
                     aTargetEvent.payload[0] = static_cast<uint32_t>(cmd);
                     aTargetEvent.payload[1] = val0;
                     if (!frameHandlerNonMaster->waitForEvent(aTargetEvent, aNotification1)) {
-                        LOG(WARNING) << "A timer is expired before a target event is fired.";
+                        ALOGW("A timer is expired before a target event is fired.");
                     }
                 }
             );
@@ -1387,7 +1374,7 @@ TEST_P(EvsHidlTest, MultiCameraParameter) {
                 EvsEventDesc aTargetEvent;
                 aTargetEvent.aType = EvsEventType::MASTER_RELEASED;
                 if (!frameHandlerNonMaster->waitForEvent(aTargetEvent, aNotification0, true)) {
-                    LOG(WARNING) << "A timer is expired before a target event is fired.";
+                    ALOGW("A timer is expired before a target event is fired.");
                 }
             }
         );
@@ -1479,7 +1466,7 @@ TEST_P(EvsHidlTest, MultiCameraParameter) {
                     aTargetEvent.payload[0] = static_cast<uint32_t>(cmd);
                     aTargetEvent.payload[1] = val0;
                     if (!frameHandlerMaster->waitForEvent(aTargetEvent, aNotification0)) {
-                        LOG(WARNING) << "A timer is expired before a target event is fired.";
+                        ALOGW("A timer is expired before a target event is fired.");
                     }
                 }
             );
@@ -1495,7 +1482,7 @@ TEST_P(EvsHidlTest, MultiCameraParameter) {
                     aTargetEvent.payload[0] = static_cast<uint32_t>(cmd);
                     aTargetEvent.payload[1] = val0;
                     if (!frameHandlerNonMaster->waitForEvent(aTargetEvent, aNotification1)) {
-                        LOG(WARNING) << "A timer is expired before a target event is fired.";
+                        ALOGW("A timer is expired before a target event is fired.");
                     }
                 }
             );
@@ -1585,7 +1572,7 @@ TEST_P(EvsHidlTest, MultiCameraParameter) {
  * a master role from other EVS clients without the display.
  */
 TEST_P(EvsHidlTest, HighPriorityCameraClient) {
-    LOG(INFO) << "Starting HighPriorityCameraClient test";
+    ALOGI("Starting HighPriorityCameraClient test");
 
     if (mIsHwModule) {
         // This test is not for HW module implementation.
@@ -1700,7 +1687,7 @@ TEST_P(EvsHidlTest, HighPriorityCameraClient) {
                     aTargetEvent.payload[0] = static_cast<uint32_t>(CameraParam::AUTO_FOCUS);
                     aTargetEvent.payload[1] = 0;
                     if (!frameHandler0->waitForEvent(aTargetEvent, aNotification)) {
-                        LOG(WARNING) << "A timer is expired before a target event is fired.";
+                        ALOGW("A timer is expired before a target event is fired.");
                     }
                 }
             );
@@ -1753,7 +1740,7 @@ TEST_P(EvsHidlTest, HighPriorityCameraClient) {
                 aTargetEvent.payload[0] = static_cast<uint32_t>(cam1Cmds[0]);
                 aTargetEvent.payload[1] = val0;
                 if (!frameHandler1->waitForEvent(aTargetEvent, aNotification)) {
-                    LOG(WARNING) << "A timer is expired before a target event is fired.";
+                    ALOGW("A timer is expired before a target event is fired.");
                 }
             }
         );
@@ -1804,7 +1791,7 @@ TEST_P(EvsHidlTest, HighPriorityCameraClient) {
                 EvsEventDesc aTargetEvent;
                 aTargetEvent.aType = EvsEventType::MASTER_RELEASED;
                 if (!frameHandler1->waitForEvent(aTargetEvent, aNotification, true)) {
-                    LOG(WARNING) << "A timer is expired before a target event is fired.";
+                    ALOGW("A timer is expired before a target event is fired.");
                 }
             }
         );
@@ -1846,7 +1833,7 @@ TEST_P(EvsHidlTest, HighPriorityCameraClient) {
                     aTargetEvent.payload[0] = static_cast<uint32_t>(CameraParam::AUTO_FOCUS);
                     aTargetEvent.payload[1] = 0;
                     if (!frameHandler1->waitForEvent(aTargetEvent, aNotification)) {
-                        LOG(WARNING) << "A timer is expired before a target event is fired.";
+                        ALOGW("A timer is expired before a target event is fired.");
                     }
                 }
             );
@@ -1895,7 +1882,7 @@ TEST_P(EvsHidlTest, HighPriorityCameraClient) {
                 aTargetEvent.payload[0] = static_cast<uint32_t>(cam0Cmds[0]);
                 aTargetEvent.payload[1] = val0;
                 if (!frameHandler0->waitForEvent(aTargetEvent, aNotification)) {
-                    LOG(WARNING) << "A timer is expired before a target event is fired.";
+                    ALOGW("A timer is expired before a target event is fired.");
                 }
             }
         );
@@ -1958,7 +1945,7 @@ TEST_P(EvsHidlTest, HighPriorityCameraClient) {
  * configurations from EVS and uses one of them to start a video stream.
  */
 TEST_P(EvsHidlTest, CameraUseStreamConfigToDisplay) {
-    LOG(INFO) << "Starting CameraUseStreamConfigToDisplay test";
+    ALOGI("Starting CameraUseStreamConfigToDisplay test");
 
     // Get the camera list
     loadCameraList();
@@ -2062,7 +2049,7 @@ TEST_P(EvsHidlTest, CameraUseStreamConfigToDisplay) {
  * underlying camera with same configuration.
  */
 TEST_P(EvsHidlTest, MultiCameraStreamUseConfig) {
-    LOG(INFO) << "Starting MultiCameraStream test";
+    ALOGI("Starting MultiCameraStream test");
 
     if (mIsHwModule) {
         // This test is not for HW module implementation.
@@ -2107,8 +2094,9 @@ TEST_P(EvsHidlTest, MultiCameraStreamUseConfig) {
             static_cast<PixelFormat>(HAL_PIXEL_FORMAT_RGBA_8888);
 
         if (!foundCfg) {
-            LOG(INFO) << "Device " << cam.v1.cameraId
-                      << " does not provide a list of supported stream configurations, skipped";
+            ALOGI("Device %s does not provide a list of supported stream configurations, skipped",
+                  cam.v1.cameraId.c_str());
+
             continue;
         }
 
@@ -2174,9 +2162,7 @@ TEST_P(EvsHidlTest, MultiCameraStreamUseConfig) {
         nsecs_t runTime = end - firstFrame;
         float framesPerSecond0 = framesReceived0 / (runTime * kNanoToSeconds);
         float framesPerSecond1 = framesReceived1 / (runTime * kNanoToSeconds);
-        LOG(INFO) << "Measured camera rate "
-                  << std::scientific << framesPerSecond0 << " fps and "
-                  << framesPerSecond1 << " fps";
+        ALOGI("Measured camera rate %3.2f fps and %3.2f fps", framesPerSecond0, framesPerSecond1);
         EXPECT_GE(framesPerSecond0, kMinimumFramesPerSecond);
         EXPECT_GE(framesPerSecond1, kMinimumFramesPerSecond);
 
@@ -2212,7 +2198,7 @@ TEST_P(EvsHidlTest, MultiCameraStreamUseConfig) {
  * identifiers.
  */
 TEST_P(EvsHidlTest, LogicalCameraMetadata) {
-    LOG(INFO) << "Starting LogicalCameraMetadata test";
+    ALOGI("Starting LogicalCameraMetadata test");
 
     // Get the camera list
     loadCameraList();
@@ -2236,7 +2222,7 @@ TEST_P(EvsHidlTest, LogicalCameraMetadata) {
  * can be reopened.
  */
 TEST_P(EvsHidlTest, UltrasonicsArrayOpenClean) {
-    LOG(INFO) << "Starting UltrasonicsArrayOpenClean test";
+    ALOGI("Starting UltrasonicsArrayOpenClean test");
 
     // Get the ultrasonics array list
     loadUltrasonicsArrayList();
@@ -2250,7 +2236,7 @@ TEST_P(EvsHidlTest, UltrasonicsArrayOpenClean) {
 
             // Verify that this ultrasonics array self-identifies correctly
             pUltrasonicsArray->getUltrasonicArrayInfo([&ultraInfo](UltrasonicsArrayDesc desc) {
-                LOG(DEBUG) << "Found ultrasonics array " << ultraInfo.ultrasonicsArrayId;
+                ALOGD("Found ultrasonics array %s", ultraInfo.ultrasonicsArrayId.c_str());
                 EXPECT_EQ(ultraInfo.ultrasonicsArrayId, desc.ultrasonicsArrayId);
             });
 
@@ -2263,14 +2249,14 @@ TEST_P(EvsHidlTest, UltrasonicsArrayOpenClean) {
 
 // Starts a stream and verifies all data received is valid.
 TEST_P(EvsHidlTest, UltrasonicsVerifyStreamData) {
-    LOG(INFO) << "Starting UltrasonicsVerifyStreamData";
+    ALOGI("Starting UltrasonicsVerifyStreamData");
 
     // Get the ultrasonics array list
     loadUltrasonicsArrayList();
 
     // For each ultrasonics array.
     for (auto&& ultraInfo : ultrasonicsArraysInfo) {
-        LOG(DEBUG) << "Testing ultrasonics array: " << ultraInfo.ultrasonicsArrayId;
+        ALOGD("Testing ultrasonics array: %s", ultraInfo.ultrasonicsArrayId.c_str());
 
         sp<IEvsUltrasonicsArray> pUltrasonicsArray =
                 pEnumerator->openUltrasonicsArray(ultraInfo.ultrasonicsArrayId);
@@ -2299,14 +2285,14 @@ TEST_P(EvsHidlTest, UltrasonicsVerifyStreamData) {
 
 // Sets frames in flight before and after start of stream and verfies success.
 TEST_P(EvsHidlTest, UltrasonicsSetFramesInFlight) {
-    LOG(INFO) << "Starting UltrasonicsSetFramesInFlight";
+    ALOGI("Starting UltrasonicsSetFramesInFlight");
 
     // Get the ultrasonics array list
     loadUltrasonicsArrayList();
 
     // For each ultrasonics array.
     for (auto&& ultraInfo : ultrasonicsArraysInfo) {
-        LOG(DEBUG) << "Testing ultrasonics array: " << ultraInfo.ultrasonicsArrayId;
+        ALOGD("Testing ultrasonics array: %s", ultraInfo.ultrasonicsArrayId.c_str());
 
         sp<IEvsUltrasonicsArray> pUltrasonicsArray =
                 pEnumerator->openUltrasonicsArray(ultraInfo.ultrasonicsArrayId);
