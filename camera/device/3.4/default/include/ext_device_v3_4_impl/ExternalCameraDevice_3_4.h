@@ -149,7 +149,6 @@ protected:
     bool mInitialized = false;
     bool mInitFailed = false;
     std::string mCameraId;
-    std::string mDevicePath;
     const ExternalCameraConfig& mCfg;
     std::vector<SupportedV4L2Format> mSupportedFormats;
     CroppingType mCroppingType;
