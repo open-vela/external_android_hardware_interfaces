@@ -128,6 +128,7 @@ TEST_P(VibratorAidl, ValidateEffect) {
             } else {
                 EXPECT_EQ(status.exceptionCode(), Status::EX_UNSUPPORTED_OPERATION)
                         << toString(effect) << " " << toString(strength);
+                EXPECT_EQ(lengthMs, 0);
             }
         }
     }
@@ -156,6 +157,7 @@ TEST_P(VibratorAidl, ValidateEffectWithCallback) {
                 EXPECT_GT(lengthMs, 0);
             } else {
                 EXPECT_EQ(status.exceptionCode(), Status::EX_UNSUPPORTED_OPERATION);
+                EXPECT_EQ(lengthMs, 0);
             }
 
             if (!status.isOk()) continue;
@@ -175,6 +177,7 @@ TEST_P(VibratorAidl, ValidateEffectWithCallbackNotSupported) {
             int lengthMs;
             Status status = vibrator->perform(effect, strength, callback, &lengthMs);
             EXPECT_EQ(Status::EX_UNSUPPORTED_OPERATION, status.exceptionCode());
+            EXPECT_EQ(lengthMs, 0);
         }
     }
 }
