@@ -206,7 +206,7 @@ private:
         InternalPool(VehiclePropertyType type, size_t vectorSize)
             : mPropType(type), mVectorSize(vectorSize) {}
 
-        RecyclableType obtain() override {
+        RecyclableType obtain() {
             return ObjectPool<VehiclePropValue>::obtain();
         }
     protected:
