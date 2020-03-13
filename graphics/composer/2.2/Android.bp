@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.graphics.composer@2.2",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "IComposer.hal",
         "IComposerClient.hal",
@@ -15,3 +18,4 @@ hidl_interface {
     ],
     gen_java: false,
 }
+
