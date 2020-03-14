@@ -27,9 +27,6 @@ cc_binary {
     header_libs: [
         "android.hardware.automotive.can@hidl-utils-lib",
     ],
-    static_libs: [
-        "android.hardware.automotive.can@libcanhaltools",
-    ],
 }
 
 cc_binary {
@@ -45,9 +42,6 @@ cc_binary {
     header_libs: [
         "android.hardware.automotive.can@hidl-utils-lib",
     ],
-    static_libs: [
-        "android.hardware.automotive.can@libcanhaltools",
-    ],
 }
 
 cc_binary {
@@ -59,8 +53,5 @@ cc_binary {
     shared_libs: [
         "android.hardware.automotive.can@1.0",
         "libhidlbase",
-    ],
-    static_libs: [
-        "android.hardware.automotive.can@libcanhaltools",
     ],
 }
