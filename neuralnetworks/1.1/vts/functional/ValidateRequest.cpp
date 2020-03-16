@@ -28,17 +28,15 @@ using V1_0::IPreparedModel;
 using V1_0::Request;
 using V1_0::implementation::ExecutionCallback;
 
-using ExecutionMutation = std::function<void(Request*)>;
-
 ///////////////////////// UTILITY FUNCTIONS /////////////////////////
 
 // Primary validation function. This function will take a valid request, apply a
 // mutation to it to invalidate the request, then pass it to interface calls
-// that use the request.
+// that use the request. Note that the request here is passed by value, and any
+// mutation to the request does not leave this function.
 static void validate(const sp<IPreparedModel>& preparedModel, const std::string& message,
-                     const Request& originalRequest, const ExecutionMutation& mutate) {
-    Request request = originalRequest;
-    mutate(&request);
+                     Request request, const std::function<void(Request*)>& mutation) {
+    mutation(&request);
     SCOPED_TRACE(message + " [execute]");
 
     sp<ExecutionCallback> executionCallback = new ExecutionCallback();

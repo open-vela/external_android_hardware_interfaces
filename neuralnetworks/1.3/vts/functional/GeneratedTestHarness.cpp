@@ -493,13 +493,6 @@ static std::vector<TestBuffer> getOutputBuffers(const TestModel& testModel, cons
     return outputBuffers;
 }
 
-static bool hasZeroSizedOutput(const TestModel& testModel) {
-    return std::any_of(testModel.main.outputIndexes.begin(), testModel.main.outputIndexes.end(),
-                       [&testModel](uint32_t index) {
-                           return testModel.main.operands[index].data.size() == 0;
-                       });
-}
-
 static Return<ErrorStatus> ExecutePreparedModel(const sp<IPreparedModel>& preparedModel,
                                                 const Request& request, MeasureTiming measure,
                                                 const OptionalTimeoutDuration& loopTimeoutDuration,
@@ -633,28 +626,21 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
             ErrorStatus result;
             hidl_handle syncFenceHandle;
             sp<IFencedExecutionCallback> fencedCallback;
-            auto callbackFunc = [&result, &syncFenceHandle, &fencedCallback](
-                                        ErrorStatus error, const hidl_handle& handle,
-                                        const sp<IFencedExecutionCallback>& callback) {
-                result = error;
-                syncFenceHandle = handle;
-                fencedCallback = callback;
-            };
-            Return<void> ret =
-                    preparedModel->executeFenced(request, {}, testConfig.measureTiming, {},
-                                                 loopTimeoutDuration, {}, callbackFunc);
+            Return<void> ret = preparedModel->executeFenced(
+                    request, {}, testConfig.measureTiming, {}, loopTimeoutDuration, {},
+                    [&result, &syncFenceHandle, &fencedCallback](
+                            ErrorStatus error, const hidl_handle& handle,
+                            const sp<IFencedExecutionCallback>& callback) {
+                        result = error;
+                        syncFenceHandle = handle;
+                        fencedCallback = callback;
+                    });
             ASSERT_TRUE(ret.isOk());
             if (result != ErrorStatus::NONE) {
                 ASSERT_EQ(syncFenceHandle.getNativeHandle(), nullptr);
                 ASSERT_EQ(fencedCallback, nullptr);
-                executionStatus = result;
+                executionStatus = ErrorStatus::GENERAL_FAILURE;
             } else if (syncFenceHandle.getNativeHandle()) {
-                // If a sync fence is returned, try start another run waiting for the sync fence.
-                ret = preparedModel->executeFenced(request, {syncFenceHandle},
-                                                   testConfig.measureTiming, {},
-                                                   loopTimeoutDuration, {}, callbackFunc);
-                ASSERT_TRUE(ret.isOk());
-                ASSERT_EQ(result, ErrorStatus::NONE);
                 waitForSyncFence(syncFenceHandle.getNativeHandle()->data[0]);
             }
             if (result == ErrorStatus::NONE) {
@@ -670,7 +656,9 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
         }
     }
 
-    if (testConfig.outputType != OutputType::FULLY_SPECIFIED &&
+    // The driver is allowed to reject executeFenced, and if they do, we should skip.
+    if ((testConfig.outputType != OutputType::FULLY_SPECIFIED ||
+         testConfig.executor == Executor::FENCED) &&
         executionStatus == ErrorStatus::GENERAL_FAILURE) {
         if (skipped != nullptr) {
             *skipped = true;
@@ -696,11 +684,6 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
 
     switch (testConfig.outputType) {
         case OutputType::FULLY_SPECIFIED:
-            if (testConfig.executor == Executor::FENCED && hasZeroSizedOutput(testModel)) {
-                // Executor::FENCED does not support zero-sized output.
-                ASSERT_EQ(ErrorStatus::INVALID_ARGUMENT, executionStatus);
-                return;
-            }
             // If the model output operands are fully specified, outputShapes must be either
             // either empty, or have the same number of elements as the number of outputs.
             ASSERT_EQ(ErrorStatus::NONE, executionStatus);
@@ -708,22 +691,12 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
                         outputShapes.size() == testModel.main.outputIndexes.size());
             break;
         case OutputType::UNSPECIFIED:
-            if (testConfig.executor == Executor::FENCED) {
-                // For Executor::FENCED, the output shape must be fully specified.
-                ASSERT_EQ(ErrorStatus::INVALID_ARGUMENT, executionStatus);
-                return;
-            }
             // If the model output operands are not fully specified, outputShapes must have
             // the same number of elements as the number of outputs.
             ASSERT_EQ(ErrorStatus::NONE, executionStatus);
             ASSERT_EQ(outputShapes.size(), testModel.main.outputIndexes.size());
             break;
         case OutputType::INSUFFICIENT:
-            if (testConfig.executor == Executor::FENCED) {
-                // For Executor::FENCED, the output shape must be fully specified.
-                ASSERT_EQ(ErrorStatus::INVALID_ARGUMENT, executionStatus);
-                return;
-            }
             ASSERT_EQ(ErrorStatus::OUTPUT_INSUFFICIENT_SIZE, executionStatus);
             ASSERT_EQ(outputShapes.size(), testModel.main.outputIndexes.size());
             ASSERT_FALSE(outputShapes[0].isSufficient);
@@ -766,12 +739,12 @@ void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& 
         case TestKind::DYNAMIC_SHAPE: {
             outputTypesList = {OutputType::UNSPECIFIED, OutputType::INSUFFICIENT};
             measureTimingList = {MeasureTiming::NO, MeasureTiming::YES};
-            executorList = {Executor::ASYNC, Executor::SYNC, Executor::BURST, Executor::FENCED};
+            executorList = {Executor::ASYNC, Executor::SYNC, Executor::BURST};
         } break;
         case TestKind::MEMORY_DOMAIN: {
             outputTypesList = {OutputType::FULLY_SPECIFIED};
             measureTimingList = {MeasureTiming::NO};
-            executorList = {Executor::ASYNC, Executor::SYNC, Executor::FENCED};
+            executorList = {Executor::ASYNC, Executor::SYNC};
             memoryType = MemoryType::DEVICE;
         } break;
         case TestKind::FENCED_COMPUTE: {
