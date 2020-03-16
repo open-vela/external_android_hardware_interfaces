@@ -17,6 +17,7 @@
 #ifndef ANDROID_SENSORS_HIDL_ENVIRONMENT_BASE_H
 #define ANDROID_SENSORS_HIDL_ENVIRONMENT_BASE_H
 
+#include <android/hardware/sensors/1.0/types.h>
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -25,54 +26,27 @@
 #include <thread>
 #include <vector>
 
-template <class Event>
 class IEventCallback {
-  public:
+   public:
     virtual ~IEventCallback() = default;
-    virtual void onEvent(const Event& event) = 0;
+    virtual void onEvent(const ::android::hardware::sensors::V1_0::Event& event) = 0;
 };
 
-template <class Event>
 class SensorsHidlEnvironmentBase {
   public:
-    virtual void HidlSetUp() {
-        ASSERT_TRUE(resetHal()) << "could not get hidl service";
-
-        mCollectionEnabled = false;
-        startPollingThread();
-
-        // In case framework just stopped for test and there is sensor events in the pipe,
-        // wait some time for those events to be cleared to avoid them messing up the test.
-        std::this_thread::sleep_for(std::chrono::seconds(3));
-    }
-
-    virtual void HidlTearDown() = 0;
+    using Event = ::android::hardware::sensors::V1_0::Event;
+    virtual void HidlSetUp();
+    virtual void HidlTearDown();
 
     // Get and clear all events collected so far (like "cat" shell command).
     // If output is nullptr, it clears all collected events.
-    void catEvents(std::vector<Event>* output) {
-        std::lock_guard<std::mutex> lock(mEventsMutex);
-        if (output) {
-            output->insert(output->end(), mEvents.begin(), mEvents.end());
-        }
-        mEvents.clear();
-    }
+    void catEvents(std::vector<Event>* output);
 
     // set sensor event collection status
-    void setCollection(bool enable) {
-        std::lock_guard<std::mutex> lock(mEventsMutex);
-        mCollectionEnabled = enable;
-    }
+    void setCollection(bool enable);
 
-    void registerCallback(IEventCallback<Event>* callback) {
-        std::lock_guard<std::mutex> lock(mEventsMutex);
-        mCallback = callback;
-    }
-
-    void unregisterCallback() {
-        std::lock_guard<std::mutex> lock(mEventsMutex);
-        mCallback = nullptr;
-    }
+    void registerCallback(IEventCallback* callback);
+    void unregisterCallback();
 
    protected:
      SensorsHidlEnvironmentBase(const std::string& service_name)
@@ -81,16 +55,7 @@ class SensorsHidlEnvironmentBase {
      }
      virtual ~SensorsHidlEnvironmentBase(){};
 
-     void addEvent(const Event& ev) {
-         std::lock_guard<std::mutex> lock(mEventsMutex);
-         if (mCollectionEnabled) {
-             mEvents.push_back(ev);
-         }
-
-         if (mCallback != nullptr) {
-             mCallback->onEvent(ev);
-         }
-     }
+     void addEvent(const Event& ev);
 
      virtual void startPollingThread() = 0;
      virtual bool resetHal() = 0;
@@ -102,9 +67,9 @@ class SensorsHidlEnvironmentBase {
      std::vector<Event> mEvents;
      std::mutex mEventsMutex;
 
-     IEventCallback<Event>* mCallback;
+     IEventCallback* mCallback;
 
-     GTEST_DISALLOW_COPY_AND_ASSIGN_(SensorsHidlEnvironmentBase<Event>);
+     GTEST_DISALLOW_COPY_AND_ASSIGN_(SensorsHidlEnvironmentBase);
 };
 
 #endif  // ANDROID_SENSORS_HIDL_ENVIRONMENT_BASE_H
