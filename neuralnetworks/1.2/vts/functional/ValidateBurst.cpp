@@ -23,6 +23,7 @@
 #include "ExecutionBurstServer.h"
 #include "GeneratedTestHarness.h"
 #include "TestHarness.h"
+#include "Utils.h"
 
 #include <android-base/logging.h>
 #include <chrono>
@@ -36,8 +37,6 @@ using nn::ResultChannelReceiver;
 using V1_0::ErrorStatus;
 using V1_0::Request;
 using ExecutionBurstCallback = ExecutionBurstController::ExecutionBurstCallback;
-
-using BurstExecutionMutation = std::function<void(std::vector<FmqRequestDatum>*)>;
 
 // This constant value represents the length of an FMQ that is large enough to
 // return a result from a burst execution for all of the generated test cases.
@@ -117,13 +116,13 @@ static void createBurstWithResultChannelLength(
 
 // Primary validation function. This function will take a valid serialized
 // request, apply a mutation to it to invalidate the serialized request, then
-// pass it to interface calls that use the serialized request.
+// pass it to interface calls that use the serialized request. Note that the
+// serialized request here is passed by value, and any mutation to the
+// serialized request does not leave this function.
 static void validate(RequestChannelSender* sender, ResultChannelReceiver* receiver,
-                     const std::string& message,
-                     const std::vector<FmqRequestDatum>& originalSerialized,
-                     const BurstExecutionMutation& mutate) {
-    std::vector<FmqRequestDatum> serialized = originalSerialized;
-    mutate(&serialized);
+                     const std::string& message, std::vector<FmqRequestDatum> serialized,
+                     const std::function<void(std::vector<FmqRequestDatum>*)>& mutation) {
+    mutation(&serialized);
 
     // skip if packet is too large to send
     if (serialized.size() > kExecutionBurstChannelLength) {
@@ -297,7 +296,8 @@ static void validateBurstFmqLength(const sp<IPreparedModel>& preparedModel,
     // collect serialized result by running regular burst
     const auto [nRegular, outputShapesRegular, timingRegular, fallbackRegular] =
             controllerRegular->compute(request, MeasureTiming::NO, keys);
-    const ErrorStatus statusRegular = nn::legacyConvertResultCodeToErrorStatus(nRegular);
+    const ErrorStatus statusRegular =
+            nn::convertToV1_0(nn::convertResultCodeToErrorStatus(nRegular));
     EXPECT_FALSE(fallbackRegular);
 
     // skip test if regular burst output isn't useful for testing a failure
@@ -313,7 +313,7 @@ static void validateBurstFmqLength(const sp<IPreparedModel>& preparedModel,
     // large enough to return the serialized result
     const auto [nSmall, outputShapesSmall, timingSmall, fallbackSmall] =
             controllerSmall->compute(request, MeasureTiming::NO, keys);
-    const ErrorStatus statusSmall = nn::legacyConvertResultCodeToErrorStatus(nSmall);
+    const ErrorStatus statusSmall = nn::convertToV1_0(nn::convertResultCodeToErrorStatus(nSmall));
     EXPECT_NE(ErrorStatus::NONE, statusSmall);
     EXPECT_EQ(0u, outputShapesSmall.size());
     EXPECT_TRUE(badTiming(timingSmall));
