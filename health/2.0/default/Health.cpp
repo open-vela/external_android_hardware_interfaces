@@ -17,10 +17,14 @@
 #include <android-base/logging.h>
 
 #include <android-base/file.h>
+#include <android/hardware/health/2.0/types.h>
 #include <health2/Health.h>
 
 #include <hal_conversion.h>
 #include <hidl/HidlTransportSupport.h>
+
+using HealthInfo_1_0 = android::hardware::health::V1_0::HealthInfo;
+using android::hardware::health::V1_0::hal_conversion::convertFromHealthInfo;
 
 extern void healthd_battery_update_internal(bool);
 
@@ -46,7 +50,7 @@ Return<Result> Health::registerCallback(const sp<IHealthInfoCallback>& callback)
     }
 
     {
-        std::lock_guard<std::mutex> _lock(callbacks_lock_);
+        std::lock_guard<decltype(callbacks_lock_)> lock(callbacks_lock_);
         callbacks_.push_back(callback);
         // unlock
     }
@@ -58,14 +62,14 @@ Return<Result> Health::registerCallback(const sp<IHealthInfoCallback>& callback)
         // ignore the error
     }
 
-    return update();
+    return updateAndNotify(callback);
 }
 
 bool Health::unregisterCallbackInternal(const sp<IBase>& callback) {
     if (callback == nullptr) return false;
 
     bool removed = false;
-    std::lock_guard<std::mutex> _lock(callbacks_lock_);
+    std::lock_guard<decltype(callbacks_lock_)> lock(callbacks_lock_);
     for (auto it = callbacks_.begin(); it != callbacks_.end();) {
         if (interfacesEqual(*it, callback)) {
             it = callbacks_.erase(it);
@@ -142,18 +146,39 @@ Return<void> Health::getChargeStatus(getChargeStatus_cb _hidl_cb) {
 Return<Result> Health::update() {
     if (!healthd_mode_ops || !healthd_mode_ops->battery_update) {
         LOG(WARNING) << "health@2.0: update: not initialized. "
-                     << "update() should not be called in charger / recovery.";
+                     << "update() should not be called in charger";
         return Result::UNKNOWN;
     }
 
     // Retrieve all information and call healthd_mode_ops->battery_update, which calls
     // notifyListeners.
-    bool chargerOnline = battery_monitor_->update();
+    battery_monitor_->updateValues();
+    const HealthInfo_1_0& health_info = battery_monitor_->getHealthInfo_1_0();
+    struct BatteryProperties props;
+    convertFromHealthInfo(health_info, &props);
+    bool log = (healthd_board_battery_update(&props) == 0);
+    if (log) {
+        battery_monitor_->logValues();
+    }
+    healthd_mode_ops->battery_update(&props);
+    bool chargerOnline = battery_monitor_->isChargerOnline();
 
     // adjust uevent / wakealarm periods
     healthd_battery_update_internal(chargerOnline);
 
     return Result::SUCCESS;
+}
+
+Return<Result> Health::updateAndNotify(const sp<IHealthInfoCallback>& callback) {
+    std::lock_guard<decltype(callbacks_lock_)> lock(callbacks_lock_);
+    std::vector<sp<IHealthInfoCallback>> storedCallbacks{std::move(callbacks_)};
+    callbacks_.clear();
+    if (callback != nullptr) {
+        callbacks_.push_back(callback);
+    }
+    Return<Result> result = update();
+    callbacks_ = std::move(storedCallbacks);
+    return result;
 }
 
 void Health::notifyListeners(HealthInfo* healthInfo) {
@@ -175,7 +200,7 @@ void Health::notifyListeners(HealthInfo* healthInfo) {
     healthInfo->diskStats = stats;
     healthInfo->storageInfos = info;
 
-    std::lock_guard<std::mutex> _lock(callbacks_lock_);
+    std::lock_guard<decltype(callbacks_lock_)> lock(callbacks_lock_);
     for (auto it = callbacks_.begin(); it != callbacks_.end();) {
         auto ret = (*it)->healthInfoChanged(*healthInfo);
         if (!ret.isOk() && ret.isDeadObject()) {
@@ -233,11 +258,8 @@ Return<void> Health::getDiskStats(getDiskStats_cb _hidl_cb) {
 Return<void> Health::getHealthInfo(getHealthInfo_cb _hidl_cb) {
     using android::hardware::health::V1_0::hal_conversion::convertToHealthInfo;
 
-    update();
-    struct android::BatteryProperties p = getBatteryProperties(battery_monitor_.get());
-
-    V1_0::HealthInfo batteryInfo;
-    convertToHealthInfo(&p, batteryInfo);
+    updateAndNotify(nullptr);
+    HealthInfo healthInfo = battery_monitor_->getHealthInfo_2_0();
 
     std::vector<StorageInfo> info;
     get_storage_info(info);
@@ -253,8 +275,6 @@ Return<void> Health::getHealthInfo(getHealthInfo_cb _hidl_cb) {
         currentAvg = static_cast<int32_t>(prop.valueInt64);
     }
 
-    V2_0::HealthInfo healthInfo = {};
-    healthInfo.legacy = std::move(batteryInfo);
     healthInfo.batteryCurrentAverage = currentAvg;
     healthInfo.diskStats = stats;
     healthInfo.storageInfos = info;
