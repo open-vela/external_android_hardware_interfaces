@@ -24,9 +24,6 @@ TEST_F(RadioHidlTest_v1_1, setSimCardPower_1_1) {
     /* Record the sim card state for the testing environment */
     CardState cardStateForTest = cardStatus.cardState;
 
-#if 0
-    /* This test has to be removed for Japan Model.
-     * After "setSimCardPower power down", Japan model can not "setSimCardPower power up" */
     /* Test setSimCardPower power down */
     serial = GetRandomSerialNumber();
     radio_v1_1->setSimCardPower_1_1(serial, CardPowerState::POWER_DOWN);
@@ -59,7 +56,6 @@ TEST_F(RadioHidlTest_v1_1, setSimCardPower_1_1) {
     ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_1->rspInfo.error,
                                  {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED,
                                   RadioError::INVALID_ARGUMENTS, RadioError::RADIO_NOT_AVAILABLE}));
-#endif
 
     /**
      * If the sim card status for the testing environment is PRESENT,

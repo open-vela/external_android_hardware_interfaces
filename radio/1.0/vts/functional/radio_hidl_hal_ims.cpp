@@ -80,9 +80,6 @@ TEST_F(RadioHidlTest, getFacilityLockForApp) {
 /*
  * Test IRadio.setFacilityLockForApp() for the response returned.
  */
-/*
- * TODO(b/145710242) this is commented out because it breaks on TSTS devices on Q. The test
- * can be safely enabled for future devices).
 TEST_F(RadioHidlTest, setFacilityLockForApp) {
     serial = GetRandomSerialNumber();
     std::string facility = "";
@@ -103,7 +100,6 @@ TEST_F(RadioHidlTest, setFacilityLockForApp) {
                                      CHECK_GENERAL_ERROR));
     }
 }
-*/
 
 /*
  * Test IRadio.setBarringPassword() for the response returned.
@@ -131,9 +127,6 @@ TEST_F(RadioHidlTest, setBarringPassword) {
 /*
  * Test IRadio.getClip() for the response returned.
  */
-/*
- * TODO(b/145710242) this is commented out because it breaks on TSTS devices on Q. The test
- * can be safely enabled for future devices).
 TEST_F(RadioHidlTest, getClip) {
     serial = GetRandomSerialNumber();
 
@@ -148,7 +141,6 @@ TEST_F(RadioHidlTest, getClip) {
                                      CHECK_GENERAL_ERROR));
     }
 }
-*/
 
 /*
  * Test IRadio.setSuppServiceNotifications() for the response returned.
