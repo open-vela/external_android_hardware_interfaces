@@ -41,7 +41,6 @@ constexpr int kIfaceInvalidChannel = 567;
 class HostapdHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        stopSupplicantIfNeeded();
         startHostapdAndWaitForHidlService();
         hostapd_ = getHostapd();
         ASSERT_NE(hostapd_.get(), nullptr);
@@ -139,12 +138,9 @@ TEST(HostapdHidlTestNoFixture, Create) {
  * Access point creation should pass.
  */
 TEST_F(HostapdHidlTest, AddPskAccessPointWithAcs) {
-    if (!is_1_1(hostapd_)) {
-        auto status = HIDL_INVOKE(hostapd_, addAccessPoint,
-                                  getIfaceParamsWithAcs(), getPskNwParams());
-        // TODO: b/140172237, fix this in R
-        // EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
-    }
+    auto status = HIDL_INVOKE(hostapd_, addAccessPoint, getIfaceParamsWithAcs(),
+                              getPskNwParams());
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -152,12 +148,9 @@ TEST_F(HostapdHidlTest, AddPskAccessPointWithAcs) {
  * Access point creation should pass.
  */
 TEST_F(HostapdHidlTest, AddOpenAccessPointWithAcs) {
-    if (!is_1_1(hostapd_)) {
-        auto status = HIDL_INVOKE(hostapd_, addAccessPoint,
-                                  getIfaceParamsWithAcs(), getOpenNwParams());
-        // TODO: b/140172237, fix this in R
-        // EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
-    }
+    auto status = HIDL_INVOKE(hostapd_, addAccessPoint, getIfaceParamsWithAcs(),
+                              getOpenNwParams());
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -165,11 +158,9 @@ TEST_F(HostapdHidlTest, AddOpenAccessPointWithAcs) {
  * Access point creation should pass.
  */
 TEST_F(HostapdHidlTest, AddPskAccessPointWithoutAcs) {
-    if (!is_1_1(hostapd_)) {
-        auto status = HIDL_INVOKE(hostapd_, addAccessPoint,
-                                  getIfaceParamsWithoutAcs(), getPskNwParams());
-        EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
-    }
+    auto status = HIDL_INVOKE(hostapd_, addAccessPoint,
+                              getIfaceParamsWithoutAcs(), getPskNwParams());
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -177,12 +168,9 @@ TEST_F(HostapdHidlTest, AddPskAccessPointWithoutAcs) {
  * Access point creation should pass.
  */
 TEST_F(HostapdHidlTest, AddOpenAccessPointWithoutAcs) {
-    if (!is_1_1(hostapd_)) {
-        auto status =
-            HIDL_INVOKE(hostapd_, addAccessPoint, getIfaceParamsWithoutAcs(),
-                        getOpenNwParams());
-        EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
-    }
+    auto status = HIDL_INVOKE(hostapd_, addAccessPoint,
+                              getIfaceParamsWithoutAcs(), getOpenNwParams());
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -190,17 +178,12 @@ TEST_F(HostapdHidlTest, AddOpenAccessPointWithoutAcs) {
  * Access point creation & removal should pass.
  */
 TEST_F(HostapdHidlTest, RemoveAccessPointWithAcs) {
-    if (!is_1_1(hostapd_)) {
-        auto status = HIDL_INVOKE(hostapd_, addAccessPoint,
-                                  getIfaceParamsWithAcs(), getPskNwParams());
-        // TODO: b/140172237, fix this in R
-        /*
-        EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
-        status =
-            HIDL_INVOKE(hostapd_, removeAccessPoint, getPrimaryWlanIfaceName());
-        EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
-        */
-    }
+    auto status = HIDL_INVOKE(hostapd_, addAccessPoint, getIfaceParamsWithAcs(),
+                              getPskNwParams());
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
+    status =
+        HIDL_INVOKE(hostapd_, removeAccessPoint, getPrimaryWlanIfaceName());
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -208,14 +191,12 @@ TEST_F(HostapdHidlTest, RemoveAccessPointWithAcs) {
  * Access point creation & removal should pass.
  */
 TEST_F(HostapdHidlTest, RemoveAccessPointWithoutAcs) {
-    if (!is_1_1(hostapd_)) {
-        auto status = HIDL_INVOKE(hostapd_, addAccessPoint,
-                                  getIfaceParamsWithoutAcs(), getPskNwParams());
-        EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
-        status =
-            HIDL_INVOKE(hostapd_, removeAccessPoint, getPrimaryWlanIfaceName());
-        EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
-    }
+    auto status = HIDL_INVOKE(hostapd_, addAccessPoint,
+                              getIfaceParamsWithoutAcs(), getPskNwParams());
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
+    status =
+        HIDL_INVOKE(hostapd_, removeAccessPoint, getPrimaryWlanIfaceName());
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -223,12 +204,10 @@ TEST_F(HostapdHidlTest, RemoveAccessPointWithoutAcs) {
  * Access point creation should fail.
  */
 TEST_F(HostapdHidlTest, AddPskAccessPointWithInvalidChannel) {
-    if (!is_1_1(hostapd_)) {
-        auto status =
-            HIDL_INVOKE(hostapd_, addAccessPoint,
-                        getIfaceParamsWithInvalidChannel(), getPskNwParams());
-        EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
-    }
+    auto status =
+        HIDL_INVOKE(hostapd_, addAccessPoint,
+                    getIfaceParamsWithInvalidChannel(), getPskNwParams());
+    EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /**
@@ -236,12 +215,10 @@ TEST_F(HostapdHidlTest, AddPskAccessPointWithInvalidChannel) {
  * Access point creation should fail.
  */
 TEST_F(HostapdHidlTest, AddInvalidPskAccessPointWithoutAcs) {
-    if (!is_1_1(hostapd_)) {
-        auto status =
-            HIDL_INVOKE(hostapd_, addAccessPoint, getIfaceParamsWithoutAcs(),
-                        getInvalidPskNwParams());
-        EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
-    }
+    auto status =
+        HIDL_INVOKE(hostapd_, addAccessPoint, getIfaceParamsWithoutAcs(),
+                    getInvalidPskNwParams());
+    EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
 }
 
 /*
