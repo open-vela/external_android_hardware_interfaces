@@ -185,12 +185,7 @@ TEST_P(ValidationTest, Test) {
     }
 }
 
-INSTANTIATE_GENERATED_TEST(ValidationTest, [](const std::string& testName) {
-    // Skip validation for the "inputs_as_internal" and "all_tensors_as_inputs"
-    // generated tests.
-    return testName.find("inputs_as_internal") == std::string::npos &&
-           testName.find("all_tensors_as_inputs") == std::string::npos;
-});
+INSTANTIATE_GENERATED_TEST(ValidationTest, [](const test_helper::TestModel&) { return true; });
 
 sp<IPreparedModel> getPreparedModel_1_3(const sp<PreparedModelCallback>& callback) {
     sp<V1_0::IPreparedModel> preparedModelV1_0 = callback->getPreparedModel();
