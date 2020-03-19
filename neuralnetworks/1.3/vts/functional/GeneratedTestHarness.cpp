@@ -891,10 +891,6 @@ std::vector<NamedModel> getNamedModels(const FilterFn& filter) {
     return TestModelManager::get().getTestModels(filter);
 }
 
-std::vector<NamedModel> getNamedModels(const FilterNameFn& filter) {
-    return TestModelManager::get().getTestModels(filter);
-}
-
 std::string printGeneratedTest(const testing::TestParamInfo<GeneratedTestParam>& info) {
     const auto& [namedDevice, namedModel] = info.param;
     return gtestCompliantName(getName(namedDevice) + "_" + getName(namedModel));
@@ -956,7 +952,8 @@ INSTANTIATE_GENERATED_TEST(FencedComputeTest,
                            [](const TestModel& testModel) { return !testModel.expectFailure; });
 
 INSTANTIATE_GENERATED_TEST(QuantizationCouplingTest, [](const TestModel& testModel) {
-    return testModel.hasQuant8CoupledOperands() && testModel.main.operations.size() == 1;
+    return !testModel.expectFailure && testModel.hasQuant8CoupledOperands() &&
+           testModel.main.operations.size() == 1;
 });
 
 INSTANTIATE_GENERATED_TEST(InfiniteLoopTimeoutTest, [](const TestModel& testModel) {
