@@ -16,12 +16,11 @@
 cc_defaults {
     name: "android.hardware.sensors@2.X-multihal-defaults",
     header_libs: [
-        "android.hardware.sensors@2.X-multihal.header",
+        "android.hardware.sensors@2.0-multihal.header",
     ],
     shared_libs: [
         "android.hardware.sensors@1.0",
         "android.hardware.sensors@2.0",
-        "android.hardware.sensors@2.1",
         "libbase",
         "libcutils",
         "libfmq",
@@ -33,23 +32,8 @@ cc_defaults {
     cflags: ["-DLOG_TAG=\"SensorsMultiHal\""],
 }
 
-// Header target for sub-HALs that implement the Multi-HAL 2.0 interface
 cc_library_headers {
     name: "android.hardware.sensors@2.0-multihal.header",
-    vendor_available: true,
-    export_include_dirs: ["include/V2_0"],
-}
-
-// Header target for sub-HALs that implement the Multi-HAL 2.1 interface
-cc_library_headers {
-    name: "android.hardware.sensors@2.1-multihal.header",
-    vendor_available: true,
-    export_include_dirs: ["include/V2_1"],
-}
-
-// Header target for Multi-HAL so it can reference both 2.0/2.1 headers
-cc_library_headers {
-    name: "android.hardware.sensors@2.X-multihal.header",
     vendor_available: true,
     export_include_dirs: ["include"],
 }
@@ -65,7 +49,7 @@ cc_library_static {
     ],
     vendor_available: true,
     export_header_lib_headers: [
-        "android.hardware.sensors@2.X-multihal.header",
+        "android.hardware.sensors@2.0-multihal.header",
     ],
 }
 
@@ -77,9 +61,6 @@ cc_library_shared {
     ],
     srcs: [
         "ScopedWakelock.cpp",
-    ],
-    header_libs: [
-        "android.hardware.sensors@2.0-multihal.header",
     ],
     vendor_available: true,
     export_header_lib_headers: [
@@ -97,9 +78,6 @@ cc_test_library {
         "ScopedWakelock.cpp",
     ],
     vendor_available: true,
-    header_libs: [
-        "android.hardware.sensors@2.0-multihal.header",
-    ],
     export_header_lib_headers: [
         "android.hardware.sensors@2.0-multihal.header",
     ],

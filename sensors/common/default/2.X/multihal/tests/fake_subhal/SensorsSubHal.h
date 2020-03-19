@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include "V2_0/SubHal.h"
+#include "SubHal.h"
 
 #include "Sensor.h"
 

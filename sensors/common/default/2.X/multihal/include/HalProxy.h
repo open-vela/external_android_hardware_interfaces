@@ -16,9 +16,8 @@
 
 #pragma once
 
-#include "V2_0/ScopedWakelock.h"
-#include "V2_0/SubHal.h"
-#include "V2_1/SubHal.h"
+#include "ScopedWakelock.h"
+#include "SubHal.h"
 
 #include <android/hardware/sensors/2.0/ISensors.h>
 #include <android/hardware/sensors/2.0/types.h>
