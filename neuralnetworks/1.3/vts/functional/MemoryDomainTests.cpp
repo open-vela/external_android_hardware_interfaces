@@ -864,9 +864,6 @@ class MemoryDomainExecutionTest
             case Executor::SYNC:
                 EXPECT_EQ(executeSync(preparedModel, request), expectedStatus);
                 break;
-            case Executor::FENCED:
-                EXPECT_EQ(executeFenced(preparedModel, request), expectedStatus);
-                break;
             default:
                 ASSERT_TRUE(false);
         }
@@ -915,38 +912,7 @@ class MemoryDomainExecutionTest
         return executionStatus;
     }
 
-    ErrorStatus executeFenced(const sp<IPreparedModel>& preparedModel, const Request& request) {
-        ErrorStatus executionStatus;
-        hidl_handle syncFenceHandle;
-        sp<IFencedExecutionCallback> fencedCallback;
-        const auto callbackFunc = [&executionStatus, &syncFenceHandle, &fencedCallback](
-                                          ErrorStatus error, const hidl_handle& handle,
-                                          const sp<IFencedExecutionCallback>& callback) {
-            executionStatus = error;
-            syncFenceHandle = handle;
-            fencedCallback = callback;
-        };
-        Return<void> ret = preparedModel->executeFenced(request, {}, MeasureTiming::NO, {}, {}, {},
-                                                        callbackFunc);
-        EXPECT_TRUE(ret.isOk());
-        if (executionStatus != ErrorStatus::NONE) {
-            EXPECT_EQ(syncFenceHandle.getNativeHandle(), nullptr);
-            EXPECT_EQ(fencedCallback, nullptr);
-            return executionStatus;
-        }
-        if (syncFenceHandle.getNativeHandle()) {
-            waitForSyncFence(syncFenceHandle.getNativeHandle()->data[0]);
-        }
-        EXPECT_NE(fencedCallback, nullptr);
-        ret = fencedCallback->getExecutionInfo(
-                [&executionStatus](ErrorStatus error, Timing t, Timing) {
-                    executionStatus = error;
-                    EXPECT_EQ(UINT64_MAX, t.timeOnDevice);
-                    EXPECT_EQ(UINT64_MAX, t.timeInDriver);
-                });
-        EXPECT_TRUE(ret.isOk());
-        return executionStatus;
-    }
+    // TODO(xusongw): Add executeFenced.
 
     const Executor kExecutor = std::get<Executor>(GetParam());
 };
@@ -1145,9 +1111,6 @@ TEST_P(MemoryDomainExecutionTest, SameRequestMultipleRoles) {
 }
 
 TEST_P(MemoryDomainExecutionTest, InvalidDimensions) {
-    // FENCED execution does not support dynamic shape.
-    if (kExecutor == Executor::FENCED) return;
-
     TestOperand testOperand = kTestOperand;
     testOperand.dimensions[0] = 0;
     auto preparedModel = createConvPreparedModel(testOperand);
@@ -1185,7 +1148,7 @@ TEST_P(MemoryDomainExecutionTest, InvalidDimensions) {
                   ErrorStatus::GENERAL_FAILURE);
 }
 
-const auto kExecutorChoices = testing::Values(Executor::ASYNC, Executor::SYNC, Executor::FENCED);
+const auto kExecutorChoices = testing::Values(Executor::ASYNC, Executor::SYNC);
 
 std::string printMemoryDomainExecutionTest(
         const testing::TestParamInfo<MemoryDomainExecutionTestParam>& info) {

@@ -78,6 +78,13 @@ enum class MemoryType { SHARED, DEVICE };
 
 enum class IOType { INPUT, OUTPUT };
 
+static void waitForSyncFence(int syncFd) {
+    constexpr int kInfiniteTimeout = -1;
+    ASSERT_GT(syncFd, 0);
+    int r = sync_wait(syncFd, kInfiniteTimeout);
+    ASSERT_GE(r, 0);
+}
+
 struct TestConfig {
     Executor executor;
     MeasureTiming measureTiming;
@@ -267,13 +274,6 @@ void copyTestBuffers(const std::vector<const TestBuffer*>& buffers, uint8_t* out
 }
 
 }  // namespace
-
-void waitForSyncFence(int syncFd) {
-    constexpr int kInfiniteTimeout = -1;
-    ASSERT_GT(syncFd, 0);
-    int r = sync_wait(syncFd, kInfiniteTimeout);
-    ASSERT_GE(r, 0);
-}
 
 Model createModel(const TestModel& testModel) {
     uint32_t constCopySize = 0;
