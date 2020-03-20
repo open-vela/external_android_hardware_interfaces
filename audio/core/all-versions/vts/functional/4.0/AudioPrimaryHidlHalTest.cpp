@@ -244,13 +244,7 @@ TEST_P(OutputStreamTest, updateSourceMetadata) {
 TEST_P(AudioPrimaryHidlTest, setMode) {
     doc::test("Make sure setMode always succeeds if mode is valid and fails otherwise");
     // Test Invalid values
-#if MAJOR_VERSION >= 6
-    int maxMode = int(AudioMode::CALL_SCREEN);
-#else
-    int maxMode = int(AudioMode::IN_COMMUNICATION);
-#endif
-
-    for (int mode : {-2, -1, maxMode + 1}) {
+    for (int mode : {-2, -1, int(AudioMode::IN_COMMUNICATION) + 1}) {
         ASSERT_RESULT(Result::INVALID_ARGUMENTS, getDevice()->setMode(AudioMode(mode)))
                 << "mode=" << mode;
     }
@@ -259,10 +253,6 @@ TEST_P(AudioPrimaryHidlTest, setMode) {
                            AudioMode::NORMAL /* Make sure to leave the test in normal mode */}) {
         ASSERT_OK(getDevice()->setMode(mode)) << "mode=" << toString(mode);
     }
-    // AudioMode::CALL_SCREEN as support is optional
-#if MAJOR_VERSION >= 6
-    ASSERT_RESULT(okOrNotSupportedOrInvalidArgs, getDevice()->setMode(AudioMode::CALL_SCREEN));
-#endif
 }
 
 TEST_P(AudioPrimaryHidlTest, setBtHfpSampleRate) {
