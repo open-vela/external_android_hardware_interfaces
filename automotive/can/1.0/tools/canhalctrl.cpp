@@ -15,9 +15,11 @@
  */
 
 #include <android-base/logging.h>
+#include <android-base/parseint.h>
 #include <android/hardware/automotive/can/1.0/ICanController.h>
 #include <android/hidl/manager/1.2/IServiceManager.h>
 #include <hidl-utils/hidl-utils.h>
+#include <libcanhaltools/libcanhaltools.h>
 
 #include <iostream>
 #include <string>
@@ -41,34 +43,17 @@ static void usage() {
     std::cerr << " bus name - name under which ICanBus will be published" << std::endl;
 }
 
-static hidl_vec<hidl_string> getControlServices() {
-    auto manager = hidl::manager::V1_2::IServiceManager::getService();
-    hidl_vec<hidl_string> services;
-    manager->listManifestByInterface(ICanController::descriptor, hidl_utils::fill(&services));
-    if (services.size() == 0) {
-        std::cerr << "No ICanController services registered (missing privileges?)" << std::endl;
-        exit(-1);
-    }
-    return services;
-}
-
-static bool isSupported(sp<ICanController> ctrl, ICanController::InterfaceType iftype) {
-    hidl_vec<ICanController::InterfaceType> supported;
-    if (!ctrl->getSupportedInterfaceTypes(hidl_utils::fill(&supported)).isOk()) return false;
-    return supported.contains(iftype);
-}
-
 static int up(const std::string& busName, ICanController::InterfaceType type,
               const std::string& interface, uint32_t bitrate) {
     bool anySupported = false;
-    for (auto&& service : getControlServices()) {
+    for (auto&& service : libcanhaltools::getControlServices()) {
         auto ctrl = ICanController::getService(service);
         if (ctrl == nullptr) {
             std::cerr << "Couldn't open ICanController/" << service;
             continue;
         }
 
-        if (!isSupported(ctrl, type)) continue;
+        if (!libcanhaltools::isSupported(ctrl, type)) continue;
         anySupported = true;
 
         ICanController::BusConfig config = {};
@@ -88,8 +73,8 @@ static int up(const std::string& busName, ICanController::InterfaceType type,
             slcan.ttyname(interface);
             config.interfaceId.slcan(slcan);
         } else if (type == ICanController::InterfaceType::INDEXED) {
-            auto idx = std::stol(interface);
-            if (idx < 0 || idx > UINT8_MAX) {
+            unsigned idx;
+            if (!android::base::ParseUint(interface, &idx, unsigned(UINT8_MAX))) {
                 std::cerr << "Interface index out of range: " << idx;
                 return -1;
             }
@@ -111,7 +96,7 @@ static int up(const std::string& busName, ICanController::InterfaceType type,
 }
 
 static int down(const std::string& busName) {
-    for (auto&& service : getControlServices()) {
+    for (auto&& service : libcanhaltools::getControlServices()) {
         auto ctrl = ICanController::getService(service);
         if (ctrl == nullptr) continue;
 
@@ -162,9 +147,11 @@ static int main(int argc, char* argv[]) {
             return -1;
         }
 
-        long long bitrate = 0;
-        if (argc == 4) {
-            bitrate = std::stoll(argv[3]);
+        uint32_t bitrate = 0;
+        if (argc == 4 && !android::base::ParseUint(argv[3], &bitrate)) {
+            std::cerr << "Invalid bitrate!" << std::endl;
+            usage();
+            return -1;
         }
 
         return up(busName, *type, interface, bitrate);
