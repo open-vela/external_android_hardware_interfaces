@@ -14,26 +14,21 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef ANDROID_HARDWARE_AUDIO_CORE_2_0_ENVIRONMENT_TEARDOWN_H
+#define ANDROID_HARDWARE_AUDIO_CORE_2_0_ENVIRONMENT_TEARDOWN_H
 
-#include <aidl/android/hardware/rebootescrow/BnRebootEscrow.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
+#include <gtest/gtest.h>
 
-namespace aidl {
-namespace android {
-namespace hardware {
-namespace rebootescrow {
+#include "utility/EnvironmentTearDown.h"
 
-class RebootEscrow : public BnRebootEscrow {
-  public:
-    explicit RebootEscrow(const std::string& devicePath) : devicePath_(devicePath) {}
-    ndk::ScopedAStatus storeKey(const std::vector<int8_t>& kek) override;
-    ndk::ScopedAStatus retrieveKey(std::vector<int8_t>* _aidl_return) override;
-
+class Environment : public ::android::hardware::audio::common::test::utility::EnvironmentTearDown,
+                    public ::testing::VtsHalHidlTargetTestEnvBase {
   private:
-    const std::string devicePath_;
+    void HidlTearDown() override {
+        executeAllTearDowns();
+        VtsHalHidlTargetTestEnvBase::HidlTearDown();
+    }
 };
 
-}  // namespace rebootescrow
-}  // namespace hardware
-}  // namespace android
-}  // namespace aidl
+#endif  // ANDROID_HARDWARE_AUDIO_CORE_2_0_ENVIRONMENT_TEARDOWN_H
