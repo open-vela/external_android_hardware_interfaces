@@ -123,9 +123,11 @@ std::string printNeuralnetworksHidlTest(
 INSTANTIATE_DEVICE_TEST(NeuralnetworksHidlTest);
 
 // Forward declaration from ValidateModel.cpp
-void validateModel(const sp<IDevice>& device, const Model& model);
+void validateModel(const sp<IDevice>& device, const Model& model,
+                   bool prepareModelDeadlineSupported);
 // Forward declaration from ValidateRequest.cpp
-void validateRequest(const sp<IPreparedModel>& preparedModel, const Request& request);
+void validateRequest(const sp<IPreparedModel>& preparedModel, const Request& request,
+                     bool executionDeadlineSupported);
 // Forward declaration from ValidateRequest.cpp
 void validateRequestFailure(const sp<IPreparedModel>& preparedModel, const Request& request);
 // Forward declaration from ValidateBurst.cpp
@@ -145,15 +147,17 @@ void validateExecuteFenced(const sp<IPreparedModel>& preparedModel, const Reques
     ASSERT_TRUE(ret_null.isOk());
 }
 
-void validateEverything(const sp<IDevice>& device, const Model& model, const Request& request) {
-    validateModel(device, model);
+void validateEverything(const sp<IDevice>& device, const Model& model, const Request& request,
+                        std::pair<bool, bool> supportsDeadlines) {
+    const auto [prepareModelDeadlineSupported, executionDeadlineSupported] = supportsDeadlines;
+    validateModel(device, model, prepareModelDeadlineSupported);
 
     // Create IPreparedModel.
     sp<IPreparedModel> preparedModel;
     createPreparedModel(device, model, &preparedModel);
     if (preparedModel == nullptr) return;
 
-    validateRequest(preparedModel, request);
+    validateRequest(preparedModel, request, executionDeadlineSupported);
     validateExecuteFenced(preparedModel, request);
 
     // TODO(butlermichael): Check if we need to test burst in V1_3 if the interface remains V1_2.
@@ -162,10 +166,12 @@ void validateEverything(const sp<IDevice>& device, const Model& model, const Req
     validateBurst(preparedModel, request10);
 }
 
-void validateFailure(const sp<IDevice>& device, const Model& model, const Request& request) {
+void validateFailure(const sp<IDevice>& device, const Model& model, const Request& request,
+                     std::pair<bool, bool> supportsDeadlines) {
+    const bool prepareModelDeadlineSupported = supportsDeadlines.first;
     // TODO: Should this always succeed?
     //       What if the invalid input is part of the model (i.e., a parameter).
-    validateModel(device, model);
+    validateModel(device, model, prepareModelDeadlineSupported);
 
     // Create IPreparedModel.
     sp<IPreparedModel> preparedModel;
@@ -177,40 +183,19 @@ void validateFailure(const sp<IDevice>& device, const Model& model, const Reques
 
 TEST_P(ValidationTest, Test) {
     const Model model = createModel(kTestModel);
-    ExecutionContext context;
-    const Request request = nn::convertToV1_3(context.createRequest(kTestModel));
+    const Request request = nn::convertToV1_3(createRequest(kTestModel));
     if (kTestModel.expectFailure) {
-        validateFailure(kDevice, model, request);
+        validateFailure(kDevice, model, request, mSupportsDeadlines);
     } else {
-        validateEverything(kDevice, model, request);
+        validateEverything(kDevice, model, request, mSupportsDeadlines);
     }
 }
 
-INSTANTIATE_GENERATED_TEST(ValidationTest, [](const std::string& testName) {
-    // Skip validation for the "inputs_as_internal" and "all_tensors_as_inputs"
-    // generated tests.
-    return testName.find("inputs_as_internal") == std::string::npos &&
-           testName.find("all_tensors_as_inputs") == std::string::npos;
-});
+INSTANTIATE_GENERATED_TEST(ValidationTest, [](const test_helper::TestModel&) { return true; });
 
 sp<IPreparedModel> getPreparedModel_1_3(const sp<PreparedModelCallback>& callback) {
     sp<V1_0::IPreparedModel> preparedModelV1_0 = callback->getPreparedModel();
     return IPreparedModel::castFrom(preparedModelV1_0).withDefault(nullptr);
-}
-
-std::string toString(Executor executor) {
-    switch (executor) {
-        case Executor::ASYNC:
-            return "ASYNC";
-        case Executor::SYNC:
-            return "SYNC";
-        case Executor::BURST:
-            return "BURST";
-        case Executor::FENCED:
-            return "FENCED";
-        default:
-            CHECK(false);
-    }
 }
 
 }  // namespace android::hardware::neuralnetworks::V1_3::vts::functional
