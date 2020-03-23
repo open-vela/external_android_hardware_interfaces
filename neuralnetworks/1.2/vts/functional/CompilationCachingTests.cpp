@@ -32,6 +32,7 @@
 #include "GeneratedTestHarness.h"
 #include "MemoryUtils.h"
 #include "TestHarness.h"
+#include "Utils.h"
 #include "VtsHalNeuralnetworks.h"
 
 // Forward declaration of the mobilenet generated test models in

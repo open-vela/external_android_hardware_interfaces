@@ -14,14 +14,10 @@
  * limitations under the License.
  */
 
-#pragma once
-
 #include <android-base/logging.h>
 
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
-#include <utils/Log.h>
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -55,7 +51,7 @@ using ::android::hardware::Void;
 #define RADIO_SERVICE_NAME "slot1"
 
 class RadioHidlTest_v1_5;
-extern ::android::hardware::radio::V1_5::CardStatus cardStatus;
+extern ::android::hardware::radio::V1_4::CardStatus cardStatus;
 
 /* Callback class for radio response v1_5 */
 class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioResponse {
@@ -556,10 +552,6 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
             const RadioResponseInfo& info,
             const android::hardware::radio::V1_5::SetupDataCallResult& dcResponse);
 
-    Return<void> getDataCallListResponse_1_5(
-            const RadioResponseInfo& info,
-            const hidl_vec<::android::hardware::radio::V1_5::SetupDataCallResult>& dcResponse);
-
     Return<void> setInitialAttachApnResponse_1_5(const RadioResponseInfo& info);
 
     Return<void> setDataProfileResponse_1_5(const RadioResponseInfo& info);
@@ -595,10 +587,6 @@ class RadioResponse_v1_5 : public ::android::hardware::radio::V1_5::IRadioRespon
     Return<void> supplySimDepersonalizationResponse(
             const RadioResponseInfo& info,
             ::android::hardware::radio::V1_5::PersoSubstate persoType, int32_t remainingRetries);
-
-    Return<void> getIccCardStatusResponse_1_5(
-            const RadioResponseInfo& info,
-            const ::android::hardware::radio::V1_5::CardStatus& card_status);
 };
 
 /* Callback class for radio indication */
@@ -621,10 +609,6 @@ class RadioIndication_v1_5 : public ::android::hardware::radio::V1_5::IRadioIndi
             RadioIndicationType type,
             const ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::CellInfo>&
                     records);
-
-    Return<void> dataCallListChanged_1_5(
-            RadioIndicationType type,
-            const hidl_vec<::android::hardware::radio::V1_5::SetupDataCallResult>& dcList);
 
     /* 1.4 Api */
     Return<void> currentEmergencyNumberList(
@@ -815,8 +799,24 @@ class RadioIndication_v1_5 : public ::android::hardware::radio::V1_5::IRadioIndi
             /*barringInfos*/);
 };
 
+// Test environment for Radio HIDL HAL.
+class RadioHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+  public:
+    // get the test environment singleton
+    static RadioHidlEnvironment* Instance() {
+        static RadioHidlEnvironment* instance = new RadioHidlEnvironment;
+        return instance;
+    }
+    virtual void registerTestServices() override {
+        registerTestService<::android::hardware::radio::V1_5::IRadio>();
+    }
+
+  private:
+    RadioHidlEnvironment() {}
+};
+
 // The main test class for Radio HIDL.
-class RadioHidlTest_v1_5 : public ::testing::TestWithParam<std::string> {
+class RadioHidlTest_v1_5 : public ::testing::VtsHalHidlTargetTestBase {
   protected:
     std::mutex mtx_;
     std::condition_variable cv_;
