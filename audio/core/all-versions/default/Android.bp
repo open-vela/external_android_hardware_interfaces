@@ -18,17 +18,15 @@ cc_defaults {
 
     export_include_dirs: ["include"],
 
-    static_libs: [
-        "libaudiofoundation",
-    ],
-
     shared_libs: [
+        "libaudiofoundation",
         "libbase",
         "libcutils",
         "libfmq",
         "libhardware",
         "libhidlbase",
         "liblog",
+        "libmedia_helper",
         "libutils",
         "android.hardware.audio.common-util",
     ],
@@ -39,10 +37,6 @@ cc_defaults {
         "libaudio_system_headers",
         "libhardware_headers",
         "libmedia_headers",
-    ],
-
-    whole_static_libs: [
-        "libmedia_helper",
     ],
 }
 
@@ -58,7 +52,7 @@ cc_library_shared {
         "-DMAJOR_VERSION=2",
         "-DMINOR_VERSION=0",
         "-include common/all-versions/VersionMacro.h",
-    ],
+    ]
 }
 
 cc_library_shared {
@@ -74,7 +68,7 @@ cc_library_shared {
         "-DMAJOR_VERSION=4",
         "-DMINOR_VERSION=0",
         "-include common/all-versions/VersionMacro.h",
-    ],
+    ]
 }
 
 cc_library_shared {
@@ -89,7 +83,7 @@ cc_library_shared {
         "-DMAJOR_VERSION=5",
         "-DMINOR_VERSION=0",
         "-include common/all-versions/VersionMacro.h",
-    ],
+    ]
 }
 
 cc_library_shared {
@@ -104,5 +98,5 @@ cc_library_shared {
         "-DMAJOR_VERSION=6",
         "-DMINOR_VERSION=0",
         "-include common/all-versions/VersionMacro.h",
-    ],
+    ]
 }
