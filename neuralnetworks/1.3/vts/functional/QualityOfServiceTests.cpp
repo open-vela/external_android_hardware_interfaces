@@ -214,8 +214,7 @@ static MaybeResults executeSynchronously(const sp<IPreparedModel>& preparedModel
 }
 
 void runExecutionTest(const sp<IPreparedModel>& preparedModel, const TestModel& testModel,
-                      const Request& request, const ExecutionContext& context, bool synchronous,
-                      DeadlineBoundType deadlineBound) {
+                      const Request& request, bool synchronous, DeadlineBoundType deadlineBound) {
     const ExecutionFunction execute = synchronous ? executeSynchronously : executeAsynchronously;
     const auto deadline = makeDeadline(deadlineBound);
 
@@ -262,7 +261,7 @@ void runExecutionTest(const sp<IPreparedModel>& preparedModel, const TestModel& 
     // Retrieve execution results.
     ASSERT_TRUE(nn::compliantWithV1_0(request));
     const V1_0::Request request10 = nn::convertToV1_0(request);
-    const std::vector<TestBuffer> outputs = context.getOutputBuffers(request10);
+    const std::vector<TestBuffer> outputs = getOutputBuffers(request10);
 
     // We want "close-enough" results.
     if (status == ErrorStatus::NONE) {
@@ -271,11 +270,10 @@ void runExecutionTest(const sp<IPreparedModel>& preparedModel, const TestModel& 
 }
 
 void runExecutionTests(const sp<IPreparedModel>& preparedModel, const TestModel& testModel,
-                       const Request& request, const ExecutionContext& context) {
+                       const Request& request) {
     for (bool synchronous : {false, true}) {
         for (auto deadlineBound : deadlineBounds) {
-            runExecutionTest(preparedModel, testModel, request, context, synchronous,
-                             deadlineBound);
+            runExecutionTest(preparedModel, testModel, request, synchronous, deadlineBound);
         }
     }
 }
@@ -293,9 +291,8 @@ void runTests(const sp<IDevice>& device, const TestModel& testModel) {
     if (preparedModel == nullptr) return;
 
     // run execution tests
-    ExecutionContext context;
-    const Request request = nn::convertToV1_3(context.createRequest(testModel));
-    runExecutionTests(preparedModel, testModel, request, context);
+    const Request request = nn::convertToV1_3(createRequest(testModel));
+    runExecutionTests(preparedModel, testModel, request);
 }
 
 class DeadlineTest : public GeneratedTestBase {};
