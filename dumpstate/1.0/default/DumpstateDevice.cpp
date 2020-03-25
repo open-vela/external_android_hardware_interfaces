@@ -51,8 +51,9 @@ Return<void> DumpstateDevice::dumpstateBoard(const hidl_handle& handle) {
     ALOGI("Dumpstate HIDL not provided by device\n");
     dprintf(fd, "Dumpstate HIDL not provided by device; providing bogus data.\n");
 
-    // Shows an example on how to use the libdumpstateutil API.
-    DumpFileToFd(fd, "cmdline", "/proc/self/cmdline");
+    // Shows some examples on how to use the libdumpstateutil API.
+    RunCommandToFd(fd, "DATE", {"/vendor/bin/date"});
+    DumpFileToFd(fd, "HOSTS", "/system/etc/hosts");
 
     return Void();
 }
