@@ -14,15 +14,14 @@
 // limitations under the License.
 //
 
-cc_library_static {
-    name: "android.hardware.automotive.can@1.x-config-format",
-    defaults: ["android.hardware.automotive.can@defaults"],
-    proto: {
-        export_proto_headers: true,
-        type: "full",
-    },
-    strip: {
-        keep_symbols: true,
-    },
-    srcs: ["canbus_config.proto"],
+filegroup {
+    name: "media_omx_audio_res",
+    path: "res",
+    srcs: ["res/*hz*"],
+}
+
+filegroup {
+    name: "media_omx_video_res",
+    path: "res",
+    srcs: ["res/*fps*"],
 }

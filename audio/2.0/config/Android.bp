@@ -14,21 +14,7 @@
 // limitations under the License.
 //
 
-cc_binary {
-    name: "canhalconfigurator",
-    init_rc: ["canhalconfigurator.rc"],
-    defaults: ["android.hardware.automotive.can@defaults"],
-    srcs: [
-        "canhalconfigurator.cpp",
-        "canprototools.cpp",
-    ],
-    shared_libs: [
-        "android.hardware.automotive.can@1.0",
-        "libhidlbase",
-        "libprotobuf-cpp-full",
-    ],
-    static_libs: [
-        "android.hardware.automotive.can@1.x-config-format",
-        "android.hardware.automotive.can@libcanhaltools",
-    ],
+filegroup {
+    name: "audio_policy_configuration_V2_0",
+    srcs: ["audio_policy_configuration.xsd"],
 }
