@@ -40,8 +40,20 @@
         </interface>
     </hal>
     <hal format="hidl" optional="true">
-        <name>android.hardware.automotive.evs</name>
+        <name>android.hardware.automotive.can</name>
         <version>1.0</version>
+        <interface>
+            <name>ICanBus</name>
+            <regex-instance>.*</regex-instance>
+        </interface>
+        <interface>
+            <name>ICanController</name>
+            <regex-instance>.*</regex-instance>
+        </interface>
+    </hal>
+    <hal format="hidl" optional="true">
+        <name>android.hardware.automotive.evs</name>
+        <version>1.0-1</version>
         <interface>
             <name>IEvsEnumerator</name>
             <instance>default</instance>
@@ -197,12 +209,6 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.gnss</name>
-        <!--
-         - Both versions are listed here as a workaround for libvintf since 2.0 extends 1.1.
-         - Devices launched with Q must support gnss@2.0, see VtsTrebleVendorVintfTest
-         - test DeviceManifestTest#GnssHalVersionCompatibility.
-        -->
-        <version>1.1</version>
         <version>2.0-1</version>
         <interface>
             <name>IGnss</name>
@@ -211,7 +217,7 @@
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.graphics.allocator</name>
-        <!-- TODO(b/136016160): deprecating 2.0. New devices should not use this -->
+        <!-- New, non-Go devices should use 4.0, tested in vts_treble_vintf_vendor_test -->
         <version>2.0</version>
         <version>3.0</version>
         <version>4.0</version>
@@ -230,7 +236,7 @@
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.graphics.mapper</name>
-        <!-- TODO(b/136016160): deprecating 2.1. New devices should not use this -->
+        <!-- New, non-Go devices should use 4.0, tested in vts_treble_vintf_vendor_test -->
         <version>2.1</version>
         <version>3.0</version>
         <version>4.0</version>
@@ -458,7 +464,6 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.thermal</name>
-        <version>1.0</version>
         <version>2.0</version>
         <interface>
             <name>IThermal</name>
@@ -478,6 +483,14 @@
         <version>1.0</version>
         <interface>
             <name>ITvInput</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="hidl" optional="true">
+        <name>android.hardware.tv.tuner</name>
+        <version>1.0</version>
+        <interface>
+            <name>ITuner</name>
             <instance>default</instance>
         </interface>
     </hal>

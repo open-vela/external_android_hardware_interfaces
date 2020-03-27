@@ -15,9 +15,8 @@
  */
 #define LOG_TAG "DefaultVehicleHal_v2_0"
 
-#include <android-base/macros.h>
 #include <android/log.h>
-#include <sys/system_properties.h>
+#include <android-base/macros.h>
 
 #include "EmulatedVehicleHal.h"
 #include "JsonFakeValueGenerator.h"
@@ -127,7 +126,9 @@ VehicleHal::VehiclePropValuePtr EmulatedVehicleHal::get(
             *outStatus = v != nullptr ? StatusCode::OK : StatusCode::INVALID_ARG;
             break;
     }
-
+    if (v.get()) {
+        v->timestamp = elapsedRealtimeNano();
+    }
     return v;
 }
 
@@ -187,14 +188,6 @@ StatusCode EmulatedVehicleHal::set(const VehiclePropValue& propValue) {
         return StatusCode::NOT_AVAILABLE;
     }
 
-    if (mInEmulator && propValue.prop == toInt(VehicleProperty::DISPLAY_BRIGHTNESS)) {
-        // Emulator does not support remote brightness control, b/139959479
-        // do not send it down so that it does not bring unnecessary property change event
-        // return other error code, such NOT_AVAILABLE, causes Emulator to be freezing
-        // TODO: return StatusCode::NOT_AVAILABLE once the above issue is fixed
-        return StatusCode::OK;
-    }
-
     /**
      * After checking all conditions, such as the property is available, a real vhal will
      * sent the events to Car ECU to take actions.
@@ -218,17 +211,6 @@ static bool isDiagnosticProperty(VehiclePropConfig propConfig) {
             return true;
     }
     return false;
-}
-
-// determine if it's running inside Android Emulator
-static bool isInEmulator() {
-    char propValue[PROP_VALUE_MAX];
-    bool isEmulator = (__system_property_get("ro.kernel.qemu", propValue) != 0);
-    if (!isEmulator) {
-        isEmulator = (__system_property_get("ro.hardware", propValue) != 0) &&
-                     (!strcmp(propValue, "ranchu") || !strcmp(propValue, "goldfish"));
-    }
-    return isEmulator;
 }
 
 // Parse supported properties list and generate vector of property values to hold current values.
@@ -281,8 +263,6 @@ void EmulatedVehicleHal::onCreate() {
     }
     initObd2LiveFrame(*mPropStore->getConfigOrDie(OBD2_LIVE_FRAME));
     initObd2FreezeFrame(*mPropStore->getConfigOrDie(OBD2_FREEZE_FRAME));
-    mInEmulator = isInEmulator();
-    ALOGD("mInEmulator=%s", mInEmulator ? "true" : "false");
 }
 
 std::vector<VehiclePropConfig> EmulatedVehicleHal::listProperties()  {
@@ -305,6 +285,7 @@ void EmulatedVehicleHal::onContinuousPropertyTimer(const std::vector<int32_t>& p
         }
 
         if (v.get()) {
+            v->timestamp = elapsedRealtimeNano();
             doHalEvent(std::move(v));
         }
     }
