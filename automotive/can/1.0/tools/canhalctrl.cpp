@@ -15,7 +15,6 @@
  */
 
 #include <android-base/logging.h>
-#include <android-base/parseint.h>
 #include <android/hardware/automotive/can/1.0/ICanController.h>
 #include <android/hidl/manager/1.2/IServiceManager.h>
 #include <hidl-utils/hidl-utils.h>
@@ -73,8 +72,8 @@ static int up(const std::string& busName, ICanController::InterfaceType type,
             slcan.ttyname(interface);
             config.interfaceId.slcan(slcan);
         } else if (type == ICanController::InterfaceType::INDEXED) {
-            unsigned idx;
-            if (!android::base::ParseUint(interface, &idx, unsigned(UINT8_MAX))) {
+            auto idx = std::stol(interface);
+            if (idx < 0 || idx > UINT8_MAX) {
                 std::cerr << "Interface index out of range: " << idx;
                 return -1;
             }
@@ -147,11 +146,9 @@ static int main(int argc, char* argv[]) {
             return -1;
         }
 
-        uint32_t bitrate = 0;
-        if (argc == 4 && !android::base::ParseUint(argv[3], &bitrate)) {
-            std::cerr << "Invalid bitrate!" << std::endl;
-            usage();
-            return -1;
+        long long bitrate = 0;
+        if (argc == 4) {
+            bitrate = std::stoll(argv[3]);
         }
 
         return up(busName, *type, interface, bitrate);
