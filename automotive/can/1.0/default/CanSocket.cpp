@@ -67,7 +67,7 @@ CanSocket::~CanSocket() {
 bool CanSocket::send(const struct canfd_frame& frame) {
     const auto res = write(mSocket.get(), &frame, CAN_MTU);
     if (res < 0) {
-        PLOG(DEBUG) << "CanSocket send failed";
+        LOG(DEBUG) << "CanSocket send failed: " << errno;
         return false;
     }
     if (res != CAN_MTU) {
@@ -102,7 +102,7 @@ void CanSocket::readerThread() {
         const auto sel = selectRead(mSocket, kReadPooling);
         if (sel == 0) continue;  // timeout
         if (sel == -1) {
-            PLOG(ERROR) << "Select failed";
+            LOG(ERROR) << "Select failed: " << errno;
             break;
         }
 
@@ -130,7 +130,7 @@ void CanSocket::readerThread() {
             if (errno == EAGAIN) continue;
 
             errnoCopy = errno;
-            PLOG(ERROR) << "Failed to read CAN packet";
+            LOG(ERROR) << "Failed to read CAN packet: " << strerror(errno) << " (" << errno << ")";
             break;
         }
 
