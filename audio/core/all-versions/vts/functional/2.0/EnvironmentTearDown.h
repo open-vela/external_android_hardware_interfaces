@@ -14,18 +14,21 @@
  * limitations under the License.
  */
 
-package android.hardware.keymaster@4.1;
+#ifndef ANDROID_HARDWARE_AUDIO_CORE_2_0_ENVIRONMENT_TEARDOWN_H
+#define ANDROID_HARDWARE_AUDIO_CORE_2_0_ENVIRONMENT_TEARDOWN_H
 
-import @4.0::ErrorCode;
-import @4.0::OperationHandle;
+#include <VtsHalHidlTargetTestEnvBase.h>
+#include <gtest/gtest.h>
 
-/**
- * IOperation represents an in-progress IKeymasterDevice operation.  It is returned by
- * IKeymasterDevice.beginOp().
- */
-interface IOperation {
-    /**
-     * Returns the operation handle to be used as an authentication challenge.
-     */
-    getOperationChallenge() generates (ErrorCode error, OperationHandle operation);
+#include "utility/EnvironmentTearDown.h"
+
+class Environment : public ::android::hardware::audio::common::test::utility::EnvironmentTearDown,
+                    public ::testing::VtsHalHidlTargetTestEnvBase {
+  private:
+    void HidlTearDown() override {
+        executeAllTearDowns();
+        VtsHalHidlTargetTestEnvBase::HidlTearDown();
+    }
 };
+
+#endif  // ANDROID_HARDWARE_AUDIO_CORE_2_0_ENVIRONMENT_TEARDOWN_H
