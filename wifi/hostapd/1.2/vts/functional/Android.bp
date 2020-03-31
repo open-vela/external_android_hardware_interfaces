@@ -18,6 +18,7 @@ cc_test {
     name: "VtsHalWifiHostapdV1_2TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
     srcs: [
+        "VtsHalWifiHostapdV1_2TargetTest.cpp",
         "hostapd_hidl_test.cpp",
     ],
     static_libs: [
