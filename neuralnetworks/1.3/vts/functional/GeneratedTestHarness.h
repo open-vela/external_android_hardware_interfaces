@@ -36,11 +36,13 @@ class GeneratedTestBase : public testing::TestWithParam<GeneratedTestParam> {
     void SetUp() override;
     const sp<IDevice> kDevice = getData(std::get<NamedDevice>(GetParam()));
     const test_helper::TestModel& kTestModel = *getData(std::get<NamedModel>(GetParam()));
-    std::pair<bool, bool> mSupportsDeadlines;
 };
 
 using FilterFn = std::function<bool(const test_helper::TestModel&)>;
 std::vector<NamedModel> getNamedModels(const FilterFn& filter);
+
+using FilterNameFn = std::function<bool(const std::string&)>;
+std::vector<NamedModel> getNamedModels(const FilterNameFn& filter);
 
 std::string printGeneratedTest(const testing::TestParamInfo<GeneratedTestParam>& info);
 
@@ -70,11 +72,15 @@ enum class TestKind {
     // Tests if quantized model with TENSOR_QUANT8_ASYMM produces the same result
     // (OK/SKIPPED/FAILED) as the model with all such tensors converted to
     // TENSOR_QUANT8_ASYMM_SIGNED.
-    QUANTIZATION_COUPLING
+    QUANTIZATION_COUPLING,
+    // Runs a test model and verifies that MISSED_DEADLINE_* is returned.
+    INTINITE_LOOP_TIMEOUT
 };
 
 void EvaluatePreparedModel(const sp<IDevice>& device, const sp<IPreparedModel>& preparedModel,
                            const test_helper::TestModel& testModel, TestKind testKind);
+
+void waitForSyncFence(int syncFd);
 
 }  // namespace android::hardware::neuralnetworks::V1_3::vts::functional
 

@@ -16,7 +16,7 @@
 
 #include <radio_hidl_hal_utils_v1_5.h>
 
-::android::hardware::radio::V1_4::CardStatus cardStatus;
+::android::hardware::radio::V1_5::CardStatus cardStatus;
 
 RadioResponse_v1_5::RadioResponse_v1_5(RadioHidlTest_v1_5& parent) : parent_v1_5(parent) {}
 
@@ -829,9 +829,8 @@ Return<void> RadioResponse_v1_5::getCellInfoListResponse_1_4(
 
 Return<void> RadioResponse_v1_5::getIccCardStatusResponse_1_4(
         const RadioResponseInfo& info,
-        const ::android::hardware::radio::V1_4::CardStatus& card_status) {
+        const ::android::hardware::radio::V1_4::CardStatus& /*card_status*/) {
     rspInfo = info;
-    cardStatus = card_status;
     parent_v1_5.notify(info.serial);
     return Void();
 }
@@ -944,6 +943,14 @@ Return<void> RadioResponse_v1_5::setupDataCallResponse_1_5(
     return Void();
 }
 
+Return<void> RadioResponse_v1_5::getDataCallListResponse_1_5(
+        const RadioResponseInfo& info,
+        const hidl_vec<::android::hardware::radio::V1_5::SetupDataCallResult>& /* dcResponse */) {
+    rspInfo = info;
+    parent_v1_5.notify(info.serial);
+    return Void();
+}
+
 Return<void> RadioResponse_v1_5::setInitialAttachApnResponse_1_5(const RadioResponseInfo& info) {
     rspInfo = info;
     parent_v1_5.notify(info.serial);
@@ -970,8 +977,11 @@ Return<void> RadioResponse_v1_5::setIndicationFilterResponse_1_5(const RadioResp
 
 Return<void> RadioResponse_v1_5::getBarringInfoResponse(
         const RadioResponseInfo& info,
+        const ::android::hardware::radio::V1_5::CellIdentity& cellIdentity,
         const ::android::hardware::hidl_vec<::android::hardware::radio::V1_5::BarringInfo>&
-        /*barringInfos*/) {
+                barringInfos) {
+    this->barringCellIdentity = cellIdentity;
+    this->barringInfos = barringInfos;
     rspInfo = info;
     parent_v1_5.notify(info.serial);
     return Void();
@@ -1016,5 +1026,14 @@ Return<void> RadioResponse_v1_5::supplySimDepersonalizationResponse(
         const RadioResponseInfo& /*info*/,
         ::android::hardware::radio::V1_5::PersoSubstate /*persoType*/,
         int32_t /*remainingRetries*/) {
+    return Void();
+}
+
+Return<void> RadioResponse_v1_5::getIccCardStatusResponse_1_5(
+        const RadioResponseInfo& info,
+        const ::android::hardware::radio::V1_5::CardStatus& card_status) {
+    rspInfo = info;
+    cardStatus = card_status;
+    parent_v1_5.notify(info.serial);
     return Void();
 }
