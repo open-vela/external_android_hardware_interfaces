@@ -29,9 +29,6 @@
 #include <android/hidl/allocator/1.0/IAllocator.h>
 #include <android/hidl/memory/1.0/IMapper.h>
 #include <android/hidl/memory/1.0/IMemory.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 
 using ::android::hardware::media::omx::V1_0::IOmx;
 using ::android::hardware::media::omx::V1_0::IOmxObserver;
@@ -49,16 +46,28 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::hidl_string;
 using ::android::sp;
 
+#include <VtsHalHidlTargetTestBase.h>
 #include <getopt.h>
 #include <media_hidl_test_common.h>
 
-class MasterHidlTest : public ::testing::TestWithParam<std::string> {
-  public:
+static ComponentTestEnvironment* gEnv = nullptr;
+
+class MasterHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+   private:
+    typedef ::testing::VtsHalHidlTargetTestBase Super;
+   public:
     virtual void SetUp() override {
-        omxStore = IOmxStore::getService(GetParam());
+        Super::SetUp();
+        omxStore = nullptr;
+        omxStore = Super::getService<IOmxStore>();
         ASSERT_NE(omxStore, nullptr);
-        omx = IOmx::getService(GetParam());
+        omx = nullptr;
+        omx = omxStore->getOmx(gEnv->getInstance());
         ASSERT_NE(omx, nullptr);
+    }
+
+    virtual void TearDown() override {
+        Super::TearDown();
     }
 
     sp<IOmxStore> omxStore;
@@ -80,19 +89,8 @@ void displayComponentInfo(hidl_vec<IOmx::ComponentInfo>& nodeList) {
     }
 }
 
-// Make sure IOmx and IOmxStore have the same set of instances.
-TEST(MasterHidlTest, instanceMatchValidation) {
-    auto omxInstances = android::hardware::getAllHalInstanceNames(IOmx::descriptor);
-    auto omxStoreInstances = android::hardware::getAllHalInstanceNames(IOmxStore::descriptor);
-    ASSERT_EQ(omxInstances.size(), omxInstances.size());
-    for (const std::string& omxInstance : omxInstances) {
-        EXPECT_TRUE(std::find(omxStoreInstances.begin(), omxStoreInstances.end(), omxInstance) !=
-                    omxStoreInstances.end());
-    }
-}
-
 // list service attributes
-TEST_P(MasterHidlTest, ListServiceAttr) {
+TEST_F(MasterHidlTest, ListServiceAttr) {
     description("list service attributes");
     android::hardware::media::omx::V1_0::Status status;
     hidl_vec<IOmxStore::Attribute> attributes;
@@ -109,7 +107,7 @@ TEST_P(MasterHidlTest, ListServiceAttr) {
 }
 
 // get node prefix
-TEST_P(MasterHidlTest, getNodePrefix) {
+TEST_F(MasterHidlTest, getNodePrefix) {
     description("get node prefix");
     hidl_string prefix;
     omxStore->getNodePrefix(
@@ -118,7 +116,7 @@ TEST_P(MasterHidlTest, getNodePrefix) {
 }
 
 // list roles
-TEST_P(MasterHidlTest, ListRoles) {
+TEST_F(MasterHidlTest, ListRoles) {
     description("list roles");
     hidl_vec<IOmxStore::RoleInfo> roleList;
     omxStore->listRoles([&roleList](hidl_vec<IOmxStore::RoleInfo> const& _nl) {
@@ -128,7 +126,7 @@ TEST_P(MasterHidlTest, ListRoles) {
 }
 
 // list components and roles.
-TEST_P(MasterHidlTest, ListNodes) {
+TEST_F(MasterHidlTest, ListNodes) {
     description("enumerate component and roles");
     android::hardware::media::omx::V1_0::Status status;
     hidl_vec<IOmx::ComponentInfo> nodeList;
@@ -176,7 +174,15 @@ TEST_P(MasterHidlTest, ListNodes) {
     EXPECT_TRUE(isPass);
 }
 
-INSTANTIATE_TEST_CASE_P(
-        PerInstance, MasterHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IOmxStore::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+    gEnv = new ComponentTestEnvironment();
+    ::testing::AddGlobalTestEnvironment(gEnv);
+    ::testing::InitGoogleTest(&argc, argv);
+    gEnv->init(&argc, argv);
+    int status = gEnv->initFromOptions(argc, argv);
+    if (status == 0) {
+        status = RUN_ALL_TESTS();
+        ALOGI("Test result = %d", status);
+    }
+    return status;
+}
