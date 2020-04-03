@@ -28,10 +28,7 @@ cc_defaults {
         "android.hardware.automotive.can@vts-utils-lib",
         "libgmock",
     ],
-    test_suites: [
-        "general-tests",
-        "vts",
-    ],
+    test_suites: ["general-tests"],
 }
 
 cc_test {
