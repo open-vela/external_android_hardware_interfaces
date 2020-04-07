@@ -35,19 +35,13 @@ class AudioControl : public IAudioControl {
                                     hidl_bitfield<AudioFocusChange> focusChange);
     Return<void> setBalanceTowardRight(float value) override;
     Return<void> setFadeTowardFront(float value) override;
-    Return<void> debug(const hidl_handle& fd, const hidl_vec<hidl_string>& options) override;
 
     // Implementation details
     AudioControl();
 
   private:
     sp<IFocusListener> mFocusListener;
-
-    static bool isValidValue(float value);
-
-    void cmdDump(int fd, const hidl_vec<hidl_string>& options);
-    void cmdHelp(int fd) const;
-    void dump(int fd);
+    static bool isValidValue(float value) { return (value > 1.0f) || (value < -1.0f); }
 };
 
 }  // namespace android::hardware::automotive::audiocontrol::V2_0::implementation
