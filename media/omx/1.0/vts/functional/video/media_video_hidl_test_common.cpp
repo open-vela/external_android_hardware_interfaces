@@ -44,6 +44,7 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::hidl_string;
 using ::android::sp;
 
+#include <VtsHalHidlTargetTestBase.h>
 #include <hidlmemory/mapping.h>
 #include <media/hardware/HardwareAPI.h>
 #include <media_hidl_test_common.h>
