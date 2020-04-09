@@ -17,6 +17,54 @@
 // pull in all the <= 5.0 tests
 #include "5.0/AudioPrimaryHidlHalTest.cpp"
 
+const std::vector<DeviceParameter>& getDeviceParametersForFactoryTests() {
+    static std::vector<DeviceParameter> parameters = [] {
+        std::vector<DeviceParameter> result;
+        const auto factories =
+                ::android::hardware::getAllHalInstanceNames(IDevicesFactory::descriptor);
+        for (const auto& factoryName : factories) {
+            result.emplace_back(factoryName,
+                                DeviceManager::getInstance().getPrimary(factoryName) != nullptr
+                                        ? DeviceManager::kPrimaryDevice
+                                        : "");
+        }
+        return result;
+    }();
+    return parameters;
+}
+
+const std::vector<DeviceParameter>& getDeviceParametersForPrimaryDeviceTests() {
+    static std::vector<DeviceParameter> parameters = [] {
+        std::vector<DeviceParameter> result;
+        const auto primary = std::find_if(
+                getDeviceParameters().begin(), getDeviceParameters().end(), [](const auto& elem) {
+                    return std::get<PARAM_DEVICE_NAME>(elem) == DeviceManager::kPrimaryDevice;
+                });
+        if (primary != getDeviceParameters().end()) result.push_back(*primary);
+        return result;
+    }();
+    return parameters;
+}
+
+const std::vector<DeviceParameter>& getDeviceParameters() {
+    static std::vector<DeviceParameter> parameters = [] {
+        std::vector<DeviceParameter> result;
+        const auto factories =
+                ::android::hardware::getAllHalInstanceNames(IDevicesFactory::descriptor);
+        const auto devices = getCachedPolicyConfig().getModulesWithDevicesNames();
+        result.reserve(devices.size());
+        for (const auto& factoryName : factories) {
+            for (const auto& deviceName : devices) {
+                if (DeviceManager::getInstance().get(factoryName, deviceName) != nullptr) {
+                    result.emplace_back(factoryName, deviceName);
+                }
+            }
+        }
+        return result;
+    }();
+    return parameters;
+}
+
 const std::vector<DeviceConfigParameter>& getOutputDeviceConfigParameters() {
     static std::vector<DeviceConfigParameter> parameters = [] {
         std::vector<DeviceConfigParameter> result;
@@ -132,4 +180,92 @@ TEST_P(AudioHidlDeviceTest, CloseDeviceWithOpenedInputStreams) {
     ASSERT_NO_FATAL_FAILURE(helper.close(true /*clear*/, &res));
     ASSERT_OK(getDevice()->close());
     ASSERT_TRUE(resetDevice());
+}
+
+TEST_P(AudioPatchHidlTest, UpdatePatchInvalidHandle) {
+    doc::test("Verify that passing an invalid handle to updateAudioPatch is checked");
+    AudioPatchHandle ignored;
+    ASSERT_OK(getDevice()->updateAudioPatch(
+            static_cast<int32_t>(AudioHandleConsts::AUDIO_PATCH_HANDLE_NONE),
+            hidl_vec<AudioPortConfig>(), hidl_vec<AudioPortConfig>(), returnIn(res, ignored)));
+    ASSERT_RESULT(Result::INVALID_ARGUMENTS, res);
+}
+
+using DualMonoModeAccessorHidlTest = AccessorHidlTest<DualMonoMode, OutputStreamTest>;
+TEST_P(DualMonoModeAccessorHidlTest, DualMonoModeTest) {
+    doc::test("Check that dual mono mode can be set and retrieved");
+    testAccessors<OPTIONAL>(&OutputStreamTest::getStream, "dual mono mode",
+                            Initial{DualMonoMode::OFF},
+                            {DualMonoMode::LR, DualMonoMode::LL, DualMonoMode::RR},
+                            &IStreamOut::setDualMonoMode, &IStreamOut::getDualMonoMode);
+}
+
+INSTANTIATE_TEST_CASE_P(DualMonoModeHidl, DualMonoModeAccessorHidlTest,
+                        ::testing::ValuesIn(getOutputDeviceConfigParameters()),
+                        &DeviceConfigParameterToString);
+
+using AudioDescriptionMixLevelHidlTest = AccessorHidlTest<float, OutputStreamTest>;
+TEST_P(AudioDescriptionMixLevelHidlTest, AudioDescriptionMixLevelTest) {
+    doc::test("Check that audio description mix level can be set and retrieved");
+    testAccessors<OPTIONAL>(
+            &OutputStreamTest::getStream, "audio description mix level",
+            Initial{-std::numeric_limits<float>::infinity()}, {-48.0f, -1.0f, 0.0f, 1.0f, 48.0f},
+            &IStreamOut::setAudioDescriptionMixLevel, &IStreamOut::getAudioDescriptionMixLevel,
+            {48.5f, 1000.0f, std::numeric_limits<float>::infinity()});
+}
+
+INSTANTIATE_TEST_CASE_P(AudioDescriptionMixLevelHidl, AudioDescriptionMixLevelHidlTest,
+                        ::testing::ValuesIn(getOutputDeviceConfigParameters()),
+                        &DeviceConfigParameterToString);
+
+using PlaybackRateParametersHidlTest = AccessorHidlTest<PlaybackRate, OutputStreamTest>;
+TEST_P(PlaybackRateParametersHidlTest, PlaybackRateParametersTest) {
+    doc::test("Check that playback rate parameters can be set and retrieved");
+    testAccessors<OPTIONAL>(
+            &OutputStreamTest::getStream, "playback rate parameters",
+            Initial{PlaybackRate{1.0f, 1.0f, TimestretchMode::DEFAULT,
+                                 TimestretchFallbackMode::FAIL}},
+            {// Speed and pitch values in the range from 0.5f to 2.0f must be supported
+             // (see the definition of IStreamOut::setPlaybackRateParameters).
+             PlaybackRate{1.0f, 1.0f, TimestretchMode::DEFAULT, TimestretchFallbackMode::MUTE},
+             PlaybackRate{2.0f, 2.0f, TimestretchMode::DEFAULT, TimestretchFallbackMode::MUTE},
+             PlaybackRate{0.5f, 0.5f, TimestretchMode::DEFAULT, TimestretchFallbackMode::MUTE},
+             // Gross speed / pitch values must not be rejected if the fallback mode is "mute"
+             PlaybackRate{1000.0f, 1000.0f, TimestretchMode::DEFAULT,
+                          TimestretchFallbackMode::MUTE},
+             // Default speed / pitch values must not be rejected in "fail" fallback mode
+             PlaybackRate{1.0f, 1.0f, TimestretchMode::DEFAULT, TimestretchFallbackMode::FAIL},
+             // Same for "voice" mode
+             PlaybackRate{1.0f, 1.0f, TimestretchMode::VOICE, TimestretchFallbackMode::MUTE},
+             PlaybackRate{2.0f, 2.0f, TimestretchMode::VOICE, TimestretchFallbackMode::MUTE},
+             PlaybackRate{0.5f, 0.5f, TimestretchMode::VOICE, TimestretchFallbackMode::MUTE},
+             PlaybackRate{1000.0f, 1000.0f, TimestretchMode::VOICE, TimestretchFallbackMode::MUTE},
+             PlaybackRate{1.0f, 1.0f, TimestretchMode::VOICE, TimestretchFallbackMode::FAIL}},
+            &IStreamOut::setPlaybackRateParameters, &IStreamOut::getPlaybackRateParameters,
+            {PlaybackRate{1000.0f, 1000.0f, TimestretchMode::DEFAULT,
+                          TimestretchFallbackMode::FAIL},
+             PlaybackRate{1000.0f, 1000.0f, TimestretchMode::VOICE,
+                          TimestretchFallbackMode::FAIL}});
+}
+
+INSTANTIATE_TEST_CASE_P(PlaybackRateParametersHidl, PlaybackRateParametersHidlTest,
+                        ::testing::ValuesIn(getOutputDeviceConfigParameters()),
+                        &DeviceConfigParameterToString);
+
+/** Stub implementation of IStreamOutEventCallback **/
+class MockOutEventCallbacks : public IStreamOutEventCallback {
+    Return<void> onCodecFormatChanged(const hidl_vec<uint8_t>& audioMetadata __unused) override {
+        return {};
+    }
+};
+
+TEST_P(OutputStreamTest, SetEventCallback) {
+    doc::test("If supported, set event callback for output stream should never fail");
+    auto res = stream->setEventCallback(new MockOutEventCallbacks);
+    EXPECT_RESULT(okOrNotSupported, res);
+    if (res == Result::OK) {
+        ASSERT_OK(stream->setEventCallback(nullptr));
+    } else {
+        doc::partialTest("The stream does not support event callback");
+    }
 }
