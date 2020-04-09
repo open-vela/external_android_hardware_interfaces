@@ -47,7 +47,6 @@
 #include "VtsHalTvTunerV1_0TestConfigurations.h"
 
 #define WAIT_TIMEOUT 3000000000
-#define INVALID_ID -1
 
 using android::Condition;
 using android::IMemory;
@@ -215,7 +214,7 @@ class FrontendCallback : public IFrontendCallback {
 
     // Helper methods
     uint32_t getTargetFrequency(FrontendSettings settings, FrontendType type);
-    void resetBlindScanStartingFrequency(FrontendConfig& config, uint32_t resetingFreq);
+    void resetBlindScanStartingFrequency(FrontendConfig config, uint32_t resetingFreq);
 
   private:
     bool mEventReceived = false;
@@ -341,7 +340,7 @@ uint32_t FrontendCallback::getTargetFrequency(FrontendSettings settings, Fronten
     }
 }
 
-void FrontendCallback::resetBlindScanStartingFrequency(FrontendConfig& config,
+void FrontendCallback::resetBlindScanStartingFrequency(FrontendConfig config,
                                                        uint32_t resetingFreq) {
     switch (config.type) {
         case FrontendType::ANALOG:
@@ -857,7 +856,7 @@ class TunerHidlTest : public testing::TestWithParam<std::string> {
 
     AssertionResult getFrontendIds();
     AssertionResult getFrontendInfo(uint32_t frontendId);
-    AssertionResult openFrontendById(uint32_t frontendId);
+    AssertionResult openFrontend(uint32_t frontendId);
     AssertionResult setFrontendCallback();
     AssertionResult scanFrontend(FrontendConfig config, FrontendScanType type);
     AssertionResult stopScanFrontend();
@@ -890,10 +889,7 @@ class TunerHidlTest : public testing::TestWithParam<std::string> {
                                        RecordSettings recordSetting,
                                        vector<string> goldenOutputFiles);
     AssertionResult broadcastDataFlowTest(vector<string> goldenOutputFiles);
-
-    void broadcastSingleFilterTest(FilterConfig filterConf, FrontendConfig frontendConf);
-    void getFrontendIdByType(FrontendType feType, uint32_t& feId);
-    void scanTest(FrontendConfig frontend, FrontendScanType type);
+    void broadcastFilterTest(int selectedFilter, int feId);
 
     FilterEventType getFilterEventType(DemuxFilterType type);
 };
@@ -917,7 +913,7 @@ AssertionResult TunerHidlTest::getFrontendInfo(uint32_t frontendId) {
     return AssertionResult(status == Result::SUCCESS);
 }
 
-AssertionResult TunerHidlTest::openFrontendById(uint32_t frontendId) {
+AssertionResult TunerHidlTest::openFrontend(uint32_t frontendId) {
     Result status;
     mService->openFrontendById(frontendId, [&](Result result, const sp<IFrontend>& frontend) {
         mFrontend = frontend;
@@ -927,7 +923,7 @@ AssertionResult TunerHidlTest::openFrontendById(uint32_t frontendId) {
 }
 
 AssertionResult TunerHidlTest::setFrontendCallback() {
-    EXPECT_TRUE(mFrontend) << "Test with openFrontendById first.";
+    EXPECT_TRUE(mFrontend) << "Test with openFrontend first.";
     mFrontendCallback = new FrontendCallback();
     auto callbackStatus = mFrontend->setCallback(mFrontendCallback);
     return AssertionResult(callbackStatus.isOk());
@@ -935,7 +931,7 @@ AssertionResult TunerHidlTest::setFrontendCallback() {
 
 AssertionResult TunerHidlTest::scanFrontend(FrontendConfig config, FrontendScanType type) {
     EXPECT_TRUE(mFrontendCallback)
-            << "test with openFrontendById/setFrontendCallback/getFrontendInfo first.";
+            << "test with openFrontend/setFrontendCallback/getFrontendInfo first.";
 
     EXPECT_TRUE(mFrontendInfo.type == config.type)
             << "FrontendConfig does not match the frontend info of the given id.";
@@ -945,7 +941,7 @@ AssertionResult TunerHidlTest::scanFrontend(FrontendConfig config, FrontendScanT
 }
 
 AssertionResult TunerHidlTest::stopScanFrontend() {
-    EXPECT_TRUE(mFrontend) << "Test with openFrontendById first.";
+    EXPECT_TRUE(mFrontend) << "Test with openFrontend first.";
     Result status;
     status = mFrontend->stopScan();
     return AssertionResult(status == Result::SUCCESS);
@@ -953,7 +949,7 @@ AssertionResult TunerHidlTest::stopScanFrontend() {
 
 AssertionResult TunerHidlTest::tuneFrontend(FrontendConfig config) {
     EXPECT_TRUE(mFrontendCallback)
-            << "test with openFrontendById/setFrontendCallback/getFrontendInfo first.";
+            << "test with openFrontend/setFrontendCallback/getFrontendInfo first.";
 
     EXPECT_TRUE(mFrontendInfo.type == config.type)
             << "FrontendConfig does not match the frontend info of the given id.";
@@ -963,14 +959,14 @@ AssertionResult TunerHidlTest::tuneFrontend(FrontendConfig config) {
 }
 
 AssertionResult TunerHidlTest::stopTuneFrontend() {
-    EXPECT_TRUE(mFrontend) << "Test with openFrontendById first.";
+    EXPECT_TRUE(mFrontend) << "Test with openFrontend first.";
     Result status;
     status = mFrontend->stopTune();
     return AssertionResult(status == Result::SUCCESS);
 }
 
 AssertionResult TunerHidlTest::closeFrontend() {
-    EXPECT_TRUE(mFrontend) << "Test with openFrontendById first.";
+    EXPECT_TRUE(mFrontend) << "Test with openFrontend first.";
     Result status;
     status = mFrontend->close();
     mFrontend = nullptr;
@@ -992,7 +988,7 @@ AssertionResult TunerHidlTest::openDemux() {
 
 AssertionResult TunerHidlTest::setDemuxFrontendDataSource(uint32_t frontendId) {
     EXPECT_TRUE(mDemux) << "Test with openDemux first.";
-    EXPECT_TRUE(mFrontend) << "Test with openFrontendById first.";
+    EXPECT_TRUE(mFrontend) << "Test with openFrontend first.";
     auto status = mDemux->setFrontendDataSource(frontendId);
     return AssertionResult(status.isOk());
 }
@@ -1188,6 +1184,28 @@ AssertionResult TunerHidlTest::broadcastDataFlowTest(vector<string> /*goldenOutp
     return success();
 }
 
+void TunerHidlTest::broadcastFilterTest(int selectedFilter, int feId) {
+    ASSERT_TRUE(openFrontend(feId));
+    ASSERT_TRUE(setFrontendCallback());
+    ASSERT_TRUE(openDemux());
+    ASSERT_TRUE(setDemuxFrontendDataSource(feId));
+    ASSERT_TRUE(openFilterInDemux(filterArray[selectedFilter].type));
+    uint32_t filterId;
+    ASSERT_TRUE(getNewlyOpenedFilterId(filterId));
+    ASSERT_TRUE(configFilter(filterArray[selectedFilter].setting, filterId));
+    ASSERT_TRUE(getFilterMQDescriptor(filterId));
+    ASSERT_TRUE(startFilter(filterId));
+    // tune test
+    ASSERT_TRUE(tuneFrontend(frontendArray[DVBT]));
+    // broadcast data flow test
+    ASSERT_TRUE(broadcastDataFlowTest(goldenOutputFiles));
+    ASSERT_TRUE(stopTuneFrontend());
+    ASSERT_TRUE(stopFilter(filterId));
+    ASSERT_TRUE(closeFilter(filterId));
+    ASSERT_TRUE(closeDemux());
+    ASSERT_TRUE(closeFrontend());
+}
+
 /*
  * TODO: re-enable the tests after finalizing the test refactoring.
  */
@@ -1333,64 +1351,6 @@ AssertionResult TunerHidlTest::recordDataFlowTest(vector<FilterConf> filterConf,
 }*/
 /*========================= End Data Flow Tests Implementation =========================*/
 
-/*================================= Start Test Module =================================*/
-void TunerHidlTest::getFrontendIdByType(FrontendType feType, uint32_t& feId) {
-    ASSERT_TRUE(getFrontendIds());
-    ASSERT_TRUE(mFeIds.size() > 0);
-    for (size_t i = 0; i < mFeIds.size(); i++) {
-        ASSERT_TRUE(getFrontendInfo(mFeIds[i]));
-        if (mFrontendInfo.type != feType) {
-            continue;
-        }
-        feId = mFeIds[i];
-        return;
-    }
-    feId = INVALID_ID;
-}
-
-void TunerHidlTest::broadcastSingleFilterTest(FilterConfig filterConf,
-                                              FrontendConfig frontendConf) {
-    uint32_t feId;
-    getFrontendIdByType(frontendConf.type, feId);
-    if (feId == INVALID_ID) {
-        // TODO broadcast test on Cuttlefish needs licensed ts input,
-        // these tests are runnable on vendor device with real frontend module
-        // or with manual ts installing and use DVBT frontend.
-        return;
-    }
-    ASSERT_TRUE(openFrontendById(feId));
-    ASSERT_TRUE(setFrontendCallback());
-    ASSERT_TRUE(openDemux());
-    ASSERT_TRUE(setDemuxFrontendDataSource(feId));
-    ASSERT_TRUE(openFilterInDemux(filterConf.type));
-    uint32_t filterId;
-    ASSERT_TRUE(getNewlyOpenedFilterId(filterId));
-    ASSERT_TRUE(configFilter(filterConf.setting, filterId));
-    ASSERT_TRUE(getFilterMQDescriptor(filterId));
-    ASSERT_TRUE(startFilter(filterId));
-    // tune test
-    ASSERT_TRUE(tuneFrontend(frontendConf));
-    // broadcast data flow test
-    ASSERT_TRUE(broadcastDataFlowTest(goldenOutputFiles));
-    ASSERT_TRUE(stopTuneFrontend());
-    ASSERT_TRUE(stopFilter(filterId));
-    ASSERT_TRUE(closeFilter(filterId));
-    ASSERT_TRUE(closeDemux());
-    ASSERT_TRUE(closeFrontend());
-}
-
-void TunerHidlTest::scanTest(FrontendConfig frontendConf, FrontendScanType scanType) {
-    uint32_t feId;
-    getFrontendIdByType(frontendConf.type, feId);
-    ASSERT_TRUE(feId != INVALID_ID);
-    ASSERT_TRUE(openFrontendById(feId));
-    ASSERT_TRUE(setFrontendCallback());
-    ASSERT_TRUE(scanFrontend(frontendConf, scanType));
-    ASSERT_TRUE(stopScanFrontend());
-    ASSERT_TRUE(closeFrontend());
-}
-/*================================== End Test Module ==================================*/
-
 /*=============================== Start Helper Functions ===============================*/
 FilterEventType TunerHidlTest::getFilterEventType(DemuxFilterType type) {
     FilterEventType eventType = FilterEventType::UNDEFINED;
@@ -1443,49 +1403,151 @@ FilterEventType TunerHidlTest::getFilterEventType(DemuxFilterType type) {
 
 /******************************** Start Test Entry **********************************/
 /*============================== Start Frontend Tests ==============================*/
+TEST_P(TunerHidlTest, getFrontendIds) {
+    description("Get Frontend ids and verify frontends exist");
+    ASSERT_TRUE(getFrontendIds());
+    ASSERT_TRUE(mFeIds.size() > 0);
+}
+
+TEST_P(TunerHidlTest, openFrontend) {
+    description("Open all the existing Frontends and close them");
+    ASSERT_TRUE(getFrontendIds());
+    ASSERT_TRUE(mFeIds.size() > 0);
+
+    for (size_t i = 0; i < mFeIds.size(); i++) {
+        ASSERT_TRUE(openFrontend(mFeIds[i]));
+        ASSERT_TRUE(closeFrontend());
+    }
+}
+
 TEST_P(TunerHidlTest, TuneFrontend) {
     description("Tune one Frontend with specific setting and check Lock event");
-    uint32_t feId;
-    getFrontendIdByType(frontendArray[DVBT].type, feId);
-    ASSERT_TRUE(feId != INVALID_ID);
-    ASSERT_TRUE(openFrontendById(feId));
-    ASSERT_TRUE(setFrontendCallback());
-    ASSERT_TRUE(tuneFrontend(frontendArray[DVBT]));
-    ASSERT_TRUE(stopTuneFrontend());
-    ASSERT_TRUE(closeFrontend());
+    ASSERT_TRUE(getFrontendIds());
+    ASSERT_TRUE(mFeIds.size() > 0);
+    for (size_t i = 0; i < mFeIds.size(); i++) {
+        ASSERT_TRUE(getFrontendInfo(mFeIds[i]));
+        if (mFrontendInfo.type != frontendArray[DVBT].type) {
+            continue;
+        }
+        ASSERT_TRUE(openFrontend(mFeIds[i]));
+        ASSERT_TRUE(setFrontendCallback());
+        ASSERT_TRUE(tuneFrontend(frontendArray[DVBT]));
+        ASSERT_TRUE(stopTuneFrontend());
+        ASSERT_TRUE(closeFrontend());
+        break;
+    }
 }
 
 TEST_P(TunerHidlTest, AutoScanFrontend) {
     description("Run an auto frontend scan with specific setting and check lock scanMessage");
-    scanTest(frontendScanArray[SCAN_DVBT], FrontendScanType::SCAN_AUTO);
+    ASSERT_TRUE(getFrontendIds());
+    ASSERT_TRUE(mFeIds.size() > 0);
+
+    for (size_t i = 0; i < mFeIds.size(); i++) {
+        ASSERT_TRUE(getFrontendInfo(mFeIds[i]));
+        if (mFrontendInfo.type != frontendScanArray[SCAN_DVBT].type) {
+            continue;
+        }
+        ASSERT_TRUE(openFrontend(mFeIds[i]));
+        ASSERT_TRUE(setFrontendCallback());
+        ASSERT_TRUE(scanFrontend(frontendScanArray[SCAN_DVBT], FrontendScanType::SCAN_AUTO));
+        ASSERT_TRUE(stopScanFrontend());
+        ASSERT_TRUE(closeFrontend());
+        break;
+    }
 }
 
 TEST_P(TunerHidlTest, BlindScanFrontend) {
     description("Run an blind frontend scan with specific setting and check lock scanMessage");
-    scanTest(frontendScanArray[SCAN_DVBT], FrontendScanType::SCAN_BLIND);
+    ASSERT_TRUE(getFrontendIds());
+    ASSERT_TRUE(mFeIds.size() > 0);
+
+    for (size_t i = 0; i < mFeIds.size(); i++) {
+        ASSERT_TRUE(getFrontendInfo(mFeIds[i]));
+        if (mFrontendInfo.type != frontendScanArray[SCAN_DVBT].type) {
+            continue;
+        }
+        ASSERT_TRUE(openFrontend(mFeIds[i]));
+        ASSERT_TRUE(setFrontendCallback());
+        ASSERT_TRUE(scanFrontend(frontendScanArray[SCAN_DVBT], FrontendScanType::SCAN_BLIND));
+        ASSERT_TRUE(stopScanFrontend());
+        ASSERT_TRUE(closeFrontend());
+        break;
+    }
 }
 /*=============================== End Frontend Tests ===============================*/
 
 /*============================ Start Demux/Filter Tests ============================*/
+TEST_P(TunerHidlTest, OpenDemuxWithFrontendDataSource) {
+    description("Open Demux with a Frontend as its data source.");
+    ASSERT_TRUE(getFrontendIds());
+    ASSERT_TRUE(mFeIds.size() > 0);
+
+    for (size_t i = 0; i < mFeIds.size(); i++) {
+        ASSERT_TRUE(getFrontendInfo(mFeIds[i]));
+        if (mFrontendInfo.type != frontendArray[DVBT].type) {
+            continue;
+        }
+        ASSERT_TRUE(openFrontend(mFeIds[i]));
+        ASSERT_TRUE(setFrontendCallback());
+        ASSERT_TRUE(openDemux());
+        ASSERT_TRUE(setDemuxFrontendDataSource(mFeIds[i]));
+        ASSERT_TRUE(closeDemux());
+        ASSERT_TRUE(closeFrontend());
+        break;
+    }
+}
+
+TEST_P(TunerHidlTest, OpenFilterInDemux) {
+    description("Open a filter in Demux.");
+    ASSERT_TRUE(getFrontendIds());
+    ASSERT_TRUE(mFeIds.size() > 0);
+
+    for (size_t i = 0; i < mFeIds.size(); i++) {
+        ASSERT_TRUE(getFrontendInfo(mFeIds[i]));
+        if (mFrontendInfo.type != frontendArray[DVBT].type) {
+            continue;
+        }
+        ASSERT_TRUE(openFrontend(mFeIds[i]));
+        ASSERT_TRUE(setFrontendCallback());
+        ASSERT_TRUE(openDemux());
+        ASSERT_TRUE(setDemuxFrontendDataSource(mFeIds[i]));
+        ASSERT_TRUE(openFilterInDemux(filterArray[TS_VIDEO0].type));
+        uint32_t filterId;
+        ASSERT_TRUE(getNewlyOpenedFilterId(filterId));
+        ASSERT_TRUE(closeFilter(filterId));
+        ASSERT_TRUE(closeDemux());
+        ASSERT_TRUE(closeFrontend());
+        break;
+    }
+}
+
 TEST_P(TunerHidlTest, StartFilterInDemux) {
     description("Open and start a filter in Demux.");
-    uint32_t feId;
-    getFrontendIdByType(frontendArray[DVBT].type, feId);
-    ASSERT_TRUE(feId != INVALID_ID);
-    ASSERT_TRUE(openFrontendById(feId));
-    ASSERT_TRUE(setFrontendCallback());
-    ASSERT_TRUE(openDemux());
-    ASSERT_TRUE(setDemuxFrontendDataSource(feId));
-    ASSERT_TRUE(openFilterInDemux(filterArray[TS_VIDEO0].type));
-    uint32_t filterId;
-    ASSERT_TRUE(getNewlyOpenedFilterId(filterId));
-    ASSERT_TRUE(configFilter(filterArray[TS_VIDEO0].setting, filterId));
-    ASSERT_TRUE(getFilterMQDescriptor(filterId));
-    ASSERT_TRUE(startFilter(filterId));
-    ASSERT_TRUE(stopFilter(filterId));
-    ASSERT_TRUE(closeFilter(filterId));
-    ASSERT_TRUE(closeDemux());
-    ASSERT_TRUE(closeFrontend());
+    ASSERT_TRUE(getFrontendIds());
+    ASSERT_TRUE(mFeIds.size() > 0);
+
+    for (size_t i = 0; i < mFeIds.size(); i++) {
+        ASSERT_TRUE(getFrontendInfo(mFeIds[i]));
+        if (mFrontendInfo.type != frontendArray[DVBT].type) {
+            continue;
+        }
+        ASSERT_TRUE(openFrontend(mFeIds[i]));
+        ASSERT_TRUE(setFrontendCallback());
+        ASSERT_TRUE(openDemux());
+        ASSERT_TRUE(setDemuxFrontendDataSource(mFeIds[i]));
+        ASSERT_TRUE(openFilterInDemux(filterArray[TS_VIDEO0].type));
+        uint32_t filterId;
+        ASSERT_TRUE(getNewlyOpenedFilterId(filterId));
+        ASSERT_TRUE(configFilter(filterArray[TS_VIDEO0].setting, filterId));
+        ASSERT_TRUE(getFilterMQDescriptor(filterId));
+        ASSERT_TRUE(startFilter(filterId));
+        ASSERT_TRUE(stopFilter(filterId));
+        ASSERT_TRUE(closeFilter(filterId));
+        ASSERT_TRUE(closeDemux());
+        ASSERT_TRUE(closeFrontend());
+        break;
+    }
 }
 /*============================ End Demux/Filter Tests ============================*/
 
@@ -1507,28 +1569,64 @@ TEST_P(TunerHidlTest, CloseDescrambler) {
 /*============================== Start Data Flow Tests ==============================*/
 TEST_P(TunerHidlTest, BroadcastDataFlowVideoFilterTest) {
     description("Test Video Filter functionality in Broadcast use case.");
-    broadcastSingleFilterTest(filterArray[TS_VIDEO1], frontendArray[DVBS]);
+    ASSERT_TRUE(getFrontendIds());
+    ASSERT_TRUE(mFeIds.size() > 0);
+
+    for (size_t i = 0; i < mFeIds.size(); i++) {
+        ASSERT_TRUE(getFrontendInfo(mFeIds[i]));
+        if (mFrontendInfo.type != frontendArray[DVBT].type) {
+            continue;
+        }
+        broadcastFilterTest(TS_VIDEO1, mFeIds[i]);
+        break;
+    }
 }
 
 TEST_P(TunerHidlTest, BroadcastDataFlowAudioFilterTest) {
     description("Test Audio Filter functionality in Broadcast use case.");
-    broadcastSingleFilterTest(filterArray[TS_AUDIO0], frontendArray[DVBS]);
+    ASSERT_TRUE(getFrontendIds());
+    ASSERT_TRUE(mFeIds.size() > 0);
+
+    for (size_t i = 0; i < mFeIds.size(); i++) {
+        ASSERT_TRUE(getFrontendInfo(mFeIds[i]));
+        if (mFrontendInfo.type != frontendArray[DVBT].type) {
+            continue;
+        }
+        broadcastFilterTest(TS_AUDIO0, mFeIds[i]);
+        break;
+    }
 }
 
 TEST_P(TunerHidlTest, BroadcastDataFlowTsFilterTest) {
     description("Test TS Filter functionality in Broadcast use case.");
-    broadcastSingleFilterTest(filterArray[TS_TS0], frontendArray[DVBS]);
+    ASSERT_TRUE(getFrontendIds());
+    ASSERT_TRUE(mFeIds.size() > 0);
+
+    for (size_t i = 0; i < mFeIds.size(); i++) {
+        ASSERT_TRUE(getFrontendInfo(mFeIds[i]));
+        if (mFrontendInfo.type != frontendArray[DVBT].type) {
+            continue;
+        }
+        broadcastFilterTest(TS_TS0, mFeIds[i]);
+        break;
+    }
 }
 
 TEST_P(TunerHidlTest, BroadcastDataFlowSectionFilterTest) {
     description("Test Section Filter functionality in Broadcast use case.");
-    broadcastSingleFilterTest(filterArray[TS_SECTION0], frontendArray[DVBS]);
+    ASSERT_TRUE(getFrontendIds());
+    ASSERT_TRUE(mFeIds.size() > 0);
+
+    for (size_t i = 0; i < mFeIds.size(); i++) {
+        ASSERT_TRUE(getFrontendInfo(mFeIds[i]));
+        if (mFrontendInfo.type != frontendArray[DVBT].type) {
+            continue;
+        }
+        broadcastFilterTest(TS_SECTION0, mFeIds[i]);
+        break;
+    }
 }
 
-TEST_P(TunerHidlTest, IonBufferTest) {
-    description("Test the av filter data bufferring.");
-    broadcastSingleFilterTest(filterArray[TS_VIDEO0], frontendArray[DVBS]);
-}
 /*
  * TODO: re-enable the tests after finalizing the testing stream.
  */
@@ -1612,6 +1710,39 @@ TEST_P(TunerHidlTest, RecordDataFlowWithTsRecordFilterTest) {
 
     ASSERT_TRUE(recordDataFlowTest(filterConf, recordSetting, goldenOutputFiles));
 }*/
+
+TEST_P(TunerHidlTest, AvBufferTest) {
+    description("Test the av filter data bufferring.");
+
+    ASSERT_TRUE(getFrontendIds());
+    ASSERT_TRUE(mFeIds.size() > 0);
+
+    for (size_t i = 0; i < mFeIds.size(); i++) {
+        ASSERT_TRUE(getFrontendInfo(mFeIds[i]));
+        if (mFrontendInfo.type != frontendArray[DVBS].type) {
+            continue;
+        }
+        ASSERT_TRUE(openFrontend(mFeIds[i]));
+        ASSERT_TRUE(setFrontendCallback());
+        ASSERT_TRUE(openDemux());
+        ASSERT_TRUE(openFilterInDemux(filterArray[TS_VIDEO0].type));
+        uint32_t filterId;
+        ASSERT_TRUE(getNewlyOpenedFilterId(filterId));
+        ASSERT_TRUE(configFilter(filterArray[TS_VIDEO0].setting, filterId));
+        ASSERT_TRUE(startFilter(filterId));
+        ASSERT_TRUE(setDemuxFrontendDataSource(mFeIds[i]));
+        // tune test
+        ASSERT_TRUE(tuneFrontend(frontendArray[DVBS]));
+        // broadcast data flow test
+        ASSERT_TRUE(broadcastDataFlowTest(goldenOutputFiles));
+        ASSERT_TRUE(stopTuneFrontend());
+        ASSERT_TRUE(stopFilter(filterId));
+        ASSERT_TRUE(closeFilter(filterId));
+        ASSERT_TRUE(closeDemux());
+        ASSERT_TRUE(closeFrontend());
+        break;
+    }
+}
 /*============================== End Data Flow Tests ==============================*/
 /******************************** End Test Entry **********************************/
 }  // namespace
