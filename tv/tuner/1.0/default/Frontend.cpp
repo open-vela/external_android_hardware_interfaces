@@ -41,7 +41,6 @@ Return<Result> Frontend::close() {
     ALOGV("%s", __FUNCTION__);
     // Reset callback
     mCallback = nullptr;
-    mIsLocked = false;
 
     return Result::SUCCESS;
 }
@@ -65,7 +64,6 @@ Return<Result> Frontend::tune(const FrontendSettings& /* settings */) {
     }
 
     mCallback->onEvent(FrontendEventType::LOCKED);
-    mIsLocked = false;
     return Result::SUCCESS;
 }
 
@@ -73,35 +71,16 @@ Return<Result> Frontend::stopTune() {
     ALOGV("%s", __FUNCTION__);
 
     mTunerService->frontendStopTune(mId);
-    mIsLocked = false;
 
     return Result::SUCCESS;
 }
 
-Return<Result> Frontend::scan(const FrontendSettings& settings, FrontendScanType type) {
+Return<Result> Frontend::scan(const FrontendSettings& /* settings */, FrontendScanType /* type */) {
     ALOGV("%s", __FUNCTION__);
 
-    if (mType != FrontendType::DVBT) {
-        return Result::UNAVAILABLE;
-    }
-
     FrontendScanMessage msg;
-
-    if (mIsLocked) {
-        msg.isEnd(true);
-        mCallback->onScanMessage(FrontendScanMessageType::END, msg);
-        return Result::SUCCESS;
-    }
-
-    uint32_t frequency = settings.dvbt().frequency;
-    if (type == FrontendScanType::SCAN_BLIND) {
-        frequency += 100;
-    }
-    msg.frequencies({frequency});
-    mCallback->onScanMessage(FrontendScanMessageType::FREQUENCY, msg);
     msg.isLocked(true);
     mCallback->onScanMessage(FrontendScanMessageType::LOCKED, msg);
-    mIsLocked = true;
 
     return Result::SUCCESS;
 }
@@ -109,7 +88,6 @@ Return<Result> Frontend::scan(const FrontendSettings& settings, FrontendScanType
 Return<Result> Frontend::stopScan() {
     ALOGV("%s", __FUNCTION__);
 
-    mIsLocked = false;
     return Result::SUCCESS;
 }
 
