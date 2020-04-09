@@ -68,7 +68,6 @@ struct TestConfig {
     Executor executor;
     MeasureTiming measureTiming;
     OutputType outputType;
-    MemoryType memoryType;
 };
 
 }  // namespace
@@ -217,8 +216,7 @@ void EvaluatePreparedModel(const sp<IPreparedModel>& preparedModel, const TestMo
         return;
     }
 
-    ExecutionContext context;
-    Request request = context.createRequest(testModel, testConfig.memoryType);
+    Request request = createRequest(testModel);
     if (testConfig.outputType == OutputType::INSUFFICIENT) {
         makeOutputInsufficientSize(/*outputIndex=*/0, &request);
     }
@@ -328,7 +326,7 @@ void EvaluatePreparedModel(const sp<IPreparedModel>& preparedModel, const TestMo
     }
 
     // Retrieve execution results.
-    const std::vector<TestBuffer> outputs = context.getOutputBuffers(request);
+    const std::vector<TestBuffer> outputs = getOutputBuffers(request);
 
     // We want "close-enough" results.
     checkResults(testModel, outputs);
@@ -339,30 +337,24 @@ void EvaluatePreparedModel(const sp<IPreparedModel>& preparedModel, const TestMo
     std::vector<OutputType> outputTypesList;
     std::vector<MeasureTiming> measureTimingList;
     std::vector<Executor> executorList;
-    std::vector<MemoryType> memoryTypeList;
 
     if (testDynamicOutputShape) {
         outputTypesList = {OutputType::UNSPECIFIED, OutputType::INSUFFICIENT};
         measureTimingList = {MeasureTiming::NO, MeasureTiming::YES};
         executorList = {Executor::ASYNC, Executor::SYNC, Executor::BURST};
-        memoryTypeList = {MemoryType::ASHMEM};
     } else {
         outputTypesList = {OutputType::FULLY_SPECIFIED};
         measureTimingList = {MeasureTiming::NO, MeasureTiming::YES};
         executorList = {Executor::ASYNC, Executor::SYNC, Executor::BURST};
-        memoryTypeList = {MemoryType::ASHMEM};
     }
 
     for (const OutputType outputType : outputTypesList) {
         for (const MeasureTiming measureTiming : measureTimingList) {
             for (const Executor executor : executorList) {
-                for (const MemoryType memoryType : memoryTypeList) {
-                    const TestConfig testConfig = {.executor = executor,
-                                                   .measureTiming = measureTiming,
-                                                   .outputType = outputType,
-                                                   .memoryType = memoryType};
-                    EvaluatePreparedModel(preparedModel, testModel, testConfig);
-                }
+                const TestConfig testConfig = {.executor = executor,
+                                               .measureTiming = measureTiming,
+                                               .outputType = outputType};
+                EvaluatePreparedModel(preparedModel, testModel, testConfig);
             }
         }
     }
@@ -387,10 +379,6 @@ void GeneratedTestBase::SetUp() {
 }
 
 std::vector<NamedModel> getNamedModels(const FilterFn& filter) {
-    return TestModelManager::get().getTestModels(filter);
-}
-
-std::vector<NamedModel> getNamedModels(const FilterNameFn& filter) {
     return TestModelManager::get().getTestModels(filter);
 }
 

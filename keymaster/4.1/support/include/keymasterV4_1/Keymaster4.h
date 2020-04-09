@@ -17,6 +17,7 @@
 #pragma once
 
 #include "Keymaster.h"
+#include "Operation.h"
 
 namespace android::hardware::keymaster::V4_1::support {
 
@@ -31,11 +32,17 @@ class Keymaster4 : public Keymaster {
     // enumerate 4.1. devices.
     using WrappedIKeymasterDevice = V4_0::IKeymasterDevice;
 
+    Keymaster4(sp<V4_1::IKeymasterDevice> km4_1_dev, const hidl_string& instanceName)
+        : Keymaster(V4_1::IKeymasterDevice::descriptor, instanceName),
+          haveVersion_(false),
+          km4_0_dev_(km4_1_dev),
+          km4_1_dev_(km4_1_dev) {}
+
     Keymaster4(sp<V4_0::IKeymasterDevice> km4_0_dev, const hidl_string& instanceName)
         : Keymaster(V4_1::IKeymasterDevice::descriptor, instanceName),
           haveVersion_(false),
           km4_0_dev_(km4_0_dev),
-          km4_1_dev_(V4_1::IKeymasterDevice::castFrom(km4_0_dev)) {}
+          km4_1_dev_() {}
 
     const VersionResult& halVersion() const override {
         const_cast<Keymaster4*>(this)->getVersionIfNeeded();
@@ -162,6 +169,20 @@ class Keymaster4 : public Keymaster {
     Return<ErrorCode> earlyBootEnded() override {
         if (km4_1_dev_) return km4_1_dev_->earlyBootEnded();
         return ErrorCode::UNIMPLEMENTED;
+    }
+
+    Return<void> beginOp(KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob,
+                         const hidl_vec<KeyParameter>& inParams, const HardwareAuthToken& authToken,
+                         beginOp_cb _hidl_cb) override {
+        if (km4_1_dev_) return km4_1_dev_->beginOp(purpose, keyBlob, inParams, authToken, _hidl_cb);
+
+        return km4_0_dev_->begin(
+                purpose, keyBlob, inParams, authToken,
+                [&_hidl_cb](V4_0::ErrorCode errorCode, const hidl_vec<KeyParameter>& outParams,
+                            OperationHandle operationHandle) {
+                    _hidl_cb(static_cast<ErrorCode>(errorCode), outParams,
+                             new Operation(operationHandle));
+                });
     }
 
   private:

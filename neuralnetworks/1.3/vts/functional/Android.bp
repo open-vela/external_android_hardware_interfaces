@@ -40,7 +40,6 @@ cc_test {
         "BasicTests.cpp",
         "CompilationCachingTests.cpp",
         "GeneratedTestHarness.cpp",
-        "MemoryDomainTests.cpp",
         "QualityOfServiceTests.cpp",
         "TestAssertions.cpp",
         "ValidateBurst.cpp",
@@ -77,8 +76,5 @@ cc_test {
     header_libs: [
         "libneuralnetworks_headers",
     ],
-    test_suites: [
-        "general-tests",
-        "vts",
-    ],
+    test_suites: ["general-tests"],
 }
