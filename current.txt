@@ -1,10 +1,6 @@
 # Do not change this file except to add new interfaces. Changing
 # pre-existing interfaces will fail VTS and break framework-only OTAs
 
-# Test HALs
-
-717c17cd380bb48710dff601d1a03351d4ebc28028353d5d60489248f506523c android.hardware.tests.lazy@1.0::ILazy
-
 # HALs released in Android O
 
 f219c3b5b8c6cb1d659d4c7328f67246abfe1a8613f469826fd3b9ad090417a2 android.hardware.audio@2.0::IDevice
@@ -715,7 +711,7 @@ a3eddd9bbdc87e8c22764070037dd1154f1cf006e6fba93364c4f85d4c134a19 android.hardwar
 278817920bfd5292a7713f97f1832cca53de3de640f7670e413d97c6e7fd581c android.hardware.neuralnetworks@1.3::IDevice
 127ba11efb8220dc3aec9a8f441b59eaf1c68d7f03f577833e1824de75a36b17 android.hardware.neuralnetworks@1.3::IExecutionCallback
 6e904be0ddca5ae1de8eba020e6c38ed935ea7d80cd08f47787f137a0ca58555 android.hardware.neuralnetworks@1.3::IFencedExecutionCallback
-2b0b10d2ea7a18a4048cd0eb83d35c19a817aeee95f65807fc31f4ef21381397 android.hardware.neuralnetworks@1.3::IPreparedModel
+ee9dc34b9925b8367b1111c72bd6d9d375432735e451572ca5a665d8516a7744 android.hardware.neuralnetworks@1.3::IPreparedModel
 eee3430cc86c97c7b407495863d8fb61da6f1a64b7721e77b9b4909b11b174e9 android.hardware.neuralnetworks@1.3::IPreparedModelCallback
 acf84925f8ee0a651f2ec547ac334034de266479b93af5434f6c1f25e66aba96 android.hardware.neuralnetworks@1.3::types
 b454df853441c12f6e425e8a60dd29fda20f5e6e39b93d1103e4b37495db38aa android.hardware.radio@1.5::IRadio
@@ -760,10 +756,3 @@ a64467bae843569f0d465c5be7f0c7a5b987985b55a3ef4794dd5afc68538650 android.hardwar
 2ce1f7fb52e49f80b13a9b153d491bce530552f02357ea729acae922a8659f93 android.hardware.wifi.supplicant@1.3::ISupplicantStaIfaceCallback
 77531c8d048f8f8ae532babd0ca86332a865ec9aace1b051226ef2b21123e645 android.hardware.wifi.supplicant@1.3::ISupplicantStaNetwork
 98592d193a717066facf91428426e5abe211e3bd718bc372e29fb944ddbe6e7c android.hardware.wifi.supplicant@1.3::types
-
-# ABI preserving changes to HALs during Android S
-
-# HALs released in Android S
-7e8e1c3d0173c5d503dd01cecff8e3864478557ca6b9e8cc2291598b1a4aea62 android.hardware.biometrics.face@1.1::IBiometricsFace
-
-# NOTE: new HALs are recommended to be in AIDL
