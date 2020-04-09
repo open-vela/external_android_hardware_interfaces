@@ -86,7 +86,6 @@ private:
     std::unordered_set<int32_t> mHvacPowerProps;
     RecurrentTimer mRecurrentTimer;
     VehicleHalClient* mVehicleClient;
-    bool mInEmulator;
 };
 
 }  // impl
