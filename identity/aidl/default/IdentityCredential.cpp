@@ -102,7 +102,7 @@ int IdentityCredential::initialize() {
 }
 
 ndk::ScopedAStatus IdentityCredential::deleteCredential(
-        vector<uint8_t>* outProofOfDeletionSignature) {
+        vector<int8_t>* outProofOfDeletionSignature) {
     cppbor::Array array = {"ProofOfDeletion", docType_, testCredential_};
     vector<uint8_t> proofOfDeletion = array.encode();
 
@@ -115,11 +115,11 @@ ndk::ScopedAStatus IdentityCredential::deleteCredential(
                 IIdentityCredentialStore::STATUS_FAILED, "Error signing data"));
     }
 
-    *outProofOfDeletionSignature = signature.value();
+    *outProofOfDeletionSignature = byteStringToSigned(signature.value());
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus IdentityCredential::createEphemeralKeyPair(vector<uint8_t>* outKeyPair) {
+ndk::ScopedAStatus IdentityCredential::createEphemeralKeyPair(vector<int8_t>* outKeyPair) {
     optional<vector<uint8_t>> kp = support::createEcKeyPair();
     if (!kp) {
         return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
@@ -135,13 +135,13 @@ ndk::ScopedAStatus IdentityCredential::createEphemeralKeyPair(vector<uint8_t>* o
     }
     ephemeralPublicKey_ = publicKey.value();
 
-    *outKeyPair = kp.value();
+    *outKeyPair = byteStringToSigned(kp.value());
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus IdentityCredential::setReaderEphemeralPublicKey(
-        const vector<uint8_t>& publicKey) {
-    readerPublicKey_ = publicKey;
+        const vector<int8_t>& publicKey) {
+    readerPublicKey_ = byteStringToUnsigned(publicKey);
     return ndk::ScopedAStatus::ok();
 }
 
@@ -169,8 +169,8 @@ ndk::ScopedAStatus IdentityCredential::createAuthChallenge(int64_t* outChallenge
 // ahead of time.
 bool checkReaderAuthentication(const SecureAccessControlProfile& profile,
                                const vector<uint8_t>& readerCertificateChain) {
-    optional<vector<uint8_t>> acpPubKey =
-            support::certificateChainGetTopMostKey(profile.readerCertificate.encodedCertificate);
+    optional<vector<uint8_t>> acpPubKey = support::certificateChainGetTopMostKey(
+            byteStringToUnsigned(profile.readerCertificate.encodedCertificate));
     if (!acpPubKey) {
         LOG(ERROR) << "Error extracting public key from readerCertificate in profile";
         return false;
@@ -255,9 +255,13 @@ bool checkUserAuthentication(const SecureAccessControlProfile& profile,
 
 ndk::ScopedAStatus IdentityCredential::startRetrieval(
         const vector<SecureAccessControlProfile>& accessControlProfiles,
-        const HardwareAuthToken& authToken, const vector<uint8_t>& itemsRequest,
-        const vector<uint8_t>& signingKeyBlob, const vector<uint8_t>& sessionTranscript,
-        const vector<uint8_t>& readerSignature, const vector<int32_t>& requestCounts) {
+        const HardwareAuthToken& authToken, const vector<int8_t>& itemsRequestS,
+        const vector<int8_t>& signingKeyBlobS, const vector<int8_t>& sessionTranscriptS,
+        const vector<int8_t>& readerSignatureS, const vector<int32_t>& requestCounts) {
+    auto sessionTranscript = byteStringToUnsigned(sessionTranscriptS);
+    auto itemsRequest = byteStringToUnsigned(itemsRequestS);
+    auto readerSignature = byteStringToUnsigned(readerSignatureS);
+
     if (sessionTranscript.size() > 0) {
         auto [item, _, message] = cppbor::parse(sessionTranscript);
         if (item == nullptr) {
@@ -494,7 +498,7 @@ ndk::ScopedAStatus IdentityCredential::startRetrieval(
     currentNameSpace_ = "";
 
     itemsRequest_ = itemsRequest;
-    signingKeyBlob_ = signingKeyBlob;
+    signingKeyBlob_ = byteStringToUnsigned(signingKeyBlobS);
 
     numStartRetrievalCalls_ += 1;
     return ndk::ScopedAStatus::ok();
@@ -601,8 +605,10 @@ ndk::ScopedAStatus IdentityCredential::startRetrieveEntryValue(
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus IdentityCredential::retrieveEntryValue(const vector<uint8_t>& encryptedContent,
-                                                          vector<uint8_t>* outContent) {
+ndk::ScopedAStatus IdentityCredential::retrieveEntryValue(const vector<int8_t>& encryptedContentS,
+                                                          vector<int8_t>* outContent) {
+    auto encryptedContent = byteStringToUnsigned(encryptedContentS);
+
     optional<vector<uint8_t>> content =
             support::decryptAes128Gcm(storageKey_, encryptedContent, entryAdditionalData_);
     if (!content) {
@@ -641,12 +647,12 @@ ndk::ScopedAStatus IdentityCredential::retrieveEntryValue(const vector<uint8_t>&
         currentNameSpaceDeviceNameSpacesMap_.add(currentName_, std::move(entryValueItem));
     }
 
-    *outContent = content.value();
+    *outContent = byteStringToSigned(content.value());
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus IdentityCredential::finishRetrieval(vector<uint8_t>* outMac,
-                                                       vector<uint8_t>* outDeviceNameSpaces) {
+ndk::ScopedAStatus IdentityCredential::finishRetrieval(vector<int8_t>* outMac,
+                                                       vector<int8_t>* outDeviceNameSpaces) {
     if (currentNameSpaceDeviceNameSpacesMap_.size() > 0) {
         deviceNameSpacesMap_.add(currentNameSpace_,
                                  std::move(currentNameSpaceDeviceNameSpacesMap_));
@@ -698,13 +704,13 @@ ndk::ScopedAStatus IdentityCredential::finishRetrieval(vector<uint8_t>* outMac,
         }
     }
 
-    *outMac = mac.value_or(vector<uint8_t>({}));
-    *outDeviceNameSpaces = encodedDeviceNameSpaces;
+    *outMac = byteStringToSigned(mac.value_or(vector<uint8_t>({})));
+    *outDeviceNameSpaces = byteStringToSigned(encodedDeviceNameSpaces);
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus IdentityCredential::generateSigningKeyPair(
-        vector<uint8_t>* outSigningKeyBlob, Certificate* outSigningKeyCertificate) {
+        vector<int8_t>* outSigningKeyBlob, Certificate* outSigningKeyCertificate) {
     string serialDecimal = "0";  // TODO: set serial to something unique
     string issuer = "Android Open Source Project";
     string subject = "Android IdentityCredential Reference Implementation";
@@ -752,9 +758,9 @@ ndk::ScopedAStatus IdentityCredential::generateSigningKeyPair(
         return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                 IIdentityCredentialStore::STATUS_FAILED, "Error encrypting signingKey"));
     }
-    *outSigningKeyBlob = encryptedSigningKey.value();
+    *outSigningKeyBlob = byteStringToSigned(encryptedSigningKey.value());
     *outSigningKeyCertificate = Certificate();
-    outSigningKeyCertificate->encodedCertificate = certificate.value();
+    outSigningKeyCertificate->encodedCertificate = byteStringToSigned(certificate.value());
     return ndk::ScopedAStatus::ok();
 }
 
