@@ -14,16 +14,23 @@
  * limitations under the License.
  */
 
-cc_test {
-    name: "VtsHalBiometricsFingerprintV2_2TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
-    srcs: ["VtsHalBiometricsFingerprintV2_2TargetTest.cpp"],
-    static_libs: [
-        "android.hardware.biometrics.fingerprint@2.1",
-        "android.hardware.biometrics.fingerprint@2.2",
+cc_binary {
+    name: "android.hardware.biometrics.face@1.1-service.example",
+    defaults: ["hidl_defaults"],
+    vendor: true,
+    init_rc: ["android.hardware.biometrics.face@1.1-service.rc"],
+    vintf_fragments: ["manifest_face_default.xml"],
+    relative_install_path: "hw",
+    proprietary: true,
+    srcs: [
+        "BiometricsFace.cpp",
+        "service.cpp",
     ],
-    test_suites: [
-        "general-tests",
-        "vts",
+    shared_libs: [
+        "libhidlbase",
+        "libutils",
+        "liblog",
+        "android.hardware.biometrics.face@1.0",
+        "android.hardware.biometrics.face@1.1",
     ],
 }
