@@ -74,9 +74,9 @@ class Frontend : public IFrontend {
     sp<Tuner> mTunerService;
     FrontendType mType = FrontendType::UNDEFINED;
     FrontendId mId = 0;
+    bool mIsLocked = false;
 
     const string FRONTEND_STREAM_FILE = "/vendor/etc/dumpTs3.ts";
-    string mSourceStreamFile;
     std::ifstream mFrontendData;
 };
 
