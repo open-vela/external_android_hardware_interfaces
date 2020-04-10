@@ -8,9 +8,6 @@
     },
     {
       "name": "hal_implementation_test"
-    },
-    {
-      "name": "VtsHalTvInputV1_0TargetTest"
     }
   ]
 }
