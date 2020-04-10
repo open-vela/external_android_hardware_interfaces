@@ -19,6 +19,7 @@
 #include <android/hardware/keymaster/3.0/IKeymasterDevice.h>
 
 #include "Keymaster.h"
+#include "Operation.h"
 
 namespace android::hardware::keymaster::V4_1::support {
 
@@ -120,6 +121,17 @@ class Keymaster3 : public Keymaster {
     }
 
     Return<ErrorCode> earlyBootEnded() override { return ErrorCode::UNIMPLEMENTED; }
+
+    Return<void> beginOp(KeyPurpose purpose, const hidl_vec<uint8_t>& keyBlob,
+                         const hidl_vec<KeyParameter>& inParams, const HardwareAuthToken& authToken,
+                         beginOp_cb _hidl_cb) override {
+        return begin(purpose, keyBlob, inParams, authToken,
+                     [&_hidl_cb](V4_0::ErrorCode errorCode, const hidl_vec<KeyParameter>& outParams,
+                                 OperationHandle operationHandle) {
+                         _hidl_cb(static_cast<ErrorCode>(errorCode), outParams,
+                                  new Operation(operationHandle));
+                     });
+    }
 
   private:
     void getVersionIfNeeded();
