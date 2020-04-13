@@ -20,17 +20,17 @@
 #include <hidl/HidlTransportSupport.h>
 #include <log/log.h>
 #include <utils/StrongPointer.h>
-#include "SensorsV2_0.h"
+#include "Sensors.h"
 
 using android::hardware::configureRpcThreadpool;
 using android::hardware::joinRpcThreadpool;
 using android::hardware::sensors::V2_0::ISensors;
-using android::hardware::sensors::V2_0::implementation::SensorsV2_0;
+using android::hardware::sensors::V2_0::implementation::Sensors;
 
 int main(int /* argc */, char** /* argv */) {
     configureRpcThreadpool(1, true);
 
-    android::sp<ISensors> sensors = new SensorsV2_0();
+    android::sp<ISensors> sensors = new Sensors();
     if (sensors->registerAsService() != ::android::OK) {
         ALOGE("Failed to register Sensors HAL instance");
         return -1;
