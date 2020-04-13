@@ -16,6 +16,8 @@
 
 #include <android/log.h>
 
+#include <VtsHalHidlTargetTestBase.h>
+
 #include <wifi_system/interface_tool.h>
 
 #include "wifi_hidl_call_util.h"
