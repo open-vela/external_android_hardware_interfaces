@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <VtsHalHidlTargetTestBase.h>
 #include <android-base/logging.h>
 
 #include "supplicant_hidl_test_utils.h"
