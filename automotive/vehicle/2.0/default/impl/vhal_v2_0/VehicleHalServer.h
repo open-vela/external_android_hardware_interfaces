@@ -59,7 +59,7 @@ class VehicleHalServer : public IVehicleServer {
     // data members
 
   protected:
-    // TODO(b/146207078): it might be clearer to move members below to an EmulatedUserHal class
+    // TODO(b/150413515): it might be clearer to move members below to an EmulatedUserHal class
     std::unique_ptr<VehiclePropValue> mInitialUserResponseFromCmd;
     std::unique_ptr<VehiclePropValue> mSwitchUserResponseFromCmd;
 
