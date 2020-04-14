@@ -19,6 +19,7 @@ cc_test {
     name: "VtsHalWifiApV1_4TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
     srcs: [
+        "VtsHalWifiV1_4TargetTest.cpp",
         "wifi_ap_iface_hidl_test.cpp",
         "wifi_chip_hidl_test.cpp",
         "wifi_nan_iface_hidl_test.cpp",
@@ -35,6 +36,6 @@ cc_test {
     ],
     test_suites: [
         "general-tests",
-        "vts",
+        "vts-core",
     ],
 }

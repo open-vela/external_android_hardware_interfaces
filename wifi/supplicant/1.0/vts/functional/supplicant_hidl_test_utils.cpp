@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <VtsHalHidlTargetTestBase.h>
 #include <android-base/logging.h>
 #include <cutils/properties.h>
 
@@ -48,6 +49,8 @@ using ::android::hardware::wifi::supplicant::V1_0::SupplicantStatusCode;
 using ::android::hidl::manager::V1_0::IServiceNotification;
 using ::android::wifi_system::InterfaceTool;
 using ::android::wifi_system::SupplicantManager;
+
+extern WifiSupplicantHidlEnvironment* gEnv;
 
 namespace {
 
@@ -173,6 +176,12 @@ void stopSupplicant(const std::string& wifi_instance_name) {
     ASSERT_FALSE(supplicant_manager.IsSupplicantRunning());
 }
 
+// TODO(b/143892896): Remove old APIs after all supplicant tests are updated.
+void startSupplicantAndWaitForHidlService() {
+    startSupplicantAndWaitForHidlService("",
+                                         gEnv->getServiceName<ISupplicant>());
+}
+
 void startSupplicantAndWaitForHidlService(
     const std::string& wifi_instance_name,
     const std::string& supplicant_instance_name) {
@@ -231,6 +240,21 @@ void addSupplicantP2pIface_1_1(const sp<ISupplicant>& supplicant) {
         });
 }
 
+// TODO(b/143892896): Remove old APIs after all supplicant tests are updated.
+sp<ISupplicant> getSupplicant() {
+    sp<ISupplicant> supplicant =
+        ::testing::VtsHalHidlTargetTestBase::getService<ISupplicant>(
+            gEnv->getServiceName<ISupplicant>());
+    // For 1.1 supplicant, we need to add interfaces at initialization.
+    if (is_1_1(supplicant)) {
+        addSupplicantStaIface_1_1(supplicant);
+        if (gEnv->isP2pOn) {
+            addSupplicantP2pIface_1_1(supplicant);
+        }
+    }
+    return supplicant;
+}
+
 sp<ISupplicant> getSupplicant(const std::string& supplicant_instance_name,
                               bool isP2pOn) {
     sp<ISupplicant> supplicant =
@@ -243,6 +267,12 @@ sp<ISupplicant> getSupplicant(const std::string& supplicant_instance_name,
         }
     }
     return supplicant;
+}
+
+// TODO(b/143892896): Remove old APIs after all supplicant tests are updated.
+sp<ISupplicantStaIface> getSupplicantStaIface() {
+    sp<ISupplicant> supplicant = getSupplicant();
+    return getSupplicantStaIface(supplicant);
 }
 
 sp<ISupplicantStaIface> getSupplicantStaIface(
@@ -270,6 +300,11 @@ sp<ISupplicantStaIface> getSupplicantStaIface(
     return sta_iface;
 }
 
+// TODO(b/143892896): Remove old APIs after all supplicant tests are updated.
+sp<ISupplicantStaNetwork> createSupplicantStaNetwork() {
+    return createSupplicantStaNetwork(getSupplicant());
+}
+
 sp<ISupplicantStaNetwork> createSupplicantStaNetwork(
     const sp<ISupplicant>& supplicant) {
     sp<ISupplicantStaIface> sta_iface = getSupplicantStaIface(supplicant);
@@ -290,6 +325,11 @@ sp<ISupplicantStaNetwork> createSupplicantStaNetwork(
         return nullptr;
     }
     return sta_network;
+}
+
+// TODO(b/143892896): Remove old APIs after all supplicant tests are updated.
+sp<ISupplicantP2pIface> getSupplicantP2pIface() {
+    return getSupplicantP2pIface(getSupplicant());
 }
 
 sp<ISupplicantP2pIface> getSupplicantP2pIface(
@@ -315,6 +355,11 @@ sp<ISupplicantP2pIface> getSupplicantP2pIface(
         return nullptr;
     }
     return p2p_iface;
+}
+
+// TODO(b/143892896): Remove old APIs after all supplicant tests are updated.
+bool turnOnExcessiveLogging() {
+    return turnOnExcessiveLogging(getSupplicant());
 }
 
 bool turnOnExcessiveLogging(const sp<ISupplicant>& supplicant) {
