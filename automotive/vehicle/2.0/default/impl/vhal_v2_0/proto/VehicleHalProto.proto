@@ -15,8 +15,9 @@
  */
 
 syntax = "proto2";
+option optimize_for = LITE_RUNTIME;
 
-package vhal_proto;
+package emulator;
 
 // CMD messages are from workstation --> VHAL
 // RESP messages are from VHAL --> workstation
