@@ -46,6 +46,48 @@ Tuner::Tuner() {
     mFrontends[5] = new Frontend(FrontendType::ISDBT, 5, this);
     mFrontends[6] = new Frontend(FrontendType::ANALOG, 6, this);
     mFrontends[7] = new Frontend(FrontendType::ATSC, 7, this);
+
+    FrontendInfo::FrontendCapabilities caps;
+    mFrontendCaps.resize(mFrontendSize);
+    caps = FrontendInfo::FrontendCapabilities();
+    caps.dvbtCaps(FrontendDvbtCapabilities());
+    mFrontendCaps[0] = caps;
+
+    caps = FrontendInfo::FrontendCapabilities();
+    caps.atscCaps(FrontendAtscCapabilities());
+    mFrontendCaps[1] = caps;
+
+    caps = FrontendInfo::FrontendCapabilities();
+    caps.dvbcCaps(FrontendDvbcCapabilities());
+    mFrontendCaps[2] = caps;
+
+    caps = FrontendInfo::FrontendCapabilities();
+    caps.dvbsCaps(FrontendDvbsCapabilities());
+    mFrontendCaps[3] = caps;
+
+    caps = FrontendInfo::FrontendCapabilities();
+    caps.dvbtCaps(FrontendDvbtCapabilities());
+    mFrontendCaps[4] = caps;
+
+    caps = FrontendInfo::FrontendCapabilities();
+    FrontendIsdbtCapabilities isdbtCaps{
+            .modeCap = FrontendIsdbtMode::MODE_1 | FrontendIsdbtMode::MODE_2,
+            .bandwidthCap = (unsigned int)FrontendIsdbtBandwidth::BANDWIDTH_6MHZ,
+            .modulationCap = (unsigned int)FrontendIsdbtModulation::MOD_16QAM,
+            // ISDBT shares coderate and guard interval with DVBT
+            .coderateCap = FrontendDvbtCoderate::CODERATE_4_5 | FrontendDvbtCoderate::CODERATE_6_7,
+            .guardIntervalCap = (unsigned int)FrontendDvbtGuardInterval::INTERVAL_1_128,
+    };
+    caps.isdbtCaps(isdbtCaps);
+    mFrontendCaps[5] = caps;
+
+    caps = FrontendInfo::FrontendCapabilities();
+    caps.analogCaps(FrontendAnalogCapabilities());
+    mFrontendCaps[6] = caps;
+
+    caps = FrontendInfo::FrontendCapabilities();
+    caps.atscCaps(FrontendAtscCapabilities());
+    mFrontendCaps[7] = caps;
 }
 
 Tuner::~Tuner() {}
@@ -106,40 +148,43 @@ Return<void> Tuner::openDescrambler(openDescrambler_cb _hidl_cb) {
     return Void();
 }
 
-Return<void> Tuner::getFrontendInfo(FrontendId /*frontendId*/, getFrontendInfo_cb _hidl_cb) {
+Return<void> Tuner::getFrontendInfo(FrontendId frontendId, getFrontendInfo_cb _hidl_cb) {
     ALOGV("%s", __FUNCTION__);
 
-    vector<FrontendStatusType> statusCaps = {
-            FrontendStatusType::DEMOD_LOCK,
-            FrontendStatusType::SNR,
-            FrontendStatusType::FEC,
-            FrontendStatusType::MODULATION,
-            FrontendStatusType::PLP_ID,
-            FrontendStatusType::LAYER_ERROR,
-            FrontendStatusType::ATSC3_PLP_INFO,
-    };
-    FrontendInfo::FrontendCapabilities frontendCaps;
-    FrontendIsdbtCapabilities isdbtCaps{
-            .modeCap = FrontendIsdbtMode::MODE_1 | FrontendIsdbtMode::MODE_2,
-            .bandwidthCap = (unsigned int)FrontendIsdbtBandwidth::BANDWIDTH_6MHZ,
-            .modulationCap = (unsigned int)FrontendIsdbtModulation::MOD_16QAM,
-            // ISDBT shares coderate and guard interval with DVBT
-            .coderateCap = FrontendDvbtCoderate::CODERATE_4_5 | FrontendDvbtCoderate::CODERATE_6_7,
-            .guardIntervalCap = (unsigned int)FrontendDvbtGuardInterval::INTERVAL_1_128,
-    };
-    frontendCaps.isdbtCaps(isdbtCaps);
-    // assign randomly selected values for testing.
-    FrontendInfo info{
-            .type = FrontendType::ISDBT,
-            .minFrequency = 139,
-            .maxFrequency = 1139,
-            .minSymbolRate = 45,
-            .maxSymbolRate = 1145,
-            .acquireRange = 30,
-            .exclusiveGroupId = 57,
-            .statusCaps = statusCaps,
-            .frontendCaps = frontendCaps,
-    };
+    FrontendInfo info;
+    if (frontendId >= mFrontendSize) {
+        _hidl_cb(Result::INVALID_ARGUMENT, info);
+        return Void();
+    }
+
+    switch (mFrontends[frontendId]->getFrontendType()) {
+        case FrontendType::DVBT:
+            info.type = FrontendType::DVBT;
+            break;
+        default:
+            vector<FrontendStatusType> statusCaps = {
+                    FrontendStatusType::DEMOD_LOCK,
+                    FrontendStatusType::SNR,
+                    FrontendStatusType::FEC,
+                    FrontendStatusType::MODULATION,
+                    FrontendStatusType::PLP_ID,
+                    FrontendStatusType::LAYER_ERROR,
+                    FrontendStatusType::ATSC3_PLP_INFO,
+            };
+            // assign randomly selected values for testing.
+            info = {
+                    .type = mFrontends[frontendId]->getFrontendType(),
+                    .minFrequency = 139,
+                    .maxFrequency = 1139,
+                    .minSymbolRate = 45,
+                    .maxSymbolRate = 1145,
+                    .acquireRange = 30,
+                    .exclusiveGroupId = 57,
+                    .statusCaps = statusCaps,
+                    .frontendCaps = mFrontendCaps[frontendId],
+            };
+            break;
+    }
 
     _hidl_cb(Result::SUCCESS, info);
     return Void();
