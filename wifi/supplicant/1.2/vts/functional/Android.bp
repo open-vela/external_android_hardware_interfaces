@@ -39,6 +39,7 @@ cc_test {
     name: "VtsHalWifiSupplicantV1_2TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
     srcs: [
+        "VtsHalWifiSupplicantV1_2TargetTest.cpp",
         "supplicant_sta_iface_hidl_test.cpp",
         "supplicant_sta_network_hidl_test.cpp",
     ],
@@ -59,7 +60,7 @@ cc_test {
     ],
     test_suites: [
         "general-tests",
-        "vts",
+        "vts-core",
     ],
 }
 
@@ -67,6 +68,7 @@ cc_test {
     name: "VtsHalWifiSupplicantP2pV1_2TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
     srcs: [
+        "VtsHalWifiSupplicantP2pV1_2TargetTest.cpp",
         "supplicant_p2p_iface_hidl_test.cpp",
     ],
     static_libs: [
@@ -85,6 +87,6 @@ cc_test {
     ],
     test_suites: [
         "general-tests",
-        "vts",
+        "vts-core",
     ],
 }

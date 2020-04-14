@@ -1,6 +1,10 @@
 # Do not change this file except to add new interfaces. Changing
 # pre-existing interfaces will fail VTS and break framework-only OTAs
 
+# Test HALs
+
+717c17cd380bb48710dff601d1a03351d4ebc28028353d5d60489248f506523c android.hardware.tests.lazy@1.0::ILazy
+
 # HALs released in Android O
 
 f219c3b5b8c6cb1d659d4c7328f67246abfe1a8613f469826fd3b9ad090417a2 android.hardware.audio@2.0::IDevice
@@ -635,20 +639,20 @@ ca515ff4b63c80cf5ad7b3395c997c57d6c56157361f6c367d1c96f23cc4860a android.hardwar
 4bc4e8087f5c389f013370ed68bc8a1a29cb2f203237937697f35e005a5ad0b4 android.hardware.automotive.audiocontrol@2.0::IAudioControl
 37ef585d6687cb31e35c67ab456140d70edba9c4333ce5a6ddd70e636e985773 android.hardware.automotive.audiocontrol@2.0::ICloseHandle
 3cf3e5e48ba2642052bbccc1aa4e8bb142933ac960ff40eeedd16e4fe452e7a5 android.hardware.automotive.audiocontrol@2.0::IFocusListener
-44c03f3341939524b5f5acb6680f8a91924d02e335a32840d56597616db7f1ea android.hardware.automotive.audiocontrol@2.0::types
+d06fc14b325beeef06bd39de8f178f490d9e9095255626866071aab42be1fc40 android.hardware.automotive.audiocontrol@2.0::types
 949a2582c9efa3f6f631f56120eae3f02313f251dbf9246c327e419cdf0652a2 android.hardware.automotive.can@1.0::ICanBus
 43cddb1907a30343bced68946884416ea25ab14ae2df4709357528b2bedba84c android.hardware.automotive.can@1.0::ICanController
 272e826492b27b0dbdeda408e84a41ae43e98f29e57995b6452ded270aae4eee android.hardware.automotive.can@1.0::ICanErrorListener
 07e387bd8bc0e4df5f372515ed960a0b1ae74ea7231d4490a0bb09b07046e4f1 android.hardware.automotive.can@1.0::ICanMessageListener
 2166132d6c247630a193217b4338074f634d6691b1ed6796cb26b3812e90b46e android.hardware.automotive.can@1.0::ICloseHandle
 83355471a3b6d7f777d3f129714585ffb77d9b6f8a3d0365741969631efb81b2 android.hardware.automotive.can@1.0::types
-50bfbeef15d7451bd07e4ad460fbcb7ff80521b89bb8049035c0d458b4125ae4 android.hardware.automotive.evs@1.1::IEvsCamera
+8afd93d525cf17818e3d46e72f30debeaacc6fb166a59a8e25272f2baeb0ef7a android.hardware.automotive.evs@1.1::IEvsCamera
 89ff5ab18b3069f21a57f559b290caa50670f0ae1b74178f630183aef39b496b android.hardware.automotive.evs@1.1::IEvsCameraStream
 4c67f768067a0aceac74381f6f62e778ab3b6a18f47db3c9b98c58190ef5619d android.hardware.automotive.evs@1.1::IEvsDisplay
 87958d728d7c0ee9b9391ab4a072b097914921a7b38f7dc3df427f933a5b528e android.hardware.automotive.evs@1.1::IEvsEnumerator
 f53b4e8de6209c6d0fa9036005671b34a2f98328b51423d3a5137a43bf42c84d android.hardware.automotive.evs@1.1::IEvsUltrasonicsArray
 0460bacbde906a846a3d71b2b7b33d6927cac3ff072e523ffac7853577464406 android.hardware.automotive.evs@1.1::IEvsUltrasonicsArrayStream
-3e374b5c4777f959f62a320abb3b9edca8874e24e383dbb19c66d224f151b363 android.hardware.automotive.evs@1.1::types
+8a156203892de3cfa47baaccabef3c45b3315cae93b332357598d60896b1ac7f android.hardware.automotive.evs@1.1::types
 4e4904c4067dadae974ddf90351f362331dcd04bba1d890d313cc8ba91f68c15 android.hardware.automotive.sv@1.0::ISurroundView2dSession
 63336e9d03f545020ff2982ff76d9d8c44fa76ad476293b5ef6732cbbd71e61b android.hardware.automotive.sv@1.0::ISurroundView3dSession
 b7015428cd52ce8192d13bfcbf2c4455cda3727d57f2aac80d65a1747104f5ac android.hardware.automotive.sv@1.0::ISurroundViewService
@@ -711,7 +715,7 @@ a3eddd9bbdc87e8c22764070037dd1154f1cf006e6fba93364c4f85d4c134a19 android.hardwar
 278817920bfd5292a7713f97f1832cca53de3de640f7670e413d97c6e7fd581c android.hardware.neuralnetworks@1.3::IDevice
 127ba11efb8220dc3aec9a8f441b59eaf1c68d7f03f577833e1824de75a36b17 android.hardware.neuralnetworks@1.3::IExecutionCallback
 6e904be0ddca5ae1de8eba020e6c38ed935ea7d80cd08f47787f137a0ca58555 android.hardware.neuralnetworks@1.3::IFencedExecutionCallback
-ee9dc34b9925b8367b1111c72bd6d9d375432735e451572ca5a665d8516a7744 android.hardware.neuralnetworks@1.3::IPreparedModel
+2b0b10d2ea7a18a4048cd0eb83d35c19a817aeee95f65807fc31f4ef21381397 android.hardware.neuralnetworks@1.3::IPreparedModel
 eee3430cc86c97c7b407495863d8fb61da6f1a64b7721e77b9b4909b11b174e9 android.hardware.neuralnetworks@1.3::IPreparedModelCallback
 acf84925f8ee0a651f2ec547ac334034de266479b93af5434f6c1f25e66aba96 android.hardware.neuralnetworks@1.3::types
 b454df853441c12f6e425e8a60dd29fda20f5e6e39b93d1103e4b37495db38aa android.hardware.radio@1.5::IRadio
@@ -756,3 +760,8 @@ a64467bae843569f0d465c5be7f0c7a5b987985b55a3ef4794dd5afc68538650 android.hardwar
 2ce1f7fb52e49f80b13a9b153d491bce530552f02357ea729acae922a8659f93 android.hardware.wifi.supplicant@1.3::ISupplicantStaIfaceCallback
 77531c8d048f8f8ae532babd0ca86332a865ec9aace1b051226ef2b21123e645 android.hardware.wifi.supplicant@1.3::ISupplicantStaNetwork
 98592d193a717066facf91428426e5abe211e3bd718bc372e29fb944ddbe6e7c android.hardware.wifi.supplicant@1.3::types
+
+# ABI preserving changes to HALs during Android S
+
+# HALs released in Android S
+# NOTE: new HALs are recommended to be in AIDL
