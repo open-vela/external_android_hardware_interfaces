@@ -23,8 +23,7 @@
 #include <string>
 #include "utility/ValidateXml.h"
 
-#include <system/audio_config.h>
-
+static const std::vector<const char*> locations = {"/odm/etc", "/vendor/etc", "/system/etc"};
 static const std::string config = "audio_policy_engine_configuration.xml";
 static const std::string schema =
         std::string(XSD_DIR) + "/audio_policy_engine_configuration_V1_0.xsd";
@@ -43,8 +42,7 @@ TEST(ValidateConfiguration, audioPolicyEngineConfiguration) {
     RecordProperty("description",
                    "Verify that the audio policy engine configuration file "
                    "is valid according to the schemas");
-    EXPECT_VALID_XML_MULTIPLE_LOCATIONS(config.c_str(), android::audio_get_configuration_paths(),
-                                        schema.c_str());
+    EXPECT_VALID_XML_MULTIPLE_LOCATIONS(config.c_str(), locations, schema.c_str());
 }
 
 /**
@@ -54,11 +52,9 @@ TEST(ValidateConfiguration, audioPolicyEngineConfiguration) {
  */
 static bool deviceUsesConfigurableEngine() {
     return android::hardware::audio::common::test::utility::validateXmlMultipleLocations<true>(
-                   "", "", "", config.c_str(), android::audio_get_configuration_paths(),
-                   schema.c_str()) &&
+                   "", "", "", config.c_str(), locations, schema.c_str()) &&
            android::hardware::audio::common::test::utility::validateXmlMultipleLocations<true>(
-                   "", "", "", configurableConfig.c_str(), android::audio_get_configuration_paths(),
-                   configurableSchemas.c_str());
+                   "", "", "", configurableConfig.c_str(), locations, configurableSchemas.c_str());
 }
 
 TEST(ValidateConfiguration, audioPolicyEngineConfigurable) {
