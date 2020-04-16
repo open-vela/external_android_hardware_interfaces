@@ -578,9 +578,10 @@ WifiStatus WifiStaIface::stopSendingKeepAlivePacketsInternal(uint32_t cmd_id) {
 }
 
 WifiStatus WifiStaIface::setScanningMacOuiInternal(
-    const std::array<uint8_t, 3>& /* oui */) {
-    // deprecated.
-    return createWifiStatus(WifiStatusCode::ERROR_NOT_SUPPORTED);
+    const std::array<uint8_t, 3>& oui) {
+    legacy_hal::wifi_error legacy_status =
+        legacy_hal_.lock()->setScanningMacOui(ifname_, oui);
+    return createWifiStatusFromLegacyError(legacy_status);
 }
 
 WifiStatus WifiStaIface::startDebugPacketFateMonitoringInternal() {
