@@ -42,4 +42,8 @@ cc_test {
         "general-tests",
         "vts",
     ],
+    test_suites: [
+        "general-tests",
+        "vts",
+    ],
 }
