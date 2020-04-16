@@ -35,6 +35,7 @@
 #include <hwbinder/IPCThreadState.h>
 
 #include <android-base/logging.h>
+#include <system/audio_config.h>
 
 #include PATH(android/hardware/audio/FILE_VERSION/IDevice.h)
 #include PATH(android/hardware/audio/FILE_VERSION/IDevicesFactory.h)
@@ -108,11 +109,6 @@ static auto invalidStateOrNotSupported = {Result::INVALID_STATE, Result::NOT_SUP
 class HidlTest : public ::testing::Test {
   public:
     virtual ~HidlTest() = default;
-    // public access to avoid annoyances when using this method in template classes
-    // derived from test classes
-    sp<IDevice> getDevice() const {
-        return DeviceManager::getInstance().get(getFactoryName(), getDeviceName());
-    }
 
   protected:
     // Factory and device name getters to be overridden in subclasses.
@@ -121,6 +117,9 @@ class HidlTest : public ::testing::Test {
 
     sp<IDevicesFactory> getDevicesFactory() const {
         return DevicesFactoryManager::getInstance().get(getFactoryName());
+    }
+    sp<IDevice> getDevice() const {
+        return DeviceManager::getInstance().get(getFactoryName(), getDeviceName());
     }
     bool resetDevice() const {
         return DeviceManager::getInstance().reset(getFactoryName(), getDeviceName());
@@ -135,7 +134,6 @@ class HidlTest : public ::testing::Test {
 ////////////////////////// Audio policy configuration ////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-static const std::vector<const char*> kConfigLocations = {"/odm/etc", "/vendor/etc", "/system/etc"};
 static constexpr char kConfigFileName[] = "audio_policy_configuration.xml";
 
 // Stringify the argument.
@@ -154,8 +152,8 @@ class PolicyConfig : private PolicyConfigData, public AudioPolicyConfig {
     PolicyConfig()
         : AudioPolicyConfig(hwModules, availableOutputDevices, availableInputDevices,
                             defaultOutputDevice) {
-        for (const char* location : kConfigLocations) {
-            std::string path = std::string(location) + '/' + kConfigFileName;
+        for (const auto& location : android::audio_get_configuration_paths()) {
+            std::string path = location + '/' + kConfigFileName;
             if (access(path.c_str(), F_OK) == 0) {
                 mFilePath = path;
                 break;
@@ -188,7 +186,7 @@ class PolicyConfig : private PolicyConfigData, public AudioPolicyConfig {
     std::string getError() const {
         if (mFilePath.empty()) {
             return std::string{"Could not find "} + kConfigFileName +
-                   " file in: " + testing::PrintToString(kConfigLocations);
+                   " file in: " + testing::PrintToString(android::audio_get_configuration_paths());
         } else {
             return "Invalid config file: " + mFilePath;
         }
@@ -304,7 +302,8 @@ TEST(CheckConfig, audioPolicyConfigurationValidation) {
                    "is valid according to the schema");
 
     const char* xsd = "/data/local/tmp/audio_policy_configuration_" STRINGIFY(CPP_VERSION) ".xsd";
-    EXPECT_ONE_VALID_XML_MULTIPLE_LOCATIONS(kConfigFileName, kConfigLocations, xsd);
+    EXPECT_ONE_VALID_XML_MULTIPLE_LOCATIONS(kConfigFileName,
+                                            android::audio_get_configuration_paths(), xsd);
 }
 
 class AudioPolicyConfigTest : public AudioHidlTestWithDeviceParameter {
@@ -403,8 +402,7 @@ class AudioPrimaryHidlTest : public AudioHidlDeviceTest {
         ASSERT_TRUE(getDevice() != nullptr);
     }
 
-    // public access to avoid annoyances when using this method in template classes
-    // derived from test classes
+  protected:
     sp<IPrimaryDevice> getDevice() const {
         return DeviceManager::getInstance().getPrimary(getFactoryName());
     }
@@ -435,15 +433,15 @@ class AccessorHidlTest : public BaseTestClass {
     /** Test a property getter and setter.
      *  The getter and/or the setter may return NOT_SUPPORTED if optionality == OPTIONAL.
      */
-    template <Optionality optionality = REQUIRED, class IUTGetter, class Getter, class Setter>
-    void testAccessors(IUTGetter iutGetter, const string& propertyName,
-                       const Initial expectedInitial, list<Property> valuesToTest, Setter setter,
-                       Getter getter, const vector<Property>& invalidValues = {}) {
+    template <Optionality optionality = REQUIRED, class Getter, class Setter>
+    void testAccessors(const string& propertyName, const Initial expectedInitial,
+                       list<Property> valuesToTest, Setter setter, Getter getter,
+                       const vector<Property>& invalidValues = {}) {
         const auto expectedResults = {Result::OK,
                                       optionality == OPTIONAL ? Result::NOT_SUPPORTED : Result::OK};
 
         Property initialValue = expectedInitial.value;
-        ASSERT_OK(((this->*iutGetter)().get()->*getter)(returnIn(res, initialValue)));
+        ASSERT_OK((BaseTestClass::getDevice().get()->*getter)(returnIn(res, initialValue)));
         ASSERT_RESULT(expectedResults, res);
         if (res == Result::OK && expectedInitial.check == REQUIRED) {
             EXPECT_EQ(expectedInitial.value, initialValue);
@@ -454,7 +452,7 @@ class AccessorHidlTest : public BaseTestClass {
         for (Property setValue : valuesToTest) {
             SCOPED_TRACE("Test " + propertyName + " getter and setter for " +
                          testing::PrintToString(setValue));
-            auto ret = ((this->*iutGetter)().get()->*setter)(setValue);
+            auto ret = (BaseTestClass::getDevice().get()->*setter)(setValue);
             ASSERT_RESULT(expectedResults, ret);
             if (ret == Result::NOT_SUPPORTED) {
                 doc::partialTest(propertyName + " setter is not supported");
@@ -462,7 +460,7 @@ class AccessorHidlTest : public BaseTestClass {
             }
             Property getValue;
             // Make sure the getter returns the same value just set
-            ASSERT_OK(((this->*iutGetter)().get()->*getter)(returnIn(res, getValue)));
+            ASSERT_OK((BaseTestClass::getDevice().get()->*getter)(returnIn(res, getValue)));
             ASSERT_RESULT(expectedResults, res);
             if (res == Result::NOT_SUPPORTED) {
                 doc::partialTest(propertyName + " getter is not supported");
@@ -475,18 +473,11 @@ class AccessorHidlTest : public BaseTestClass {
             SCOPED_TRACE("Try to set " + propertyName + " with the invalid value " +
                          testing::PrintToString(invalidValue));
             EXPECT_RESULT(invalidArgsOrNotSupported,
-                          ((this->*iutGetter)().get()->*setter)(invalidValue));
+                          (BaseTestClass::getDevice().get()->*setter)(invalidValue));
         }
 
         // Restore initial value
-        EXPECT_RESULT(expectedResults, ((this->*iutGetter)().get()->*setter)(initialValue));
-    }
-    template <Optionality optionality = REQUIRED, class Getter, class Setter>
-    void testAccessors(const string& propertyName, const Initial expectedInitial,
-                       list<Property> valuesToTest, Setter setter, Getter getter,
-                       const vector<Property>& invalidValues = {}) {
-        testAccessors<optionality>(&BaseTestClass::getDevice, propertyName, expectedInitial,
-                                   valuesToTest, setter, getter, invalidValues);
+        EXPECT_RESULT(expectedResults, (BaseTestClass::getDevice().get()->*setter)(initialValue));
     }
 };
 
@@ -864,11 +855,6 @@ class StreamHelper {
 
 template <class Stream>
 class OpenStreamTest : public AudioHidlTestWithDeviceConfigParameter {
-  public:
-    // public access to avoid annoyances when using this method in template classes
-    // derived from test classes
-    sp<Stream> getStream() const { return stream; }
-
   protected:
     OpenStreamTest() : AudioHidlTestWithDeviceConfigParameter(), helper(stream) {}
     template <class Open>

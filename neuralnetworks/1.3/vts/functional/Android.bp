@@ -77,8 +77,5 @@ cc_test {
     header_libs: [
         "libneuralnetworks_headers",
     ],
-    test_suites: [
-        "general-tests",
-        "vts",
-    ],
+    test_suites: ["general-tests"],
 }
