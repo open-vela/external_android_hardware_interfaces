@@ -82,10 +82,6 @@ Return<Result> Frontend::scan(const FrontendSettings& settings, FrontendScanType
     ALOGV("%s", __FUNCTION__);
 
     if (mType == FrontendType::ATSC) {
-        FrontendScanMessage msg;
-        msg.isLocked(true);
-        mCallback->onScanMessage(FrontendScanMessageType::LOCKED, msg);
-        mIsLocked = true;
         return Result::SUCCESS;
     }
     if (mType != FrontendType::DVBT) {
