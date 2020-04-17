@@ -1,6 +1,3 @@
-per-file *.hal,*.aidl,OWNERS = set noparent
-per-file *.hal,*.aidl,OWNERS = elsk@google.com,malchev@google.com,smoreland@google.com
-
 elsk@google.com
 maco@google.com
 malchev@google.com

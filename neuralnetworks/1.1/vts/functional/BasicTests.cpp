@@ -18,34 +18,41 @@
 
 #include "VtsHalNeuralnetworks.h"
 
-namespace android::hardware::neuralnetworks::V1_1::vts::functional {
-
-using V1_0::DeviceStatus;
-using V1_0::ErrorStatus;
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_1 {
+namespace vts {
+namespace functional {
 
 // create device test
-TEST_P(NeuralnetworksHidlTest, CreateDevice) {}
+TEST_F(NeuralnetworksHidlTest, CreateDevice) {}
 
 // status test
-TEST_P(NeuralnetworksHidlTest, StatusTest) {
-    Return<DeviceStatus> status = kDevice->getStatus();
+TEST_F(NeuralnetworksHidlTest, StatusTest) {
+    Return<DeviceStatus> status = device->getStatus();
     ASSERT_TRUE(status.isOk());
     EXPECT_EQ(DeviceStatus::AVAILABLE, static_cast<DeviceStatus>(status));
 }
 
 // initialization
-TEST_P(NeuralnetworksHidlTest, GetCapabilitiesTest) {
+TEST_F(NeuralnetworksHidlTest, GetCapabilitiesTest) {
     Return<void> ret =
-            kDevice->getCapabilities_1_1([](ErrorStatus status, const Capabilities& capabilities) {
-                EXPECT_EQ(ErrorStatus::NONE, status);
-                EXPECT_LT(0.0f, capabilities.float32Performance.execTime);
-                EXPECT_LT(0.0f, capabilities.float32Performance.powerUsage);
-                EXPECT_LT(0.0f, capabilities.quantized8Performance.execTime);
-                EXPECT_LT(0.0f, capabilities.quantized8Performance.powerUsage);
-                EXPECT_LT(0.0f, capabilities.relaxedFloat32toFloat16Performance.execTime);
-                EXPECT_LT(0.0f, capabilities.relaxedFloat32toFloat16Performance.powerUsage);
-            });
+        device->getCapabilities_1_1([](ErrorStatus status, const Capabilities& capabilities) {
+            EXPECT_EQ(ErrorStatus::NONE, status);
+            EXPECT_LT(0.0f, capabilities.float32Performance.execTime);
+            EXPECT_LT(0.0f, capabilities.float32Performance.powerUsage);
+            EXPECT_LT(0.0f, capabilities.quantized8Performance.execTime);
+            EXPECT_LT(0.0f, capabilities.quantized8Performance.powerUsage);
+            EXPECT_LT(0.0f, capabilities.relaxedFloat32toFloat16Performance.execTime);
+            EXPECT_LT(0.0f, capabilities.relaxedFloat32toFloat16Performance.powerUsage);
+        });
     EXPECT_TRUE(ret.isOk());
 }
 
-}  // namespace android::hardware::neuralnetworks::V1_1::vts::functional
+}  // namespace functional
+}  // namespace vts
+}  // namespace V1_1
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android

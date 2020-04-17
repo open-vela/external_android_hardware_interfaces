@@ -16,6 +16,8 @@
 
 #include <android-base/logging.h>
 
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -23,7 +25,6 @@
 #include <android/hardware/radio/1.0/ISap.h>
 #include <android/hardware/radio/1.0/ISapCallback.h>
 #include <android/hardware/radio/1.0/types.h>
-#include <gtest/gtest.h>
 
 #include "vts_test_util.h"
 
@@ -79,9 +80,23 @@ class SapCallback : public ISapCallback {
     Return<void> transferProtocolResponse(int32_t token, SapResultCode resultCode);
 };
 
+// Test environment for Sap HIDL HAL.
+class SapHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static SapHidlEnvironment* Instance() {
+        static SapHidlEnvironment* instance = new SapHidlEnvironment;
+        return instance;
+    }
+    virtual void registerTestServices() override { registerTestService<ISap>(); }
+
+   private:
+    SapHidlEnvironment() {}
+};
+
 // The main test class for Sap HIDL.
-class SapHidlTest : public ::testing::TestWithParam<std::string> {
-  private:
+class SapHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+   private:
     std::mutex mtx;
     std::condition_variable cv;
     int count;

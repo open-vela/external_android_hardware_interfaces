@@ -21,9 +21,8 @@
 #include <android/hardware/vibrator/1.0/types.h>
 #include <unistd.h>
 
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 
 using ::android::sp;
 using ::android::hardware::hidl_enum_range;
@@ -36,11 +35,27 @@ using ::android::hardware::vibrator::V1_0::Status;
 
 #define EXPECT_OK(ret) EXPECT_TRUE((ret).isOk())
 
+// Test environment for Vibrator HIDL HAL.
+class VibratorHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+ public:
+  // get the test environment singleton
+  static VibratorHidlEnvironment* Instance() {
+      static VibratorHidlEnvironment* instance = new VibratorHidlEnvironment;
+      return instance;
+  }
+
+  virtual void registerTestServices() override { registerTestService<IVibrator>(); }
+
+ private:
+  VibratorHidlEnvironment() {}
+};
+
 // The main test class for VIBRATOR HIDL HAL.
-class VibratorHidlTest : public ::testing::TestWithParam<std::string> {
+class VibratorHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
-    vibrator = IVibrator::getService(GetParam());
+    vibrator = ::testing::VtsHalHidlTargetTestBase::getService<IVibrator>(
+        VibratorHidlEnvironment::Instance()->getServiceName<IVibrator>());
     ASSERT_NE(vibrator, nullptr);
   }
 
@@ -64,13 +79,13 @@ static void validatePerformEffectBadInput(Status status, uint32_t lengthMs) {
             << "Effects that return UNSUPPORTED_OPERATION must have a duration of zero";
 }
 
-TEST_P(VibratorHidlTest, OnThenOffBeforeTimeout) {
+TEST_F(VibratorHidlTest, OnThenOffBeforeTimeout) {
   EXPECT_EQ(Status::OK, vibrator->on(2000));
   sleep(1);
   EXPECT_EQ(Status::OK, vibrator->off());
 }
 
-TEST_P(VibratorHidlTest, PerformEffect) {
+TEST_F(VibratorHidlTest, PerformEffect) {
   vibrator->perform(Effect::CLICK, EffectStrength::MEDIUM, validatePerformEffect);
   vibrator->perform(Effect::DOUBLE_CLICK, EffectStrength::LIGHT, validatePerformEffect);
 }
@@ -78,7 +93,7 @@ TEST_P(VibratorHidlTest, PerformEffect) {
 /*
  * Test to make sure effect values above the valid range are rejected.
  */
-TEST_P(VibratorHidlTest, PerformEffect_BadEffects_AboveValidRange) {
+TEST_F(VibratorHidlTest, PerformEffect_BadEffects_AboveValidRange) {
     Effect effect = *std::prev(hidl_enum_range<Effect>().end());
     Effect badEffect = static_cast<Effect>(static_cast<int32_t>(effect) + 1);
     EXPECT_OK(vibrator->perform(badEffect, EffectStrength::LIGHT, validatePerformEffectBadInput));
@@ -87,7 +102,7 @@ TEST_P(VibratorHidlTest, PerformEffect_BadEffects_AboveValidRange) {
 /*
  * Test to make sure effect values below the valid range are rejected.
  */
-TEST_P(VibratorHidlTest, PerformEffect_BadEffects_BelowValidRange) {
+TEST_F(VibratorHidlTest, PerformEffect_BadEffects_BelowValidRange) {
     Effect effect = *hidl_enum_range<Effect>().begin();
     Effect badEffect = static_cast<Effect>(static_cast<int32_t>(effect) - 1);
     EXPECT_OK(vibrator->perform(badEffect, EffectStrength::LIGHT, validatePerformEffectBadInput));
@@ -96,7 +111,7 @@ TEST_P(VibratorHidlTest, PerformEffect_BadEffects_BelowValidRange) {
 /*
  * Test to make sure strength values above the valid range are rejected.
  */
-TEST_P(VibratorHidlTest, PerformEffect_BadStrength_AboveValidRange) {
+TEST_F(VibratorHidlTest, PerformEffect_BadStrength_AboveValidRange) {
     EffectStrength strength = *std::prev(hidl_enum_range<EffectStrength>().end());
     EffectStrength badStrength = static_cast<EffectStrength>(static_cast<int32_t>(strength) + 1);
     EXPECT_OK(vibrator->perform(Effect::CLICK, badStrength, validatePerformEffectBadInput));
@@ -105,13 +120,13 @@ TEST_P(VibratorHidlTest, PerformEffect_BadStrength_AboveValidRange) {
 /*
  * Test to make sure strength values below the valid range are rejected.
  */
-TEST_P(VibratorHidlTest, PerformEffect_BadStrength_BelowValidRange) {
+TEST_F(VibratorHidlTest, PerformEffect_BadStrength_BelowValidRange) {
     EffectStrength strength = *hidl_enum_range<EffectStrength>().begin();
     EffectStrength badStrength = static_cast<EffectStrength>(static_cast<int32_t>(strength) - 1);
     EXPECT_OK(vibrator->perform(Effect::CLICK, badStrength, validatePerformEffectBadInput));
 }
 
-TEST_P(VibratorHidlTest, ChangeVibrationalAmplitude) {
+TEST_F(VibratorHidlTest, ChangeVibrationalAmplitude) {
   if (vibrator->supportsAmplitudeControl()) {
     EXPECT_EQ(Status::OK, vibrator->setAmplitude(1));
     EXPECT_EQ(Status::OK, vibrator->on(2000));
@@ -122,19 +137,23 @@ TEST_P(VibratorHidlTest, ChangeVibrationalAmplitude) {
   }
 }
 
-TEST_P(VibratorHidlTest, AmplitudeOutsideRangeFails) {
+TEST_F(VibratorHidlTest, AmplitudeOutsideRangeFails) {
   if (vibrator->supportsAmplitudeControl()) {
     EXPECT_EQ(Status::BAD_VALUE, vibrator->setAmplitude(0));
   }
 }
 
-TEST_P(VibratorHidlTest, SetAmplitudeReturnUnsupportedOperationIfNotSupported) {
+TEST_F(VibratorHidlTest, SetAmplitudeReturnUnsupportedOperationIfNotSupported) {
   if (!vibrator->supportsAmplitudeControl()) {
     EXPECT_EQ(Status::UNSUPPORTED_OPERATION, vibrator->setAmplitude(1));
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, VibratorHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IVibrator::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char **argv) {
+  ::testing::AddGlobalTestEnvironment(VibratorHidlEnvironment::Instance());
+  ::testing::InitGoogleTest(&argc, argv);
+  VibratorHidlEnvironment::Instance()->init(&argc, argv);
+  int status = RUN_ALL_TESTS();
+  LOG(INFO) << "Test result = " << status;
+  return status;
+}
