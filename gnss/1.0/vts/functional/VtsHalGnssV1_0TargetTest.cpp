@@ -22,11 +22,8 @@
 #include <log/log.h>
 
 #include <chrono>
-#include <cmath>
 #include <condition_variable>
 #include <mutex>
-
-#include <cutils/properties.h>
 
 using android::hardware::Return;
 using android::hardware::Void;
@@ -38,12 +35,6 @@ using android::hardware::gnss::V1_0::IGnssCallback;
 using android::hardware::gnss::V1_0::IGnssDebug;
 using android::hardware::gnss::V1_0::IGnssMeasurement;
 using android::sp;
-
-static bool IsAutomotiveDevice() {
-    char buffer[PROPERTY_VALUE_MAX] = {0};
-    property_get("ro.hardware.type", buffer, "");
-    return strncmp(buffer, "automotive", PROPERTY_VALUE_MAX) == 0;
-}
 
 #define TIMEOUT_SEC 2  // for basic commands/responses
 
@@ -412,34 +403,6 @@ TEST_P(GnssHalTest, InjectDelete) {
 }
 
 /*
- * InjectSeedLocation:
- * Injects a seed location and ensures the injected seed location is not fused in the resulting
- * GNSS location.
- */
-TEST_P(GnssHalTest, InjectSeedLocation) {
-    // An arbitrary position in North Pacific Ocean (where no VTS labs will ever likely be located).
-    const double seedLatDegrees = 32.312894;
-    const double seedLngDegrees = -172.954117;
-    const float seedAccuracyMeters = 150.0;
-
-    auto result = gnss_hal_->injectLocation(seedLatDegrees, seedLngDegrees, seedAccuracyMeters);
-    ASSERT_TRUE(result.isOk());
-    EXPECT_TRUE(result);
-
-    StartAndGetSingleLocation(false);
-
-    // Ensure we don't get a location anywhere within 111km (1 degree of lat or lng) of the seed
-    // location.
-    EXPECT_TRUE(std::abs(last_location_.latitudeDegrees - seedLatDegrees) > 1.0 ||
-                std::abs(last_location_.longitudeDegrees - seedLngDegrees) > 1.0);
-
-    StopAndClearLocations();
-
-    auto resultVoid = gnss_hal_->deleteAidingData(IGnss::GnssAidingData::DELETE_POSITION);
-    ASSERT_TRUE(resultVoid.isOk());
-}
-
-/*
  * GetAllExtentions:
  * Tries getting all optional extensions, and ensures a valid return
  *   null or actual extension, no crash.
@@ -481,9 +444,9 @@ TEST_P(GnssHalTest, GetAllExtensions) {
 
   auto gnssDebug = gnss_hal_->getExtensionGnssDebug();
   ASSERT_TRUE(gnssDebug.isOk());
-  if (!IsAutomotiveDevice() && info_called_count_ > 0 && last_info_.yearOfHw >= 2017) {
-      sp<IGnssDebug> iGnssDebug = gnssDebug;
-      EXPECT_NE(iGnssDebug, nullptr);
+  if (info_called_count_ > 0 && last_info_.yearOfHw >= 2017) {
+    sp<IGnssDebug> iGnssDebug = gnssDebug;
+    EXPECT_NE(iGnssDebug, nullptr);
   }
 }
 
