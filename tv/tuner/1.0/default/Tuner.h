@@ -63,7 +63,6 @@ class Tuner : public ITuner {
 
     void setFrontendAsDemuxSource(uint32_t frontendId, uint32_t demuxId);
 
-    void frontendStartTune(uint32_t frontendId);
     void frontendStopTune(uint32_t frontendId);
 
   private:
