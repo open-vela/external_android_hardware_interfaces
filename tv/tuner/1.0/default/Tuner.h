@@ -21,7 +21,6 @@
 #include <map>
 #include "Demux.h"
 #include "Frontend.h"
-#include "Lnb.h"
 
 using namespace std;
 
@@ -63,7 +62,6 @@ class Tuner : public ITuner {
 
     void setFrontendAsDemuxSource(uint32_t frontendId, uint32_t demuxId);
 
-    void frontendStartTune(uint32_t frontendId);
     void frontendStopTune(uint32_t frontendId);
 
   private:
@@ -78,7 +76,6 @@ class Tuner : public ITuner {
     // The last used demux id. Initial value is -1.
     // First used id will be 0.
     int mLastUsedId = -1;
-    vector<sp<Lnb>> mLnbs;
 };
 
 }  // namespace implementation
