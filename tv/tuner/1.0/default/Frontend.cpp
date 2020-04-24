@@ -64,7 +64,6 @@ Return<Result> Frontend::tune(const FrontendSettings& /* settings */) {
         return Result::INVALID_STATE;
     }
 
-    mTunerService->frontendStartTune(mId);
     mCallback->onEvent(FrontendEventType::LOCKED);
     mIsLocked = false;
     return Result::SUCCESS;
