@@ -22,7 +22,6 @@ cc_test {
         "FrontendTests.cpp",
         "DemuxTests.cpp",
         "FilterTests.cpp",
-        "DvrTests.cpp",
     ],
     static_libs: [
         "android.hardware.tv.tuner@1.0",
