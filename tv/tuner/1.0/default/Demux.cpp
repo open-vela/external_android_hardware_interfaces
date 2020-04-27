@@ -52,7 +52,7 @@ Return<Result> Demux::setFrontendDataSource(uint32_t frontendId) {
 
     mTunerService->setFrontendAsDemuxSource(frontendId, mDemuxId);
 
-    return Result::SUCCESS;
+    return startFrontendInputLoop();
 }
 
 Return<void> Demux::openFilter(const DemuxFilterType& type, uint32_t bufferSize,
@@ -60,6 +60,7 @@ Return<void> Demux::openFilter(const DemuxFilterType& type, uint32_t bufferSize,
     ALOGV("%s", __FUNCTION__);
 
     uint32_t filterId;
+
     if (!mUnusedFilterIds.empty()) {
         filterId = *mUnusedFilterIds.begin();
 
@@ -82,6 +83,7 @@ Return<void> Demux::openFilter(const DemuxFilterType& type, uint32_t bufferSize,
         _hidl_cb(Result::UNKNOWN_ERROR, filter);
         return Void();
     }
+
     mFilters[filterId] = filter;
 
     _hidl_cb(Result::SUCCESS, filter);
@@ -232,9 +234,11 @@ uint16_t Demux::getFilterTpid(uint32_t filterId) {
     return mFilters[filterId]->getTpid();
 }
 
-void Demux::startFrontendInputLoop() {
+Result Demux::startFrontendInputLoop() {
     pthread_create(&mFrontendInputThread, NULL, __threadLoopFrontend, this);
     pthread_setname_np(mFrontendInputThread, "frontend_input_thread");
+
+    return Result::SUCCESS;
 }
 
 void* Demux::__threadLoopFrontend(void* user) {
