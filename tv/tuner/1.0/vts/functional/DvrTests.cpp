@@ -16,13 +16,17 @@
 
 #include "DvrTests.h"
 
-void DvrCallback::startPlaybackInputThread(string& dataInputFile, PlaybackSettings& settings,
+void DvrCallback::startPlaybackInputThread(PlaybackConf playbackConf,
                                            MQDesc& playbackMQDescriptor) {
-    mInputDataFile = dataInputFile;
-    mPlaybackSettings = settings;
     mPlaybackMQ = std::make_unique<FilterMQ>(playbackMQDescriptor, true /* resetPointers */);
     EXPECT_TRUE(mPlaybackMQ);
-    pthread_create(&mPlaybackThread, NULL, __threadLoopPlayback, this);
+    struct PlaybackThreadArgs* threadArgs =
+            (struct PlaybackThreadArgs*)malloc(sizeof(struct PlaybackThreadArgs));
+    threadArgs->user = this;
+    threadArgs->playbackConf = &playbackConf;
+    threadArgs->keepWritingPlaybackFMQ = &mKeepWritingPlaybackFMQ;
+
+    pthread_create(&mPlaybackThread, NULL, __threadLoopPlayback, (void*)threadArgs);
     pthread_setname_np(mPlaybackThread, "test_playback_input_loop");
 }
 
@@ -33,13 +37,15 @@ void DvrCallback::stopPlaybackThread() {
     android::Mutex::Autolock autoLock(mPlaybackThreadLock);
 }
 
-void* DvrCallback::__threadLoopPlayback(void* user) {
-    DvrCallback* const self = static_cast<DvrCallback*>(user);
-    self->playbackThreadLoop();
+void* DvrCallback::__threadLoopPlayback(void* threadArgs) {
+    DvrCallback* const self =
+            static_cast<DvrCallback*>(((struct PlaybackThreadArgs*)threadArgs)->user);
+    self->playbackThreadLoop(((struct PlaybackThreadArgs*)threadArgs)->playbackConf,
+                             ((struct PlaybackThreadArgs*)threadArgs)->keepWritingPlaybackFMQ);
     return 0;
 }
 
-void DvrCallback::playbackThreadLoop() {
+void DvrCallback::playbackThreadLoop(PlaybackConf* playbackConf, bool* keepWritingPlaybackFMQ) {
     android::Mutex::Autolock autoLock(mPlaybackThreadLock);
     mPlaybackThreadRunning = true;
 
@@ -50,10 +56,10 @@ void DvrCallback::playbackThreadLoop() {
                 android::OK);
 
     // open the stream and get its length
-    std::ifstream inputData(mInputDataFile.c_str(), std::ifstream::binary);
-    int writeSize = mPlaybackSettings.packetSize * 6;
+    std::ifstream inputData(playbackConf->inputDataFile, std::ifstream::binary);
+    int writeSize = playbackConf->setting.packetSize * 6;
     char* buffer = new char[writeSize];
-    ALOGW("[vts] playback thread loop start %s!", mInputDataFile.c_str());
+    ALOGW("[vts] playback thread loop start %s", playbackConf->inputDataFile.c_str());
     if (!inputData.is_open()) {
         mPlaybackThreadRunning = false;
         ALOGW("[vts] Error %s", strerror(errno));
@@ -61,7 +67,7 @@ void DvrCallback::playbackThreadLoop() {
 
     while (mPlaybackThreadRunning) {
         // move the stream pointer for packet size * 6 every read until the end
-        while (mKeepWritingPlaybackFMQ) {
+        while (*keepWritingPlaybackFMQ) {
             inputData.read(buffer, writeSize);
             if (!inputData) {
                 int leftSize = inputData.gcount();
@@ -99,7 +105,6 @@ void DvrCallback::testRecordOutput() {
     while (mDataOutputBuffer.empty()) {
         if (-ETIMEDOUT == mMsgCondition.waitRelative(mMsgLock, WAIT_TIMEOUT)) {
             EXPECT_TRUE(false) << "record output matching pid does not output within timeout";
-            stopRecordThread();
             return;
         }
     }
@@ -133,7 +138,6 @@ void DvrCallback::recordThreadLoop(RecordSettings* /*recordSettings*/, bool* kee
     ALOGD("[vts] DvrCallback record threadLoop start.");
     android::Mutex::Autolock autoLock(mRecordThreadLock);
     mRecordThreadRunning = true;
-    mKeepReadingRecordFMQ = true;
 
     // Create the EventFlag that is used to signal the HAL impl that data have been
     // read from the Record FMQ
@@ -179,23 +183,21 @@ bool DvrCallback::readRecordFMQ() {
 void DvrCallback::stopRecordThread() {
     mKeepReadingRecordFMQ = false;
     mRecordThreadRunning = false;
+    android::Mutex::Autolock autoLock(mRecordThreadLock);
 }
 
-AssertionResult DvrTests::openDvrInDemux(DvrType type, uint32_t bufferSize) {
+AssertionResult DvrTests::openDvrInDemux(DvrType type) {
     Result status;
     EXPECT_TRUE(mDemux) << "Test with openDemux first.";
 
     // Create dvr callback
     mDvrCallback = new DvrCallback();
 
-    mDemux->openDvr(type, bufferSize, mDvrCallback, [&](Result result, const sp<IDvr>& dvr) {
+    mDemux->openDvr(type, FMQ_SIZE_1M, mDvrCallback, [&](Result result, const sp<IDvr>& dvr) {
         mDvr = dvr;
         status = result;
     });
 
-    if (status == Result::SUCCESS) {
-        mDvrCallback->setDvr(mDvr);
-    }
     return AssertionResult(status == Result::SUCCESS);
 }
 

@@ -73,22 +73,18 @@ Return<Result> Filter::configure(const DemuxFilterSettings& settings) {
     switch (mType.mainType) {
         case DemuxFilterMainType::TS:
             mTpid = settings.ts().tpid;
-            if (mType.subType.tsFilterType() == DemuxTsFilterType::AUDIO ||
-                mType.subType.tsFilterType() == DemuxTsFilterType::VIDEO) {
-                mIsMediaFilter = true;
-            }
             break;
         case DemuxFilterMainType::MMTP:
-            if (mType.subType.mmtpFilterType() == DemuxMmtpFilterType::AUDIO ||
-                mType.subType.mmtpFilterType() == DemuxMmtpFilterType::VIDEO) {
-                mIsMediaFilter = true;
-            }
+            /*mmtpSettings*/
             break;
         case DemuxFilterMainType::IP:
+            /*ipSettings*/
             break;
         case DemuxFilterMainType::TLV:
+            /*tlvSettings*/
             break;
         case DemuxFilterMainType::ALP:
+            /*alpSettings*/
             break;
         default:
             break;
@@ -149,7 +145,7 @@ bool Filter::createFilterMQ() {
     std::unique_ptr<FilterMQ> tmpFilterMQ =
             std::unique_ptr<FilterMQ>(new (std::nothrow) FilterMQ(mBufferSize, true));
     if (!tmpFilterMQ->isValid()) {
-        ALOGW("[Filter] Failed to create FMQ of filter with id: %d", mFilterId);
+        ALOGW("Failed to create FMQ of filter with id: %d", mFilterId);
         return false;
     }
 
@@ -245,7 +241,9 @@ void Filter::filterThreadLoop() {
 }
 
 void Filter::freeAvHandle() {
-    if (!mIsMediaFilter) {
+    if (mType.mainType != DemuxFilterMainType::TS ||
+        (mType.subType.tsFilterType() == DemuxTsFilterType::AUDIO &&
+         mType.subType.tsFilterType() == DemuxTsFilterType::VIDEO)) {
         return;
     }
     for (int i = 0; i < mFilterEvent.events.size(); i++) {
@@ -290,11 +288,13 @@ uint16_t Filter::getTpid() {
 
 void Filter::updateFilterOutput(vector<uint8_t> data) {
     std::lock_guard<std::mutex> lock(mFilterOutputLock);
+    ALOGD("[Filter] filter output updated");
     mFilterOutput.insert(mFilterOutput.end(), data.begin(), data.end());
 }
 
 void Filter::updateRecordOutput(vector<uint8_t> data) {
     std::lock_guard<std::mutex> lock(mRecordFilterOutputLock);
+    ALOGD("[Filter] record filter output updated");
     mRecordFilterOutput.insert(mRecordFilterOutput.end(), data.begin(), data.end());
 }
 
@@ -436,6 +436,7 @@ Result Filter::startMediaFilterHandler() {
     if (mFilterOutput.empty()) {
         return Result::SUCCESS;
     }
+
     for (int i = 0; i < mFilterOutput.size(); i += 188) {
         if (mPesSizeLeft == 0) {
             uint32_t prefix = (mFilterOutput[i + 4] << 16) | (mFilterOutput[i + 5] << 8) |
