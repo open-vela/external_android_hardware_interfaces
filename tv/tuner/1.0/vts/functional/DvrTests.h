@@ -54,10 +54,15 @@ using android::hardware::tv::tuner::V1_0::Result;
 
 #define WAIT_TIMEOUT 3000000000
 
+struct PlaybackConf {
+    string inputDataFile;
+    PlaybackSettings setting;
+};
+
 class DvrCallback : public IDvrCallback {
   public:
     virtual Return<void> onRecordStatus(DemuxFilterStatus status) override {
-        ALOGD("[vts] record status %hhu", status);
+        ALOGW("[vts] record status %hhu", status);
         switch (status) {
             case DemuxFilterStatus::DATA_READY:
                 break;
@@ -65,12 +70,7 @@ class DvrCallback : public IDvrCallback {
                 break;
             case DemuxFilterStatus::HIGH_WATER:
             case DemuxFilterStatus::OVERFLOW:
-                ALOGD("[vts] record overflow. Flushing.");
-                EXPECT_TRUE(mDvr) << "Dvr callback is not set with an IDvr";
-                if (mDvr) {
-                    Result result = mDvr->flush();
-                    ALOGD("[vts] Flushing result %d.", result);
-                }
+                ALOGW("[vts] record overflow. Flushing");
                 break;
         }
         return Void();
@@ -78,16 +78,16 @@ class DvrCallback : public IDvrCallback {
 
     virtual Return<void> onPlaybackStatus(PlaybackStatus status) override {
         // android::Mutex::Autolock autoLock(mMsgLock);
-        ALOGD("[vts] playback status %d", status);
+        ALOGW("[vts] playback status %d", status);
         switch (status) {
             case PlaybackStatus::SPACE_EMPTY:
             case PlaybackStatus::SPACE_ALMOST_EMPTY:
-                ALOGD("[vts] keep playback inputing %d", status);
+                ALOGW("[vts] keep playback inputing %d", status);
                 mKeepWritingPlaybackFMQ = true;
                 break;
             case PlaybackStatus::SPACE_ALMOST_FULL:
             case PlaybackStatus::SPACE_FULL:
-                ALOGD("[vts] stop playback inputing %d", status);
+                ALOGW("[vts] stop playback inputing %d", status);
                 mKeepWritingPlaybackFMQ = false;
                 break;
         }
@@ -98,19 +98,21 @@ class DvrCallback : public IDvrCallback {
     void testRecordOutput();
     void stopRecordThread();
 
-    void startPlaybackInputThread(string& dataInputFile, PlaybackSettings& settings,
-                                  MQDesc& playbackMQDescriptor);
+    void startPlaybackInputThread(PlaybackConf playbackConf, MQDesc& playbackMQDescriptor);
     void startRecordOutputThread(RecordSettings recordSettings, MQDesc& recordMQDescriptor);
-    static void* __threadLoopPlayback(void* user);
+    static void* __threadLoopPlayback(void* threadArgs);
     static void* __threadLoopRecord(void* threadArgs);
-    void playbackThreadLoop();
+    void playbackThreadLoop(PlaybackConf* playbackConf, bool* keepWritingPlaybackFMQ);
     void recordThreadLoop(RecordSettings* recordSetting, bool* keepWritingPlaybackFMQ);
 
     bool readRecordFMQ();
 
-    void setDvr(sp<IDvr> dvr) { mDvr = dvr; }
-
   private:
+    struct PlaybackThreadArgs {
+        DvrCallback* user;
+        PlaybackConf* playbackConf;
+        bool* keepWritingPlaybackFMQ;
+    };
     struct RecordThreadArgs {
         DvrCallback* user;
         RecordSettings* recordSettings;
@@ -135,10 +137,6 @@ class DvrCallback : public IDvrCallback {
     bool mRecordThreadRunning;
     pthread_t mPlaybackThread;
     pthread_t mRecordThread;
-    string mInputDataFile;
-    PlaybackSettings mPlaybackSettings;
-
-    sp<IDvr> mDvr = nullptr;
 
     // int mPidFilterOutputCount = 0;
 };
@@ -148,8 +146,12 @@ class DvrTests {
     void setService(sp<ITuner> tuner) { mService = tuner; }
     void setDemux(sp<IDemux> demux) { mDemux = demux; }
 
-    void startPlaybackInputThread(string& dataInputFile, PlaybackSettings& settings) {
-        mDvrCallback->startPlaybackInputThread(dataInputFile, settings, mDvrMQDescriptor);
+    void startPlaybackInputThread(string dataInputFile, PlaybackSettings settings) {
+        PlaybackConf conf{
+                .inputDataFile = dataInputFile,
+                .setting = settings,
+        };
+        mDvrCallback->startPlaybackInputThread(conf, mDvrMQDescriptor);
     };
 
     void startRecordOutputThread(RecordSettings settings) {
@@ -160,7 +162,7 @@ class DvrTests {
     void testRecordOutput() { mDvrCallback->testRecordOutput(); }
     void stopRecordThread() { mDvrCallback->stopPlaybackThread(); }
 
-    AssertionResult openDvrInDemux(DvrType type, uint32_t bufferSize);
+    AssertionResult openDvrInDemux(DvrType type);
     AssertionResult configDvr(DvrSettings setting);
     AssertionResult getDvrMQDescriptor();
     AssertionResult attachFilterToDvr(sp<IFilter> filter);
