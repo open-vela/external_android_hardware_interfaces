@@ -17,7 +17,7 @@
 #include "VtsHalTvTunerV1_0TargetTest.h"
 
 namespace {
-
+/*======================== Start Descrambler APIs Tests Implementation ========================*/
 AssertionResult TunerHidlTest::createDescrambler(uint32_t demuxId) {
     Result status;
     mService->openDescrambler([&](Result result, const sp<IDescrambler>& descrambler) {
@@ -46,8 +46,10 @@ AssertionResult TunerHidlTest::closeDescrambler() {
     mDescrambler = nullptr;
     return AssertionResult(status == Result::SUCCESS);
 }
+/*========================= End Descrambler APIs Tests Implementation =========================*/
 
-AssertionResult TunerBroadcastHidlTest::filterDataOutputTest(vector<string> /*goldenOutputFiles*/) {
+/*========================== Start Data Flow Tests Implementation ==========================*/
+AssertionResult TunerHidlTest::broadcastDataFlowTest(vector<string> /*goldenOutputFiles*/) {
     // Data Verify Module
     std::map<uint32_t, sp<FilterCallback>>::iterator it;
     std::map<uint32_t, sp<FilterCallback>> filterCallbacks = mFilterTests.getFilterCallbacks();
@@ -57,43 +59,154 @@ AssertionResult TunerBroadcastHidlTest::filterDataOutputTest(vector<string> /*go
     return success();
 }
 
-AssertionResult TunerPlaybackHidlTest::filterDataOutputTest(vector<string> /*goldenOutputFiles*/) {
+/*
+ * TODO: re-enable the tests after finalizing the test refactoring.
+ */
+/*AssertionResult TunerHidlTest::playbackDataFlowTest(
+        vector<FilterConf> filterConf, PlaybackConf playbackConf,
+        vector<string> \/\*goldenOutputFiles\*\/) {
+    Result status;
+    int filterIdsSize;
+    // Filter Configuration Module
+    for (int i = 0; i < filterConf.size(); i++) {
+        if (addFilterToDemux(filterConf[i].type, filterConf[i].setting) ==
+                    failure() ||
+            // TODO use a map to save the FMQs/EvenFlags and pass to callback
+            getFilterMQDescriptor() == failure()) {
+            return failure();
+        }
+        filterIdsSize = mUsedFilterIds.size();
+        mUsedFilterIds.resize(filterIdsSize + 1);
+        mUsedFilterIds[filterIdsSize] = mFilterId;
+        mFilters[mFilterId] = mFilter;
+        mFilterCallbacks[mFilterId] = mFilterCallback;
+        mFilterCallback->updateFilterMQ(mFilterMQDescriptor);
+        // mDemuxCallback->updateGoldenOutputMap(goldenOutputFiles[i]);
+        status = mFilter->start();
+        if (status != Result::SUCCESS) {
+            return failure();
+        }
+    }
+
+    // Playback Input Module
+    PlaybackSettings playbackSetting = playbackConf.setting;
+    if (addPlaybackToDemux(playbackSetting) == failure() ||
+        getPlaybackMQDescriptor() == failure()) {
+        return failure();
+    }
+    for (int i = 0; i <= filterIdsSize; i++) {
+        if (mDvr->attachFilter(mFilters[mUsedFilterIds[i]]) != Result::SUCCESS) {
+            return failure();
+        }
+    }
+    mDvrCallback->startPlaybackInputThread(playbackConf, mPlaybackMQDescriptor);
+    status = mDvr->start();
+    if (status != Result::SUCCESS) {
+        return failure();
+    }
+
     // Data Verify Module
     std::map<uint32_t, sp<FilterCallback>>::iterator it;
-    std::map<uint32_t, sp<FilterCallback>> filterCallbacks = mFilterTests.getFilterCallbacks();
-    for (it = filterCallbacks.begin(); it != filterCallbacks.end(); it++) {
+    for (it = mFilterCallbacks.begin(); it != mFilterCallbacks.end(); it++) {
         it->second->testFilterDataOutput();
     }
-    return success();
+    mDvrCallback->stopPlaybackThread();
+
+    // Clean Up Module
+    for (int i = 0; i <= filterIdsSize; i++) {
+        if (mFilters[mUsedFilterIds[i]]->stop() != Result::SUCCESS) {
+            return failure();
+        }
+    }
+    if (mDvr->stop() != Result::SUCCESS) {
+        return failure();
+    }
+    mUsedFilterIds.clear();
+    mFilterCallbacks.clear();
+    mFilters.clear();
+    return closeDemux();
 }
 
-void TunerFilterHidlTest::configSingleFilterInDemuxTest(FilterConfig filterConf,
-                                                        FrontendConfig frontendConf) {
-    uint32_t feId;
-    uint32_t demuxId;
-    sp<IDemux> demux;
-    uint32_t filterId;
+AssertionResult TunerHidlTest::recordDataFlowTest(vector<FilterConf> filterConf,
+                                                  RecordSettings recordSetting,
+                                                  vector<string> goldenOutputFiles) {
+    Result status;
+    hidl_vec<FrontendId> feIds;
 
-    mFrontendTests.getFrontendIdByType(frontendConf.type, feId);
-    ASSERT_TRUE(feId != INVALID_ID);
-    ASSERT_TRUE(mFrontendTests.openFrontendById(feId));
-    ASSERT_TRUE(mFrontendTests.setFrontendCallback());
-    ASSERT_TRUE(mDemuxTests.openDemux(demux, demuxId));
-    ASSERT_TRUE(mDemuxTests.setDemuxFrontendDataSource(feId));
-    mFilterTests.setDemux(demux);
-    ASSERT_TRUE(mFilterTests.openFilterInDemux(filterConf.type, filterConf.bufferSize));
-    ASSERT_TRUE(mFilterTests.getNewlyOpenedFilterId(filterId));
-    ASSERT_TRUE(mFilterTests.configFilter(filterConf.settings, filterId));
-    ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId));
-    ASSERT_TRUE(mFilterTests.startFilter(filterId));
-    ASSERT_TRUE(mFilterTests.stopFilter(filterId));
-    ASSERT_TRUE(mFilterTests.closeFilter(filterId));
-    ASSERT_TRUE(mDemuxTests.closeDemux());
-    ASSERT_TRUE(mFrontendTests.closeFrontend());
-}
+    mService->getFrontendIds([&](Result result, const hidl_vec<FrontendId>& frontendIds) {
+        status = result;
+        feIds = frontendIds;
+    });
 
-void TunerBroadcastHidlTest::broadcastSingleFilterTest(FilterConfig filterConf,
-                                                       FrontendConfig frontendConf) {
+    if (feIds.size() == 0) {
+        ALOGW("[   WARN   ] Frontend isn't available");
+        return failure();
+    }
+
+    FrontendDvbtSettings dvbt{
+            .frequency = 1000,
+    };
+    FrontendSettings settings;
+    settings.dvbt(dvbt);
+
+    int filterIdsSize;
+    // Filter Configuration Module
+    for (int i = 0; i < filterConf.size(); i++) {
+        if (addFilterToDemux(filterConf[i].type, filterConf[i].setting) ==
+                    failure() ||
+            // TODO use a map to save the FMQs/EvenFlags and pass to callback
+            getFilterMQDescriptor() == failure()) {
+            return failure();
+        }
+        filterIdsSize = mUsedFilterIds.size();
+        mUsedFilterIds.resize(filterIdsSize + 1);
+        mUsedFilterIds[filterIdsSize] = mFilterId;
+        mFilters[mFilterId] = mFilter;
+    }
+
+    // Record Config Module
+    if (addRecordToDemux(recordSetting) == failure() ||
+        getRecordMQDescriptor() == failure()) {
+        return failure();
+    }
+    for (int i = 0; i <= filterIdsSize; i++) {
+        if (mDvr->attachFilter(mFilters[mUsedFilterIds[i]]) != Result::SUCCESS) {
+            return failure();
+        }
+    }
+
+    mDvrCallback->startRecordOutputThread(recordSetting, mRecordMQDescriptor);
+    status = mDvr->start();
+    if (status != Result::SUCCESS) {
+        return failure();
+    }
+
+    if (setDemuxFrontendDataSource(feIds[0]) != success()) {
+        return failure();
+    }
+
+    // Data Verify Module
+    mDvrCallback->testRecordOutput();
+
+    // Clean Up Module
+    for (int i = 0; i <= filterIdsSize; i++) {
+        if (mFilters[mUsedFilterIds[i]]->stop() != Result::SUCCESS) {
+            return failure();
+        }
+    }
+    if (mFrontend->stopTune() != Result::SUCCESS) {
+        return failure();
+    }
+    mUsedFilterIds.clear();
+    mFilterCallbacks.clear();
+    mFilters.clear();
+    return closeDemux();
+}*/
+/*========================= End Data Flow Tests Implementation =========================*/
+
+/*================================= Start Test Module =================================*/
+void TunerHidlTest::broadcastSingleFilterTest(FilterConfig filterConf,
+                                              FrontendConfig frontendConf) {
     uint32_t feId;
     uint32_t demuxId;
     sp<IDemux> demux;
@@ -111,14 +224,15 @@ void TunerBroadcastHidlTest::broadcastSingleFilterTest(FilterConfig filterConf,
     ASSERT_TRUE(mDemuxTests.openDemux(demux, demuxId));
     ASSERT_TRUE(mDemuxTests.setDemuxFrontendDataSource(feId));
     mFilterTests.setDemux(demux);
-    ASSERT_TRUE(mFilterTests.openFilterInDemux(filterConf.type, filterConf.bufferSize));
+    ASSERT_TRUE(mFilterTests.openFilterInDemux(filterConf.type));
     ASSERT_TRUE(mFilterTests.getNewlyOpenedFilterId(filterId));
     ASSERT_TRUE(mFilterTests.configFilter(filterConf.settings, filterId));
     ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId));
     ASSERT_TRUE(mFilterTests.startFilter(filterId));
     // tune test
     ASSERT_TRUE(mFrontendTests.tuneFrontend(frontendConf));
-    ASSERT_TRUE(filterDataOutputTest(goldenOutputFiles));
+    // broadcast data flow test
+    ASSERT_TRUE(broadcastDataFlowTest(goldenOutputFiles));
     ASSERT_TRUE(mFrontendTests.stopTuneFrontend());
     ASSERT_TRUE(mFilterTests.stopFilter(filterId));
     ASSERT_TRUE(mFilterTests.closeFilter(filterId));
@@ -126,38 +240,9 @@ void TunerBroadcastHidlTest::broadcastSingleFilterTest(FilterConfig filterConf,
     ASSERT_TRUE(mFrontendTests.closeFrontend());
 }
 
-void TunerPlaybackHidlTest::playbackSingleFilterTest(FilterConfig filterConf, DvrConfig dvrConf) {
-    uint32_t demuxId;
-    sp<IDemux> demux;
-    uint32_t filterId;
-    sp<IFilter> filter;
-
-    ASSERT_TRUE(mDemuxTests.openDemux(demux, demuxId));
-    mFilterTests.setDemux(demux);
-    mDvrTests.setDemux(demux);
-    ASSERT_TRUE(mDvrTests.openDvrInDemux(dvrConf.type, dvrConf.bufferSize));
-    ASSERT_TRUE(mDvrTests.configDvr(dvrConf.settings));
-    ASSERT_TRUE(mDvrTests.getDvrMQDescriptor());
-    ASSERT_TRUE(mFilterTests.openFilterInDemux(filterConf.type, filterConf.bufferSize));
-    ASSERT_TRUE(mFilterTests.getNewlyOpenedFilterId(filterId));
-    ASSERT_TRUE(mFilterTests.configFilter(filterConf.settings, filterId));
-    ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId));
-    filter = mFilterTests.getFilterById(filterId);
-    ASSERT_TRUE(filter != nullptr);
-    mDvrTests.startPlaybackInputThread(dvrConf.playbackInputFile, dvrConf.settings.playback());
-    ASSERT_TRUE(mDvrTests.startDvr());
-    ASSERT_TRUE(mFilterTests.startFilter(filterId));
-    ASSERT_TRUE(filterDataOutputTest(goldenOutputFiles));
-    mDvrTests.stopPlaybackThread();
-    ASSERT_TRUE(mFilterTests.stopFilter(filterId));
-    ASSERT_TRUE(mDvrTests.stopDvr());
-    ASSERT_TRUE(mFilterTests.closeFilter(filterId));
-    mDvrTests.closeDvr();
-    ASSERT_TRUE(mDemuxTests.closeDemux());
-}
-
-void TunerRecordHidlTest::recordSingleFilterTest(FilterConfig filterConf,
-                                                 FrontendConfig frontendConf, DvrConfig dvrConf) {
+void TunerDvrHidlTest::attachSingleFilterToDvrTest(FilterConfig filterConf,
+                                                   FrontendConfig frontendConf, DvrConfig dvrConf) {
+    description("Open and configure a Dvr in Demux.");
     uint32_t feId;
     uint32_t demuxId;
     sp<IDemux> demux;
@@ -172,38 +257,31 @@ void TunerRecordHidlTest::recordSingleFilterTest(FilterConfig filterConf,
     ASSERT_TRUE(mDemuxTests.setDemuxFrontendDataSource(feId));
     mFilterTests.setDemux(demux);
     mDvrTests.setDemux(demux);
-    ASSERT_TRUE(mDvrTests.openDvrInDemux(dvrConf.type, dvrConf.bufferSize));
+    ASSERT_TRUE(mDvrTests.openDvrInDemux(dvrConf.type));
     ASSERT_TRUE(mDvrTests.configDvr(dvrConf.settings));
     ASSERT_TRUE(mDvrTests.getDvrMQDescriptor());
-    ASSERT_TRUE(mFilterTests.openFilterInDemux(filterConf.type, filterConf.bufferSize));
+    ASSERT_TRUE(mFilterTests.openFilterInDemux(filterConf.type));
     ASSERT_TRUE(mFilterTests.getNewlyOpenedFilterId(filterId));
     ASSERT_TRUE(mFilterTests.configFilter(filterConf.settings, filterId));
     ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId));
+    ASSERT_TRUE(mFilterTests.startFilter(filterId));
     filter = mFilterTests.getFilterById(filterId);
     ASSERT_TRUE(filter != nullptr);
     ASSERT_TRUE(mDvrTests.attachFilterToDvr(filter));
-    mDvrTests.startRecordOutputThread(dvrConf.settings.record());
-    ASSERT_TRUE(mDvrTests.startDvr());
-    ASSERT_TRUE(mFilterTests.startFilter(filterId));
-    mDvrTests.testRecordOutput();
-    mDvrTests.stopRecordThread();
-    ASSERT_TRUE(mFilterTests.stopFilter(filterId));
-    ASSERT_TRUE(mDvrTests.stopDvr());
     ASSERT_TRUE(mDvrTests.detachFilterToDvr(filter));
+    ASSERT_TRUE(mFilterTests.stopFilter(filterId));
     ASSERT_TRUE(mFilterTests.closeFilter(filterId));
     mDvrTests.closeDvr();
     ASSERT_TRUE(mDemuxTests.closeDemux());
     ASSERT_TRUE(mFrontendTests.closeFrontend());
 }
 
-void TunerRecordHidlTest::attachSingleFilterToRecordDvrTest(FilterConfig filterConf,
-                                                            FrontendConfig frontendConf,
-                                                            DvrConfig dvrConf) {
+void TunerFilterHidlTest::configSingleFilterInDemuxTest(FilterConfig filterConf,
+                                                        FrontendConfig frontendConf) {
     uint32_t feId;
     uint32_t demuxId;
     sp<IDemux> demux;
     uint32_t filterId;
-    sp<IFilter> filter;
 
     mFrontendTests.getFrontendIdByType(frontendConf.type, feId);
     ASSERT_TRUE(feId != INVALID_ID);
@@ -212,28 +290,20 @@ void TunerRecordHidlTest::attachSingleFilterToRecordDvrTest(FilterConfig filterC
     ASSERT_TRUE(mDemuxTests.openDemux(demux, demuxId));
     ASSERT_TRUE(mDemuxTests.setDemuxFrontendDataSource(feId));
     mFilterTests.setDemux(demux);
-    mDvrTests.setDemux(demux);
-    ASSERT_TRUE(mDvrTests.openDvrInDemux(dvrConf.type, dvrConf.bufferSize));
-    ASSERT_TRUE(mDvrTests.configDvr(dvrConf.settings));
-    ASSERT_TRUE(mDvrTests.getDvrMQDescriptor());
-    ASSERT_TRUE(mFilterTests.openFilterInDemux(filterConf.type, filterConf.bufferSize));
+    ASSERT_TRUE(mFilterTests.openFilterInDemux(filterConf.type));
     ASSERT_TRUE(mFilterTests.getNewlyOpenedFilterId(filterId));
     ASSERT_TRUE(mFilterTests.configFilter(filterConf.settings, filterId));
     ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId));
-    filter = mFilterTests.getFilterById(filterId);
-    ASSERT_TRUE(filter != nullptr);
-    ASSERT_TRUE(mDvrTests.attachFilterToDvr(filter));
-    ASSERT_TRUE(mDvrTests.startDvr());
     ASSERT_TRUE(mFilterTests.startFilter(filterId));
     ASSERT_TRUE(mFilterTests.stopFilter(filterId));
-    ASSERT_TRUE(mDvrTests.stopDvr());
-    ASSERT_TRUE(mDvrTests.detachFilterToDvr(filter));
     ASSERT_TRUE(mFilterTests.closeFilter(filterId));
-    mDvrTests.closeDvr();
     ASSERT_TRUE(mDemuxTests.closeDemux());
     ASSERT_TRUE(mFrontendTests.closeFrontend());
 }
+/*================================== End Test Module ==================================*/
+/***************************** End Test Implementation *****************************/
 
+/******************************** Start Test Entry **********************************/
 TEST_P(TunerFrontendHidlTest, TuneFrontend) {
     description("Tune one Frontend with specific setting and check Lock event");
     mFrontendTests.tuneTest(frontendArray[DVBT]);
@@ -261,7 +331,6 @@ TEST_P(TunerDemuxHidlTest, openDemux) {
     ASSERT_TRUE(mDemuxTests.openDemux(demux, demuxId));
     ASSERT_TRUE(mDemuxTests.setDemuxFrontendDataSource(feId));
     ASSERT_TRUE(mDemuxTests.closeDemux());
-    ASSERT_TRUE(mFrontendTests.closeFrontend());
 }
 
 TEST_P(TunerFilterHidlTest, StartFilterInDemux) {
@@ -270,48 +339,23 @@ TEST_P(TunerFilterHidlTest, StartFilterInDemux) {
     configSingleFilterInDemuxTest(filterArray[TS_VIDEO0], frontendArray[DVBT]);
 }
 
-TEST_P(TunerBroadcastHidlTest, BroadcastDataFlowVideoFilterTest) {
-    description("Test Video Filter functionality in Broadcast use case.");
-    broadcastSingleFilterTest(filterArray[TS_VIDEO1], frontendArray[DVBS]);
-}
-
-TEST_P(TunerBroadcastHidlTest, BroadcastDataFlowAudioFilterTest) {
-    description("Test Audio Filter functionality in Broadcast use case.");
-    broadcastSingleFilterTest(filterArray[TS_AUDIO0], frontendArray[DVBS]);
-}
-
-TEST_P(TunerBroadcastHidlTest, BroadcastDataFlowTsFilterTest) {
-    description("Test TS Filter functionality in Broadcast use case.");
-    broadcastSingleFilterTest(filterArray[TS_TS0], frontendArray[DVBS]);
-}
-
-TEST_P(TunerBroadcastHidlTest, BroadcastDataFlowSectionFilterTest) {
-    description("Test Section Filter functionality in Broadcast use case.");
-    broadcastSingleFilterTest(filterArray[TS_SECTION0], frontendArray[DVBS]);
-}
-
-TEST_P(TunerBroadcastHidlTest, IonBufferTest) {
-    description("Test the av filter data bufferring.");
-    broadcastSingleFilterTest(filterArray[TS_VIDEO0], frontendArray[DVBS]);
-}
-
-TEST_P(TunerPlaybackHidlTest, PlaybackDataFlowWithTsRecordFilterTest) {
-    description("Feed ts data from playback and configure Ts filter to get output");
-    playbackSingleFilterTest(filterArray[TS_VIDEO1], dvrArray[DVR_PLAYBACK0]);
-}
-
-TEST_P(TunerRecordHidlTest, AttachFiltersToRecordTest) {
+TEST_P(TunerDvrHidlTest, AttachFiltersToRecordTest) {
     description("Attach a single filter to the record dvr test.");
     // TODO use paramterized tests
-    attachSingleFilterToRecordDvrTest(filterArray[TS_RECORD0], frontendArray[DVBT],
-                                      dvrArray[DVR_RECORD0]);
+    attachSingleFilterToDvrTest(filterArray[TS_VIDEO0], frontendArray[DVBT], dvrArray[DVR_RECORD0]);
 }
 
-TEST_P(TunerRecordHidlTest, RecordDataFlowWithTsRecordFilterTest) {
-    description("Feed ts data from frontend to recording and test with ts record filter");
-    recordSingleFilterTest(filterArray[TS_RECORD0], frontendArray[DVBT], dvrArray[DVR_RECORD0]);
+TEST_P(TunerDvrHidlTest, AttachFiltersToPlaybackTest) {
+    description("Attach a single filter to the playback dvr test.");
+    // TODO use paramterized tests
+    attachSingleFilterToDvrTest(filterArray[TS_VIDEO0], frontendArray[DVBT],
+                                dvrArray[DVR_PLAYBACK0]);
 }
 
+/*============================ Start Descrambler Tests ============================*/
+/*
+ * TODO: re-enable the tests after finalizing the test refactoring.
+ */
 TEST_P(TunerHidlTest, CreateDescrambler) {
     description("Create Descrambler");
     uint32_t feId;
@@ -324,13 +368,129 @@ TEST_P(TunerHidlTest, CreateDescrambler) {
     ASSERT_TRUE(mDemuxTests.openDemux(demux, demuxId));
     ASSERT_TRUE(mDemuxTests.setDemuxFrontendDataSource(feId));
     ASSERT_TRUE(createDescrambler(demuxId));
-    ASSERT_TRUE(closeDescrambler());
     ASSERT_TRUE(mDemuxTests.closeDemux());
-    ASSERT_TRUE(mFrontendTests.closeFrontend());
+    ASSERT_TRUE(closeDescrambler());
 }
 
+/*============================== End Descrambler Tests ==============================*/
+
+/*============================== Start Data Flow Tests ==============================*/
+TEST_P(TunerHidlTest, BroadcastDataFlowVideoFilterTest) {
+    description("Test Video Filter functionality in Broadcast use case.");
+    broadcastSingleFilterTest(filterArray[TS_VIDEO1], frontendArray[DVBS]);
+}
+
+TEST_P(TunerHidlTest, BroadcastDataFlowAudioFilterTest) {
+    description("Test Audio Filter functionality in Broadcast use case.");
+    broadcastSingleFilterTest(filterArray[TS_AUDIO0], frontendArray[DVBS]);
+}
+
+TEST_P(TunerHidlTest, BroadcastDataFlowTsFilterTest) {
+    description("Test TS Filter functionality in Broadcast use case.");
+    broadcastSingleFilterTest(filterArray[TS_TS0], frontendArray[DVBS]);
+}
+
+TEST_P(TunerHidlTest, BroadcastDataFlowSectionFilterTest) {
+    description("Test Section Filter functionality in Broadcast use case.");
+    broadcastSingleFilterTest(filterArray[TS_SECTION0], frontendArray[DVBS]);
+}
+
+TEST_P(TunerHidlTest, IonBufferTest) {
+    description("Test the av filter data bufferring.");
+    broadcastSingleFilterTest(filterArray[TS_VIDEO0], frontendArray[DVBS]);
+}
+/*
+ * TODO: re-enable the tests after finalizing the testing stream.
+ */
+/*TEST_P(TunerHidlTest, PlaybackDataFlowWithSectionFilterTest) {
+    description("Feed ts data from playback and configure pes filter to get output");
+
+    // todo modulize the filter conf parser
+    vector<FilterConf> filterConf;
+    filterConf.resize(1);
+
+    DemuxFilterSettings filterSetting;
+    DemuxTsFilterSettings tsFilterSetting{
+            .tpid = 18,
+    };
+    DemuxFilterSectionSettings sectionFilterSetting;
+    tsFilterSetting.filterSettings.section(sectionFilterSetting);
+    filterSetting.ts(tsFilterSetting);
+
+    DemuxFilterType type{
+            .mainType = DemuxFilterMainType::TS,
+    };
+    type.subType.tsFilterType(DemuxTsFilterType::SECTION);
+    FilterConf sectionFilterConf{
+            .type = type,
+            .setting = filterSetting,
+    };
+    filterConf[0] = sectionFilterConf;
+
+    PlaybackSettings playbackSetting{
+            .statusMask = 0xf,
+            .lowThreshold = 0x1000,
+            .highThreshold = 0x07fff,
+            .dataFormat = DataFormat::TS,
+            .packetSize = 188,
+    };
+
+    PlaybackConf playbackConf{
+            .inputDataFile = "/vendor/etc/test1.ts",
+            .setting = playbackSetting,
+    };
+
+    vector<string> goldenOutputFiles;
+
+    ASSERT_TRUE(playbackDataFlowTest(filterConf, playbackConf, goldenOutputFiles));
+}
+
+TEST_P(TunerHidlTest, RecordDataFlowWithTsRecordFilterTest) {
+    description("Feed ts data from frontend to recording and test with ts record filter");
+
+    // todo modulize the filter conf parser
+    vector<FilterConf> filterConf;
+    filterConf.resize(1);
+
+    DemuxFilterSettings filterSetting;
+    DemuxTsFilterSettings tsFilterSetting{
+            .tpid = 119,
+    };
+    DemuxFilterRecordSettings recordFilterSetting;
+    tsFilterSetting.filterSettings.record(recordFilterSetting);
+    filterSetting.ts(tsFilterSetting);
+
+    DemuxFilterType type{
+            .mainType = DemuxFilterMainType::TS,
+    };
+    type.subType.tsFilterType(DemuxTsFilterType::RECORD);
+    FilterConf recordFilterConf{
+            .type = type,
+            .setting = filterSetting,
+    };
+    filterConf[0] = recordFilterConf;
+
+    RecordSettings recordSetting{
+            .statusMask = 0xf,
+            .lowThreshold = 0x1000,
+            .highThreshold = 0x07fff,
+            .dataFormat = DataFormat::TS,
+            .packetSize = 188,
+    };
+
+    vector<string> goldenOutputFiles;
+
+    ASSERT_TRUE(recordDataFlowTest(filterConf, recordSetting, goldenOutputFiles));
+}*/
+/*============================== End Data Flow Tests ==============================*/
+/******************************** End Test Entry **********************************/
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, TunerFrontendHidlTest,
+        testing::ValuesIn(android::hardware::getAllHalInstanceNames(ITuner::descriptor)),
+        android::hardware::PrintInstanceNameToString);
+
+INSTANTIATE_TEST_SUITE_P(
+        PerInstance, TunerHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(ITuner::descriptor)),
         android::hardware::PrintInstanceNameToString);
 
@@ -345,22 +505,7 @@ INSTANTIATE_TEST_SUITE_P(
         android::hardware::PrintInstanceNameToString);
 
 INSTANTIATE_TEST_SUITE_P(
-        PerInstance, TunerBroadcastHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(ITuner::descriptor)),
-        android::hardware::PrintInstanceNameToString);
-
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, TunerPlaybackHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(ITuner::descriptor)),
-        android::hardware::PrintInstanceNameToString);
-
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, TunerRecordHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(ITuner::descriptor)),
-        android::hardware::PrintInstanceNameToString);
-
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, TunerHidlTest,
+        PerInstance, TunerDvrHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(ITuner::descriptor)),
         android::hardware::PrintInstanceNameToString);
 }  // namespace

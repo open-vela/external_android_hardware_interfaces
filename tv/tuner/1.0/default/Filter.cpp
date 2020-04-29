@@ -73,22 +73,18 @@ Return<Result> Filter::configure(const DemuxFilterSettings& settings) {
     switch (mType.mainType) {
         case DemuxFilterMainType::TS:
             mTpid = settings.ts().tpid;
-            if (mType.subType.tsFilterType() == DemuxTsFilterType::AUDIO ||
-                mType.subType.tsFilterType() == DemuxTsFilterType::VIDEO) {
-                mIsMediaFilter = true;
-            }
             break;
         case DemuxFilterMainType::MMTP:
-            if (mType.subType.mmtpFilterType() == DemuxMmtpFilterType::AUDIO ||
-                mType.subType.mmtpFilterType() == DemuxMmtpFilterType::VIDEO) {
-                mIsMediaFilter = true;
-            }
+            /*mmtpSettings*/
             break;
         case DemuxFilterMainType::IP:
+            /*ipSettings*/
             break;
         case DemuxFilterMainType::TLV:
+            /*tlvSettings*/
             break;
         case DemuxFilterMainType::ALP:
+            /*alpSettings*/
             break;
         default:
             break;
@@ -245,7 +241,9 @@ void Filter::filterThreadLoop() {
 }
 
 void Filter::freeAvHandle() {
-    if (!mIsMediaFilter) {
+    if (mType.mainType != DemuxFilterMainType::TS ||
+        (mType.subType.tsFilterType() == DemuxTsFilterType::AUDIO &&
+         mType.subType.tsFilterType() == DemuxTsFilterType::VIDEO)) {
         return;
     }
     for (int i = 0; i < mFilterEvent.events.size(); i++) {
