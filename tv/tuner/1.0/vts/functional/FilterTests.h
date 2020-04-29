@@ -78,6 +78,9 @@ enum FilterEventType : uint8_t {
 using FilterMQ = MessageQueue<uint8_t, kSynchronizedReadWrite>;
 using MQDesc = MQDescriptorSync<uint8_t>;
 
+const uint32_t FMQ_SIZE_1M = 0x100000;
+const uint32_t FMQ_SIZE_16M = 0x1000000;
+
 #define WAIT_TIMEOUT 3000000000
 
 class FilterCallback : public IFilterCallback {
@@ -150,7 +153,7 @@ class FilterTests {
 
     std::map<uint32_t, sp<FilterCallback>> getFilterCallbacks() { return mFilterCallbacks; }
 
-    AssertionResult openFilterInDemux(DemuxFilterType type, uint32_t bufferSize);
+    AssertionResult openFilterInDemux(DemuxFilterType type);
     AssertionResult getNewlyOpenedFilterId(uint32_t& filterId);
     AssertionResult configFilter(DemuxFilterSettings setting, uint32_t filterId);
     AssertionResult getFilterMQDescriptor(uint32_t filterId);

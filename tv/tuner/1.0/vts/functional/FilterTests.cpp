@@ -128,7 +128,7 @@ bool FilterCallback::dumpAvData(DemuxFilterMediaEvent event) {
     return true;
 }
 
-AssertionResult FilterTests::openFilterInDemux(DemuxFilterType type, uint32_t bufferSize) {
+AssertionResult FilterTests::openFilterInDemux(DemuxFilterType type) {
     Result status;
     EXPECT_TRUE(mDemux) << "Test with openDemux first.";
 
@@ -136,7 +136,7 @@ AssertionResult FilterTests::openFilterInDemux(DemuxFilterType type, uint32_t bu
     mFilterCallback = new FilterCallback();
 
     // Add filter to the local demux
-    mDemux->openFilter(type, bufferSize, mFilterCallback,
+    mDemux->openFilter(type, FMQ_SIZE_16M, mFilterCallback,
                        [&](Result result, const sp<IFilter>& filter) {
                            mFilter = filter;
                            status = result;
