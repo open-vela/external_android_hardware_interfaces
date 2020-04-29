@@ -43,9 +43,6 @@ class WritableIdentityCredential : public BnWritableIdentityCredential {
                                                  const vector<uint8_t>& attestationChallenge,
                                                  vector<Certificate>* outCertificateChain) override;
 
-    ndk::ScopedAStatus setExpectedProofOfProvisioningSize(
-            int32_t expectedProofOfProvisioningSize) override;
-
     ndk::ScopedAStatus startPersonalization(int32_t accessControlProfileCount,
                                             const vector<int32_t>& entryCounts) override;
 
@@ -65,7 +62,7 @@ class WritableIdentityCredential : public BnWritableIdentityCredential {
             vector<uint8_t>* outCredentialData,
             vector<uint8_t>* outProofOfProvisioningSignature) override;
 
-  private:
+    // private:
     string docType_;
     bool testCredential_;
 
@@ -85,7 +82,6 @@ class WritableIdentityCredential : public BnWritableIdentityCredential {
     cppbor::Array signedDataAccessControlProfiles_;
     cppbor::Map signedDataNamespaces_;
     cppbor::Array signedDataCurrentNamespace_;
-    size_t expectedProofOfProvisioningSize_;
 
     // This field is initialized in addAccessControlProfile
     set<int32_t> accessControlProfileIds_;
