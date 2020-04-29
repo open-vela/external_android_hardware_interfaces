@@ -24,5 +24,4 @@ interface IWritableIdentityCredential {
   void beginAddEntry(in int[] accessControlProfileIds, in @utf8InCpp String nameSpace, in @utf8InCpp String name, in int entrySize);
   byte[] addEntryValue(in byte[] content);
   void finishAddingEntries(out byte[] credentialData, out byte[] proofOfProvisioningSignature);
-  void setExpectedProofOfProvisioningSize(in int expectedProofOfProvisioningSize);
 }
