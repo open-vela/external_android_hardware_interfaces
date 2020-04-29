@@ -47,6 +47,9 @@ cc_library {
         "common/src/VehicleUtils.cpp",
         "common/src/VmsUtils.cpp",
     ],
+    shared_libs: [
+        "libbase",
+    ],
     local_include_dirs: ["common/include/vhal_v2_0"],
     export_include_dirs: ["common/include"],
 }
@@ -58,9 +61,13 @@ cc_library_static {
     defaults: ["vhal_v2_0_defaults"],
     srcs: [
         "impl/vhal_v2_0/CommConn.cpp",
+        "impl/vhal_v2_0/EmulatedVehicleConnector.cpp",
         "impl/vhal_v2_0/EmulatedVehicleHal.cpp",
+        "impl/vhal_v2_0/VehicleHalClient.cpp",
+        "impl/vhal_v2_0/VehicleHalServer.cpp",
         "impl/vhal_v2_0/VehicleEmulator.cpp",
         "impl/vhal_v2_0/PipeComm.cpp",
+        "impl/vhal_v2_0/ProtoMessageConverter.cpp",
         "impl/vhal_v2_0/SocketComm.cpp",
         "impl/vhal_v2_0/LinearFakeValueGenerator.cpp",
         "impl/vhal_v2_0/JsonFakeValueGenerator.cpp",
@@ -68,7 +75,10 @@ cc_library_static {
     ],
     local_include_dirs: ["common/include/vhal_v2_0"],
     export_include_dirs: ["impl"],
-    whole_static_libs: ["android.hardware.automotive.vehicle@2.0-manager-lib"],
+    whole_static_libs: [
+        "android.hardware.automotive.vehicle@2.0-emulated-user-hal-lib",
+        "android.hardware.automotive.vehicle@2.0-manager-lib",
+    ],
     shared_libs: [
         "libbase",
         "libjsoncpp",
@@ -77,6 +87,16 @@ cc_library_static {
     static_libs: [
         "libqemu_pipe",
         "android.hardware.automotive.vehicle@2.0-libproto-native",
+    ],
+}
+
+// Library used  to emulate User HAL behavior through lshal debug requests.
+cc_library_static {
+    name: "android.hardware.automotive.vehicle@2.0-emulated-user-hal-lib",
+    vendor: true,
+    defaults: ["vhal_v2_0_defaults"],
+    srcs: [
+        "impl/vhal_v2_0/EmulatedUserHal.cpp",
     ],
 }
 
@@ -93,13 +113,34 @@ cc_test {
         "tests/VehiclePropConfigIndex_test.cpp",
         "tests/VmsUtils_test.cpp",
     ],
+    shared_libs: [
+        "libbase",
+    ],
     header_libs: ["libbase_headers"],
+    test_suites: ["general-tests"],
+}
+
+cc_test {
+    name: "android.hardware.automotive.vehicle@2.0-default-impl-unit-tests",
+    vendor: true,
+    defaults: ["vhal_v2_0_defaults"],
+    srcs: [
+        "impl/vhal_v2_0/tests/ProtoMessageConverter_test.cpp",
+    ],
+    static_libs: [
+        "android.hardware.automotive.vehicle@2.0-default-impl-lib",
+        "android.hardware.automotive.vehicle@2.0-libproto-native",
+        "libprotobuf-cpp-lite",
+    ],
     test_suites: ["general-tests"],
 }
 
 cc_binary {
     name: "android.hardware.automotive.vehicle@2.0-service",
     defaults: ["vhal_v2_0_defaults"],
+    vintf_fragments: [
+        "android.hardware.automotive.vehicle@2.0-service.xml",
+    ],
     init_rc: ["android.hardware.automotive.vehicle@2.0-service.rc"],
     vendor: true,
     relative_install_path: "hw",
