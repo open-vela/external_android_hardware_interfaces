@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2018 The Android Open Source Project
+// Copyright (C) 2020 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,34 +12,36 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
-cc_test {
-    name: "VtsHalSensorsV2_0TargetTest",
-    cflags: ["-DLOG_TAG=\"sensors_hidl_hal_test\""],
-    defaults: ["VtsHalTargetTestDefaults"],
-    srcs: [
-        "VtsHalSensorsV2_0TargetTest.cpp",
+cc_binary {
+    name: "android.hardware.sensors@2.1-service.multihal",
+    defaults: [
+        "hidl_defaults",
     ],
+    vendor: true,
+    relative_install_path: "hw",
+    srcs: [
+        "service.cpp",
+    ],
+    init_rc: ["android.hardware.sensors@2.1-service-multihal.rc"],
+    vintf_fragments: ["android.hardware.sensors@2.1-multihal.xml"],
     header_libs: [
         "android.hardware.sensors@2.X-shared-utils",
     ],
-    static_libs: [
-        "android.hardware.graphics.allocator@2.0",
-        "android.hardware.graphics.allocator@3.0",
-        "android.hardware.graphics.mapper@2.0",
-        "android.hardware.graphics.mapper@2.1",
-        "android.hardware.graphics.mapper@3.0",
-        "android.hardware.sensors@1.0",
-        "android.hardware.sensors@1.0-convert",
+    shared_libs: [
         "android.hardware.sensors@2.0",
+        "android.hardware.sensors@2.0-ScopedWakelock",
         "android.hardware.sensors@2.1",
+        "libbase",
+        "libcutils",
         "libfmq",
-        "VtsHalSensorsTargetTestUtils",
-        "VtsHalSensorsV2_0TargetTest-lib",
+        "libhidlbase",
+        "liblog",
+        "libpower",
+        "libutils",
     ],
-    test_suites: [
-        "general-tests",
-        "vts-core",
+    static_libs: [
+        "android.hardware.sensors@1.0-convert",
+        "android.hardware.sensors@2.X-multihal",
     ],
 }
