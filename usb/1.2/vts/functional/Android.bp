@@ -23,8 +23,6 @@ cc_test {
         "android.hardware.usb@1.1",
         "android.hardware.usb@1.2",
     ],
-    test_suites: [
-        "general-tests",
-        "vts",
-    ],
+    test_suites: ["general-tests"],
 }
+
