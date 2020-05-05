@@ -24,6 +24,18 @@ namespace android::hardware::neuralnetworks {
 
 inline constexpr V1_3::Priority kDefaultPriority = V1_3::Priority::MEDIUM;
 
+// Returns the amount of space needed to store a value of the specified type.
+//
+// Aborts if the specified type is an extension type or OEM type.
+uint32_t sizeOfData(V1_3::OperandType type);
+
+// Returns the amount of space needed to store a value of the dimensions and
+// type of this operand. For a non-extension, non-OEM tensor with unspecified
+// rank or at least one unspecified dimension, returns zero.
+//
+// Aborts if the specified type is an extension type or OEM type.
+uint32_t sizeOfData(const V1_3::Operand& operand);
+
 }  // namespace android::hardware::neuralnetworks
 
 namespace android::hardware::neuralnetworks::V1_3 {
