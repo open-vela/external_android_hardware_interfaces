@@ -113,8 +113,6 @@ bool ValidateAttestationCertificate(vector<Certificate>& inputCertificates);
 
 void SetImageData(vector<uint8_t>& image);
 
-vector<RequestNamespace> buildRequestNamespaces(const vector<TestEntryData> entries);
-
 }  // namespace android::hardware::identity::test_utils
 
 #endif  // VTS_IDENTITY_TEST_UTILS_H
