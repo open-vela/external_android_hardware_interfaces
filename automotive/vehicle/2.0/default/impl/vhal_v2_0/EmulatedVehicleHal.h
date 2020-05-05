@@ -30,6 +30,7 @@
 #include "vhal_v2_0/VehiclePropertyStore.h"
 
 #include "DefaultConfig.h"
+#include "EmulatedVehicleConnector.h"
 #include "GeneratorHub.h"
 #include "VehicleEmulator.h"
 
@@ -44,7 +45,8 @@ namespace impl {
 /** Implementation of VehicleHal that connected to emulator instead of real vehicle network. */
 class EmulatedVehicleHal : public EmulatedVehicleHalIface {
 public:
-    EmulatedVehicleHal(VehiclePropertyStore* propStore);
+    EmulatedVehicleHal(VehiclePropertyStore* propStore,
+                       VehicleHalClient* client);
     ~EmulatedVehicleHal() = default;
 
     //  Methods from VehicleHal
@@ -55,10 +57,12 @@ public:
     StatusCode set(const VehiclePropValue& propValue) override;
     StatusCode subscribe(int32_t property, float sampleRate) override;
     StatusCode unsubscribe(int32_t property) override;
+    bool dump(const hidl_handle& fd, const hidl_vec<hidl_string>& options) override;
 
     //  Methods from EmulatedVehicleHalIface
     bool setPropertyFromVehicle(const VehiclePropValue& propValue) override;
     std::vector<VehiclePropValue> getAllProperties() const override;
+    void getAllPropertiesOverride();
 
 private:
     constexpr std::chrono::nanoseconds hertzToNanoseconds(float hz) const {
@@ -66,10 +70,7 @@ private:
     }
 
     StatusCode handleGenerateFakeDataRequest(const VehiclePropValue& request);
-    void onFakeValueGenerated(const VehiclePropValue& value);
-    VehiclePropValuePtr createApPowerStateReq(VehicleApPowerStateReq req, int32_t param);
-    VehiclePropValuePtr createHwInputKeyProp(VehicleHwKeyInputAction action, int32_t keyCode,
-                                             int32_t targetDisplay);
+    void onPropertyValue(const VehiclePropValue& value, bool updateStatus);
 
     void onContinuousPropertyTimer(const std::vector<int32_t>& properties);
     bool isContinuousProperty(int32_t propId) const;
@@ -85,7 +86,10 @@ private:
     VehiclePropertyStore* mPropStore;
     std::unordered_set<int32_t> mHvacPowerProps;
     RecurrentTimer mRecurrentTimer;
-    GeneratorHub mGeneratorHub;
+    VehicleHalClient* mVehicleClient;
+    bool mInEmulator;
+    bool mInitVhalValueOverride;
+    std::vector<VehiclePropValue> mVehiclePropertiesOverride;
 };
 
 }  // impl
