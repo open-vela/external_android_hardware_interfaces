@@ -15,12 +15,12 @@
  */
 
 cc_test {
-    name: "VtsHalBiometricsFingerprintV2_2TargetTest",
+    name: "VtsHalBiometricsFaceV1_1TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
-    srcs: ["VtsHalBiometricsFingerprintV2_2TargetTest.cpp"],
+    srcs: ["VtsHalBiometricsFaceV1_1TargetTest.cpp"],
     static_libs: [
-        "android.hardware.biometrics.fingerprint@2.1",
-        "android.hardware.biometrics.fingerprint@2.2",
+        "android.hardware.biometrics.face@1.0",
+        "android.hardware.biometrics.face@1.1",
     ],
     test_suites: [
         "general-tests",
