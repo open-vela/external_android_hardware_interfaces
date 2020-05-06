@@ -1,5 +1,4 @@
-//
-// Copyright (C) 2019 The Android Open Source Project
+// Copyright (C) 2018 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,18 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
-cc_test {
-    name: "VtsHalInputClassifierV1_0TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
-    srcs: ["VtsHalInputClassifierV1_0TargetTest.cpp"],
-    static_libs: [
-        "android.hardware.input.classifier@1.0",
-        "android.hardware.input.common@1.0",
+python_binary_host {
+    name: "dump_hals_for_release",
+
+    srcs: [
+        "dump_hals_for_release.py",
     ],
-    test_suites: [
-        "general-tests",
-        "vts",
-    ],
+
+    version: {
+        py2: {
+            enabled: true,
+        },
+        py3: {
+            enabled: false,
+        },
+    },
 }
