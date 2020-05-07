@@ -601,9 +601,11 @@ b69a7615c508acf5c5201efd1bfa3262167874fc3594e2db5a3ff93addd8ac75 android.hardwar
 eb2fa0c883c2185d514be0b84c179b283753ef0c1b77b45b4f359bd23bba8b75 android.hardware.neuralnetworks@1.0::IPreparedModel
 92e101b30e47bdf526a01c52cecfbe730def5997b8260ab497eb949eb2a6dcdf android.hardware.neuralnetworks@1.0::types
 5f6d3097ba84cb63c430787123f4de1b31c11f90b531b98eae9a8623a5ae962a android.hardware.neuralnetworks@1.1::types
+c2711d8748ccbcc858d5d5ec1abf145d9ab4c0b27db8ca215d7c39665a9b6652 android.hardware.neuralnetworks@1.1::types # b/155508675, b/155662254, b/155238914
 fb382e986c10b8fbb797a8546e8f9ea6d1107bfe6f3fb7e57f6bbbf1f807a906 android.hardware.neuralnetworks@1.2::IDevice
 40e71cd693de5b832325c5d8f081f2ff20a7ba2b89d401cee5b4b3eb0e241681 android.hardware.neuralnetworks@1.2::IPreparedModel
 ee1a0dee5be00a6fe2d4d3270068c78016dcb194d768fe07ed894ea20904037f android.hardware.neuralnetworks@1.2::types
+9c53b727cfa9efde38ebe3914e1e95939cff29c072a1b8c8f419d24853b98831 android.hardware.neuralnetworks@1.2::types # b/155508675, b/155662254, b/155238914, b/155660285
 a785a57447a81e9c130eef6904c3a5c256076c6a04588c40620ebd6fa2660d77 android.hardware.radio@1.2::types
 1a6e2bd289f22931c526b21916910f1d4c436b7acb9556e4243de4ce8e6cc2e4 android.hardware.soundtrigger@2.0::ISoundTriggerHwCallback
 fd65298e1e09e0e3c781ab18305920d757dbe55a3b459ce17814ec5cf6dfee99 android.hardware.wifi@1.0::IWifiP2pIface
@@ -619,7 +621,6 @@ fd1f1b29f26b42e886220f04a08086c00e5ade9d7b53f095438e578ab9d42a93 android.hardwar
 164826a380f4c1700183003f62d7532e367b67381c30ea44f946c0cf00008f85 android.hardware.audio@6.0::IStreamOut
 997fdaad7a9d17ee7e01feb7031a753e2365e72ad30b11d950e9183fabdf3844 android.hardware.audio@6.0::IStreamOutCallback
 e7ca0db9a1098210f327a9b152fa6afe6bf019c41e5264c64829d04d50c0a526 android.hardware.audio@6.0::IStreamOutEventCallback
-aa2211abd803e03d05ea11c18749db068f785fe026f8d99bce64bd764f63d194 android.hardware.audio@6.0::IStreamOutEventCallback  # b/150175043
 822369cf4dc16a6f6b9622bcf86cbdc0b692dc82193fc15e967767175cbfdd8f android.hardware.audio@6.0::types
 bee662c62d997d8065e2bcb5c1e7a9578931f22ce28fd02c219fdb4d0630abf7 android.hardware.audio.common@6.0::types
 525bec6b44f1103869c269a128d51b8dccd73af5340ba863c8886c68357c7faf android.hardware.audio.effect@6.0::IAcousticEchoCancelerEffect
@@ -717,6 +718,7 @@ a3eddd9bbdc87e8c22764070037dd1154f1cf006e6fba93364c4f85d4c134a19 android.hardwar
 ee9dc34b9925b8367b1111c72bd6d9d375432735e451572ca5a665d8516a7744 android.hardware.neuralnetworks@1.3::IPreparedModel
 eee3430cc86c97c7b407495863d8fb61da6f1a64b7721e77b9b4909b11b174e9 android.hardware.neuralnetworks@1.3::IPreparedModelCallback
 acf84925f8ee0a651f2ec547ac334034de266479b93af5434f6c1f25e66aba96 android.hardware.neuralnetworks@1.3::types
+e9080d04218e98512b63aace9ff3da52f0130238391f15cbbf7df396a3ec9072 android.hardware.neuralnetworks@1.3::types # b/155508675, b/155662254, b/155238914, b/155660285
 b454df853441c12f6e425e8a60dd29fda20f5e6e39b93d1103e4b37495db38aa android.hardware.radio@1.5::IRadio
 fcbb0742a88215ee7a6d7ce0825d253eb2b50391fc6c8c48667f9fd7f6d4549e android.hardware.radio@1.5::IRadioIndication
 b809193970a91ca637a4b0184767315601d32e3ef3d5992ffbc7a8d14a14f015 android.hardware.radio@1.5::IRadioResponse
@@ -759,9 +761,3 @@ a64467bae843569f0d465c5be7f0c7a5b987985b55a3ef4794dd5afc68538650 android.hardwar
 2ce1f7fb52e49f80b13a9b153d491bce530552f02357ea729acae922a8659f93 android.hardware.wifi.supplicant@1.3::ISupplicantStaIfaceCallback
 77531c8d048f8f8ae532babd0ca86332a865ec9aace1b051226ef2b21123e645 android.hardware.wifi.supplicant@1.3::ISupplicantStaNetwork
 98592d193a717066facf91428426e5abe211e3bd718bc372e29fb944ddbe6e7c android.hardware.wifi.supplicant@1.3::types
-
-# ABI preserving changes to HALs during Android S
-
-# HALs released in Android S
-# NOTE: waiting to freeze HALs until later in the release
-# NOTE: new HALs are recommended to be in AIDL

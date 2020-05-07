@@ -15,12 +15,10 @@
 cc_defaults {
     name: "vhal_v2_0_defaults",
     shared_libs: [
-        "libbinder_ndk",
         "libhidlbase",
         "liblog",
         "libutils",
         "android.hardware.automotive.vehicle@2.0",
-        "carwatchdog_aidl_interface-ndk_platform",
     ],
     cflags: [
         "-Wall",
@@ -48,7 +46,6 @@ cc_library {
         "common/src/VehiclePropertyStore.cpp",
         "common/src/VehicleUtils.cpp",
         "common/src/VmsUtils.cpp",
-        "common/src/WatchdogClient.cpp",
     ],
     shared_libs: [
         "libbase",
