@@ -55,7 +55,7 @@ class HalHealthLoop : public HealthLoop {
     void set_charger_online(const HealthInfo& health_info);
 
   private:
-    std::string instance_name_;
+    const std::string& instance_name_;
     sp<IHealth> service_;
     bool charger_online_ = false;
 };
