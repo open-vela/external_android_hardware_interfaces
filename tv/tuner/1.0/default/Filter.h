@@ -19,7 +19,6 @@
 
 #include <android/hardware/tv/tuner/1.0/IFilter.h>
 #include <fmq/MessageQueue.h>
-#include <ion/ion.h>
 #include <math.h>
 #include <set>
 #include "Demux.h"
@@ -88,7 +87,6 @@ class Filter : public IFilter {
     Result startRecordFilterHandler();
     void attachFilterToRecord(const sp<Dvr> dvr);
     void detachFilterFromRecord();
-    void freeAvHandle();
 
   private:
     // Tuner service
@@ -103,7 +101,6 @@ class Filter : public IFilter {
     uint32_t mFilterId;
     uint32_t mBufferSize;
     DemuxFilterType mType;
-    bool mIsMediaFilter = false;
     DemuxFilterSettings mFilterSettings;
 
     uint16_t mTpid;
@@ -112,7 +109,6 @@ class Filter : public IFilter {
     vector<uint8_t> mFilterOutput;
     vector<uint8_t> mRecordFilterOutput;
     unique_ptr<FilterMQ> mFilterMQ;
-    bool mIsUsingFMQ = false;
     EventFlag* mFilterEventFlag;
     DemuxFilterEvent mFilterEvent;
 
@@ -164,10 +160,6 @@ class Filter : public IFilter {
     static void* __threadLoopFilter(void* user);
     void filterThreadLoop();
 
-    int createAvIonFd(int size);
-    uint8_t* getIonBuffer(int fd, int size);
-    native_handle_t* createNativeHandle(int fd);
-
     /**
      * Lock to protect writes to the FMQs
      */
@@ -189,11 +181,6 @@ class Filter : public IFilter {
     // TODO handle mulptiple Pes filters
     int mPesSizeLeft = 0;
     vector<uint8_t> mPesOutput;
-
-    // A map from data id to ion handle
-    std::map<uint64_t, int> mDataId2Avfd;
-    uint64_t mLastUsedDataId = 1;
-    int mAvBufferCopyCount = 0;
 };
 
 }  // namespace implementation
