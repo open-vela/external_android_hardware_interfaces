@@ -54,7 +54,7 @@ cc_test {
     ],
     static_libs: [
         "VtsHalNeuralNetworksV1_0_utils",
-        "VtsHalNeuralNetworksV1_2Callbacks",
+        "VtsHalNeuralNetworksV1_2_utils",
         "VtsHalNeuralNetworksV1_3_utils",
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
@@ -77,5 +77,8 @@ cc_test {
     header_libs: [
         "libneuralnetworks_headers",
     ],
-    test_suites: ["general-tests"],
+    test_suites: [
+        "general-tests",
+        "vts",
+    ],
 }
