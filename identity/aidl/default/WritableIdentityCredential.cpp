@@ -44,6 +44,8 @@ bool WritableIdentityCredential::initialize() {
         return false;
     }
     storageKey_ = random.value();
+    startPersonalizationCalled_ = false;
+    firstEntry_ = true;
 
     return true;
 }
@@ -53,8 +55,8 @@ bool WritableIdentityCredential::initialize() {
 // attestation certificate with current time and expires one year from now.  The
 // certificate shall contain all values as specified in hal.
 ndk::ScopedAStatus WritableIdentityCredential::getAttestationCertificate(
-        const vector<uint8_t>& attestationApplicationId,  //
-        const vector<uint8_t>& attestationChallenge,      //
+        const vector<int8_t>& attestationApplicationId,  //
+        const vector<int8_t>& attestationChallenge,      //
         vector<Certificate>* outCertificateChain) {
     if (!credentialPrivKey_.empty() || !credentialPubKey_.empty() || !certificateChain_.empty()) {
         return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
@@ -97,7 +99,7 @@ ndk::ScopedAStatus WritableIdentityCredential::getAttestationCertificate(
     *outCertificateChain = vector<Certificate>();
     for (const vector<uint8_t>& cert : certificateChain_) {
         Certificate c = Certificate();
-        c.encodedCertificate = cert;
+        c.encodedCertificate = byteStringToSigned(cert);
         outCertificateChain->push_back(std::move(c));
     }
     return ndk::ScopedAStatus::ok();
@@ -105,6 +107,12 @@ ndk::ScopedAStatus WritableIdentityCredential::getAttestationCertificate(
 
 ndk::ScopedAStatus WritableIdentityCredential::startPersonalization(
         int32_t accessControlProfileCount, const vector<int32_t>& entryCounts) {
+    if (startPersonalizationCalled_) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_FAILED, "startPersonalization called already"));
+    }
+
+    startPersonalizationCalled_ = true;
     numAccessControlProfileRemaining_ = accessControlProfileCount;
     remainingEntryCounts_ = entryCounts;
     entryNameSpace_ = "";
@@ -128,6 +136,19 @@ ndk::ScopedAStatus WritableIdentityCredential::addAccessControlProfile(
                 "numAccessControlProfileRemaining_ is 0 and expected non-zero"));
     }
 
+    if (accessControlProfileIds_.find(id) != accessControlProfileIds_.end()) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_INVALID_DATA,
+                "Access Control Profile id must be unique"));
+    }
+    accessControlProfileIds_.insert(id);
+
+    if (id < 0 || id >= 32) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_INVALID_DATA,
+                "Access Control Profile id must be non-negative and less than 32"));
+    }
+
     // Spec requires if |userAuthenticationRequired| is false, then |timeoutMillis| must also
     // be zero.
     if (!userAuthenticationRequired && timeoutMillis != 0) {
@@ -146,13 +167,14 @@ ndk::ScopedAStatus WritableIdentityCredential::addAccessControlProfile(
         return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                 IIdentityCredentialStore::STATUS_FAILED, "Error calculating MAC for profile"));
     }
-    profile.mac = mac.value();
+    profile.mac = byteStringToSigned(mac.value());
 
     cppbor::Map profileMap;
     profileMap.add("id", profile.id);
     if (profile.readerCertificate.encodedCertificate.size() > 0) {
-        profileMap.add("readerCertificate",
-                       cppbor::Bstr(profile.readerCertificate.encodedCertificate));
+        profileMap.add(
+                "readerCertificate",
+                cppbor::Bstr(byteStringToUnsigned(profile.readerCertificate.encodedCertificate)));
     }
     if (profile.userAuthenticationRequired) {
         profileMap.add("userAuthenticationRequired", profile.userAuthenticationRequired);
@@ -183,12 +205,20 @@ ndk::ScopedAStatus WritableIdentityCredential::beginAddEntry(
     }
 
     // Handle initial beginEntry() call.
-    if (entryNameSpace_ == "") {
+    if (firstEntry_) {
+        firstEntry_ = false;
         entryNameSpace_ = nameSpace;
+        allNameSpaces_.insert(nameSpace);
     }
 
     // If the namespace changed...
     if (nameSpace != entryNameSpace_) {
+        if (allNameSpaces_.find(nameSpace) != allNameSpaces_.end()) {
+            return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                    IIdentityCredentialStore::STATUS_INVALID_DATA,
+                    "Name space cannot be added in interleaving fashion"));
+        }
+
         // Then check that all entries in the previous namespace have been added..
         if (remainingEntryCounts_[0] != 0) {
             return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
@@ -196,6 +226,8 @@ ndk::ScopedAStatus WritableIdentityCredential::beginAddEntry(
                     "New namespace but a non-zero number of entries remain to be added"));
         }
         remainingEntryCounts_.erase(remainingEntryCounts_.begin());
+        remainingEntryCounts_[0] -= 1;
+        allNameSpaces_.insert(nameSpace);
 
         if (signedDataCurrentNamespace_.size() > 0) {
             signedDataNamespaces_.add(entryNameSpace_, std::move(signedDataCurrentNamespace_));
@@ -222,8 +254,9 @@ ndk::ScopedAStatus WritableIdentityCredential::beginAddEntry(
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus WritableIdentityCredential::addEntryValue(const vector<uint8_t>& content,
-                                                             vector<uint8_t>* outEncryptedContent) {
+ndk::ScopedAStatus WritableIdentityCredential::addEntryValue(const vector<int8_t>& contentS,
+                                                             vector<int8_t>* outEncryptedContent) {
+    auto content = byteStringToUnsigned(contentS);
     size_t contentSize = content.size();
 
     if (contentSize > IdentityCredentialStore::kGcmChunkSize) {
@@ -278,7 +311,7 @@ ndk::ScopedAStatus WritableIdentityCredential::addEntryValue(const vector<uint8_
         signedDataCurrentNamespace_.add(std::move(entryMap));
     }
 
-    *outEncryptedContent = encryptedContent.value();
+    *outEncryptedContent = byteStringToSigned(encryptedContent.value());
     return ndk::ScopedAStatus::ok();
 }
 
@@ -327,7 +360,19 @@ bool generateCredentialData(const vector<uint8_t>& hardwareBoundKey, const strin
 }
 
 ndk::ScopedAStatus WritableIdentityCredential::finishAddingEntries(
-        vector<uint8_t>* outCredentialData, vector<uint8_t>* outProofOfProvisioningSignature) {
+        vector<int8_t>* outCredentialData, vector<int8_t>* outProofOfProvisioningSignature) {
+    if (numAccessControlProfileRemaining_ != 0) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_INVALID_DATA,
+                "numAccessControlProfileRemaining_ is not 0 and expected zero"));
+    }
+
+    if (remainingEntryCounts_.size() > 1 || remainingEntryCounts_[0] != 0) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_INVALID_DATA,
+                "More entry spaces remain than startPersonalization configured"));
+    }
+
     if (signedDataCurrentNamespace_.size() > 0) {
         signedDataNamespaces_.add(entryNameSpace_, std::move(signedDataCurrentNamespace_));
     }
@@ -362,8 +407,8 @@ ndk::ScopedAStatus WritableIdentityCredential::finishAddingEntries(
                 IIdentityCredentialStore::STATUS_FAILED, "Error generating CredentialData"));
     }
 
-    *outCredentialData = credentialData;
-    *outProofOfProvisioningSignature = signature.value();
+    *outCredentialData = byteStringToSigned(credentialData);
+    *outProofOfProvisioningSignature = byteStringToSigned(signature.value());
     return ndk::ScopedAStatus::ok();
 }
 
