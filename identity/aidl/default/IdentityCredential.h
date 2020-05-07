@@ -32,38 +32,42 @@ namespace aidl::android::hardware::identity {
 
 using ::aidl::android::hardware::keymaster::HardwareAuthToken;
 using ::std::map;
+using ::std::set;
 using ::std::string;
 using ::std::vector;
-
-using MapStringToVectorOfStrings = map<string, vector<string>>;
 
 class IdentityCredential : public BnIdentityCredential {
   public:
     IdentityCredential(const vector<uint8_t>& credentialData)
-        : credentialData_(credentialData), numStartRetrievalCalls_(0), authChallenge_(0) {}
+        : credentialData_(credentialData),
+          numStartRetrievalCalls_(0),
+          authChallenge_(0),
+          expectedDeviceNameSpacesSize_(0) {}
 
     // Parses and decrypts credentialData_, return a status code from
     // IIdentityCredentialStore. Must be called right after construction.
     int initialize();
 
     // Methods from IIdentityCredential follow.
-    ndk::ScopedAStatus deleteCredential(vector<int8_t>* outProofOfDeletionSignature) override;
-    ndk::ScopedAStatus createEphemeralKeyPair(vector<int8_t>* outKeyPair) override;
-    ndk::ScopedAStatus setReaderEphemeralPublicKey(const vector<int8_t>& publicKey) override;
+    ndk::ScopedAStatus deleteCredential(vector<uint8_t>* outProofOfDeletionSignature) override;
+    ndk::ScopedAStatus createEphemeralKeyPair(vector<uint8_t>* outKeyPair) override;
+    ndk::ScopedAStatus setReaderEphemeralPublicKey(const vector<uint8_t>& publicKey) override;
     ndk::ScopedAStatus createAuthChallenge(int64_t* outChallenge) override;
+    ndk::ScopedAStatus setRequestedNamespaces(
+            const vector<RequestNamespace>& requestNamespaces) override;
     ndk::ScopedAStatus startRetrieval(
             const vector<SecureAccessControlProfile>& accessControlProfiles,
-            const HardwareAuthToken& authToken, const vector<int8_t>& itemsRequest,
-            const vector<int8_t>& signingKeyBlob, const vector<int8_t>& sessionTranscript,
-            const vector<int8_t>& readerSignature, const vector<int32_t>& requestCounts) override;
+            const HardwareAuthToken& authToken, const vector<uint8_t>& itemsRequest,
+            const vector<uint8_t>& signingKeyBlob, const vector<uint8_t>& sessionTranscript,
+            const vector<uint8_t>& readerSignature, const vector<int32_t>& requestCounts) override;
     ndk::ScopedAStatus startRetrieveEntryValue(
             const string& nameSpace, const string& name, int32_t entrySize,
             const vector<int32_t>& accessControlProfileIds) override;
-    ndk::ScopedAStatus retrieveEntryValue(const vector<int8_t>& encryptedContent,
-                                          vector<int8_t>* outContent) override;
-    ndk::ScopedAStatus finishRetrieval(vector<int8_t>* outMac,
-                                       vector<int8_t>* outDeviceNameSpaces) override;
-    ndk::ScopedAStatus generateSigningKeyPair(vector<int8_t>* outSigningKeyBlob,
+    ndk::ScopedAStatus retrieveEntryValue(const vector<uint8_t>& encryptedContent,
+                                          vector<uint8_t>* outContent) override;
+    ndk::ScopedAStatus finishRetrieval(vector<uint8_t>* outMac,
+                                       vector<uint8_t>* outDeviceNameSpaces) override;
+    ndk::ScopedAStatus generateSigningKeyPair(vector<uint8_t>* outSigningKeyBlob,
                                               Certificate* outSigningKeyCertificate) override;
 
   private:
@@ -86,6 +90,9 @@ class IdentityCredential : public BnIdentityCredential {
     // Set by createAuthChallenge()
     uint64_t authChallenge_;
 
+    // Set by setRequestedNamespaces()
+    vector<RequestNamespace> requestNamespaces_;
+
     // Set at startRetrieval() time.
     map<int32_t, int> profileIdToAccessCheckResult_;
     vector<uint8_t> signingKeyBlob_;
@@ -93,9 +100,12 @@ class IdentityCredential : public BnIdentityCredential {
     std::unique_ptr<cppbor::Item> sessionTranscriptItem_;
     vector<uint8_t> itemsRequest_;
     vector<int32_t> requestCountsRemaining_;
-    MapStringToVectorOfStrings requestedNameSpacesAndNames_;
+    map<string, set<string>> requestedNameSpacesAndNames_;
     cppbor::Map deviceNameSpacesMap_;
     cppbor::Map currentNameSpaceDeviceNameSpacesMap_;
+
+    // Calculated at startRetrieval() time.
+    size_t expectedDeviceNameSpacesSize_;
 
     // Set at startRetrieveEntryValue() time.
     string currentNameSpace_;
@@ -103,6 +113,8 @@ class IdentityCredential : public BnIdentityCredential {
     size_t entryRemainingBytes_;
     vector<uint8_t> entryValue_;
     vector<uint8_t> entryAdditionalData_;
+
+    size_t calcDeviceNameSpacesSize();
 };
 
 }  // namespace aidl::android::hardware::identity
