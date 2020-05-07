@@ -115,9 +115,7 @@ class Keymaster4_1HidlTest : public V4_0::test::KeymasterHidlTest {
     ErrorCode UseHmacKey(const HidlBuf& hmacKeyBlob) {
         auto [result, mac, out_params] =
                 ProcessMessage(hmacKeyBlob, KeyPurpose::SIGN, "1234567890123456",
-                               AuthorizationSetBuilder()
-                                       .Authorization(TAG_MAC_LENGTH, 128)
-                                       .Digest(Digest::SHA_2_256));
+                               AuthorizationSetBuilder().Authorization(TAG_MAC_LENGTH, 128));
         return result;
     }
 
