@@ -16,6 +16,8 @@
 
 #include <android-base/logging.h>
 
+#include <VtsHalHidlTargetTestBase.h>
+
 #include <android/hardware/radio/1.0/types.h>
 #include <android/log.h>
 #include <gtest/gtest.h>
