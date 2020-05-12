@@ -177,11 +177,9 @@ TEST_P(RadioHidlTest, changeIccPin2ForApp) {
 }
 
 /*
- * The following test is disabled due to b/109889468
- *
  * Test IRadio.getImsiForApp() for the response returned.
  */
-TEST_P(RadioHidlTest, DISABLED_getImsiForApp) {
+TEST_P(RadioHidlTest, getImsiForApp) {
     serial = GetRandomSerialNumber();
 
     // Check success returned while getting imsi for 3GPP and 3GPP2 apps only
