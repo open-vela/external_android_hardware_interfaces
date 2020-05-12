@@ -36,6 +36,7 @@ cc_test {
     name: "VtsHalWifiHostapdV1_0TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
     srcs: [
+        "VtsHalWifiHostapdV1_0TargetTest.cpp",
         "hostapd_hidl_test.cpp",
     ],
     static_libs: [
@@ -48,5 +49,5 @@ cc_test {
         "libwifi-system",
         "libwifi-system-iface",
     ],
-    test_suites: ["general-tests", "vts"],
+    test_suites: ["general-tests", "vts-core"],
 }
