@@ -22,14 +22,9 @@
 
 #include "IdentityCredentialStore.h"
 
-using ::android::base::InitLogging;
-using ::android::base::StderrLogger;
-
 using aidl::android::hardware::identity::IdentityCredentialStore;
 
-int main(int /*argc*/, char* argv[]) {
-    InitLogging(argv, StderrLogger);
-
+int main() {
     ABinderProcess_setThreadPoolMaxThreadCount(0);
     std::shared_ptr<IdentityCredentialStore> store =
             ndk::SharedRefBase::make<IdentityCredentialStore>();
