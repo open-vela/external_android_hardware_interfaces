@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,25 @@
  * limitations under the License.
  */
 
-#include <VtsCoreUtil.h>
-#include "supplicant_hidl_test_utils.h"
+package android.hardware.identity;
 
-int main(int argc, char** argv) {
-    if (!::testing::deviceSupportsFeature("android.hardware.wifi.direct"))
-        return 0;
+@VintfStability
+parcelable RequestDataItem {
+    /**
+     * The data item name being requested, for example "driving_privileges".
+     */
+    @utf8InCpp String name;
 
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    /**
+     * The size of the data item value.
+     *
+     * Data item values are always encoded as CBOR so this is the length of
+     * the CBOR encoding of the value.
+     */
+    long size;
+
+    /**
+     * The access control profile ids this data item is configured with.
+     */
+    int[] accessControlProfileIds;
 }
