@@ -16,12 +16,11 @@
 
 #define LOG_TAG "ConfigstoreHidlHalTest"
 
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/logging.h>
 #include <android/hardware/configstore/1.0/ISurfaceFlingerConfigs.h>
 #include <android/hardware/configstore/1.0/types.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 #include <unistd.h>
 
 using ::android::hardware::configstore::V1_0::ISurfaceFlingerConfigs;
@@ -36,12 +35,25 @@ using ::android::sp;
 #define ASSERT_OK(ret) ASSERT_TRUE(ret.isOk())
 #define EXPECT_OK(ret) EXPECT_TRUE(ret.isOk())
 
-class ConfigstoreHidlTest : public ::testing::TestWithParam<std::string> {
+// Test environment for Configstore HIDL HAL.
+class ConfigstoreHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static ConfigstoreHidlEnvironment* Instance() {
+        static ConfigstoreHidlEnvironment* instance = new ConfigstoreHidlEnvironment;
+        return instance;
+    }
+
+    virtual void registerTestServices() override { registerTestService<ISurfaceFlingerConfigs>(); }
+};
+
+class ConfigstoreHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     sp<ISurfaceFlingerConfigs> sfConfigs;
 
     virtual void SetUp() override {
-        sfConfigs = ISurfaceFlingerConfigs::getService(GetParam());
+        sfConfigs = ::testing::VtsHalHidlTargetTestBase::getService<ISurfaceFlingerConfigs>(
+            ConfigstoreHidlEnvironment::Instance()->getServiceName<ISurfaceFlingerConfigs>());
         ASSERT_NE(sfConfigs, nullptr);
     }
 
@@ -51,7 +63,7 @@ class ConfigstoreHidlTest : public ::testing::TestWithParam<std::string> {
 /**
  * Ensure all ISurfaceFlingerConfigs.hal function calls are successful.
  */
-TEST_P(ConfigstoreHidlTest, TestFunctionCalls) {
+TEST_F(ConfigstoreHidlTest, TestFunctionCalls) {
     bool tmp;
 
     Return<void> status = sfConfigs->vsyncEventPhaseOffsetNs(
@@ -106,7 +118,7 @@ TEST_P(ConfigstoreHidlTest, TestFunctionCalls) {
 /**
  * Ensure repeated call to the same function returns the same result.
  */
-TEST_P(ConfigstoreHidlTest, TestSameReturnValue) {
+TEST_F(ConfigstoreHidlTest, TestSameReturnValue) {
     int64_t original_ret;
     Return<void> status = sfConfigs->vsyncEventPhaseOffsetNs(
         [&original_ret](OptionalInt64 arg) { original_ret = arg.value; });
@@ -123,7 +135,7 @@ TEST_P(ConfigstoreHidlTest, TestSameReturnValue) {
  * Make sure the constrains of hasWideColorDisplay, hasHDRDisplay
  * are enforced.
  */
-TEST_P(ConfigstoreHidlTest, TestColorConstrainsBasic) {
+TEST_F(ConfigstoreHidlTest, TestColorConstrainsBasic) {
     bool hasWideColorDisplay;
     bool hasHDRDisplay;
 
@@ -140,7 +152,11 @@ TEST_P(ConfigstoreHidlTest, TestColorConstrainsBasic) {
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, ConfigstoreHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(ISurfaceFlingerConfigs::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(ConfigstoreHidlEnvironment::Instance());
+    ::testing::InitGoogleTest(&argc, argv);
+    ConfigstoreHidlEnvironment::Instance()->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    LOG(INFO) << "Test result = " << status;
+    return status;
+}
