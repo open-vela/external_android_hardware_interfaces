@@ -58,7 +58,7 @@ struct ASN1_TYPE_Delete {
 
 typedef struct km_root_of_trust {
     ASN1_OCTET_STRING* verified_boot_key;
-    ASN1_BOOLEAN* device_locked;
+    ASN1_BOOLEAN device_locked;
     ASN1_ENUMERATED* verified_boot_state;
     ASN1_OCTET_STRING* verified_boot_hash;
 } KM_ROOT_OF_TRUST;
@@ -296,6 +296,10 @@ MAKE_OPENSSL_PTR_TYPE(KM_KEY_DESCRIPTION)
 std::tuple<ErrorCode, AttestationRecord> parse_attestation_record(const hidl_vec<uint8_t>& cert) {
     const uint8_t* p = cert.data();
     X509_Ptr x509(d2i_X509(nullptr, &p, cert.size()));
+    if (!x509.get()) {
+        LOG(ERROR) << "Error converting DER";
+        return {ErrorCode::INVALID_ARGUMENT, {}};
+    }
 
     ASN1_OBJECT_Ptr oid(OBJ_txt2obj(kAttestionRecordOid, 1 /* dotted string format */));
     if (!oid.get()) {

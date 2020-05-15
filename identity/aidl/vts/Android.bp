@@ -4,7 +4,11 @@ cc_test {
         "VtsHalTargetTestDefaults",
         "use_libaidlvintf_gtest_helper_static",
     ],
-    srcs: ["VtsHalIdentityTargetTest.cpp"],
+    srcs: [
+        "VtsHalIdentityEndToEndTest.cpp",
+        "VtsIWritableIdentityCredentialTests.cpp",
+        "VtsIdentityTestUtils.cpp",
+    ],
     shared_libs: [
         "libbinder",
         "libcrypto",
@@ -17,6 +21,6 @@ cc_test {
     ],
     test_suites: [
         "general-tests",
-        "vts-core",
+        "vts",
     ],
 }
