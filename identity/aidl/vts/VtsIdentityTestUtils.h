@@ -93,30 +93,25 @@ struct TestProfile {
     uint64_t timeoutMillis;
 };
 
-bool setupWritableCredential(sp<IWritableIdentityCredential>& writableCredential,
+bool SetupWritableCredential(sp<IWritableIdentityCredential>& writableCredential,
                              sp<IIdentityCredentialStore>& credentialStore);
 
-optional<vector<uint8_t>> generateReaderCertificate(string serialDecimal);
+optional<vector<uint8_t>> GenerateReaderCertificate(string serialDecimal);
 
-optional<vector<uint8_t>> generateReaderCertificate(string serialDecimal,
-                                                    vector<uint8_t>* outReaderPrivateKey);
+optional<vector<uint8_t>> GenerateReaderCertificate(string serialDecimal,
+                                                    vector<uint8_t>& readerPrivateKey);
 
-optional<vector<SecureAccessControlProfile>> addAccessControlProfiles(
+optional<vector<SecureAccessControlProfile>> AddAccessControlProfiles(
         sp<IWritableIdentityCredential>& writableCredential,
         const vector<TestProfile>& testProfiles);
 
-bool addEntry(sp<IWritableIdentityCredential>& writableCredential, const TestEntryData& entry,
+bool AddEntry(sp<IWritableIdentityCredential>& writableCredential, const TestEntryData& entry,
               int dataChunkSize, map<const TestEntryData*, vector<vector<uint8_t>>>& encryptedBlobs,
               bool expectSuccess);
 
-void setImageData(vector<uint8_t>& image);
+bool ValidateAttestationCertificate(vector<Certificate>& inputCertificates);
 
-bool validateAttestationCertificate(const vector<Certificate>& inputCertificates,
-                                    const vector<uint8_t>& expectedChallenge,
-                                    const vector<uint8_t>& expectedAppId,
-                                    const HardwareInformation& hwInfo);
-
-vector<RequestNamespace> buildRequestNamespaces(const vector<TestEntryData> entries);
+void SetImageData(vector<uint8_t>& image);
 
 }  // namespace android::hardware::identity::test_utils
 
