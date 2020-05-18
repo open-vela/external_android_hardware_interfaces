@@ -109,8 +109,6 @@ class FrontendTests {
     AssertionResult scanFrontend(FrontendConfig config, FrontendScanType type);
     AssertionResult stopScanFrontend();
     AssertionResult tuneFrontend(FrontendConfig config);
-    void verifyFrontendStatus(vector<FrontendStatusType> statusTypes,
-                              vector<FrontendStatus> expectStatuses);
     AssertionResult stopTuneFrontend();
     AssertionResult closeFrontend();
 
