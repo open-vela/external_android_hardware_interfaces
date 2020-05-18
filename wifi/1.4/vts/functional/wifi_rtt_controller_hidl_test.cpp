@@ -19,7 +19,6 @@
 
 #undef NAN  // NAN is defined in bionic/libc/include/math.h:38
 
-#include <VtsCoreUtil.h>
 #include <android/hardware/wifi/1.3/IWifiStaIface.h>
 #include <android/hardware/wifi/1.4/IWifi.h>
 #include <android/hardware/wifi/1.4/IWifiChip.h>
@@ -60,8 +59,6 @@ using ::android::hardware::wifi::V1_4::RttResult;
 class WifiRttControllerHidlTest : public ::testing::TestWithParam<std::string> {
    public:
     virtual void SetUp() override {
-        if (!::testing::deviceSupportsFeature("android.hardware.wifi.rtt"))
-            GTEST_SKIP() << "Skipping this test since RTT is not supported.";
         // Make sure to start with a clean state
         stopWifi(GetInstanceName());
 
