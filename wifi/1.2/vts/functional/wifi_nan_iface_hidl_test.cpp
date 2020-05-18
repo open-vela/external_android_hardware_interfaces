@@ -16,7 +16,6 @@
 
 #include <android-base/logging.h>
 
-#include <VtsCoreUtil.h>
 #include <android/hardware/wifi/1.2/IWifi.h>
 #include <android/hardware/wifi/1.2/IWifiNanIface.h>
 #include <android/hardware/wifi/1.2/IWifiNanIfaceEventCallback.h>
@@ -51,8 +50,6 @@ android::sp<android::hardware::wifi::V1_2::IWifiNanIface> getWifiNanIface_1_2(
 class WifiNanIfaceHidlTest : public ::testing::TestWithParam<std::string> {
    public:
     virtual void SetUp() override {
-        if (!::testing::deviceSupportsFeature("android.hardware.wifi.aware"))
-            GTEST_SKIP() << "Skipping this test since NAN is not supported.";
         // Make sure to start with a clean state
         stopWifi(GetInstanceName());
 
