@@ -25,7 +25,6 @@ cc_library_static {
     ],
     srcs: [
         "Utils.cpp",
-        "NmeaFixInfo.cpp",
     ],
     export_include_dirs: ["include"],
     shared_libs: [
