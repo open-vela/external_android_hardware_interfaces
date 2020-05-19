@@ -68,7 +68,6 @@ class TunerDemuxHidlTest : public testing::TestWithParam<std::string> {
 
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
-        mFilterTests.setService(mService);
     }
 
   protected:
@@ -79,7 +78,6 @@ class TunerDemuxHidlTest : public testing::TestWithParam<std::string> {
     sp<ITuner> mService;
     FrontendTests mFrontendTests;
     DemuxTests mDemuxTests;
-    FilterTests mFilterTests;
 };
 
 class TunerFilterHidlTest : public testing::TestWithParam<std::string> {
