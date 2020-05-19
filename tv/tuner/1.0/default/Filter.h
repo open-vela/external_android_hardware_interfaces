@@ -89,8 +89,6 @@ class Filter : public IFilter {
     void attachFilterToRecord(const sp<Dvr> dvr);
     void detachFilterFromRecord();
     void freeAvHandle();
-    bool isMediaFilter() { return mIsMediaFilter; };
-    bool isPcrFilter() { return mIsPcrFilter; };
 
   private:
     // Tuner service
@@ -106,7 +104,6 @@ class Filter : public IFilter {
     uint32_t mBufferSize;
     DemuxFilterType mType;
     bool mIsMediaFilter = false;
-    bool mIsPcrFilter = false;
     DemuxFilterSettings mFilterSettings;
 
     uint16_t mTpid;
