@@ -1,5 +1,4 @@
-//
-// Copyright (C) 2020 The Android Open Source Project
+// Copyright (C) 2018 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
-cc_test {
-    name: "VtsHalContexthubV1_1TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
-    srcs: ["VtsHalContexthubV1_1TargetTest.cpp"],
-    static_libs: [
-        "android.hardware.contexthub@1.0",
-        "android.hardware.contexthub@1.1",
-        "VtsHalContexthubUtils",
+python_binary_host {
+    name: "dump_hals_for_release",
+
+    srcs: [
+        "dump_hals_for_release.py",
     ],
-    test_suites: [
-        "general-tests",
-        "vts",
-    ],
+
+    version: {
+        py2: {
+            enabled: true,
+        },
+        py3: {
+            enabled: false,
+        },
+    },
 }
