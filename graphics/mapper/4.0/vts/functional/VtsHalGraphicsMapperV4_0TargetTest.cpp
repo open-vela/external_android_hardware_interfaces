@@ -1927,13 +1927,8 @@ TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoProtectedContent) {
     info.usage = BufferUsage::PROTECTED | BufferUsage::COMPOSER_OVERLAY;
 
     hidl_vec<uint8_t> vec;
-    auto err = mGralloc->getFromBufferDescriptorInfo(info, gralloc4::MetadataType_ProtectedContent,
-                                                     &vec);
-    if (err == Error::UNSUPPORTED) {
-        GTEST_SUCCEED() << "setting this metadata is unsupported";
-        return;
-    }
-    ASSERT_EQ(err, Error::NONE);
+    ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
+                                   info, gralloc4::MetadataType_ProtectedContent, &vec));
 
     uint64_t protectedContent = 0;
     ASSERT_EQ(NO_ERROR, gralloc4::decodeProtectedContent(vec, &protectedContent));
@@ -1948,13 +1943,8 @@ TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoCompression) {
     info.usage = static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN);
 
     hidl_vec<uint8_t> vec;
-    auto err =
-            mGralloc->getFromBufferDescriptorInfo(info, gralloc4::MetadataType_Compression, &vec);
-    if (err == Error::UNSUPPORTED) {
-        GTEST_SUCCEED() << "setting this metadata is unsupported";
-        return;
-    }
-    ASSERT_EQ(err, Error::NONE);
+    ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
+                                   info, gralloc4::MetadataType_Compression, &vec));
 
     ExtendableType compression = gralloc4::Compression_DisplayStreamCompression;
     ASSERT_EQ(NO_ERROR, gralloc4::decodeCompression(vec, &compression));
@@ -1968,13 +1958,8 @@ TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoCompression) {
  */
 TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoInterlaced) {
     hidl_vec<uint8_t> vec;
-    auto err = mGralloc->getFromBufferDescriptorInfo(mDummyDescriptorInfo,
-                                                     gralloc4::MetadataType_Interlaced, &vec);
-    if (err == Error::UNSUPPORTED) {
-        GTEST_SUCCEED() << "setting this metadata is unsupported";
-        return;
-    }
-    ASSERT_EQ(err, Error::NONE);
+    ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
+                                   mDummyDescriptorInfo, gralloc4::MetadataType_Interlaced, &vec));
 
     ExtendableType interlaced = gralloc4::Interlaced_TopBottom;
     ASSERT_EQ(NO_ERROR, gralloc4::decodeInterlaced(vec, &interlaced));
@@ -1988,13 +1973,9 @@ TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoInterlaced) {
  */
 TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoChromaSiting) {
     hidl_vec<uint8_t> vec;
-    auto err = mGralloc->getFromBufferDescriptorInfo(mDummyDescriptorInfo,
-                                                     gralloc4::MetadataType_ChromaSiting, &vec);
-    if (err == Error::UNSUPPORTED) {
-        GTEST_SUCCEED() << "setting this metadata is unsupported";
-        return;
-    }
-    ASSERT_EQ(err, Error::NONE);
+    ASSERT_EQ(Error::NONE,
+              mGralloc->getFromBufferDescriptorInfo(mDummyDescriptorInfo,
+                                                    gralloc4::MetadataType_ChromaSiting, &vec));
 
     ExtendableType chromaSiting = gralloc4::ChromaSiting_CositedHorizontal;
     ASSERT_EQ(NO_ERROR, gralloc4::decodeChromaSiting(vec, &chromaSiting));
@@ -2028,12 +2009,8 @@ TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoCrop) {
     info.usage = static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN);
 
     hidl_vec<uint8_t> vec;
-    auto err = mGralloc->getFromBufferDescriptorInfo(info, gralloc4::MetadataType_Crop, &vec);
-    if (err == Error::UNSUPPORTED) {
-        GTEST_SUCCEED() << "setting this metadata is unsupported";
-        return;
-    }
-    ASSERT_EQ(err, Error::NONE);
+    ASSERT_EQ(Error::NONE,
+              mGralloc->getFromBufferDescriptorInfo(info, gralloc4::MetadataType_Crop, &vec));
 
     std::vector<aidl::android::hardware::graphics::common::Rect> crops;
     ASSERT_EQ(NO_ERROR, gralloc4::decodeCrop(vec, &crops));
@@ -2045,13 +2022,8 @@ TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoCrop) {
  */
 TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoDataspace) {
     hidl_vec<uint8_t> vec;
-    auto err = mGralloc->getFromBufferDescriptorInfo(mDummyDescriptorInfo,
-                                                     gralloc4::MetadataType_Dataspace, &vec);
-    if (err == Error::UNSUPPORTED) {
-        GTEST_SUCCEED() << "setting this metadata is unsupported";
-        return;
-    }
-    ASSERT_EQ(err, Error::NONE);
+    ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
+                                   mDummyDescriptorInfo, gralloc4::MetadataType_Dataspace, &vec));
 
     Dataspace dataspace = Dataspace::DISPLAY_P3;
     ASSERT_EQ(NO_ERROR, gralloc4::decodeDataspace(vec, &dataspace));
@@ -2063,13 +2035,8 @@ TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoDataspace) {
  */
 TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoBlendMode) {
     hidl_vec<uint8_t> vec;
-    auto err = mGralloc->getFromBufferDescriptorInfo(mDummyDescriptorInfo,
-                                                     gralloc4::MetadataType_BlendMode, &vec);
-    if (err == Error::UNSUPPORTED) {
-        GTEST_SUCCEED() << "setting this metadata is unsupported";
-        return;
-    }
-    ASSERT_EQ(err, Error::NONE);
+    ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
+                                   mDummyDescriptorInfo, gralloc4::MetadataType_BlendMode, &vec));
 
     BlendMode blendMode = BlendMode::COVERAGE;
     ASSERT_EQ(NO_ERROR, gralloc4::decodeBlendMode(vec, &blendMode));
@@ -2081,13 +2048,8 @@ TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoBlendMode) {
  */
 TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoSmpte2086) {
     hidl_vec<uint8_t> vec;
-    auto err = mGralloc->getFromBufferDescriptorInfo(mDummyDescriptorInfo,
-                                                     gralloc4::MetadataType_Smpte2086, &vec);
-    if (err == Error::UNSUPPORTED) {
-        GTEST_SUCCEED() << "setting this metadata is unsupported";
-        return;
-    }
-    ASSERT_EQ(err, Error::NONE);
+    ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
+                                   mDummyDescriptorInfo, gralloc4::MetadataType_Smpte2086, &vec));
 
     std::optional<Smpte2086> smpte2086;
     ASSERT_EQ(NO_ERROR, gralloc4::decodeSmpte2086(vec, &smpte2086));
@@ -2099,13 +2061,8 @@ TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoSmpte2086) {
  */
 TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoCta861_3) {
     hidl_vec<uint8_t> vec;
-    auto err = mGralloc->getFromBufferDescriptorInfo(mDummyDescriptorInfo,
-                                                     gralloc4::MetadataType_Cta861_3, &vec);
-    if (err == Error::UNSUPPORTED) {
-        GTEST_SUCCEED() << "setting this metadata is unsupported";
-        return;
-    }
-    ASSERT_EQ(err, Error::NONE);
+    ASSERT_EQ(Error::NONE, mGralloc->getFromBufferDescriptorInfo(
+                                   mDummyDescriptorInfo, gralloc4::MetadataType_Cta861_3, &vec));
 
     std::optional<Cta861_3> cta861_3;
     ASSERT_EQ(NO_ERROR, gralloc4::decodeCta861_3(vec, &cta861_3));
@@ -2117,14 +2074,9 @@ TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoCta861_3) {
  */
 TEST_P(GraphicsMapperHidlTest, GetFromBufferDescriptorInfoSmpte2094_40) {
     hidl_vec<uint8_t> vec;
-    auto err = mGralloc->getFromBufferDescriptorInfo(mDummyDescriptorInfo,
-                                                     gralloc4::MetadataType_Smpte2094_40, &vec);
-    if (err == Error::UNSUPPORTED) {
-        GTEST_SUCCEED() << "setting this metadata is unsupported";
-        return;
-    }
-    ASSERT_EQ(err, Error::NONE);
-
+    ASSERT_EQ(Error::NONE,
+              mGralloc->getFromBufferDescriptorInfo(mDummyDescriptorInfo,
+                                                    gralloc4::MetadataType_Smpte2094_40, &vec));
     std::optional<std::vector<uint8_t>> smpte2094_40;
     ASSERT_EQ(NO_ERROR, gralloc4::decodeSmpte2094_40(vec, &smpte2094_40));
     EXPECT_FALSE(smpte2094_40.has_value());
