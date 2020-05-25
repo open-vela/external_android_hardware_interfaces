@@ -14,22 +14,25 @@
  * limitations under the License.
  */
 
-cc_binary {
-    name: "android.hardware.biometrics.face@1.0-service.example",
-    defaults: ["hidl_defaults"],
-    vendor: true,
-    init_rc: ["android.hardware.biometrics.face@1.0-service.rc"],
-    vintf_fragments: ["manifest_face_default.xml"],
-    relative_install_path: "hw",
-    proprietary: true,
-    srcs: [
-        "BiometricsFace.cpp",
-        "service.cpp",
-    ],
-    shared_libs: [
-        "libhidlbase",
-        "libutils",
-        "liblog",
-        "android.hardware.biometrics.face@1.0",
-    ],
+package android.hardware.identity;
+
+@VintfStability
+parcelable RequestDataItem {
+    /**
+     * The data item name being requested, for example "driving_privileges".
+     */
+    @utf8InCpp String name;
+
+    /**
+     * The size of the data item value.
+     *
+     * Data item values are always encoded as CBOR so this is the length of
+     * the CBOR encoding of the value.
+     */
+    long size;
+
+    /**
+     * The access control profile ids this data item is configured with.
+     */
+    int[] accessControlProfileIds;
 }
