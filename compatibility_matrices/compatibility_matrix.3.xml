@@ -111,7 +111,7 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="hidl" optional="true">
+    <hal format="hidl" optional="false">
         <name>android.hardware.configstore</name>
         <version>1.0-1</version>
         <interface>
