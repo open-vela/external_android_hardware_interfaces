@@ -20,12 +20,11 @@
 #include <android/hardware/nfc/1.0/INfc.h>
 #include <android/hardware/nfc/1.0/INfcClientCallback.h>
 #include <android/hardware/nfc/1.0/types.h>
-#include <gtest/gtest.h>
 #include <hardware/nfc.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 
 #include <VtsHalHidlTargetCallbackBase.h>
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 
 using ::android::hardware::nfc::V1_0::INfc;
 using ::android::hardware::nfc::V1_0::INfcClientCallback;
@@ -95,11 +94,26 @@ class NfcClientCallback
     };
 };
 
+// Test environment for Nfc HIDL HAL.
+class NfcHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+ public:
+  // get the test environment singleton
+  static NfcHidlEnvironment* Instance() {
+    static NfcHidlEnvironment* instance = new NfcHidlEnvironment;
+    return instance;
+  }
+
+  virtual void registerTestServices() override { registerTestService<INfc>(); }
+ private:
+  NfcHidlEnvironment() {}
+};
+
 // The main test class for NFC HIDL HAL.
-class NfcHidlTest : public ::testing::TestWithParam<std::string> {
+class NfcHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
-    nfc_ = INfc::getService(GetParam());
+    nfc_ = ::testing::VtsHalHidlTargetTestBase::getService<INfc>(
+        NfcHidlEnvironment::Instance()->getServiceName<INfc>());
     ASSERT_NE(nfc_, nullptr);
 
     nfc_cb_ = new NfcClientCallback();
@@ -172,7 +186,7 @@ class NfcHidlTest : public ::testing::TestWithParam<std::string> {
  * Since open and close calls are a part of SetUp() and TearDown(),
  * the function definition is intentionally kept empty
  */
-TEST_P(NfcHidlTest, OpenAndClose) {}
+TEST_F(NfcHidlTest, OpenAndClose) {}
 
 /*
  * WriteCoreReset:
@@ -180,7 +194,7 @@ TEST_P(NfcHidlTest, OpenAndClose) {}
  * Waits for CORE_RESET_RSP
  * Checks the status, version number and configuration status
  */
-TEST_P(NfcHidlTest, WriteCoreReset) {
+TEST_F(NfcHidlTest, WriteCoreReset) {
   std::vector<uint8_t> cmd = CORE_RESET_CMD;
   NfcData data = cmd;
   EXPECT_EQ(data.size(), nfc_->write(data));
@@ -215,7 +229,7 @@ TEST_P(NfcHidlTest, WriteCoreReset) {
  * Waits for CORE_RESET_RSP
  * Checks the status, version number and configuration status
  */
-TEST_P(NfcHidlTest, WriteCoreResetConfigReset) {
+TEST_F(NfcHidlTest, WriteCoreResetConfigReset) {
   std::vector<uint8_t> cmd = CORE_RESET_CMD_CONFIG_RESET;
   NfcData data = cmd;
   EXPECT_EQ(data.size(), nfc_->write(data));
@@ -250,7 +264,7 @@ TEST_P(NfcHidlTest, WriteCoreResetConfigReset) {
  * Waits for response
  * Checks SYNTAX_ERROR status
  */
-TEST_P(NfcHidlTest, WriteInvalidCommand) {
+TEST_F(NfcHidlTest, WriteInvalidCommand) {
   // Send an Error Command
   std::vector<uint8_t> cmd = INVALID_COMMAND;
   NfcData data = cmd;
@@ -271,7 +285,7 @@ TEST_P(NfcHidlTest, WriteInvalidCommand) {
  * Send CORE_CONN_CREATE_CMD for loop-back mode
  * Check the response
  */
-TEST_P(NfcHidlTest, WriteInvalidAndThenValidCommand) {
+TEST_F(NfcHidlTest, WriteInvalidAndThenValidCommand) {
     std::vector<uint8_t> cmd = CORE_RESET_CMD;
     NfcData data = cmd;
     EXPECT_EQ(data.size(), nfc_->write(data));
@@ -335,7 +349,7 @@ TEST_P(NfcHidlTest, WriteInvalidAndThenValidCommand) {
  * Checks the data received
  * Repeat to send total of 1Mb data
  */
-TEST_P(NfcHidlTest, Bandwidth) {
+TEST_F(NfcHidlTest, Bandwidth) {
     std::vector<uint8_t> cmd = CORE_RESET_CMD;
     NfcData data = cmd;
     EXPECT_EQ(data.size(), nfc_->write(data));
@@ -423,7 +437,7 @@ TEST_P(NfcHidlTest, Bandwidth) {
  * Waits for NfcEvent.OPEN_CPLT
  * Checks status
  */
-TEST_P(NfcHidlTest, PowerCycle) {
+TEST_F(NfcHidlTest, PowerCycle) {
   EXPECT_EQ(NfcStatus::OK, nfc_->powerCycle());
   // Wait for NfcEvent.OPEN_CPLT
   auto res = nfc_cb_->WaitForCallback(kCallbackNameSendEvent);
@@ -437,7 +451,7 @@ TEST_P(NfcHidlTest, PowerCycle) {
  * Calls powerCycle() after close()
  * Checks status
  */
-TEST_P(NfcHidlTest, PowerCycleAfterClose) {
+TEST_F(NfcHidlTest, PowerCycleAfterClose) {
   EXPECT_EQ(NfcStatus::OK, nfc_->close());
   // Wait for CLOSE_CPLT event
   auto res = nfc_cb_->WaitForCallback(kCallbackNameSendEvent);
@@ -460,7 +474,7 @@ TEST_P(NfcHidlTest, PowerCycleAfterClose) {
  * Calls coreInitialized() with different data
  * Waits for NfcEvent.POST_INIT_CPLT
  */
-TEST_P(NfcHidlTest, CoreInitialized) {
+TEST_F(NfcHidlTest, CoreInitialized) {
   NfcData data;
   data.resize(1);
   // These parameters might lead to device specific proprietary behavior
@@ -487,7 +501,7 @@ TEST_P(NfcHidlTest, CoreInitialized) {
  * Calls controlGranted()
  * Checks the return value
  */
-TEST_P(NfcHidlTest, ControlGranted) {
+TEST_F(NfcHidlTest, ControlGranted) {
   EXPECT_EQ(NfcStatus::OK, nfc_->controlGranted());
 }
 
@@ -496,7 +510,7 @@ TEST_P(NfcHidlTest, ControlGranted) {
  * Call controlGranted() after close
  * Checks the return value
  */
-TEST_P(NfcHidlTest, ControlGrantedAfterClose) {
+TEST_F(NfcHidlTest, ControlGrantedAfterClose) {
   EXPECT_EQ(NfcStatus::OK, nfc_->close());
   // Wait for CLOSE_CPLT event
   auto res = nfc_cb_->WaitForCallback(kCallbackNameSendEvent);
@@ -518,7 +532,7 @@ TEST_P(NfcHidlTest, ControlGrantedAfterClose) {
  * Calls prediscover()
  * Checks the return value
  */
-TEST_P(NfcHidlTest, PreDiscover) {
+TEST_F(NfcHidlTest, PreDiscover) {
   EXPECT_EQ(NfcStatus::OK, nfc_->prediscover());
 }
 
@@ -527,7 +541,7 @@ TEST_P(NfcHidlTest, PreDiscover) {
  * Call prediscover() after close
  * Checks the return value
  */
-TEST_P(NfcHidlTest, PreDiscoverAfterClose) {
+TEST_F(NfcHidlTest, PreDiscoverAfterClose) {
   EXPECT_EQ(NfcStatus::OK, nfc_->close());
   // Wait for CLOSE_CPLT event
   auto res = nfc_cb_->WaitForCallback(kCallbackNameSendEvent);
@@ -550,7 +564,7 @@ TEST_P(NfcHidlTest, PreDiscoverAfterClose) {
  * Calls close() multiple times
  * Checks status
  */
-TEST_P(NfcHidlTest, CloseAfterClose) {
+TEST_F(NfcHidlTest, CloseAfterClose) {
   EXPECT_EQ(NfcStatus::OK, nfc_->close());
   // Wait for CLOSE_CPLT event
   auto res = nfc_cb_->WaitForCallback(kCallbackNameSendEvent);
@@ -573,18 +587,15 @@ TEST_P(NfcHidlTest, CloseAfterClose) {
  * Calls open() multiple times
  * Checks status
  */
-TEST_P(NfcHidlTest, OpenAfterOpen) {
+TEST_F(NfcHidlTest, OpenAfterOpen) {
   EXPECT_EQ(NfcStatus::OK, nfc_->open(nfc_cb_));
   EXPECT_EQ(NfcStatus::OK, nfc_->open(nfc_cb_));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, NfcHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(INfc::descriptor)),
-        android::hardware::PrintInstanceNameToString);
-
 int main(int argc, char** argv) {
+  ::testing::AddGlobalTestEnvironment(NfcHidlEnvironment::Instance());
   ::testing::InitGoogleTest(&argc, argv);
+  NfcHidlEnvironment::Instance()->init(&argc, argv);
 
   std::system("svc nfc disable"); /* Turn off NFC */
   sleep(5);
