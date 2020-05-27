@@ -89,6 +89,7 @@ class Demux : public IDemux {
     void updateFilterOutput(uint16_t filterId, vector<uint8_t> data);
     uint16_t getFilterTpid(uint32_t filterId);
     void setIsRecording(bool isRecording);
+    void startFrontendInputLoop();
 
   private:
     // Tuner service
@@ -104,7 +105,6 @@ class Demux : public IDemux {
         uint32_t filterId;
     };
 
-    Result startFrontendInputLoop();
     static void* __threadLoopFrontend(void* user);
     void frontendInputThreadLoop();
 
@@ -130,6 +130,7 @@ class Demux : public IDemux {
 
     uint32_t mDemuxId;
     uint32_t mCiCamId;
+    set<uint32_t> mPcrFilterIds;
     /**
      * Record the last used filter id. Initial value is -1.
      * Filter Id starts with 0.
@@ -140,13 +141,6 @@ class Demux : public IDemux {
      * Any removed filter id should be removed from this set.
      */
     set<uint32_t> mUsedFilterIds;
-    /**
-     * Record all the unused filter Ids within mLastUsedFilterId.
-     * Removed filter Id should be added into this set.
-     * When this set is not empty, ids here should be allocated first
-     * and added into usedFilterIds.
-     */
-    set<uint32_t> mUnusedFilterIds;
     /**
      * Record all the attached record filter Ids.
      * Any removed filter id should be removed from this set.
@@ -188,7 +182,7 @@ class Demux : public IDemux {
     int mPesSizeLeft = 0;
     vector<uint8_t> mPesOutput;
 
-    const bool DEBUG_FILTER = false;
+    const bool DEBUG_DEMUX = false;
 };
 
 }  // namespace implementation
