@@ -19,8 +19,6 @@
 #include <aidl/Gtest.h>
 #include <map>
 
-#include "VtsAttestationParserSupport.h"
-
 namespace android::hardware::identity::test_utils {
 
 using std::endl;
@@ -33,7 +31,7 @@ using ::android::sp;
 using ::android::String16;
 using ::android::binder::Status;
 
-bool setupWritableCredential(sp<IWritableIdentityCredential>& writableCredential,
+bool SetupWritableCredential(sp<IWritableIdentityCredential>& writableCredential,
                              sp<IIdentityCredentialStore>& credentialStore) {
     if (credentialStore == nullptr) {
         return false;
@@ -50,13 +48,13 @@ bool setupWritableCredential(sp<IWritableIdentityCredential>& writableCredential
     }
 }
 
-optional<vector<uint8_t>> generateReaderCertificate(string serialDecimal) {
+optional<vector<uint8_t>> GenerateReaderCertificate(string serialDecimal) {
     vector<uint8_t> privKey;
-    return generateReaderCertificate(serialDecimal, &privKey);
+    return GenerateReaderCertificate(serialDecimal, privKey);
 }
 
-optional<vector<uint8_t>> generateReaderCertificate(string serialDecimal,
-                                                    vector<uint8_t>* outReaderPrivateKey) {
+optional<vector<uint8_t>> GenerateReaderCertificate(string serialDecimal,
+                                                    vector<uint8_t>& readerPrivateKey) {
     optional<vector<uint8_t>> readerKeyPKCS8 = support::createEcKeyPair();
     if (!readerKeyPKCS8) {
         return {};
@@ -69,11 +67,7 @@ optional<vector<uint8_t>> generateReaderCertificate(string serialDecimal,
         return {};
     }
 
-    if (outReaderPrivateKey == nullptr) {
-        return {};
-    }
-
-    *outReaderPrivateKey = readerKey.value();
+    readerPrivateKey = readerKey.value();
 
     string issuer = "Android Open Source Project";
     string subject = "Android IdentityCredential VTS Test";
@@ -85,7 +79,7 @@ optional<vector<uint8_t>> generateReaderCertificate(string serialDecimal,
                                                    validityNotBefore, validityNotAfter);
 }
 
-optional<vector<SecureAccessControlProfile>> addAccessControlProfiles(
+optional<vector<SecureAccessControlProfile>> AddAccessControlProfiles(
         sp<IWritableIdentityCredential>& writableCredential,
         const vector<TestProfile>& testProfiles) {
     Status result;
@@ -126,7 +120,7 @@ optional<vector<SecureAccessControlProfile>> addAccessControlProfiles(
 
 // Most test expects this function to pass. So we will print out additional
 // value if failed so more debug data can be provided.
-bool addEntry(sp<IWritableIdentityCredential>& writableCredential, const TestEntryData& entry,
+bool AddEntry(sp<IWritableIdentityCredential>& writableCredential, const TestEntryData& entry,
               int dataChunkSize, map<const TestEntryData*, vector<vector<uint8_t>>>& encryptedBlobs,
               bool expectSuccess) {
     Status result;
@@ -170,68 +164,16 @@ bool addEntry(sp<IWritableIdentityCredential>& writableCredential, const TestEnt
     return true;
 }
 
-void setImageData(vector<uint8_t>& image) {
+bool ValidateAttestationCertificate(vector<Certificate>& inputCertificates) {
+    return (inputCertificates.size() >= 2);
+    // TODO: add parsing of the certificate and make sure it is genuine.
+}
+
+void SetImageData(vector<uint8_t>& image) {
     image.resize(256 * 1024 - 10);
     for (size_t n = 0; n < image.size(); n++) {
         image[n] = (uint8_t)n;
     }
-}
-
-bool validateAttestationCertificate(const vector<Certificate>& inputCertificates,
-                                    const vector<uint8_t>& expectedChallenge,
-                                    const vector<uint8_t>& expectedAppId,
-                                    const HardwareInformation& hwInfo) {
-    AttestationCertificateParser certParser_(inputCertificates);
-    bool ret = certParser_.parse();
-    EXPECT_TRUE(ret);
-    if (!ret) {
-        return false;
-    }
-
-    // As per the IC HAL, the version of the Identity
-    // Credential HAL is 1.0 - and this is encoded as major*10 + minor. This field is used by
-    // Keymaster which is known to report integers less than or equal to 4 (for KM up to 4.0)
-    // and integers greater or equal than 41 (for KM starting with 4.1).
-    //
-    // Since we won't get to version 4.0 of the IC HAL for a while, let's also check that a KM
-    // version isn't errornously returned.
-    EXPECT_LE(10, certParser_.getKeymasterVersion());
-    EXPECT_GT(40, certParser_.getKeymasterVersion());
-    EXPECT_LE(3, certParser_.getAttestationVersion());
-
-    // Verify the app id matches to whatever we set it to be.
-    optional<vector<uint8_t>> appId =
-            certParser_.getSwEnforcedBlob(::keymaster::TAG_ATTESTATION_APPLICATION_ID);
-    if (appId) {
-        EXPECT_EQ(expectedAppId.size(), appId.value().size());
-        EXPECT_EQ(0, memcmp(expectedAppId.data(), appId.value().data(), expectedAppId.size()));
-    } else {
-        // app id not found
-        EXPECT_EQ(0, expectedAppId.size());
-    }
-
-    EXPECT_TRUE(certParser_.getHwEnforcedBool(::keymaster::TAG_IDENTITY_CREDENTIAL_KEY));
-    EXPECT_FALSE(certParser_.getHwEnforcedBool(::keymaster::TAG_INCLUDE_UNIQUE_ID));
-
-    // Verify the challenge always matches in size and data of what is passed
-    // in.
-    vector<uint8_t> attChallenge = certParser_.getAttestationChallenge();
-    EXPECT_EQ(expectedChallenge.size(), attChallenge.size());
-    EXPECT_EQ(0, memcmp(expectedChallenge.data(), attChallenge.data(), expectedChallenge.size()));
-
-    // Ensure the attestation conveys that it's implemented in secure hardware (with carve-out
-    // for the reference implementation which cannot be implemented in secure hardware).
-    if (hwInfo.credentialStoreName == "Identity Credential Reference Implementation" &&
-        hwInfo.credentialStoreAuthorName == "Google") {
-        EXPECT_LE(KM_SECURITY_LEVEL_SOFTWARE, certParser_.getKeymasterSecurityLevel());
-        EXPECT_LE(KM_SECURITY_LEVEL_SOFTWARE, certParser_.getAttestationSecurityLevel());
-
-    } else {
-        // Actual devices should use TrustedEnvironment or StrongBox.
-        EXPECT_LE(KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT, certParser_.getKeymasterSecurityLevel());
-        EXPECT_LE(KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT, certParser_.getAttestationSecurityLevel());
-    }
-    return true;
 }
 
 vector<RequestNamespace> buildRequestNamespaces(const vector<TestEntryData> entries) {
