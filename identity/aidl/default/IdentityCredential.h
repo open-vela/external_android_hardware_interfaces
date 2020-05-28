@@ -19,7 +19,6 @@
 
 #include <aidl/android/hardware/identity/BnIdentityCredential.h>
 #include <aidl/android/hardware/keymaster/HardwareAuthToken.h>
-#include <aidl/android/hardware/keymaster/VerificationToken.h>
 #include <android/hardware/identity/support/IdentityCredentialSupport.h>
 
 #include <map>
@@ -32,7 +31,6 @@
 namespace aidl::android::hardware::identity {
 
 using ::aidl::android::hardware::keymaster::HardwareAuthToken;
-using ::aidl::android::hardware::keymaster::VerificationToken;
 using ::std::map;
 using ::std::set;
 using ::std::string;
@@ -57,7 +55,6 @@ class IdentityCredential : public BnIdentityCredential {
     ndk::ScopedAStatus createAuthChallenge(int64_t* outChallenge) override;
     ndk::ScopedAStatus setRequestedNamespaces(
             const vector<RequestNamespace>& requestNamespaces) override;
-    ndk::ScopedAStatus setVerificationToken(const VerificationToken& verificationToken) override;
     ndk::ScopedAStatus startRetrieval(
             const vector<SecureAccessControlProfile>& accessControlProfiles,
             const HardwareAuthToken& authToken, const vector<int8_t>& itemsRequest,
@@ -95,9 +92,6 @@ class IdentityCredential : public BnIdentityCredential {
 
     // Set by setRequestedNamespaces()
     vector<RequestNamespace> requestNamespaces_;
-
-    // Set by setVerificationToken().
-    VerificationToken verificationToken_;
 
     // Set at startRetrieval() time.
     map<int32_t, int> profileIdToAccessCheckResult_;
