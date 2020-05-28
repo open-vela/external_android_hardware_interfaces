@@ -105,12 +105,6 @@ class EmulatedUserHal {
             const VehiclePropValue& value);
 
     /**
-     * Used to emulate CREATE_USER - see onSetInitialUserInfoResponse() for usage.
-     */
-    android::base::Result<std::unique_ptr<VehiclePropValue>> onSetCreateUserResponse(
-            const VehiclePropValue& value);
-
-    /**
      * Used to emulate USER_IDENTIFICATION_ASSOCIATION - see onSetInitialUserInfoResponse() for
      * usage.
      */
@@ -122,7 +116,6 @@ class EmulatedUserHal {
 
     std::unique_ptr<VehiclePropValue> mInitialUserResponseFromCmd;
     std::unique_ptr<VehiclePropValue> mSwitchUserResponseFromCmd;
-    std::unique_ptr<VehiclePropValue> mCreateUserResponseFromCmd;
     std::unique_ptr<VehiclePropValue> mSetUserIdentificationAssociationResponseFromCmd;
 };
 
