@@ -29,6 +29,7 @@ cc_library_shared {
         "libcutils",
         "libhardware",
         "libhidlbase",
+        "libhidltransport",
         "liblog",
         "libutils",
     ],
@@ -93,7 +94,6 @@ cc_test {
         "android.hardware.bluetooth-hci",
         "libgmock",
     ],
-    test_suites: ["general-tests"],
 }
 
 cc_test_host {
@@ -129,6 +129,7 @@ cc_binary {
         "libutils",
         "libhardware",
         "libhidlbase",
+        "libhidltransport",
         "android.hardware.bluetooth@1.0",
     ],
 }

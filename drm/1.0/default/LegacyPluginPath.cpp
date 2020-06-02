@@ -16,8 +16,6 @@
 
 #include "LegacyPluginPath.h"
 
-#include <unistd.h>
-
 #include <cutils/properties.h>
 
 namespace android {
@@ -26,16 +24,12 @@ namespace drm {
 namespace V1_0 {
 namespace implementation {
 
-// 64-bit DRM depends on OEM libraries that aren't
-// provided for all devices. If the drm hal service
-// is running as 64-bit use the 64-bit libs, otherwise
-// use the 32-bit libs.
 const char* getDrmPluginPath() {
-#if defined(__LP64__)
-    return "/vendor/lib64/mediadrm";
-#else
-    return "/vendor/lib/mediadrm";
-#endif
+    if (property_get_bool("drm.64bit.enabled", false)) {
+        return "/vendor/lib64/mediadrm";
+    } else {
+        return "/vendor/lib/mediadrm";
+    }
 }
 
 }  // namespace implementation

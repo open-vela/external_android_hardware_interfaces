@@ -13,32 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define LOG_TAG "BcRadioDef.service"
+
 #include <android-base/logging.h>
 #include <hidl/HidlTransportSupport.h>
 
 #include "BroadcastRadio.h"
 #include "VirtualRadio.h"
 
-using android::sp;
 using android::hardware::configureRpcThreadpool;
 using android::hardware::joinRpcThreadpool;
 using android::hardware::broadcastradio::V2_0::implementation::BroadcastRadio;
 using android::hardware::broadcastradio::V2_0::implementation::gAmFmRadio;
-using android::hardware::broadcastradio::V2_0::implementation::gDabRadio;
 
-int main() {
-    android::base::SetDefaultTag("BcRadioDef");
-    android::base::SetMinimumLogSeverity(android::base::VERBOSE);
+int main(int /* argc */, char** /* argv */) {
     configureRpcThreadpool(4, true);
 
-    sp<BroadcastRadio> broadcastRadio(new BroadcastRadio(gAmFmRadio));
-    auto amFmStatus = broadcastRadio->registerAsService("amfm");
-    CHECK_EQ(amFmStatus, android::OK)
-        << "Failed to register Broadcast Radio AM/FM HAL implementation";
-
-    sp<BroadcastRadio> dabRadio(new BroadcastRadio(gDabRadio));
-    auto dabStatus = dabRadio->registerAsService("dab");
-    CHECK_EQ(dabStatus, android::OK) << "Failed to register Broadcast Radio DAB HAL implementation";
+    BroadcastRadio broadcastRadio(gAmFmRadio);
+    auto status = broadcastRadio.registerAsService();
+    CHECK_EQ(status, android::OK) << "Failed to register Broadcast Radio HAL implementation";
 
     joinRpcThreadpool();
     return 1;  // joinRpcThreadpool shouldn't exit
