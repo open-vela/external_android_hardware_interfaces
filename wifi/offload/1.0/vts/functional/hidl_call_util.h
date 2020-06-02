@@ -21,6 +21,8 @@
 #include <type_traits>
 #include <utility>
 
+#include <VtsHalHidlTargetTestBase.h>
+
 namespace {
 namespace detail {
 template <typename>
