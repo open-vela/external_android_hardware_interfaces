@@ -79,7 +79,7 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="hidl" optional="false">
+    <hal format="hidl" optional="true">
         <name>android.hardware.configstore</name>
         <version>1.0</version>
         <interface>
@@ -166,6 +166,10 @@
     <hal format="hidl" optional="true">
         <name>android.hardware.ir</name>
         <version>1.0</version>
+        <interface>
+            <name>IConsumerIr</name>
+            <instance>default</instance>
+        </interface>
     </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.keymaster</name>
