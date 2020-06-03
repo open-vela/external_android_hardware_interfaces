@@ -26,8 +26,6 @@ cc_library {
         "libcutils",
         "libfmq",
         "libhidlbase",
-        "libhidltransport",
-        "libhwbinder",
         "liblog",
         "libutils",
     ],
@@ -49,11 +47,11 @@ cc_test {
         "libbase",
         "libcutils",
         "libhidlbase",
-        "libhidltransport",
         "liblog",
         "libutils",
         "android.hardware.tests.msgq@1.0"
     ],
+    test_suites: ["general-tests"],
 }
 
 cc_test {
@@ -67,8 +65,6 @@ cc_test {
         "libcutils",
         "libfmq",
         "libhidlbase",
-        "libhidltransport",
-        "libhwbinder",
         "liblog",
         "libutils",
     ],
@@ -80,4 +76,5 @@ cc_test {
     // libs should be used on device.
     static_libs: ["android.hardware.tests.msgq@1.0"],
     whole_static_libs: ["android.hardware.tests.msgq@1.0-impl"],
+    test_suites: ["general-tests"],
 }
