@@ -1,11 +1,11 @@
 //
-// Copyright (C) 2019 The Android Open Source Project
+// Copyright 2016 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,16 +14,7 @@
 // limitations under the License.
 //
 
-cc_test {
-    name: "VtsHalInputClassifierV1_0TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
-    srcs: ["VtsHalInputClassifierV1_0TargetTest.cpp"],
-    static_libs: [
-        "android.hardware.input.classifier@1.0",
-        "android.hardware.input.common@1.0",
-    ],
-    test_suites: [
-        "general-tests",
-        "vts",
-    ],
-}
+// Mock sys/system_properties.h for testing
+
+#define PROP_VALUE_MAX 50
+#define PROP_KEY_MAX 50
