@@ -44,8 +44,8 @@ class DemuxTests {
 
     AssertionResult openDemux(sp<IDemux>& demux, uint32_t& demuxId);
     AssertionResult setDemuxFrontendDataSource(uint32_t frontendId);
-    AssertionResult getAvSyncId(sp<IFilter> filter, uint32_t& avSyncHwId);
-    AssertionResult getAvSyncTime(uint32_t avSyncId);
+    void getAvSyncId(sp<IFilter> filter, uint32_t& avSyncHwId);
+    void getAvSyncTime(uint32_t avSyncId);
     AssertionResult getDemuxCaps(DemuxCapabilities& demuxCaps);
     AssertionResult closeDemux();
 
