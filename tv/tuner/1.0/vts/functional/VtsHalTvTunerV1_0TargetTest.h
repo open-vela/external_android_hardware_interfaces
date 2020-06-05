@@ -144,7 +144,6 @@ class TunerBroadcastHidlTest : public testing::TestWithParam<std::string> {
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
         mFilterTests.setService(mService);
-        mLnbTests.setService(mService);
     }
 
   protected:
@@ -156,16 +155,10 @@ class TunerBroadcastHidlTest : public testing::TestWithParam<std::string> {
     FrontendTests mFrontendTests;
     DemuxTests mDemuxTests;
     FilterTests mFilterTests;
-    LnbTests mLnbTests;
 
     AssertionResult filterDataOutputTest(vector<string> goldenOutputFiles);
 
     void broadcastSingleFilterTest(FilterConfig filterConf, FrontendConfig frontendConf);
-    void broadcastSingleFilterTestWithLnb(FilterConfig filterConf, FrontendConfig frontendConf,
-                                          LnbConfig lnbConf);
-
-  private:
-    uint32_t* mLnbId = nullptr;
 };
 
 class TunerPlaybackHidlTest : public testing::TestWithParam<std::string> {
@@ -208,7 +201,6 @@ class TunerRecordHidlTest : public testing::TestWithParam<std::string> {
         mDemuxTests.setService(mService);
         mFilterTests.setService(mService);
         mDvrTests.setService(mService);
-        mLnbTests.setService(mService);
     }
 
   protected:
@@ -220,18 +212,12 @@ class TunerRecordHidlTest : public testing::TestWithParam<std::string> {
                                            DvrConfig dvrConf);
     void recordSingleFilterTest(FilterConfig filterConf, FrontendConfig frontendConf,
                                 DvrConfig dvrConf);
-    void recordSingleFilterTestWithLnb(FilterConfig filterConf, FrontendConfig frontendConf,
-                                       DvrConfig dvrConf, LnbConfig lnbConf);
 
     sp<ITuner> mService;
     FrontendTests mFrontendTests;
     DemuxTests mDemuxTests;
     FilterTests mFilterTests;
     DvrTests mDvrTests;
-    LnbTests mLnbTests;
-
-  private:
-    uint32_t* mLnbId = nullptr;
 };
 
 class TunerDescramblerHidlTest : public testing::TestWithParam<std::string> {
