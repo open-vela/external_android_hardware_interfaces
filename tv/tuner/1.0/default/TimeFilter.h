@@ -19,7 +19,6 @@
 
 #include <android/hardware/tv/tuner/1.0/ITimeFilter.h>
 #include "Demux.h"
-#include "time.h"
 
 using namespace std;
 
@@ -35,8 +34,6 @@ using ::android::hardware::tv::tuner::V1_0::IFilterCallback;
 using ::android::hardware::tv::tuner::V1_0::Result;
 
 using FilterMQ = MessageQueue<uint8_t, kSynchronizedReadWrite>;
-
-#define INVALID_TIME_STAMP -1
 
 class Demux;
 
@@ -60,8 +57,6 @@ class TimeFilter : public ITimeFilter {
 
   private:
     sp<Demux> mDemux;
-    uint64_t mTimeStamp = INVALID_TIME_STAMP;
-    time_t mBeginTime;
 };
 
 }  // namespace implementation

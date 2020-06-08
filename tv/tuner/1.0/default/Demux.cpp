@@ -52,7 +52,7 @@ Return<Result> Demux::setFrontendDataSource(uint32_t frontendId) {
 
     mTunerService->setFrontendAsDemuxSource(frontendId, mDemuxId);
 
-    return Result::SUCCESS;
+    return startFrontendInputLoop();
 }
 
 Return<void> Demux::openFilter(const DemuxFilterType& type, uint32_t bufferSize,
@@ -60,12 +60,19 @@ Return<void> Demux::openFilter(const DemuxFilterType& type, uint32_t bufferSize,
     ALOGV("%s", __FUNCTION__);
 
     uint32_t filterId;
-    filterId = ++mLastUsedFilterId;
+
+    if (!mUnusedFilterIds.empty()) {
+        filterId = *mUnusedFilterIds.begin();
+
+        mUnusedFilterIds.erase(filterId);
+    } else {
+        filterId = ++mLastUsedFilterId;
+    }
 
     mUsedFilterIds.insert(filterId);
 
     if (cb == nullptr) {
-        ALOGW("[Demux] callback can't be null");
+        ALOGW("callback can't be null");
         _hidl_cb(Result::INVALID_ARGUMENT, new Filter());
         return Void();
     }
@@ -78,74 +85,33 @@ Return<void> Demux::openFilter(const DemuxFilterType& type, uint32_t bufferSize,
     }
 
     mFilters[filterId] = filter;
-    if (filter->isPcrFilter()) {
-        mPcrFilterIds.insert(filterId);
-    }
-    bool result = true;
-    if (mDvr != nullptr && mDvr->getType() == DvrType::PLAYBACK) {
-        result = mDvr->addPlaybackFilter(filter);
-    }
 
-    _hidl_cb(result ? Result::SUCCESS : Result::INVALID_ARGUMENT, filter);
+    _hidl_cb(Result::SUCCESS, filter);
     return Void();
 }
 
 Return<void> Demux::openTimeFilter(openTimeFilter_cb _hidl_cb) {
     ALOGV("%s", __FUNCTION__);
 
-    mTimeFilter = new TimeFilter(this);
+    sp<TimeFilter> timeFilter = new TimeFilter(this);
 
-    _hidl_cb(Result::SUCCESS, mTimeFilter);
+    _hidl_cb(Result::SUCCESS, timeFilter);
     return Void();
 }
 
-Return<void> Demux::getAvSyncHwId(const sp<IFilter>& filter, getAvSyncHwId_cb _hidl_cb) {
+Return<void> Demux::getAvSyncHwId(const sp<IFilter>& /* filter */, getAvSyncHwId_cb _hidl_cb) {
     ALOGV("%s", __FUNCTION__);
 
-    uint32_t avSyncHwId = -1;
-    int id;
-    Result status;
+    AvSyncHwId avSyncHwId = 0;
 
-    filter->getId([&](Result result, uint32_t filterId) {
-        id = filterId;
-        status = result;
-    });
-
-    if (status != Result::SUCCESS) {
-        ALOGE("[Demux] Can't get filter Id.");
-        _hidl_cb(Result::INVALID_STATE, avSyncHwId);
-        return Void();
-    }
-
-    if (!mFilters[id]->isMediaFilter()) {
-        ALOGE("[Demux] Given filter is not a media filter.");
-        _hidl_cb(Result::INVALID_ARGUMENT, avSyncHwId);
-        return Void();
-    }
-
-    if (!mPcrFilterIds.empty()) {
-        // Return the lowest pcr filter id in the default implementation as the av sync id
-        _hidl_cb(Result::SUCCESS, *mPcrFilterIds.begin());
-        return Void();
-    }
-
-    ALOGE("[Demux] No PCR filter opened.");
-    _hidl_cb(Result::INVALID_STATE, avSyncHwId);
+    _hidl_cb(Result::SUCCESS, avSyncHwId);
     return Void();
 }
 
-Return<void> Demux::getAvSyncTime(AvSyncHwId avSyncHwId, getAvSyncTime_cb _hidl_cb) {
+Return<void> Demux::getAvSyncTime(AvSyncHwId /* avSyncHwId */, getAvSyncTime_cb _hidl_cb) {
     ALOGV("%s", __FUNCTION__);
 
-    uint64_t avSyncTime = -1;
-    if (mPcrFilterIds.empty()) {
-        _hidl_cb(Result::INVALID_STATE, avSyncTime);
-        return Void();
-    }
-    if (avSyncHwId != *mPcrFilterIds.begin()) {
-        _hidl_cb(Result::INVALID_ARGUMENT, avSyncTime);
-        return Void();
-    }
+    uint64_t avSyncTime = 0;
 
     _hidl_cb(Result::SUCCESS, avSyncTime);
     return Void();
@@ -154,6 +120,7 @@ Return<void> Demux::getAvSyncTime(AvSyncHwId avSyncHwId, getAvSyncTime_cb _hidl_
 Return<Result> Demux::close() {
     ALOGV("%s", __FUNCTION__);
 
+    mUnusedFilterIds.clear();
     mUsedFilterIds.clear();
     mLastUsedFilterId = -1;
 
@@ -165,7 +132,7 @@ Return<void> Demux::openDvr(DvrType type, uint32_t bufferSize, const sp<IDvrCall
     ALOGV("%s", __FUNCTION__);
 
     if (cb == nullptr) {
-        ALOGW("[Demux] DVR callback can't be null");
+        ALOGW("DVR callback can't be null");
         _hidl_cb(Result::INVALID_ARGUMENT, new Dvr());
         return Void();
     }
@@ -201,6 +168,7 @@ Result Demux::removeFilter(uint32_t filterId) {
     // resetFilterRecords(filterId);
     mUsedFilterIds.erase(filterId);
     mRecordFilterIds.erase(filterId);
+    mUnusedFilterIds.insert(filterId);
     mFilters.erase(filterId);
 
     return Result::SUCCESS;
@@ -208,11 +176,11 @@ Result Demux::removeFilter(uint32_t filterId) {
 
 void Demux::startBroadcastTsFilter(vector<uint8_t> data) {
     set<uint32_t>::iterator it;
-    uint16_t pid = ((data[1] & 0x1f) << 8) | ((data[2] & 0xff));
-    if (DEBUG_DEMUX) {
-        ALOGW("[Demux] start ts filter pid: %d", pid);
-    }
     for (it = mUsedFilterIds.begin(); it != mUsedFilterIds.end(); it++) {
+        uint16_t pid = ((data[1] & 0x1f) << 8) | ((data[2] & 0xff));
+        if (DEBUG_FILTER) {
+            ALOGW("start ts filter pid: %d", pid);
+        }
         if (pid == mFilters[*it]->getTpid()) {
             mFilters[*it]->updateFilterOutput(data);
         }
@@ -221,10 +189,10 @@ void Demux::startBroadcastTsFilter(vector<uint8_t> data) {
 
 void Demux::sendFrontendInputToRecord(vector<uint8_t> data) {
     set<uint32_t>::iterator it;
-    if (DEBUG_DEMUX) {
-        ALOGW("[Demux] update record filter output");
-    }
     for (it = mRecordFilterIds.begin(); it != mRecordFilterIds.end(); it++) {
+        if (DEBUG_FILTER) {
+            ALOGW("update record filter output");
+        }
         mFilters[*it]->updateRecordOutput(data);
     }
 }
@@ -266,9 +234,11 @@ uint16_t Demux::getFilterTpid(uint32_t filterId) {
     return mFilters[filterId]->getTpid();
 }
 
-void Demux::startFrontendInputLoop() {
+Result Demux::startFrontendInputLoop() {
     pthread_create(&mFrontendInputThread, NULL, __threadLoopFrontend, this);
     pthread_setname_np(mFrontendInputThread, "frontend_input_thread");
+
+    return Result::SUCCESS;
 }
 
 void* Demux::__threadLoopFrontend(void* user) {
