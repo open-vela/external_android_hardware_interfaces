@@ -22,10 +22,8 @@
 #include <android/hardware/usb/1.2/types.h>
 
 #include <VtsHalHidlTargetCallbackBase.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
-
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <log/log.h>
 #include <stdlib.h>
 #include <chrono>
@@ -141,12 +139,24 @@ class UsbCallback : public ::testing::VtsHalHidlTargetCallbackBase<UsbClientCall
     };
 };
 
+// Test environment for Usb HIDL HAL.
+class UsbHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static UsbHidlEnvironment* Instance() {
+        static UsbHidlEnvironment* instance = new UsbHidlEnvironment;
+        return instance;
+    }
+
+    virtual void registerTestServices() override { registerTestService<IUsb>(); }
+};
+
 // The main test class for the USB hidl HAL
-class UsbHidlTest : public ::testing::TestWithParam<std::string> {
-  public:
+class UsbHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+   public:
     virtual void SetUp() override {
         ALOGI(__FUNCTION__);
-        usb = IUsb::getService(GetParam());
+        usb = ::testing::VtsHalHidlTargetTestBase::getService<IUsb>();
         ASSERT_NE(usb, nullptr);
 
         usb_cb_2 = new UsbCallback(kCallbackIdentifier);
@@ -172,7 +182,7 @@ class UsbHidlTest : public ::testing::TestWithParam<std::string> {
  * Callback oject is created and registered.
  * Check to see if the hidl transaction succeeded.
  */
-TEST_P(UsbHidlTest, setCallback) {
+TEST_F(UsbHidlTest, setCallback) {
     usb_cb_1 = new UsbCallback(1);
     ASSERT_NE(usb_cb_1, nullptr);
     Return<void> ret = usb->setCallback(usb_cb_1);
@@ -185,7 +195,7 @@ TEST_P(UsbHidlTest, setCallback) {
  * HAL service should call notifyPortStatusChange_1_2
  * instead of notifyPortStatusChange of V1_0/V1_1 interface
  */
-TEST_P(UsbHidlTest, queryPortStatus) {
+TEST_F(UsbHidlTest, queryPortStatus) {
     Return<void> ret = usb->queryPortStatus();
     ASSERT_TRUE(ret.isOk());
     auto res = usb_cb_2->WaitForCallback(kCallbackNameNotifyPortStatusChange_1_2);
@@ -201,7 +211,7 @@ TEST_P(UsbHidlTest, queryPortStatus) {
  * Check if supportedContaminantProtectionModes changes across queryPortStatus
  * call.
  */
-TEST_P(UsbHidlTest, checkSupportedContaminantProtectionModes) {
+TEST_F(UsbHidlTest, checkSupportedContaminantProtectionModes) {
     Return<void> ret = usb->queryPortStatus();
     ASSERT_TRUE(ret.isOk());
     auto res = usb_cb_2->WaitForCallback(kCallbackNameNotifyPortStatusChange_1_2);
@@ -233,7 +243,7 @@ TEST_P(UsbHidlTest, checkSupportedContaminantProtectionModes) {
  * enableContaminantPresenceDetection should not enable/disable
  * contaminantPresenceProtection.
  */
-TEST_P(UsbHidlTest, presenceDetectionSupportedCheck) {
+TEST_F(UsbHidlTest, presenceDetectionSupportedCheck) {
     Return<void> ret = usb->queryPortStatus();
     ASSERT_TRUE(ret.isOk());
     auto res = usb_cb_2->WaitForCallback(kCallbackNameNotifyPortStatusChange_1_2);
@@ -262,7 +272,7 @@ TEST_P(UsbHidlTest, presenceDetectionSupportedCheck) {
 /*
  * enableContaminantPresenceDetection should succeed atleast 90% when supported.
  */
-TEST_P(UsbHidlTest, contaminantPresenceDetectionStability) {
+TEST_F(UsbHidlTest, contaminantPresenceDetectionStability) {
     int successCount = 0;
     bool currentStatus;
     bool supported = true;
@@ -299,7 +309,7 @@ TEST_P(UsbHidlTest, contaminantPresenceDetectionStability) {
  * enableContaminantPresenceProtection should not enable/disable
  * contaminantPresenceProtection.
  */
-TEST_P(UsbHidlTest, presenceProtectionSupportedCheck) {
+TEST_F(UsbHidlTest, presenceProtectionSupportedCheck) {
     Return<void> ret = usb->queryPortStatus();
     ASSERT_TRUE(ret.isOk());
     auto res = usb_cb_2->WaitForCallback(kCallbackNameNotifyPortStatusChange_1_2);
@@ -328,7 +338,7 @@ TEST_P(UsbHidlTest, presenceProtectionSupportedCheck) {
 /*
  * enableContaminantPresenceProtection should succeed atleast 90% when supported.
  */
-TEST_P(UsbHidlTest, contaminantPresenceProtectionStability) {
+TEST_F(UsbHidlTest, contaminantPresenceProtectionStability) {
     int successCount = 0;
     bool currentStatus;
     bool supported = true;
@@ -360,7 +370,11 @@ TEST_P(UsbHidlTest, contaminantPresenceProtectionStability) {
     if (!supported) EXPECT_GE(successCount, 9);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, UsbHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IUsb::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(UsbHidlEnvironment::Instance());
+    ::testing::InitGoogleTest(&argc, argv);
+    UsbHidlEnvironment::Instance()->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    ALOGI("Test result = %d", status);
+    return status;
+}
