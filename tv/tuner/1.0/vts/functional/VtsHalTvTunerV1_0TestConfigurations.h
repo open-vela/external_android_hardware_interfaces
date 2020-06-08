@@ -99,7 +99,6 @@ typedef enum {
 
 typedef enum {
     LNB0,
-    LNB_EXTERNAL,
     LNB_MAX,
 } Lnb;
 
@@ -141,7 +140,6 @@ struct FrontendConfig {
 
 struct LnbConfig {
     bool usingLnb;
-    string name;
     LnbVoltage voltage;
     LnbTone tone;
     LnbPosition position;
@@ -228,11 +226,6 @@ inline void initLnbConfig() {
     lnbArray[LNB0].voltage = LnbVoltage::VOLTAGE_12V;
     lnbArray[LNB0].tone = LnbTone::NONE;
     lnbArray[LNB0].position = LnbPosition::UNDEFINED;
-    lnbArray[LNB_EXTERNAL].usingLnb = true;
-    lnbArray[LNB_EXTERNAL].name = "default_lnb_external";
-    lnbArray[LNB_EXTERNAL].voltage = LnbVoltage::VOLTAGE_5V;
-    lnbArray[LNB_EXTERNAL].tone = LnbTone::NONE;
-    lnbArray[LNB_EXTERNAL].position = LnbPosition::UNDEFINED;
 };
 
 /** Diseqc messages array for the Lnb test */
