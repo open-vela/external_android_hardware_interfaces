@@ -1,5 +1,4 @@
-//
-// Copyright (C) 2019 The Android Open Source Project
+// Copyright (C) 2018 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
-cc_library_static {
-    name: "android.hardware.automotive.can@libnetdevice",
-    defaults: ["android.hardware.automotive.can@defaults"],
-    vendor_available: true,
-    relative_install_path: "hw",
+python_binary_host {
+    name: "dump_hals_for_release",
+
     srcs: [
-        "NetlinkRequest.cpp",
-        "NetlinkSocket.cpp",
-        "can.cpp",
-        "common.cpp",
-        "libnetdevice.cpp",
+        "dump_hals_for_release.py",
     ],
-    export_include_dirs: ["include"],
+
+    version: {
+        py2: {
+            enabled: true,
+        },
+        py3: {
+            enabled: false,
+        },
+    },
 }
