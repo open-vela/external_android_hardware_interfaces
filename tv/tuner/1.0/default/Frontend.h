@@ -70,13 +70,14 @@ class Frontend : public IFrontend {
 
   private:
     virtual ~Frontend();
+    bool supportsSatellite();
     sp<IFrontendCallback> mCallback;
     sp<Tuner> mTunerService;
     FrontendType mType = FrontendType::UNDEFINED;
     FrontendId mId = 0;
+    bool mIsLocked = false;
 
-    const string FRONTEND_STREAM_FILE = "/vendor/etc/dumpTs3.ts";
-    string mSourceStreamFile;
+    const string FRONTEND_STREAM_FILE = "/vendor/etc/segment000000.ts";
     std::ifstream mFrontendData;
 };
 
