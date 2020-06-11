@@ -153,11 +153,6 @@ class Demux : public IDemux {
     std::map<uint32_t, sp<Filter>> mFilters;
 
     /**
-     * Local reference to the opened Timer Filter instance.
-     */
-    sp<TimeFilter> mTimeFilter;
-
-    /**
      * Local reference to the opened DVR object.
      */
     sp<Dvr> mDvr;
