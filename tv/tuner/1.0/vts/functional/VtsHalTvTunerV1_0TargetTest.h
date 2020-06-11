@@ -34,7 +34,6 @@ void initConfiguration() {
     initFrontendScanConfig();
     initLnbConfig();
     initFilterConfig();
-    initTimeFilterConfig();
     initDvrConfig();
     initDescramblerConfig();
 }
@@ -128,7 +127,6 @@ class TunerFilterHidlTest : public testing::TestWithParam<std::string> {
     }
 
     void configSingleFilterInDemuxTest(FilterConfig filterConf, FrontendConfig frontendConf);
-    void testTimeFilter(TimeFilterConfig filterConf);
 
     sp<ITuner> mService;
     FrontendTests mFrontendTests;
