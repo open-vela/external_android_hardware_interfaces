@@ -231,9 +231,6 @@ Return<void> Tuner::openLnbByName(const hidl_string& /*lnbName*/, openLnbByName_
 
 void Tuner::setFrontendAsDemuxSource(uint32_t frontendId, uint32_t demuxId) {
     mFrontendToDemux[frontendId] = demuxId;
-    if (mFrontends[frontendId] != nullptr && mFrontends[frontendId]->isLocked()) {
-        mDemuxes[demuxId]->startFrontendInputLoop();
-    }
 }
 
 void Tuner::frontendStopTune(uint32_t frontendId) {
