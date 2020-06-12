@@ -22,7 +22,6 @@
 #include <hardware/gralloc.h>
 #include <hardware/gralloc1.h>
 #include "CameraDeviceSession.h"
-#include "CameraModule.h"
 
 namespace android {
 namespace hardware {
@@ -30,8 +29,6 @@ namespace camera {
 namespace device {
 namespace V3_4 {
 namespace implementation {
-
-using ::android::hardware::camera::common::V1_0::helper::CameraModule;
 
 CameraDeviceSession::CameraDeviceSession(
     camera3_device_t* device,
@@ -57,9 +54,31 @@ CameraDeviceSession::CameraDeviceSession(
 
     mResultBatcher_3_4.setNumPartialResults(mNumPartialResults);
 
-    // Parse and store current logical camera's physical ids.
-    (void)CameraModule::isLogicalMultiCamera(mDeviceInfo, &mPhysicalCameraIds);
-
+    camera_metadata_entry_t capabilities =
+            mDeviceInfo.find(ANDROID_REQUEST_AVAILABLE_CAPABILITIES);
+    bool isLogicalMultiCamera = false;
+    for (size_t i = 0; i < capabilities.count; i++) {
+        if (capabilities.data.u8[i] ==
+                ANDROID_REQUEST_AVAILABLE_CAPABILITIES_LOGICAL_MULTI_CAMERA) {
+            isLogicalMultiCamera = true;
+            break;
+        }
+    }
+    if (isLogicalMultiCamera) {
+        camera_metadata_entry entry =
+                mDeviceInfo.find(ANDROID_LOGICAL_MULTI_CAMERA_PHYSICAL_IDS);
+        const uint8_t* ids = entry.data.u8;
+        size_t start = 0;
+        for (size_t i = 0; i < entry.count; ++i) {
+            if (ids[i] == '\0') {
+                if (start != i) {
+                    const char* physicalId = reinterpret_cast<const char*>(ids+start);
+                    mPhysicalCameraIds.emplace(physicalId);
+                }
+                start = i + 1;
+            }
+        }
+    }
 }
 
 CameraDeviceSession::~CameraDeviceSession() {
@@ -68,14 +87,6 @@ CameraDeviceSession::~CameraDeviceSession() {
 Return<void> CameraDeviceSession::configureStreams_3_4(
         const StreamConfiguration& requestedConfiguration,
         ICameraDeviceSession::configureStreams_3_4_cb _hidl_cb)  {
-    configureStreams_3_4_Impl(requestedConfiguration, _hidl_cb);
-    return Void();
-}
-
-void CameraDeviceSession::configureStreams_3_4_Impl(
-        const StreamConfiguration& requestedConfiguration,
-        ICameraDeviceSession::configureStreams_3_4_cb _hidl_cb,
-        uint32_t streamConfigCounter, bool useOverriddenFields)  {
     Status status = initStatus();
     HalStreamConfiguration outStreams;
 
@@ -86,7 +97,7 @@ void CameraDeviceSession::configureStreams_3_4_Impl(
                 ALOGE("%s: trying to configureStreams with physical camera id with V3.2 callback",
                         __FUNCTION__);
                 _hidl_cb(Status::INTERNAL_ERROR, outStreams);
-                return;
+                return Void();
             }
         }
     }
@@ -98,7 +109,7 @@ void CameraDeviceSession::configureStreams_3_4_Impl(
         ALOGE("%s: trying to configureStreams while there are still %zu inflight buffers!",
                 __FUNCTION__, mInflightBuffers.size());
         _hidl_cb(Status::INTERNAL_ERROR, outStreams);
-        return;
+        return Void();
     }
 
     if (!mInflightAETriggerOverrides.empty()) {
@@ -106,7 +117,7 @@ void CameraDeviceSession::configureStreams_3_4_Impl(
                 " trigger overrides!", __FUNCTION__,
                 mInflightAETriggerOverrides.size());
         _hidl_cb(Status::INTERNAL_ERROR, outStreams);
-        return;
+        return Void();
     }
 
     if (!mInflightRawBoostPresent.empty()) {
@@ -114,12 +125,12 @@ void CameraDeviceSession::configureStreams_3_4_Impl(
                 " boost overrides!", __FUNCTION__,
                 mInflightRawBoostPresent.size());
         _hidl_cb(Status::INTERNAL_ERROR, outStreams);
-        return;
+        return Void();
     }
 
     if (status != Status::OK) {
         _hidl_cb(status, outStreams);
-        return;
+        return Void();
     }
 
     const camera_metadata_t *paramBuffer = nullptr;
@@ -128,15 +139,11 @@ void CameraDeviceSession::configureStreams_3_4_Impl(
     }
 
     camera3_stream_configuration_t stream_list{};
-    // Block reading mStreamConfigCounter until configureStream returns
-    Mutex::Autolock _sccl(mStreamConfigCounterLock);
-    mStreamConfigCounter = streamConfigCounter;
     hidl_vec<camera3_stream_t*> streams;
     stream_list.session_parameters = paramBuffer;
-    if (!preProcessConfigurationLocked_3_4(requestedConfiguration,
-            useOverriddenFields, &stream_list, &streams)) {
+    if (!preProcessConfigurationLocked_3_4(requestedConfiguration, &stream_list, &streams)) {
         _hidl_cb(Status::INTERNAL_ERROR, outStreams);
-        return;
+        return Void();
     }
 
     ATRACE_BEGIN("camera3->configure_streams");
@@ -161,11 +168,11 @@ void CameraDeviceSession::configureStreams_3_4_Impl(
     }
 
     _hidl_cb(status, outStreams);
-    return;
+    return Void();
 }
 
 bool CameraDeviceSession::preProcessConfigurationLocked_3_4(
-        const StreamConfiguration& requestedConfiguration, bool useOverriddenFields,
+        const StreamConfiguration& requestedConfiguration,
         camera3_stream_configuration_t *stream_list /*out*/,
         hidl_vec<camera3_stream_t*> *streams /*out*/) {
 
@@ -188,41 +195,25 @@ bool CameraDeviceSession::preProcessConfigurationLocked_3_4(
             mPhysicalCameraIdMap[id] = requestedConfiguration.streams[i].physicalCameraId;
             mStreamMap[id].data_space = mapToLegacyDataspace(
                     mStreamMap[id].data_space);
+            mStreamMap[id].physical_camera_id = mPhysicalCameraIdMap[id].c_str();
             mCirculatingBuffers.emplace(stream.mId, CirculatingBuffers{});
         } else {
-            // width/height/format must not change, but usage/rotation might need to change.
-            // format and data_space may change.
+            // width/height/format must not change, but usage/rotation might need to change
             if (mStreamMap[id].stream_type !=
                     (int) requestedConfiguration.streams[i].v3_2.streamType ||
                     mStreamMap[id].width != requestedConfiguration.streams[i].v3_2.width ||
                     mStreamMap[id].height != requestedConfiguration.streams[i].v3_2.height ||
+                    mStreamMap[id].format != (int) requestedConfiguration.streams[i].v3_2.format ||
+                    mStreamMap[id].data_space !=
+                            mapToLegacyDataspace( static_cast<android_dataspace_t> (
+                                    requestedConfiguration.streams[i].v3_2.dataSpace)) ||
                     mPhysicalCameraIdMap[id] != requestedConfiguration.streams[i].physicalCameraId) {
                 ALOGE("%s: stream %d configuration changed!", __FUNCTION__, id);
                 return false;
             }
-            if (useOverriddenFields) {
-                android_dataspace_t requestedDataSpace =
-                        mapToLegacyDataspace(static_cast<android_dataspace_t>(
-                        requestedConfiguration.streams[i].v3_2.dataSpace));
-                if (mStreamMap[id].format != (int) requestedConfiguration.streams[i].v3_2.format ||
-                        mStreamMap[id].data_space != requestedDataSpace) {
-                    ALOGE("%s: stream %d configuration changed!", __FUNCTION__, id);
-                    return false;
-                }
-            } else {
-                mStreamMap[id].format =
-                        (int) requestedConfiguration.streams[i].v3_2.format;
-                mStreamMap[id].data_space = (android_dataspace_t)
-                        requestedConfiguration.streams[i].v3_2.dataSpace;
-            }
             mStreamMap[id].rotation = (int) requestedConfiguration.streams[i].v3_2.rotation;
             mStreamMap[id].usage = (uint32_t) requestedConfiguration.streams[i].v3_2.usage;
         }
-        // It is possible for the entry in 'mStreamMap' to get initialized by an older
-        // HIDL API. Make sure that the physical id is always initialized when using
-        // a more recent API call.
-        mStreamMap[id].physical_camera_id = mPhysicalCameraIdMap[id].c_str();
-
         (*streams)[i] = &mStreamMap[id];
     }
 
@@ -656,9 +647,8 @@ void CameraDeviceSession::ResultBatcher_3_4::processCaptureResult_3_4(CaptureRes
             auto it = batch->mBatchBufs.find(buffer.streamId);
             if (it != batch->mBatchBufs.end()) {
                 InflightBatch::BufferBatch& bb = it->second;
-                auto id = buffer.streamId;
                 pushStreamBuffer(std::move(buffer), bb.mBuffers);
-                filledStreams.push_back(id);
+                filledStreams.push_back(buffer.streamId);
             } else {
                 pushStreamBuffer(std::move(buffer), nonBatchedBuffers);
             }

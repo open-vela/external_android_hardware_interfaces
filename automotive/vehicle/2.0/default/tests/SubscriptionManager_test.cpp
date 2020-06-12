@@ -66,7 +66,7 @@ public:
     static std::list<sp<IVehicleCallback>> extractCallbacks(
             const std::list<sp<HalClient>>& clients) {
         std::list<sp<IVehicleCallback>> callbacks;
-        for (const auto& c : clients) {
+        for (auto c : clients) {
             callbacks.push_back(c->getCallback());
         }
         return callbacks;
