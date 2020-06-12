@@ -27,32 +27,14 @@
 
 namespace android::netdevice {
 
-namespace socketparams {
-
-struct Params {
-    int domain;
-    int type;
-    int protocol;
-};
-
-static constexpr Params general = {AF_INET, SOCK_DGRAM, 0};
-static constexpr Params can = {PF_CAN, SOCK_RAW, CAN_RAW};
-
-static Params current = general;
-
-}  // namespace socketparams
-
-void useCanSockets(bool yes) {
-    socketparams::current = yes ? socketparams::can : socketparams::general;
-}
-
 bool exists(std::string ifname) {
     return nametoindex(ifname) != 0;
 }
 
 static bool sendIfreq(unsigned long request, struct ifreq& ifr) {
-    base::unique_fd sock(socket(socketparams::current.domain, socketparams::current.type,
-                                socketparams::current.protocol));
+    /* For general interfaces it would be socket(AF_INET, SOCK_DGRAM, 0),
+     * but SEPolicy forces us to limit our flexibility here. */
+    base::unique_fd sock(socket(PF_CAN, SOCK_RAW, CAN_RAW));
     if (!sock.ok()) {
         LOG(ERROR) << "Can't create socket";
         return false;
@@ -76,10 +58,6 @@ std::optional<bool> isUp(std::string ifname) {
     struct ifreq ifr = ifreqFromName(ifname);
     if (!sendIfreq(SIOCGIFFLAGS, ifr)) return std::nullopt;
     return ifr.ifr_flags & IFF_UP;
-}
-
-bool existsAndIsUp(const std::string& ifname) {
-    return exists(ifname) && isUp(ifname).value_or(false);
 }
 
 bool up(std::string ifname) {
