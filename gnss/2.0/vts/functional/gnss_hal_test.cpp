@@ -16,20 +16,16 @@
 
 #define LOG_TAG "GnssHalTest"
 
-#include <android/hidl/manager/1.2/IServiceManager.h>
 #include <gnss_hal_test.h>
-#include <gtest/gtest.h>
-#include <hidl/ServiceManagement.h>
 #include <chrono>
 #include "Utils.h"
-
-using ::android::hardware::hidl_string;
 
 using ::android::hardware::gnss::common::Utils;
 
 // Implementations for the main test class for GNSS HAL
 void GnssHalTest::SetUp() {
-    gnss_hal_ = IGnss::getService(GetParam());
+    gnss_hal_ = ::testing::VtsHalHidlTargetTestBase::getService<IGnss>(
+        GnssHidlEnvironment::Instance()->getServiceName<IGnss>());
     ASSERT_NE(gnss_hal_, nullptr);
 
     SetUpGnssCallback();
@@ -102,6 +98,7 @@ bool GnssHalTest::StartAndCheckFirstLocation(bool strict) {
 
     EXPECT_TRUE(result.isOk());
     EXPECT_TRUE(result);
+
     /*
      * GnssLocationProvider support of AGPS SUPL & XtraDownloader is not available in VTS,
      * so allow time to demodulate ephemeris over the air.
@@ -111,7 +108,9 @@ bool GnssHalTest::StartAndCheckFirstLocation(bool strict) {
 
     if (strict) {
         EXPECT_TRUE(gnss_cb_->location_cbq_.retrieve(gnss_cb_->last_location_,
-                                                     kFirstGnssLocationTimeoutSeconds));
+                                                 kFirstGnssLocationTimeoutSeconds));
+
+
         locationCalledCount = gnss_cb_->location_cbq_.calledCount();
         EXPECT_EQ(locationCalledCount, 1);
     }
@@ -150,27 +149,6 @@ void GnssHalTest::StartAndCheckLocations(int count) {
             CheckLocation(gnss_cb_->last_location_, locationCalledCount > 1);
         }
     }
-}
-
-bool GnssHalTest::IsGnssHalVersion_2_0() const {
-    using ::android::hidl::manager::V1_2::IServiceManager;
-    sp<IServiceManager> manager = ::android::hardware::defaultServiceManager1_2();
-
-    bool hasGnssHalVersion_2_0 = false;
-    manager->listManifestByInterface(
-            "android.hardware.gnss@2.0::IGnss",
-            [&hasGnssHalVersion_2_0](const hidl_vec<hidl_string>& registered) {
-                hasGnssHalVersion_2_0 = registered.size() != 0;
-            });
-
-    bool hasGnssHalVersion_2_1 = false;
-    manager->listManifestByInterface(
-            "android.hardware.gnss@2.1::IGnss",
-            [&hasGnssHalVersion_2_1](const hidl_vec<hidl_string>& registered) {
-                hasGnssHalVersion_2_1 = registered.size() != 0;
-            });
-
-    return hasGnssHalVersion_2_0 && !hasGnssHalVersion_2_1;
 }
 
 GnssHalTest::GnssCallback::GnssCallback()

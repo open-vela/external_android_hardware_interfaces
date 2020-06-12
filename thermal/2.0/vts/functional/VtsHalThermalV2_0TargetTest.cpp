@@ -18,11 +18,9 @@
 #include <android/hardware/thermal/2.0/IThermalChangedCallback.h>
 #include <android/hardware/thermal/2.0/types.h>
 
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
-
 #include <VtsHalHidlTargetCallbackBase.h>
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 
 using ::android::sp;
 using ::android::hardware::hidl_enum_range;
@@ -65,11 +63,27 @@ class ThermalCallback : public ::testing::VtsHalHidlTargetCallbackBase<ThermalCa
     }
 };
 
+// Test environment for Thermal HIDL HAL.
+class ThermalHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static ThermalHidlEnvironment* Instance() {
+        static ThermalHidlEnvironment* instance = new ThermalHidlEnvironment;
+        return instance;
+    }
+
+    void registerTestServices() override { registerTestService<IThermal>(); }
+
+   private:
+    ThermalHidlEnvironment() {}
+};
+
 // The main test class for THERMAL HIDL HAL 2.0.
-class ThermalHidlTest : public testing::TestWithParam<std::string> {
+class ThermalHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        mThermal = IThermal::getService(GetParam());
+        mThermal = ::testing::VtsHalHidlTargetTestBase::getService<IThermal>(
+            ThermalHidlEnvironment::Instance()->getServiceName<IThermal>());
         ASSERT_NE(mThermal, nullptr);
         mThermalCallback = new (std::nothrow) ThermalCallback();
         ASSERT_NE(mThermalCallback, nullptr);
@@ -105,7 +119,7 @@ class ThermalHidlTest : public testing::TestWithParam<std::string> {
 // This just calls into and back from our local ThermalChangedCallback impl.
 // Note: a real thermal throttling event from the Thermal HAL could be
 // inadvertently received here.
-TEST_P(ThermalHidlTest, NotifyThrottlingTest) {
+TEST_F(ThermalHidlTest, NotifyThrottlingTest) {
     auto ret = mThermalCallback->notifyThrottling(kThrottleTemp);
     ASSERT_TRUE(ret.isOk());
     auto res = mThermalCallback->WaitForCallback(kCallbackNameNotifyThrottling);
@@ -115,7 +129,7 @@ TEST_P(ThermalHidlTest, NotifyThrottlingTest) {
 }
 
 // Test Thermal->registerThermalChangedCallback.
-TEST_P(ThermalHidlTest, RegisterThermalChangedCallbackTest) {
+TEST_F(ThermalHidlTest, RegisterThermalChangedCallbackTest) {
     // Expect to fail with same callback
     auto ret = mThermal->registerThermalChangedCallback(
             mThermalCallback, false, TemperatureType::SKIN,
@@ -145,7 +159,7 @@ TEST_P(ThermalHidlTest, RegisterThermalChangedCallbackTest) {
 }
 
 // Test Thermal->unregisterThermalChangedCallback.
-TEST_P(ThermalHidlTest, UnregisterThermalChangedCallbackTest) {
+TEST_F(ThermalHidlTest, UnregisterThermalChangedCallbackTest) {
     sp<ThermalCallback> localThermalCallback = new (std::nothrow) ThermalCallback();
     // Expect to fail as the callback was not registered before
     auto ret = mThermal->unregisterThermalChangedCallback(
@@ -170,7 +184,7 @@ TEST_P(ThermalHidlTest, UnregisterThermalChangedCallbackTest) {
 }
 
 // Sanity test for Thermal::getCurrentTemperatures().
-TEST_P(ThermalHidlTest, TemperatureTest) {
+TEST_F(ThermalHidlTest, TemperatureTest) {
     mThermal->getCurrentTemperatures(false, TemperatureType::SKIN,
                                      [](ThermalStatus status, hidl_vec<Temperature> temperatures) {
                                          if (temperatures.size()) {
@@ -200,7 +214,7 @@ TEST_P(ThermalHidlTest, TemperatureTest) {
 }
 
 // Sanity test for Thermal::getTemperatureThresholds().
-TEST_P(ThermalHidlTest, TemperatureThresholdTest) {
+TEST_F(ThermalHidlTest, TemperatureThresholdTest) {
     mThermal->getTemperatureThresholds(
         false, TemperatureType::SKIN,
         [](ThermalStatus status, hidl_vec<TemperatureThreshold> temperatures) {
@@ -228,7 +242,7 @@ TEST_P(ThermalHidlTest, TemperatureThresholdTest) {
 }
 
 // Sanity test for Thermal::getCurrentCoolingDevices().
-TEST_P(ThermalHidlTest, CoolingDeviceTest) {
+TEST_F(ThermalHidlTest, CoolingDeviceTest) {
     mThermal->getCurrentCoolingDevices(
         false, CoolingType::CPU, [](ThermalStatus status, hidl_vec<CoolingDevice> cooling_devices) {
             if (cooling_devices.size()) {
@@ -257,7 +271,11 @@ TEST_P(ThermalHidlTest, CoolingDeviceTest) {
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, ThermalHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IThermal::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(ThermalHidlEnvironment::Instance());
+    ::testing::InitGoogleTest(&argc, argv);
+    ThermalHidlEnvironment::Instance()->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    cout << "Test result = " << status << std::endl;
+    return status;
+}
