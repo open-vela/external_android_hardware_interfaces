@@ -23,27 +23,12 @@ cc_library_static {
     export_include_dirs: ["."],
 
     static_libs: [
-        "libgtest",
+        "VtsHalHidlTargetTestBase",
         "libhidlmemory",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
         "android.hardware.media.omx@1.0",
         "android.hardware.graphics.allocator@2.0",
-        "android.hardware.graphics.allocator@3.0",
-        "android.hardware.graphics.common@1.0",
-        "android.hardware.graphics.common@1.1",
-        "android.hardware.graphics.common@1.2",
-        "android.hardware.graphics.mapper@2.0",
-        "android.hardware.graphics.mapper@3.0",
-    ],
-    export_static_lib_headers: [
-        "android.hardware.graphics.allocator@2.0",
-        "android.hardware.graphics.allocator@3.0",
-        "android.hardware.graphics.common@1.0",
-        "android.hardware.graphics.common@1.1",
-        "android.hardware.graphics.common@1.2",
-        "android.hardware.graphics.mapper@2.0",
-        "android.hardware.graphics.mapper@3.0",
     ],
 }
 
@@ -55,12 +40,7 @@ cc_defaults {
     static_libs: [
         "VtsHalMediaOmxV1_0CommonUtil",
         "android.hardware.graphics.allocator@2.0",
-        "android.hardware.graphics.allocator@3.0",
-        "android.hardware.graphics.common@1.0",
-        "android.hardware.graphics.common@1.1",
-        "android.hardware.graphics.common@1.2",
         "android.hardware.graphics.mapper@2.0",
-        "android.hardware.graphics.mapper@3.0",
         "android.hardware.graphics.bufferqueue@1.0",
         "android.hardware.graphics.common@1.0",
         "android.hardware.media.omx@1.0",
@@ -68,11 +48,11 @@ cc_defaults {
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
         "libhidlmemory",
+        "libnativehelper",
     ],
 
     // TODO(b/64437680): Assume these libs are always available on the device.
     shared_libs: [
-        "libnativehelper",
         "libstagefright_foundation",
     ],
 }

@@ -23,43 +23,38 @@
 #include <android/hardware/wifi/supplicant/1.0/ISupplicantStaNetwork.h>
 #include <android/hardware/wifi/supplicant/1.1/ISupplicant.h>
 
-#include <getopt.h>
-
-#include "wifi_hidl_test_utils.h"
+#include <VtsHalHidlTargetTestEnvBase.h>
 
 // Used to stop the android wifi framework before every test.
-void stopWifiFramework(const std::string& wifi_instance_name);
-void startWifiFramework(const std::string& wifi_instance_name);
-
-void stopSupplicant(const std::string& wifi_instance_name);
+void stopWifiFramework();
+void startWifiFramework();
+void stopSupplicant();
 // Used to configure the chip, driver and start wpa_supplicant before every
 // test.
-void startSupplicantAndWaitForHidlService(
-    const std::string& wifi_instance_name,
-    const std::string& supplicant_instance_name);
+void startSupplicantAndWaitForHidlService();
 
 // Helper functions to obtain references to the various HIDL interface objects.
 // Note: We only have a single instance of each of these objects currently.
 // These helper functions should be modified to return vectors if we support
 // multiple instances.
 android::sp<android::hardware::wifi::supplicant::V1_0::ISupplicant>
-getSupplicant(const std::string& supplicant_instance_name, bool isP2pOn);
+getSupplicant();
 android::sp<android::hardware::wifi::supplicant::V1_0::ISupplicantStaIface>
-getSupplicantStaIface(
-    const android::sp<android::hardware::wifi::supplicant::V1_0::ISupplicant>&
-        supplicant);
+getSupplicantStaIface();
 android::sp<android::hardware::wifi::supplicant::V1_0::ISupplicantStaNetwork>
-createSupplicantStaNetwork(
-    const android::sp<android::hardware::wifi::supplicant::V1_0::ISupplicant>&
-        supplicant);
+createSupplicantStaNetwork();
 android::sp<android::hardware::wifi::supplicant::V1_0::ISupplicantP2pIface>
-getSupplicantP2pIface(
-    const android::sp<android::hardware::wifi::supplicant::V1_0::ISupplicant>&
-        supplicant);
-bool turnOnExcessiveLogging(
-    const android::sp<android::hardware::wifi::supplicant::V1_0::ISupplicant>&
-        supplicant);
+getSupplicantP2pIface();
 
 bool turnOnExcessiveLogging();
+
+class WifiSupplicantHidlEnvironment
+    : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    virtual void HidlSetUp() override { stopSupplicant(); }
+    virtual void HidlTearDown() override {
+        startSupplicantAndWaitForHidlService();
+    }
+};
 
 #endif /* SUPPLICANT_HIDL_TEST_UTILS_H */
