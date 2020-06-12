@@ -19,7 +19,7 @@
 /*
  * Test IRadio.getSignalStrength() for the response returned.
  */
-TEST_P(RadioHidlTest, getSignalStrength) {
+TEST_F(RadioHidlTest, getSignalStrength) {
     serial = GetRandomSerialNumber();
 
     radio->getSignalStrength(serial);
@@ -35,7 +35,7 @@ TEST_P(RadioHidlTest, getSignalStrength) {
 /*
  * Test IRadio.getVoiceRegistrationState() for the response returned.
  */
-TEST_P(RadioHidlTest, getVoiceRegistrationState) {
+TEST_F(RadioHidlTest, getVoiceRegistrationState) {
     serial = GetRandomSerialNumber();
 
     radio->getVoiceRegistrationState(serial);
@@ -51,7 +51,7 @@ TEST_P(RadioHidlTest, getVoiceRegistrationState) {
 /*
  * Test IRadio.getOperator() for the response returned.
  */
-TEST_P(RadioHidlTest, getOperator) {
+TEST_F(RadioHidlTest, getOperator) {
     serial = GetRandomSerialNumber();
 
     radio->getOperator(serial);
@@ -67,7 +67,7 @@ TEST_P(RadioHidlTest, getOperator) {
 /*
  * Test IRadio.setRadioPower() for the response returned.
  */
-TEST_P(RadioHidlTest, setRadioPower) {
+TEST_F(RadioHidlTest, setRadioPower) {
     serial = GetRandomSerialNumber();
 
     radio->setRadioPower(serial, 1);
@@ -83,7 +83,7 @@ TEST_P(RadioHidlTest, setRadioPower) {
 /*
  * Test IRadio.getNetworkSelectionMode() for the response returned.
  */
-TEST_P(RadioHidlTest, getNetworkSelectionMode) {
+TEST_F(RadioHidlTest, getNetworkSelectionMode) {
     serial = GetRandomSerialNumber();
 
     radio->getNetworkSelectionMode(serial);
@@ -99,7 +99,7 @@ TEST_P(RadioHidlTest, getNetworkSelectionMode) {
 /*
  * Test IRadio.setNetworkSelectionModeAutomatic() for the response returned.
  */
-TEST_P(RadioHidlTest, setNetworkSelectionModeAutomatic) {
+TEST_F(RadioHidlTest, setNetworkSelectionModeAutomatic) {
     serial = GetRandomSerialNumber();
 
     radio->setNetworkSelectionModeAutomatic(serial);
@@ -118,7 +118,7 @@ TEST_P(RadioHidlTest, setNetworkSelectionModeAutomatic) {
 /*
  * Test IRadio.setNetworkSelectionModeManual() for the response returned.
  */
-TEST_P(RadioHidlTest, setNetworkSelectionModeManual) {
+TEST_F(RadioHidlTest, setNetworkSelectionModeManual) {
     serial = GetRandomSerialNumber();
 
     radio->setNetworkSelectionModeManual(serial, "123456");
@@ -137,7 +137,7 @@ TEST_P(RadioHidlTest, setNetworkSelectionModeManual) {
 /*
  * Test IRadio.getAvailableNetworks() for the response returned.
  */
-TEST_P(RadioHidlTest, getAvailableNetworks) {
+TEST_F(RadioHidlTest, getAvailableNetworks) {
     serial = GetRandomSerialNumber();
 
     radio->getAvailableNetworks(serial);
@@ -158,7 +158,7 @@ TEST_P(RadioHidlTest, getAvailableNetworks) {
 /*
  * Test IRadio.getBasebandVersion() for the response returned.
  */
-TEST_P(RadioHidlTest, getBasebandVersion) {
+TEST_F(RadioHidlTest, getBasebandVersion) {
     serial = GetRandomSerialNumber();
 
     radio->getBasebandVersion(serial);
@@ -174,7 +174,7 @@ TEST_P(RadioHidlTest, getBasebandVersion) {
 /*
  * Test IRadio.setBandMode() for the response returned.
  */
-TEST_P(RadioHidlTest, setBandMode) {
+TEST_F(RadioHidlTest, setBandMode) {
     serial = GetRandomSerialNumber();
 
     radio->setBandMode(serial, RadioBandMode::BAND_MODE_USA);
@@ -191,7 +191,7 @@ TEST_P(RadioHidlTest, setBandMode) {
 /*
  * Test IRadio.getAvailableBandModes() for the response returned.
  */
-TEST_P(RadioHidlTest, getAvailableBandModes) {
+TEST_F(RadioHidlTest, getAvailableBandModes) {
     serial = GetRandomSerialNumber();
 
     radio->getAvailableBandModes(serial);
@@ -207,7 +207,7 @@ TEST_P(RadioHidlTest, getAvailableBandModes) {
 /*
  * Test IRadio.setPreferredNetworkType() for the response returned.
  */
-TEST_P(RadioHidlTest, setPreferredNetworkType) {
+TEST_F(RadioHidlTest, setPreferredNetworkType) {
     serial = GetRandomSerialNumber();
 
     radio->setPreferredNetworkType(serial, PreferredNetworkType::GSM_ONLY);
@@ -224,7 +224,7 @@ TEST_P(RadioHidlTest, setPreferredNetworkType) {
 /*
  * Test IRadio.getPreferredNetworkType() for the response returned.
  */
-TEST_P(RadioHidlTest, getPreferredNetworkType) {
+TEST_F(RadioHidlTest, getPreferredNetworkType) {
     serial = GetRandomSerialNumber();
 
     radio->getPreferredNetworkType(serial);
@@ -240,7 +240,7 @@ TEST_P(RadioHidlTest, getPreferredNetworkType) {
 /*
  * Test IRadio.getNeighboringCids() for the response returned.
  */
-TEST_P(RadioHidlTest, getNeighboringCids) {
+TEST_F(RadioHidlTest, getNeighboringCids) {
     serial = GetRandomSerialNumber();
 
     radio->getNeighboringCids(serial);
@@ -258,7 +258,7 @@ TEST_P(RadioHidlTest, getNeighboringCids) {
 /*
  * Test IRadio.setLocationUpdates() for the response returned.
  */
-TEST_P(RadioHidlTest, setLocationUpdates) {
+TEST_F(RadioHidlTest, setLocationUpdates) {
     serial = GetRandomSerialNumber();
 
     radio->setLocationUpdates(serial, true);
@@ -275,7 +275,7 @@ TEST_P(RadioHidlTest, setLocationUpdates) {
 /*
  * Test IRadio.setCdmaRoamingPreference() for the response returned.
  */
-TEST_P(RadioHidlTest, setCdmaRoamingPreference) {
+TEST_F(RadioHidlTest, setCdmaRoamingPreference) {
     serial = GetRandomSerialNumber();
 
     radio->setCdmaRoamingPreference(serial, CdmaRoamingType::HOME_NETWORK);
@@ -293,7 +293,7 @@ TEST_P(RadioHidlTest, setCdmaRoamingPreference) {
 /*
  * Test IRadio.getCdmaRoamingPreference() for the response returned.
  */
-TEST_P(RadioHidlTest, getCdmaRoamingPreference) {
+TEST_F(RadioHidlTest, getCdmaRoamingPreference) {
     serial = GetRandomSerialNumber();
 
     radio->getCdmaRoamingPreference(serial);
@@ -312,7 +312,7 @@ TEST_P(RadioHidlTest, getCdmaRoamingPreference) {
 /*
  * Test IRadio.getTTYMode() for the response returned.
  */
-TEST_P(RadioHidlTest, getTTYMode) {
+TEST_F(RadioHidlTest, getTTYMode) {
     serial = GetRandomSerialNumber();
 
     radio->getTTYMode(serial);
@@ -328,7 +328,7 @@ TEST_P(RadioHidlTest, getTTYMode) {
 /*
  * Test IRadio.setTTYMode() for the response returned.
  */
-TEST_P(RadioHidlTest, setTTYMode) {
+TEST_F(RadioHidlTest, setTTYMode) {
     serial = GetRandomSerialNumber();
 
     radio->setTTYMode(serial, TtyMode::OFF);
@@ -344,7 +344,7 @@ TEST_P(RadioHidlTest, setTTYMode) {
 /*
  * Test IRadio.setPreferredVoicePrivacy() for the response returned.
  */
-TEST_P(RadioHidlTest, setPreferredVoicePrivacy) {
+TEST_F(RadioHidlTest, setPreferredVoicePrivacy) {
     serial = GetRandomSerialNumber();
 
     radio->setPreferredVoicePrivacy(serial, true);
@@ -361,7 +361,7 @@ TEST_P(RadioHidlTest, setPreferredVoicePrivacy) {
 /*
  * Test IRadio.getPreferredVoicePrivacy() for the response returned.
  */
-TEST_P(RadioHidlTest, getPreferredVoicePrivacy) {
+TEST_F(RadioHidlTest, getPreferredVoicePrivacy) {
     serial = GetRandomSerialNumber();
 
     radio->getPreferredVoicePrivacy(serial);
@@ -378,7 +378,7 @@ TEST_P(RadioHidlTest, getPreferredVoicePrivacy) {
 /*
  * Test IRadio.getCDMASubscription() for the response returned.
  */
-TEST_P(RadioHidlTest, getCDMASubscription) {
+TEST_F(RadioHidlTest, getCDMASubscription) {
     serial = GetRandomSerialNumber();
 
     radio->getCDMASubscription(serial);
@@ -396,7 +396,7 @@ TEST_P(RadioHidlTest, getCDMASubscription) {
 /*
  * Test IRadio.getDeviceIdentity() for the response returned.
  */
-TEST_P(RadioHidlTest, getDeviceIdentity) {
+TEST_F(RadioHidlTest, getDeviceIdentity) {
     serial = GetRandomSerialNumber();
 
     radio->getDeviceIdentity(serial);
@@ -413,7 +413,7 @@ TEST_P(RadioHidlTest, getDeviceIdentity) {
 /*
  * Test IRadio.exitEmergencyCallbackMode() for the response returned.
  */
-TEST_P(RadioHidlTest, exitEmergencyCallbackMode) {
+TEST_F(RadioHidlTest, exitEmergencyCallbackMode) {
     serial = GetRandomSerialNumber();
 
     radio->exitEmergencyCallbackMode(serial);
@@ -431,7 +431,7 @@ TEST_P(RadioHidlTest, exitEmergencyCallbackMode) {
 /*
  * Test IRadio.getCdmaSubscriptionSource() for the response returned.
  */
-TEST_P(RadioHidlTest, getCdmaSubscriptionSource) {
+TEST_F(RadioHidlTest, getCdmaSubscriptionSource) {
     serial = GetRandomSerialNumber();
 
     radio->getCdmaSubscriptionSource(serial);
@@ -449,7 +449,7 @@ TEST_P(RadioHidlTest, getCdmaSubscriptionSource) {
 /*
  * Test IRadio.setCdmaSubscriptionSource() for the response returned.
  */
-TEST_P(RadioHidlTest, setCdmaSubscriptionSource) {
+TEST_F(RadioHidlTest, setCdmaSubscriptionSource) {
     serial = GetRandomSerialNumber();
 
     radio->setCdmaSubscriptionSource(serial, CdmaSubscriptionSource::RUIM_SIM);
@@ -468,7 +468,7 @@ TEST_P(RadioHidlTest, setCdmaSubscriptionSource) {
 /*
  * Test IRadio.getVoiceRadioTechnology() for the response returned.
  */
-TEST_P(RadioHidlTest, getVoiceRadioTechnology) {
+TEST_F(RadioHidlTest, getVoiceRadioTechnology) {
     serial = GetRandomSerialNumber();
 
     radio->getVoiceRadioTechnology(serial);
@@ -484,7 +484,7 @@ TEST_P(RadioHidlTest, getVoiceRadioTechnology) {
 /*
  * Test IRadio.getCellInfoList() for the response returned.
  */
-TEST_P(RadioHidlTest, getCellInfoList) {
+TEST_F(RadioHidlTest, getCellInfoList) {
     serial = GetRandomSerialNumber();
 
     radio->getCellInfoList(serial);
@@ -502,7 +502,7 @@ TEST_P(RadioHidlTest, getCellInfoList) {
 /*
  * Test IRadio.setCellInfoListRate() for the response returned.
  */
-TEST_P(RadioHidlTest, setCellInfoListRate) {
+TEST_F(RadioHidlTest, setCellInfoListRate) {
     serial = GetRandomSerialNumber();
 
     // TODO(sanketpadawe): RIL crashes with value of rate = 10
@@ -520,7 +520,7 @@ TEST_P(RadioHidlTest, setCellInfoListRate) {
 /*
  * Test IRadio.nvReadItem() for the response returned.
  */
-TEST_P(RadioHidlTest, nvReadItem) {
+TEST_F(RadioHidlTest, nvReadItem) {
     serial = GetRandomSerialNumber();
 
     radio->nvReadItem(serial, NvItem::LTE_BAND_ENABLE_25);
@@ -537,7 +537,7 @@ TEST_P(RadioHidlTest, nvReadItem) {
 /*
  * Test IRadio.nvWriteItem() for the response returned.
  */
-TEST_P(RadioHidlTest, nvWriteItem) {
+TEST_F(RadioHidlTest, nvWriteItem) {
     serial = GetRandomSerialNumber();
     NvWriteItem item;
     memset(&item, 0, sizeof(item));
@@ -557,7 +557,7 @@ TEST_P(RadioHidlTest, nvWriteItem) {
 /*
  * Test IRadio.nvWriteCdmaPrl() for the response returned.
  */
-TEST_P(RadioHidlTest, nvWriteCdmaPrl) {
+TEST_F(RadioHidlTest, nvWriteCdmaPrl) {
     serial = GetRandomSerialNumber();
     std::vector<uint8_t> prl = {1, 2, 3, 4, 5};
 
@@ -575,10 +575,10 @@ TEST_P(RadioHidlTest, nvWriteCdmaPrl) {
 /*
  * Test IRadio.nvResetConfig() for the response returned.
  */
-TEST_P(RadioHidlTest, nvResetConfig) {
+TEST_F(RadioHidlTest, nvResetConfig) {
     serial = GetRandomSerialNumber();
 
-    radio->nvResetConfig(serial, ResetNvType::FACTORY_RESET);
+    radio->nvResetConfig(serial, ResetNvType::ERASE);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp->rspInfo.type);
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
@@ -592,7 +592,7 @@ TEST_P(RadioHidlTest, nvResetConfig) {
 /*
  * Test IRadio.setUiccSubscription() for the response returned.
  */
-TEST_P(RadioHidlTest, setUiccSubscription) {
+TEST_F(RadioHidlTest, setUiccSubscription) {
     serial = GetRandomSerialNumber();
     SelectUiccSub item;
     memset(&item, 0, sizeof(item));
@@ -614,7 +614,7 @@ TEST_P(RadioHidlTest, setUiccSubscription) {
 /*
  * Test IRadio.getHardwareConfig() for the response returned.
  */
-TEST_P(RadioHidlTest, getHardwareConfig) {
+TEST_F(RadioHidlTest, getHardwareConfig) {
     serial = GetRandomSerialNumber();
 
     radio->getHardwareConfig(serial);
@@ -629,11 +629,9 @@ TEST_P(RadioHidlTest, getHardwareConfig) {
 }
 
 /*
- * The following test is disabled due to b/64734869
- *
  * Test IRadio.requestShutdown() for the response returned.
  */
-TEST_P(RadioHidlTest, DISABLED_requestShutdown) {
+TEST_F(RadioHidlTest, requestShutdown) {
     serial = GetRandomSerialNumber();
 
     radio->requestShutdown(serial);
@@ -650,7 +648,7 @@ TEST_P(RadioHidlTest, DISABLED_requestShutdown) {
 /*
  * Test IRadio.getRadioCapability() for the response returned.
  */
-TEST_P(RadioHidlTest, getRadioCapability) {
+TEST_F(RadioHidlTest, getRadioCapability) {
     serial = GetRandomSerialNumber();
 
     radio->getRadioCapability(serial);
@@ -666,7 +664,7 @@ TEST_P(RadioHidlTest, getRadioCapability) {
 /*
  * Test IRadio.setRadioCapability() for the response returned.
  */
-TEST_P(RadioHidlTest, setRadioCapability) {
+TEST_F(RadioHidlTest, setRadioCapability) {
     serial = GetRandomSerialNumber();
     RadioCapability rc;
     memset(&rc, 0, sizeof(rc));
@@ -687,7 +685,7 @@ TEST_P(RadioHidlTest, setRadioCapability) {
 /*
  * Test IRadio.startLceService() for the response returned.
  */
-TEST_P(RadioHidlTest, startLceService) {
+TEST_F(RadioHidlTest, startLceService) {
     serial = GetRandomSerialNumber();
 
     radio->startLceService(serial, 5, true);
@@ -706,7 +704,7 @@ TEST_P(RadioHidlTest, startLceService) {
 /*
  * Test IRadio.stopLceService() for the response returned.
  */
-TEST_P(RadioHidlTest, stopLceService) {
+TEST_F(RadioHidlTest, stopLceService) {
     serial = GetRandomSerialNumber();
 
     radio->stopLceService(serial);
@@ -724,7 +722,7 @@ TEST_P(RadioHidlTest, stopLceService) {
 /*
  * Test IRadio.pullLceData() for the response returned.
  */
-TEST_P(RadioHidlTest, pullLceData) {
+TEST_F(RadioHidlTest, pullLceData) {
     serial = GetRandomSerialNumber();
 
     radio->pullLceData(serial);
@@ -743,7 +741,7 @@ TEST_P(RadioHidlTest, pullLceData) {
 /*
  * Test IRadio.getModemActivityInfo() for the response returned.
  */
-TEST_P(RadioHidlTest, getModemActivityInfo) {
+TEST_F(RadioHidlTest, getModemActivityInfo) {
     serial = GetRandomSerialNumber();
 
     radio->getModemActivityInfo(serial);
@@ -758,11 +756,9 @@ TEST_P(RadioHidlTest, getModemActivityInfo) {
 }
 
 /*
- * The following test is disabled due to b/79930549
- *
  * Test IRadio.setAllowedCarriers() for the response returned.
  */
-TEST_P(RadioHidlTest, DISABLED_setAllowedCarriers) {
+TEST_F(RadioHidlTest, setAllowedCarriers) {
     serial = GetRandomSerialNumber();
     CarrierRestrictions carriers;
     memset(&carriers, 0, sizeof(carriers));
@@ -839,7 +835,7 @@ TEST_P(RadioHidlTest, DISABLED_setAllowedCarriers) {
 /*
  * Test IRadio.getAllowedCarriers() for the response returned.
  */
-TEST_P(RadioHidlTest, getAllowedCarriers) {
+TEST_F(RadioHidlTest, getAllowedCarriers) {
     serial = GetRandomSerialNumber();
 
     radio->getAllowedCarriers(serial);
@@ -856,7 +852,7 @@ TEST_P(RadioHidlTest, getAllowedCarriers) {
 /*
  * Test IRadio.sendDeviceState() for the response returned.
  */
-TEST_P(RadioHidlTest, sendDeviceState) {
+TEST_F(RadioHidlTest, sendDeviceState) {
     serial = GetRandomSerialNumber();
 
     radio->sendDeviceState(serial, DeviceStateType::POWER_SAVE_MODE, true);
@@ -875,7 +871,7 @@ TEST_P(RadioHidlTest, sendDeviceState) {
 /*
  * Test IRadio.setIndicationFilter() for the response returned.
  */
-TEST_P(RadioHidlTest, setIndicationFilter) {
+TEST_F(RadioHidlTest, setIndicationFilter) {
     serial = GetRandomSerialNumber();
 
     radio->setIndicationFilter(serial, 1);
@@ -894,7 +890,7 @@ TEST_P(RadioHidlTest, setIndicationFilter) {
 /*
  * Test IRadio.setSimCardPower() for the response returned.
  */
-TEST_P(RadioHidlTest, setSimCardPower) {
+TEST_F(RadioHidlTest, setSimCardPower) {
     serial = GetRandomSerialNumber();
 
     radio->setSimCardPower(serial, true);
