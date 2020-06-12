@@ -21,7 +21,14 @@
 /*
  * Test IRadio.emergencyDial() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_4, emergencyDial) {
+TEST_P(RadioHidlTest_v1_4, emergencyDial) {
+    if (!deviceSupportsFeature(FEATURE_VOICE_CALL)) {
+        ALOGI("Skipping emergencyDial because voice call is not supported in device");
+        return;
+    } else {
+        ALOGI("Running emergencyDial because voice call is supported in device");
+    }
+
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_0::Dial dialInfo;
@@ -52,7 +59,14 @@ TEST_F(RadioHidlTest_v1_4, emergencyDial) {
 /*
  * Test IRadio.emergencyDial() with specified service and its response returned.
  */
-TEST_F(RadioHidlTest_v1_4, emergencyDial_withServices) {
+TEST_P(RadioHidlTest_v1_4, emergencyDial_withServices) {
+    if (!deviceSupportsFeature(FEATURE_VOICE_CALL)) {
+        ALOGI("Skipping emergencyDial because voice call is not supported in device");
+        return;
+    } else {
+        ALOGI("Running emergencyDial because voice call is supported in device");
+    }
+
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_0::Dial dialInfo;
@@ -84,7 +98,14 @@ TEST_F(RadioHidlTest_v1_4, emergencyDial_withServices) {
 /*
  * Test IRadio.emergencyDial() with known emergency call routing and its response returned.
  */
-TEST_F(RadioHidlTest_v1_4, emergencyDial_withEmergencyRouting) {
+TEST_P(RadioHidlTest_v1_4, emergencyDial_withEmergencyRouting) {
+    if (!deviceSupportsFeature(FEATURE_VOICE_CALL)) {
+        ALOGI("Skipping emergencyDial because voice call is not supported in device");
+        return;
+    } else {
+        ALOGI("Running emergencyDial because voice call is supported in device");
+    }
+
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_0::Dial dialInfo;
@@ -116,7 +137,7 @@ TEST_F(RadioHidlTest_v1_4, emergencyDial_withEmergencyRouting) {
 /*
  * Test IRadio.getPreferredNetworkTypeBitmap() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_4, getPreferredNetworkTypeBitmap) {
+TEST_P(RadioHidlTest_v1_4, getPreferredNetworkTypeBitmap) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_4->getPreferredNetworkTypeBitmap(serial);
@@ -130,7 +151,7 @@ TEST_F(RadioHidlTest_v1_4, getPreferredNetworkTypeBitmap) {
     EXPECT_EQ(RadioError::NONE, radioRsp_v1_4->rspInfo.error);
 }
 
-TEST_F(RadioHidlTest_v1_4, setPreferredNetworkTypeBitmap) {
+TEST_P(RadioHidlTest_v1_4, setPreferredNetworkTypeBitmap) {
     serial = GetRandomSerialNumber();
     ::android::hardware::hidl_bitfield<::android::hardware::radio::V1_4::RadioAccessFamily>
             network_type_bitmap{};
@@ -175,7 +196,7 @@ TEST_F(RadioHidlTest_v1_4, setPreferredNetworkTypeBitmap) {
  * REQUEST_NOT_SUPPORTED will be disallowed for all tests. Modems have "GSM" rat scan need to
  * support scanning requests combined with some parameters.
  */
-TEST_F(RadioHidlTest_v1_4, startNetworkScan) {
+TEST_P(RadioHidlTest_v1_4, startNetworkScan) {
     serial = GetRandomSerialNumber();
 
     RadioAccessSpecifier specifier = {.radioAccessNetwork = RadioAccessNetworks::GERAN,
@@ -183,7 +204,12 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan) {
                                       .channels = {1, 2}};
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {
-            .type = ScanType::ONE_SHOT, .interval = 60, .specifiers = {specifier}};
+            .type = ScanType::ONE_SHOT,
+            .interval = 60,
+            .specifiers = {specifier},
+            .maxSearchTime = 60,
+            .incrementalResults = false,
+            .incrementalResultsPeriodicity = 1};
 
     Return<void> res = radio_v1_4->startNetworkScan_1_4(serial, request);
     ASSERT_OK(res);
@@ -213,7 +239,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan) {
 /*
  * Test IRadio.startNetworkScan() with invalid specifier.
  */
-TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidArgument) {
+TEST_P(RadioHidlTest_v1_4, startNetworkScan_InvalidArgument) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {.type = ScanType::ONE_SHOT,
@@ -241,7 +267,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidArgument) {
 /*
  * Test IRadio.startNetworkScan() with invalid interval (lower boundary).
  */
-TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidInterval1) {
+TEST_P(RadioHidlTest_v1_4, startNetworkScan_InvalidInterval1) {
     serial = GetRandomSerialNumber();
 
     RadioAccessSpecifier specifier = {.radioAccessNetwork = RadioAccessNetworks::GERAN,
@@ -278,7 +304,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidInterval1) {
 /*
  * Test IRadio.startNetworkScan() with invalid interval (upper boundary).
  */
-TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidInterval2) {
+TEST_P(RadioHidlTest_v1_4, startNetworkScan_InvalidInterval2) {
     serial = GetRandomSerialNumber();
 
     RadioAccessSpecifier specifier = {.radioAccessNetwork = RadioAccessNetworks::GERAN,
@@ -314,7 +340,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidInterval2) {
 /*
  * Test IRadio.startNetworkScan() with invalid max search time (lower boundary).
  */
-TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidMaxSearchTime1) {
+TEST_P(RadioHidlTest_v1_4, startNetworkScan_InvalidMaxSearchTime1) {
     serial = GetRandomSerialNumber();
 
     RadioAccessSpecifier specifier = {.radioAccessNetwork = RadioAccessNetworks::GERAN,
@@ -350,7 +376,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidMaxSearchTime1) {
 /*
  * Test IRadio.startNetworkScan() with invalid max search time (upper boundary).
  */
-TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidMaxSearchTime2) {
+TEST_P(RadioHidlTest_v1_4, startNetworkScan_InvalidMaxSearchTime2) {
     serial = GetRandomSerialNumber();
 
     RadioAccessSpecifier specifier = {.radioAccessNetwork = RadioAccessNetworks::GERAN,
@@ -386,7 +412,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidMaxSearchTime2) {
 /*
  * Test IRadio.startNetworkScan() with invalid periodicity (lower boundary).
  */
-TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidPeriodicity1) {
+TEST_P(RadioHidlTest_v1_4, startNetworkScan_InvalidPeriodicity1) {
     serial = GetRandomSerialNumber();
 
     RadioAccessSpecifier specifier = {.radioAccessNetwork = RadioAccessNetworks::GERAN,
@@ -398,7 +424,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidPeriodicity1) {
             .interval = 60,
             .specifiers = {specifier},
             .maxSearchTime = 600,
-            .incrementalResults = false,
+            .incrementalResults = true,
             .incrementalResultsPeriodicity = 0};
 
     Return<void> res = radio_v1_4->startNetworkScan_1_4(serial, request);
@@ -422,7 +448,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidPeriodicity1) {
 /*
  * Test IRadio.startNetworkScan() with invalid periodicity (upper boundary).
  */
-TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidPeriodicity2) {
+TEST_P(RadioHidlTest_v1_4, startNetworkScan_InvalidPeriodicity2) {
     serial = GetRandomSerialNumber();
 
     RadioAccessSpecifier specifier = {.radioAccessNetwork = RadioAccessNetworks::GERAN,
@@ -434,7 +460,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidPeriodicity2) {
             .interval = 60,
             .specifiers = {specifier},
             .maxSearchTime = 600,
-            .incrementalResults = false,
+            .incrementalResults = true,
             .incrementalResultsPeriodicity = 11};
 
     Return<void> res = radio_v1_4->startNetworkScan_1_4(serial, request);
@@ -458,7 +484,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan_InvalidPeriodicity2) {
 /*
  * Test IRadio.startNetworkScan() with valid periodicity
  */
-TEST_F(RadioHidlTest_v1_4, startNetworkScan_GoodRequest1) {
+TEST_P(RadioHidlTest_v1_4, startNetworkScan_GoodRequest1) {
     serial = GetRandomSerialNumber();
 
     RadioAccessSpecifier specifier = {.radioAccessNetwork = RadioAccessNetworks::GERAN,
@@ -497,7 +523,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan_GoodRequest1) {
 /*
  * Test IRadio.startNetworkScan() with valid periodicity and plmns
  */
-TEST_F(RadioHidlTest_v1_4, startNetworkScan_GoodRequest2) {
+TEST_P(RadioHidlTest_v1_4, startNetworkScan_GoodRequest2) {
     serial = GetRandomSerialNumber();
 
     RadioAccessSpecifier specifier = {.radioAccessNetwork = RadioAccessNetworks::GERAN,
@@ -538,7 +564,7 @@ TEST_F(RadioHidlTest_v1_4, startNetworkScan_GoodRequest2) {
 /*
  * Test IRadio.getSignalStrength_1_4() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_4, getSignalStrength_1_4) {
+TEST_P(RadioHidlTest_v1_4, getSignalStrength_1_4) {
     serial = GetRandomSerialNumber();
 
     radio_v1_4->getSignalStrength_1_4(serial);
@@ -557,7 +583,7 @@ TEST_F(RadioHidlTest_v1_4, getSignalStrength_1_4) {
 /*
  * Test IRadio.setupDataCall_1_4() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_4, setupDataCall_1_4) {
+TEST_P(RadioHidlTest_v1_4, setupDataCall_1_4) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_4::AccessNetwork accessNetwork =
@@ -612,7 +638,7 @@ TEST_F(RadioHidlTest_v1_4, setupDataCall_1_4) {
 /*
  * Test IRadio.getAllowedCarriers_1_4() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_4, getAllowedCarriers_1_4) {
+TEST_P(RadioHidlTest_v1_4, getAllowedCarriers_1_4) {
     serial = GetRandomSerialNumber();
 
     radio_v1_4->getAllowedCarriers_1_4(serial);
@@ -627,7 +653,7 @@ TEST_F(RadioHidlTest_v1_4, getAllowedCarriers_1_4) {
 /**
  * Test IRadio.setAllowedCarriers_1_4() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_4, setAllowedCarriers_1_4) {
+TEST_P(RadioHidlTest_v1_4, setAllowedCarriers_1_4) {
     serial = GetRandomSerialNumber();
     CarrierRestrictionsWithPriority carrierRestrictions;
     memset(&carrierRestrictions, 0, sizeof(carrierRestrictions));
@@ -722,7 +748,7 @@ TEST_F(RadioHidlTest_v1_4, setAllowedCarriers_1_4) {
     }
 }
 
-TEST_F(RadioHidlTest_v1_4, setDataProfile_1_4) {
+TEST_P(RadioHidlTest_v1_4, setDataProfile_1_4) {
     serial = GetRandomSerialNumber();
 
     // Create a dataProfileInfo
@@ -765,7 +791,7 @@ TEST_F(RadioHidlTest_v1_4, setDataProfile_1_4) {
     }
 }
 
-TEST_F(RadioHidlTest_v1_4, setInitialAttachApn_1_4) {
+TEST_P(RadioHidlTest_v1_4, setInitialAttachApn_1_4) {
     serial = GetRandomSerialNumber();
 
     // Create a dataProfileInfo
@@ -807,7 +833,7 @@ TEST_F(RadioHidlTest_v1_4, setInitialAttachApn_1_4) {
 /*
  * Test IRadio.getDataRegistrationStateResponse_1_4() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_4, getDataRegistrationState_1_4) {
+TEST_P(RadioHidlTest_v1_4, getDataRegistrationState_1_4) {
     int rat;
     serial = GetRandomSerialNumber();
 
