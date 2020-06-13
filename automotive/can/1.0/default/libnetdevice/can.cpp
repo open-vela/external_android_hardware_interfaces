@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <libnetdevice/can.h>
+#include <libnetdevice/libnetdevice.h>
 
 #include "NetlinkRequest.h"
 #include "NetlinkSocket.h"
