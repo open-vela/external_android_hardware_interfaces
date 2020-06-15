@@ -1,11 +1,11 @@
 //
-// Copyright (C) 2019 The Android Open Source Project
+// Copyright 2016 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,17 +14,7 @@
 // limitations under the License.
 //
 
-cc_library_static {
-    name: "android.hardware.automotive.can@libnetdevice",
-    defaults: ["android.hardware.automotive.can@defaults"],
-    vendor_available: true,
-    relative_install_path: "hw",
-    srcs: [
-        "NetlinkRequest.cpp",
-        "NetlinkSocket.cpp",
-        "can.cpp",
-        "common.cpp",
-        "libnetdevice.cpp",
-    ],
-    export_include_dirs: ["include"],
-}
+// Mock sys/system_properties.h for testing
+
+#define PROP_VALUE_MAX 50
+#define PROP_KEY_MAX 50
