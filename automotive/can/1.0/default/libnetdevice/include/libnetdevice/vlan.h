@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-cc_test {
-    name: "VtsHalBiometricsFingerprintV2_2TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
-    srcs: ["VtsHalBiometricsFingerprintV2_2TargetTest.cpp"],
-    static_libs: [
-        "android.hardware.biometrics.fingerprint@2.1",
-        "android.hardware.biometrics.fingerprint@2.2",
-    ],
-    test_suites: [
-        "general-tests",
-        "vts",
-    ],
-}
+#pragma once
+
+#include <string>
+
+namespace android::netdevice::vlan {
+
+bool add(const std::string& eth, const std::string& vlan, uint16_t id);
+
+}  // namespace android::netdevice::vlan
