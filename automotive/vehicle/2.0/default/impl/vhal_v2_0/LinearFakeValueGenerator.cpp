@@ -46,8 +46,7 @@ VehiclePropValue LinearFakeValueGenerator::nextEvent() {
     if (mGenCfg.currentValue > mGenCfg.initialValue + mGenCfg.dispersion) {
         mGenCfg.currentValue = mGenCfg.initialValue - mGenCfg.dispersion;
     }
-    // TODO: (chenhaosjtuacm) remove "{}" if AGL compiler updated
-    VehiclePropValue event = {.timestamp = {}, .areaId = {}, .prop = mGenCfg.propId};
+    VehiclePropValue event = {.prop = mGenCfg.propId};
     auto& value = event.value;
     switch (getPropType(event.prop)) {
         case VehiclePropertyType::INT32:
