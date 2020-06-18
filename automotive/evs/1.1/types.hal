@@ -105,10 +105,6 @@ enum EvsEventType : uint32_t {
      * Master role has become available
      */
     MASTER_RELEASED,
-    /**
-     * Any other erroneous streaming events
-     */
-    STREAM_ERROR,
 };
 
 /**
