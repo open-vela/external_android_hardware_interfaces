@@ -4280,16 +4280,6 @@ enum UserFlags: int32_t {
      * Admin users have additional privileges such as permission to create other users.
      */
     ADMIN = 0x08,
-
-    /**
-     * Disabled users are marked for deletion.
-     */
-    DISABLED = 0x10,
-
-     /**
-     * Profile user is a profile of another user.
-     */
-    PROFILE = 0x20,
 };
 
 /**
@@ -4304,16 +4294,10 @@ struct UsersInfo {
     /** The current foreground user. */
     UserInfo currentUser;
 
-    /**
-     * Number of existing users; includes the current user, recently removed users (with DISABLED
-     * flag), and profile users (with PROFILE flag).
-     */
+    /** Number of existing users (includes the current user). */
     int32_t numberUsers;
 
-    /**
-     * List of existing users; includes the current user, recently removed users (with DISABLED
-     * flag), and profile users (with PROFILE flag).
-     */
+    /** List of existing users (includes the current user). */
     vec<UserInfo> existingUsers;
  };
 
