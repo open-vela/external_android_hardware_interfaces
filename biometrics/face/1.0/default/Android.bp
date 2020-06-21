@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,22 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include "../MessageDefinition.h"
-
-namespace android::netdevice::protocols::base {
-
-class Error : public MessageDefinition<nlmsgerr> {
-  public:
-    Error(int protocol);
-    void toStream(std::stringstream& ss, const nlmsgerr& data) const override;
-
-  private:
-    const int mProtocol;
-};
-
-}  // namespace android::netdevice::protocols::base
+cc_binary {
+    name: "android.hardware.biometrics.face@1.0-service.example",
+    defaults: ["hidl_defaults"],
+    vendor: true,
+    init_rc: ["android.hardware.biometrics.face@1.0-service.rc"],
+    vintf_fragments: ["manifest_face_default.xml"],
+    relative_install_path: "hw",
+    proprietary: true,
+    srcs: [
+        "BiometricsFace.cpp",
+        "service.cpp",
+    ],
+    shared_libs: [
+        "libhidlbase",
+        "libutils",
+        "liblog",
+        "android.hardware.biometrics.face@1.0",
+    ],
+}
