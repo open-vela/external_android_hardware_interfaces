@@ -16,7 +16,6 @@ cc_defaults {
     name: "vhal_v2_0_defaults",
     shared_libs: [
         "libhidlbase",
-        "libhidltransport",
         "liblog",
         "libutils",
         "android.hardware.automotive.vehicle@2.0",
@@ -58,22 +57,24 @@ cc_library_static {
     vendor: true,
     defaults: ["vhal_v2_0_defaults"],
     srcs: [
+        "impl/vhal_v2_0/CommConn.cpp",
         "impl/vhal_v2_0/EmulatedVehicleHal.cpp",
         "impl/vhal_v2_0/VehicleEmulator.cpp",
         "impl/vhal_v2_0/PipeComm.cpp",
         "impl/vhal_v2_0/SocketComm.cpp",
         "impl/vhal_v2_0/LinearFakeValueGenerator.cpp",
         "impl/vhal_v2_0/JsonFakeValueGenerator.cpp",
+        "impl/vhal_v2_0/GeneratorHub.cpp",
     ],
     local_include_dirs: ["common/include/vhal_v2_0"],
     export_include_dirs: ["impl"],
     whole_static_libs: ["android.hardware.automotive.vehicle@2.0-manager-lib"],
     shared_libs: [
         "libbase",
+        "libjsoncpp",
         "libprotobuf-cpp-lite",
     ],
     static_libs: [
-        "libjsoncpp",
         "libqemu_pipe",
         "android.hardware.automotive.vehicle@2.0-libproto-native",
     ],
@@ -93,6 +94,7 @@ cc_test {
         "tests/VmsUtils_test.cpp",
     ],
     header_libs: ["libbase_headers"],
+    test_suites: ["general-tests"],
 }
 
 cc_binary {
@@ -104,13 +106,13 @@ cc_binary {
     srcs: ["VehicleService.cpp"],
     shared_libs: [
         "libbase",
+        "libjsoncpp",
         "libprotobuf-cpp-lite",
     ],
     static_libs: [
         "android.hardware.automotive.vehicle@2.0-manager-lib",
         "android.hardware.automotive.vehicle@2.0-default-impl-lib",
         "android.hardware.automotive.vehicle@2.0-libproto-native",
-        "libjsoncpp",
         "libqemu_pipe",
     ],
 }
