@@ -14,5 +14,13 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
+    types: [
+        "Abc",
+        "Def",
+        "EnumIterators",
+        "Outer",
+        "Unrelated",
+    ],
     gen_java: false,
 }
+
