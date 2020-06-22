@@ -18,14 +18,13 @@
 #include <string>
 
 #include "utility/ValidateXml.h"
-#include "AudioPolicyConfiguration.h"
 
 TEST(CheckConfig, audioPolicyConfigurationValidation) {
     RecordProperty("description",
                    "Verify that the audio policy configuration file "
                    "is valid according to the schema");
 
-    EXPECT_ONE_VALID_XML_MULTIPLE_LOCATIONS(
-            kAudioPolicyConfigurationXml, getApmConfigLocations(),
-            kAudioPolicyConfigurationXsd);
+    std::vector<const char*> locations = {"/odm/etc", "/vendor/etc", "/system/etc"};
+    EXPECT_ONE_VALID_XML_MULTIPLE_LOCATIONS("audio_policy_configuration.xml", locations,
+                                            "/data/local/tmp/audio_policy_configuration_V4_0.xsd");
 }
