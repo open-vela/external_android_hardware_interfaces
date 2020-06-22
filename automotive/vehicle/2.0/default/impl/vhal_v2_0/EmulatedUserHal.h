@@ -58,8 +58,7 @@ class EmulatedUserHal {
      *
      * @return property value and StatusCode
      */
-    android::base::Result<std::unique_ptr<VehiclePropValue>> onGetProperty(
-            const VehiclePropValue& value);
+    android::base::Result<std::unique_ptr<VehiclePropValue>> onGetProperty(int32_t prop);
 
     /**
      * Shows the User HAL emulation help.
@@ -112,24 +111,11 @@ class EmulatedUserHal {
             const VehiclePropValue& value);
 
     /**
-     * Used to emulate set USER_IDENTIFICATION_ASSOCIATION - see onSetInitialUserInfoResponse() for
+     * Used to emulate USER_IDENTIFICATION_ASSOCIATION - see onSetInitialUserInfoResponse() for
      * usage.
      */
     android::base::Result<std::unique_ptr<VehiclePropValue>> onSetUserIdentificationAssociation(
             const VehiclePropValue& value);
-
-    /**
-     * Used to emulate get USER_IDENTIFICATION_ASSOCIATION - see onSetInitialUserInfoResponse() for
-     * usage.
-     */
-    android::base::Result<std::unique_ptr<VehiclePropValue>> onGetUserIdentificationAssociation(
-            const VehiclePropValue& value);
-
-    /**
-     * Creates a default USER_IDENTIFICATION_ASSOCIATION when it was not set by lshal.
-     */
-    android::base::Result<std::unique_ptr<VehiclePropValue>> defaultUserIdentificationAssociation(
-            const VehiclePropValue& request);
 
     android::base::Result<std::unique_ptr<VehiclePropValue>> sendUserHalResponse(
             std::unique_ptr<VehiclePropValue> response, int32_t requestId);
