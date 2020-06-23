@@ -16,6 +16,8 @@
 
 #define LOG_TAG "mediacas_hidl_hal_test"
 
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/logging.h>
 #include <android/hardware/cas/1.0/IDescramblerBase.h>
 #include <android/hardware/cas/1.0/types.h>
@@ -26,11 +28,8 @@
 #include <android/hardware/cas/native/1.0/IDescrambler.h>
 #include <android/hardware/cas/native/1.0/types.h>
 #include <binder/MemoryDealer.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
 #include <hidl/HidlSupport.h>
 #include <hidl/HidlTransportSupport.h>
-#include <hidl/ServiceManagement.h>
 #include <hidl/Status.h>
 #include <hidlmemory/FrameworkUtils.h>
 #include <utils/Condition.h>
@@ -294,14 +293,27 @@ void MediaCasListener::testStatusUpdate(sp<ICas>& mediaCas, std::vector<uint8_t>
     EXPECT_EQ(mEventArg, static_cast<int32_t>(mode));
 }
 
-class MediaCasHidlTest : public testing::TestWithParam<std::string> {
+// Test environment for Cas HIDL HAL.
+class CasHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+  public:
+    // get the test environment singleton
+    static CasHidlEnvironment* Instance() {
+        static CasHidlEnvironment* instance = new CasHidlEnvironment;
+        return instance;
+    }
+
+    virtual void registerTestServices() override { registerTestService<IMediaCasService>(); }
+};
+
+class MediaCasHidlTest : public ::testing::VtsHalHidlTargetTestBase {
   public:
     virtual void SetUp() override {
-        mService = IMediaCasService::getService(GetParam());
+        mService = ::testing::VtsHalHidlTargetTestBase::getService<IMediaCasService>(
+                CasHidlEnvironment::Instance()->getServiceName<IMediaCasService>());
         ASSERT_NE(mService, nullptr);
     }
 
-    sp<IMediaCasService> mService = nullptr;
+    sp<IMediaCasService> mService;
 
   protected:
     static void description(const std::string& description) {
@@ -485,7 +497,7 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
     return ::testing::AssertionResult(returnVoid.isOk());
 }
 
-TEST_P(MediaCasHidlTest, TestClearKeyApisWithSession) {
+TEST_F(MediaCasHidlTest, TestClearKeyApisWithSession) {
     description("Test that valid call sequences with SessionEvent send and receive");
 
     ASSERT_TRUE(createCasPlugin(CLEAR_KEY_SYSTEM_ID));
@@ -597,7 +609,11 @@ TEST_P(MediaCasHidlTest, TestClearKeyApisWithSession) {
 
 }  // anonymous namespace
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, MediaCasHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IMediaCasService::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(CasHidlEnvironment::Instance());
+    ::testing::InitGoogleTest(&argc, argv);
+    CasHidlEnvironment::Instance()->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    LOG(INFO) << "Test result = " << status;
+    return status;
+}
