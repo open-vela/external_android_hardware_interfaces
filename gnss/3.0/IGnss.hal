@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
-cc_test {
-    name: "VtsHalBiometricsFingerprintV2_3TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
-    srcs: ["VtsHalBiometricsFingerprintV2_3TargetTest.cpp"],
-    static_libs: [
-        "android.hardware.biometrics.fingerprint@2.1",
-        "android.hardware.biometrics.fingerprint@2.2",
-        "android.hardware.biometrics.fingerprint@2.3",
-    ],
-    test_suites: [
-        "general-tests",
-        "vts",
-    ],
-}
+package android.hardware.gnss@3.0;
+
+import @2.1::IGnss;
+import IGnssPsds;
+
+/**
+ * Represents the standard GNSS (Global Navigation Satellite System) interface.
+ */
+interface IGnss extends @2.1::IGnss {
+    /**
+     * This method returns the IGnssPsds interface.
+     *
+     * @return psdsIface Handle to the IGnssPsds interface.
+     */
+    getExtensionPsds() generates (IGnssPsds psdsIface);
+};
