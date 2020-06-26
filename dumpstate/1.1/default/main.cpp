@@ -116,7 +116,7 @@ int main(int, char**) {
 
     configureRpcThreadpool(1, true);
 
-    auto dumpstate = sp<DumpstateDevice>::make();
+    sp<DumpstateDevice> dumpstate(new DumpstateDevice);
     auto serviceRegistrar = LazyServiceRegistrar::getInstance();
 
     if (serviceRegistrar.registerService(dumpstate) != ::android::OK) {
