@@ -47,17 +47,11 @@ Filter::Filter(DemuxFilterType type, uint32_t filterId, uint32_t bufferSize,
             if (mType.subType.tsFilterType() == DemuxTsFilterType::PCR) {
                 mIsPcrFilter = true;
             }
-            if (mType.subType.tsFilterType() == DemuxTsFilterType::RECORD) {
-                mIsRecordFilter = true;
-            }
             break;
         case DemuxFilterMainType::MMTP:
             if (mType.subType.mmtpFilterType() == DemuxMmtpFilterType::AUDIO ||
                 mType.subType.mmtpFilterType() == DemuxMmtpFilterType::VIDEO) {
                 mIsMediaFilter = true;
-            }
-            if (mType.subType.mmtpFilterType() == DemuxMmtpFilterType::RECORD) {
-                mIsRecordFilter = true;
             }
             break;
         case DemuxFilterMainType::IP:
@@ -317,11 +311,6 @@ void Filter::updateFilterOutput(vector<uint8_t> data) {
     mFilterOutput.insert(mFilterOutput.end(), data.begin(), data.end());
 }
 
-void Filter::updatePts(uint64_t pts) {
-    std::lock_guard<std::mutex> lock(mFilterOutputLock);
-    mPts = pts;
-}
-
 void Filter::updateRecordOutput(vector<uint8_t> data) {
     std::lock_guard<std::mutex> lock(mRecordFilterOutputLock);
     mRecordFilterOutput.insert(mRecordFilterOutput.end(), data.begin(), data.end());
@@ -465,11 +454,6 @@ Result Filter::startMediaFilterHandler() {
     if (mFilterOutput.empty()) {
         return Result::SUCCESS;
     }
-
-    if (mPts) {
-        return createMediaFilterEventWithIon(mFilterOutput);
-    }
-
     for (int i = 0; i < mFilterOutput.size(); i += 188) {
         if (mPesSizeLeft == 0) {
             uint32_t prefix = (mFilterOutput[i + 4] << 16) | (mFilterOutput[i + 5] << 8) |
@@ -503,7 +487,46 @@ Result Filter::startMediaFilterHandler() {
             continue;
         }
 
-        createMediaFilterEventWithIon(mPesOutput);
+        int av_fd = createAvIonFd(mPesOutput.size());
+        if (av_fd == -1) {
+            return Result::UNKNOWN_ERROR;
+        }
+        // copy the filtered data to the buffer
+        uint8_t* avBuffer = getIonBuffer(av_fd, mPesOutput.size());
+        if (avBuffer == NULL) {
+            return Result::UNKNOWN_ERROR;
+        }
+        memcpy(avBuffer, mPesOutput.data(), mPesOutput.size() * sizeof(uint8_t));
+
+        native_handle_t* nativeHandle = createNativeHandle(av_fd);
+        if (nativeHandle == NULL) {
+            return Result::UNKNOWN_ERROR;
+        }
+        hidl_handle handle;
+        handle.setTo(nativeHandle, /*shouldOwn=*/true);
+
+        // Create a dataId and add a <dataId, av_fd> pair into the dataId2Avfd map
+        uint64_t dataId = mLastUsedDataId++ /*createdUID*/;
+        mDataId2Avfd[dataId] = dup(av_fd);
+
+        // Create mediaEvent and send callback
+        DemuxFilterMediaEvent mediaEvent;
+        mediaEvent = {
+                .avMemory = std::move(handle),
+                .dataLength = static_cast<uint32_t>(mPesOutput.size()),
+                .avDataId = dataId,
+        };
+        int size = mFilterEvent.events.size();
+        mFilterEvent.events.resize(size + 1);
+        mFilterEvent.events[size].media(mediaEvent);
+
+        // Clear and log
+        mPesOutput.clear();
+        mAvBufferCopyCount = 0;
+        ::close(av_fd);
+        if (DEBUG_FILTER) {
+            ALOGD("[Filter] assembled av data length %d", mediaEvent.dataLength);
+        }
     }
 
     mFilterOutput.clear();
@@ -511,55 +534,13 @@ Result Filter::startMediaFilterHandler() {
     return Result::SUCCESS;
 }
 
-Result Filter::createMediaFilterEventWithIon(vector<uint8_t> output) {
-    int av_fd = createAvIonFd(output.size());
-    if (av_fd == -1) {
-        return Result::UNKNOWN_ERROR;
-    }
-    // copy the filtered data to the buffer
-    uint8_t* avBuffer = getIonBuffer(av_fd, output.size());
-    if (avBuffer == NULL) {
-        return Result::UNKNOWN_ERROR;
-    }
-    memcpy(avBuffer, output.data(), output.size() * sizeof(uint8_t));
-
-    native_handle_t* nativeHandle = createNativeHandle(av_fd);
-    if (nativeHandle == NULL) {
-        return Result::UNKNOWN_ERROR;
-    }
-    hidl_handle handle;
-    handle.setTo(nativeHandle, /*shouldOwn=*/true);
-
-    // Create a dataId and add a <dataId, av_fd> pair into the dataId2Avfd map
-    uint64_t dataId = mLastUsedDataId++ /*createdUID*/;
-    mDataId2Avfd[dataId] = dup(av_fd);
-
-    // Create mediaEvent and send callback
-    DemuxFilterMediaEvent mediaEvent;
-    mediaEvent = {
-            .avMemory = std::move(handle),
-            .dataLength = static_cast<uint32_t>(output.size()),
-            .avDataId = dataId,
-    };
-    if (mPts) {
-        mediaEvent.pts = mPts;
-        mPts = 0;
-    }
-    int size = mFilterEvent.events.size();
-    mFilterEvent.events.resize(size + 1);
-    mFilterEvent.events[size].media(mediaEvent);
-
-    // Clear and log
-    output.clear();
-    mAvBufferCopyCount = 0;
-    ::close(av_fd);
-    if (DEBUG_FILTER) {
-        ALOGD("[Filter] av data length %d", mediaEvent.dataLength);
-    }
-    return Result::SUCCESS;
-}
-
 Result Filter::startRecordFilterHandler() {
+    /*DemuxFilterTsRecordEvent tsRecordEvent;
+    tsRecordEvent.pid.tPid(0);
+    tsRecordEvent.indexMask.tsIndexMask(0x01);
+    mFilterEvent.events.resize(1);
+    mFilterEvent.events[0].tsRecord(tsRecordEvent);
+*/
     std::lock_guard<std::mutex> lock(mRecordFilterOutputLock);
     if (mRecordFilterOutput.empty()) {
         return Result::SUCCESS;
@@ -586,7 +567,7 @@ Result Filter::startTemiFilterHandler() {
 
 bool Filter::writeSectionsAndCreateEvent(vector<uint8_t> data) {
     // TODO check how many sections has been read
-    ALOGD("[Filter] section handler");
+    ALOGD("[Filter] section hander");
     std::lock_guard<std::mutex> lock(mFilterEventLock);
     if (!writeDataToFilterMQ(data)) {
         return false;
