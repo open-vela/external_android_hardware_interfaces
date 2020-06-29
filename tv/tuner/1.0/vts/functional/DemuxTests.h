@@ -30,7 +30,6 @@
 using android::sp;
 using android::hardware::Return;
 using android::hardware::Void;
-using android::hardware::tv::tuner::V1_0::DemuxCapabilities;
 using android::hardware::tv::tuner::V1_0::IDemux;
 using android::hardware::tv::tuner::V1_0::IFilter;
 using android::hardware::tv::tuner::V1_0::ITuner;
@@ -44,9 +43,8 @@ class DemuxTests {
 
     AssertionResult openDemux(sp<IDemux>& demux, uint32_t& demuxId);
     AssertionResult setDemuxFrontendDataSource(uint32_t frontendId);
-    AssertionResult getAvSyncId(sp<IFilter> filter, uint32_t& avSyncHwId);
-    AssertionResult getAvSyncTime(uint32_t avSyncId);
-    AssertionResult getDemuxCaps(DemuxCapabilities& demuxCaps);
+    void getAvSyncId(sp<IFilter> filter, uint32_t& avSyncHwId);
+    void getAvSyncTime(uint32_t avSyncId);
     AssertionResult closeDemux();
 
   protected:

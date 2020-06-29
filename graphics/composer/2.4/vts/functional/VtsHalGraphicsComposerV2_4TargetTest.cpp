@@ -414,9 +414,12 @@ void GraphicsComposerHidlCommandTest::sendRefreshFrame(const VsyncPeriodChangeTi
 
     mWriter->validateDisplay();
     execute();
-    ASSERT_EQ(0, mReader->mErrors.size());
-    mReader->mCompositionChanges.clear();
+    if (mReader->mCompositionChanges.size() != 0) {
+        GTEST_SUCCEED() << "Composition change requested, skipping test";
+        return;
+    }
 
+    ASSERT_EQ(0, mReader->mErrors.size());
     mWriter->presentDisplay();
     execute();
     ASSERT_EQ(0, mReader->mErrors.size());
@@ -424,14 +427,8 @@ void GraphicsComposerHidlCommandTest::sendRefreshFrame(const VsyncPeriodChangeTi
     mWriter->selectLayer(layer);
     auto handle2 = allocate();
     ASSERT_NE(nullptr, handle2);
-
     mWriter->setLayerBuffer(0, handle2, -1);
     mWriter->setLayerSurfaceDamage(std::vector<IComposerClient::Rect>(1, {0, 0, 10, 10}));
-    mWriter->validateDisplay();
-    execute();
-    ASSERT_EQ(0, mReader->mErrors.size());
-    mReader->mCompositionChanges.clear();
-
     mWriter->presentDisplay();
     execute();
 }
@@ -493,16 +490,16 @@ void GraphicsComposerHidlCommandTest::Test_setActiveConfigWithConstraints(
             // At this point the refresh rate should have changed already, however in rare
             // cases the implementation might have missed the deadline. In this case a new
             // timeline should have been provided.
-            auto newTimeline = mComposerCallback->takeLastVsyncPeriodChangeTimeline();
+            auto newTimelime = mComposerCallback->takeLastVsyncPeriodChangeTimeline();
             if (timeline.refreshRequired && refreshMiss) {
-                EXPECT_TRUE(newTimeline.has_value());
+                EXPECT_TRUE(newTimelime.has_value());
             }
 
-            if (newTimeline.has_value()) {
-                if (newTimeline->refreshRequired) {
-                    sendRefreshFrame(&newTimeline.value());
+            if (newTimelime.has_value()) {
+                if (timeline.refreshRequired) {
+                    sendRefreshFrame(&newTimelime.value());
                 }
-                waitForVsyncPeriodChange(display, newTimeline.value(), constraints.desiredTimeNanos,
+                waitForVsyncPeriodChange(display, newTimelime.value(), constraints.desiredTimeNanos,
                                          vsyncPeriod1, vsyncPeriod2);
             }
 
