@@ -65,45 +65,55 @@ android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::onSetP
         case USER_IDENTIFICATION_ASSOCIATION:
             return onSetUserIdentificationAssociation(value);
         default:
-            return android::base::Error(static_cast<int>(StatusCode::INVALID_ARG))
+            return android::base::Error((int)StatusCode::INVALID_ARG)
                    << "Unsupported property: " << toString(value);
     }
 }
 
 android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::onGetProperty(
-        int32_t prop) {
-    ALOGV("onGetProperty(%d)", prop);
-    switch (prop) {
+        const VehiclePropValue& value) {
+    ALOGV("onGetProperty(%s)", toString(value).c_str());
+    switch (value.prop) {
         case INITIAL_USER_INFO:
         case SWITCH_USER:
         case CREATE_USER:
         case REMOVE_USER:
-            ALOGE("onGetProperty(): %d is only supported on SET", prop);
+            ALOGE("onGetProperty(): %d is only supported on SET", value.prop);
             return android::base::Error(static_cast<int>(StatusCode::INVALID_ARG))
                    << "only supported on SET";
         case USER_IDENTIFICATION_ASSOCIATION:
-            if (mSetUserIdentificationAssociationResponseFromCmd != nullptr) {
-                ALOGI("onGetProperty(%d): returning %s", prop,
-                      toString(*mSetUserIdentificationAssociationResponseFromCmd).c_str());
-                auto value = std::unique_ptr<VehiclePropValue>(
-                        new VehiclePropValue(*mSetUserIdentificationAssociationResponseFromCmd));
-                return value;
-            }
-            ALOGE("onGetProperty(%d): USER_IDENTIFICATION_ASSOCIATION not set by lshal", prop);
-            return android::base::Error(static_cast<int>(StatusCode::NOT_AVAILABLE))
-                   << "not set by lshal";
+            return onGetUserIdentificationAssociation(value);
         default:
-            ALOGE("onGetProperty(): %d is not supported", prop);
+            ALOGE("onGetProperty(): %d is not supported", value.prop);
             return android::base::Error(static_cast<int>(StatusCode::INVALID_ARG))
                    << "not supported by User HAL";
     }
 }
 
 android::base::Result<std::unique_ptr<VehiclePropValue>>
+EmulatedUserHal::onGetUserIdentificationAssociation(const VehiclePropValue& value) {
+    if (mSetUserIdentificationAssociationResponseFromCmd != nullptr) {
+        ALOGI("get(USER_IDENTIFICATION_ASSOCIATION): returning %s",
+              toString(*mSetUserIdentificationAssociationResponseFromCmd).c_str());
+        auto newValue = std::unique_ptr<VehiclePropValue>(
+                new VehiclePropValue(*mSetUserIdentificationAssociationResponseFromCmd));
+        // Must use the same requestId
+        if (value.value.int32Values.size() > 0) {
+            newValue->value.int32Values[0] = value.value.int32Values[0];
+        } else {
+            ALOGE("get(USER_IDENTIFICATION_ASSOCIATION): no requestId on %s",
+                  toString(value).c_str());
+        }
+        return newValue;
+    }
+    return defaultUserIdentificationAssociation(value);
+}
+
+android::base::Result<std::unique_ptr<VehiclePropValue>>
 EmulatedUserHal::onSetInitialUserInfoResponse(const VehiclePropValue& value) {
     if (value.value.int32Values.size() == 0) {
         ALOGE("set(INITIAL_USER_INFO): no int32values, ignoring it: %s", toString(value).c_str());
-        return android::base::Error(static_cast<int>(StatusCode::INVALID_ARG))
+        return android::base::Error((int)StatusCode::INVALID_ARG)
                << "no int32values on " << toString(value);
     }
 
@@ -140,7 +150,7 @@ android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::onSetS
         const VehiclePropValue& value) {
     if (value.value.int32Values.size() == 0) {
         ALOGE("set(SWITCH_USER): no int32values, ignoring it: %s", toString(value).c_str());
-        return android::base::Error(static_cast<int>(StatusCode::INVALID_ARG))
+        return android::base::Error((int)StatusCode::INVALID_ARG)
                << "no int32values on " << toString(value);
     }
 
@@ -250,16 +260,14 @@ EmulatedUserHal::onSetUserIdentificationAssociation(const VehiclePropValue& valu
     }
 
     // Returns default response
-    auto updatedValue = std::unique_ptr<VehiclePropValue>(new VehiclePropValue);
-    updatedValue->prop = USER_IDENTIFICATION_ASSOCIATION;
-    updatedValue->timestamp = elapsedRealtimeNano();
-    updatedValue->value.int32Values.resize(1);
-    updatedValue->value.int32Values[0] = requestId;
-    updatedValue->value.stringValue = "Response not set by LSHAL";
+    return defaultUserIdentificationAssociation(value);
+}
 
-    ALOGI("no lshal response; replying with an error message: %s", toString(*updatedValue).c_str());
-
-    return updatedValue;
+android::base::Result<std::unique_ptr<VehiclePropValue>>
+EmulatedUserHal::defaultUserIdentificationAssociation(const VehiclePropValue& request) {
+    // TODO(b/159498909): return a response with NOT_ASSOCIATED_ANY_USER for all requested types
+    ALOGE("no lshal response for %s; replying with NOT_AVAILABLE", toString(request).c_str());
+    return android::base::Error(static_cast<int>(StatusCode::NOT_AVAILABLE)) << "not set by lshal";
 }
 
 android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::sendUserHalResponse(
@@ -276,12 +284,12 @@ android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::sendUs
         case 3:
             ALOGD("not generating a property change event because of lshal prop: %s",
                   toString(*response).c_str());
-            return android::base::Error(static_cast<int>(StatusCode::NOT_AVAILABLE))
+            return android::base::Error((int)StatusCode::NOT_AVAILABLE)
                    << "not generating a property change event because of lshal prop: "
                    << toString(*response);
         default:
             ALOGE("invalid action on lshal response: %s", toString(*response).c_str());
-            return android::base::Error(static_cast<int>(StatusCode::INTERNAL_ERROR))
+            return android::base::Error((int)StatusCode::INTERNAL_ERROR)
                    << "invalid action on lshal response: " << toString(*response);
     }
 
