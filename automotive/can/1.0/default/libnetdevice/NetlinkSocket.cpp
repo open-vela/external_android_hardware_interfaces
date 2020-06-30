@@ -14,20 +14,13 @@
  * limitations under the License.
  */
 
-#include <libnetdevice/NetlinkSocket.h>
-
-#include <libnetdevice/printer.h>
+#include "NetlinkSocket.h"
 
 #include <android-base/logging.h>
 
 namespace android::netdevice {
 
-/**
- * Print all outbound/inbound Netlink messages.
- */
-static constexpr bool kSuperVerbose = false;
-
-NetlinkSocket::NetlinkSocket(int protocol) : mProtocol(protocol) {
+NetlinkSocket::NetlinkSocket(int protocol) {
     mFd.reset(socket(AF_NETLINK, SOCK_RAW, protocol));
     if (!mFd.ok()) {
         PLOG(ERROR) << "Can't open Netlink socket";
@@ -45,13 +38,7 @@ NetlinkSocket::NetlinkSocket(int protocol) : mProtocol(protocol) {
     }
 }
 
-bool NetlinkSocket::send(struct nlmsghdr* nlmsg, size_t totalLen) {
-    if constexpr (kSuperVerbose) {
-        nlmsg->nlmsg_seq = mSeq;
-        LOG(VERBOSE) << (mFailed ? "(not)" : "")
-                     << "sending Netlink message: " << toString(nlmsg, totalLen, mProtocol);
-    }
-
+bool NetlinkSocket::send(struct nlmsghdr* nlmsg) {
     if (mFailed) return false;
 
     nlmsg->nlmsg_pid = 0;  // kernel
@@ -104,11 +91,6 @@ bool NetlinkSocket::receiveAck() {
 
     for (auto nlmsg = reinterpret_cast<struct nlmsghdr*>(buf); NLMSG_OK(nlmsg, remainingLen);
          nlmsg = NLMSG_NEXT(nlmsg, remainingLen)) {
-        if constexpr (kSuperVerbose) {
-            LOG(VERBOSE) << "received Netlink response: "
-                         << toString(nlmsg, sizeof(buf), mProtocol);
-        }
-
         // We're looking for error/ack message only, ignoring others.
         if (nlmsg->nlmsg_type != NLMSG_ERROR) {
             LOG(WARNING) << "Received unexpected Netlink message (ignored): " << nlmsg->nlmsg_type;
