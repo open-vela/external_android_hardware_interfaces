@@ -19,8 +19,7 @@
 #include "MessageDefinition.h"
 #include "common/Empty.h"
 #include "common/Error.h"
-
-#include <libnetdevice/types.h>
+#include "types.h"
 
 #include <string>
 #include <vector>
