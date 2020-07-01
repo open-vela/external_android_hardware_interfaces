@@ -21,7 +21,6 @@
 #include <android/hardware/neuralnetworks/1.3/IPreparedModel.h>
 #include <android/hardware/neuralnetworks/1.3/types.h>
 #include <gtest/gtest.h>
-#include <vector>
 #include "1.0/Utils.h"
 #include "1.3/Callbacks.h"
 

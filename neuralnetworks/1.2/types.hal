@@ -846,7 +846,7 @@ enum OperationType : int32_t {
     HASHTABLE_LOOKUP = @1.1::OperationType:HASHTABLE_LOOKUP,
 
     /**
-     * Applies L2 normalization along the axis dimension.
+     * Applies L2 normalization along the depth dimension.
      *
      * The values in the output tensor are computed as:
      *
@@ -854,7 +854,8 @@ enum OperationType : int32_t {
      *         input[batch, row, col, channel] /
      *         sqrt(sum_{c} pow(input[batch, row, col, c], 2))
      *
-     * By default the axis dimension is the last dimension of the input tensor.
+     * For input tensor with rank less than 4, independently normalizes each
+     * 1-D slice along dimension dim.
      *
      * Supported tensor {@link OperandType}:
      * * {@link OperandType::TENSOR_FLOAT16} (since HAL version 1.2)
@@ -1955,8 +1956,6 @@ enum OperationType : int32_t {
      * * 0: A tensor of the same {@link OperandType} as input0.
      *      For a {@link OperandType::TENSOR_QUANT8_ASYMM} tensor,
      *      the scale and zeroPoint must be the same as input0.
-     *      If all dimensions are reduced and keep_dims is false, the output
-     *      shape is [1].
      */
     MEAN = @1.1::OperationType:MEAN,
 
@@ -2080,8 +2079,6 @@ enum OperationType : int32_t {
      *      removed.
      *      For a {@link OperandType::TENSOR_QUANT8_ASYMM} tensor,
      *      the scale and zeroPoint must be the same as input0.
-     *      If all input dimensions are equal to 1 and are to be squeezed, the
-     *      output shape is [1].
      */
     SQUEEZE = @1.1::OperationType:SQUEEZE,
 
@@ -2129,8 +2126,6 @@ enum OperationType : int32_t {
      *      where k is the number of bits set in shrink_axis_mask.
      *      For a {@link OperandType::TENSOR_QUANT8_ASYMM} tensor,
      *      the scale and zeroPoint must be the same as input0.
-     *      If shrink_axis_mask is true for all input dimensions, the output
-     *      shape is [1].
      */
     STRIDED_SLICE = @1.1::OperationType:STRIDED_SLICE,
 
@@ -2245,7 +2240,6 @@ enum OperationType : int32_t {
      *
      * Outputs:
      * * 0: An (n - 1)-D {@link OperandType::TENSOR_INT32} tensor.
-     *      If input is 1-dimensional, the output shape is [1].
      */
     // There is no underscore in ARG_MAX to avoid name conflict with
     // the macro defined in libc/kernel/uapi/linux/limits.h.
@@ -2270,7 +2264,6 @@ enum OperationType : int32_t {
      *
      * Outputs:
      * * 0: An (n - 1)-D {@link OperandType::TENSOR_INT32} tensor.
-     *      If input is 1-dimensional, the output shape is [1].
      */
     ARGMIN = 40,  // See ARGMAX for naming discussion.
 
@@ -3850,8 +3843,7 @@ enum OperationType : int32_t {
      * * 1: A scalar {@link OperandType::INT32}, specifying the number of
      *      independent samples to draw for each row slice.
      * * 2: A 1-D {@link OperandType::TENSOR_INT32} tensor with shape [2],
-     *      specifying seeds used to initialize the random distribution. If both
-     *      provided seeds are 0, both will be randomly generated.
+     *      specifying seeds used to initialize the random distribution.
      * Outputs:
      * * 0: A 2-D {@link OperandType::TENSOR_INT32} tensor with shape
      *      [batches, samples], containing the drawn samples.
@@ -3880,8 +3872,6 @@ enum OperationType : int32_t {
      *
      * Outputs:
      * * 0: A tensor of the same {@link OperandType} as input0.
-     *      If all dimensions are reduced and keep_dims is false, the output
-     *      shape is [1].
      */
     REDUCE_ALL = 75,
 
@@ -3907,8 +3897,6 @@ enum OperationType : int32_t {
      *
      * Outputs:
      * * 0: A tensor of the same {@link OperandType} as input0.
-     *      If all dimensions are reduced and keep_dims is false, the output
-     *      shape is [1].
      */
     REDUCE_ANY = 76,
 
@@ -3936,8 +3924,6 @@ enum OperationType : int32_t {
      *
      * Outputs:
      * * 0: A tensor of the same {@link OperandType} as input0.
-     *      If all dimensions are reduced and keep_dims is false, the output
-     *      shape is [1].
      *      For a {@link OperandType::TENSOR_QUANT8_ASYMM} tensor,
      *      the scale and zeroPoint must be the same as input0.
      */
@@ -3967,8 +3953,6 @@ enum OperationType : int32_t {
      *
      * Outputs:
      * * 0: A tensor of the same {@link OperandType} as input0.
-     *      If all dimensions are reduced and keep_dims is false, the output
-     *      shape is [1].
      *      For a {@link OperandType::TENSOR_QUANT8_ASYMM} tensor,
      *      the scale and zeroPoint must be the same as input0.
      */
@@ -3996,8 +3980,6 @@ enum OperationType : int32_t {
      *
      * Outputs:
      * * 0: A tensor of the same {@link OperandType} as input0.
-     *      If all dimensions are reduced and keep_dims is false, the output
-     *      shape is [1].
      */
     REDUCE_PROD = 79,
 
@@ -4023,8 +4005,6 @@ enum OperationType : int32_t {
      *
      * Outputs:
      * * 0: A tensor of the same {@link OperandType} as input0.
-     *      If all dimensions are reduced and keep_dims is false, the output
-     *      shape is [1].
      */
     REDUCE_SUM = 80,
 

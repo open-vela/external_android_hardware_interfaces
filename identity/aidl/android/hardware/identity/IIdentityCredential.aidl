@@ -17,10 +17,8 @@
 package android.hardware.identity;
 
 import android.hardware.identity.Certificate;
-import android.hardware.identity.RequestNamespace;
 import android.hardware.identity.SecureAccessControlProfile;
 import android.hardware.keymaster.HardwareAuthToken;
-import android.hardware.keymaster.VerificationToken;
 
 @VintfStability
 interface IIdentityCredential {
@@ -50,8 +48,6 @@ interface IIdentityCredential {
      * with the reader.  The reason for generating the key pair in the secure environment is so that
      * the secure environment knows what public key to expect to find in the session transcript.
      *
-     * The generated key must be an EC key using the P-256 curve.
-     *
      * This method may only be called once per instance. If called more than once, STATUS_FAILED
      * will be returned.
      *
@@ -65,18 +61,16 @@ interface IIdentityCredential {
      * This method may only be called once per instance. If called more than once, STATUS_FAILED
      * will be returned.
      *
-     * @param publicKey contains the reader's ephemeral public key, in uncompressed
-     *        form (e.g. 0x04 || X || Y).
+     * @param publicKey contains the reader's ephemeral public key, in uncompressed form.
      */
     void setReaderEphemeralPublicKey(in byte[] publicKey);
 
     /**
      * Creates a challenge value to be used for proving successful user authentication. This
-     * is included in the authToken passed to the startRetrieval() method and the
-     * verificationToken passed to the setVerificationToken() method.
+     * is included in the authToken passed to the startRetrieval() method.
      *
      * This method may only be called once per instance. If called more than once, STATUS_FAILED
-     * will be returned. If user authentication is not needed, this method may not be called.
+     * will be returned.
      *
      * @return challenge, a non-zero number.
      */
@@ -85,33 +79,18 @@ interface IIdentityCredential {
     /**
      * Start an entry retrieval process.
      *
-     * The setRequestedNamespaces() and setVerificationToken() methods will be called before
-     * this method is called.
-     *
      * This method be called after createEphemeralKeyPair(), setReaderEphemeralPublicKey(),
      * createAuthChallenge() and before startRetrieveEntry(). This method call is followed by
      * multiple calls of startRetrieveEntryValue(), retrieveEntryValue(), and finally
-     * finishRetrieval().
+     * finishRetrieval().This whole process is called a "credential presentation".
      *
-     * It is permissible to perform data retrievals multiple times using the same instance (e.g.
+     * It is permissible to perform multiple credential presentations using the same instance (e.g.
      * startRetrieval(), then multiple calls of startRetrieveEntryValue(), retrieveEntryValue(),
      * then finally finishRetrieval()) but if this is done, the sessionTranscript parameter
      * must be identical for each startRetrieval() invocation. If this is not the case, this call
      * fails with the STATUS_SESSION_TRANSCRIPT_MISMATCH error.
      *
-     * If either authToken or verificationToken (as passed with setVerificationToken())
-     * is not valid this method fails with STATUS_INVALID_AUTH_TOKEN. Note that valid tokens
-     * are only passed if they are actually needed and available (this can be detected by
-     * the timestamp being set to zero). For example, if no data items with access control
-     * profiles using user authentication are requested, the tokens are not filled in.
-     * It's also possible that no usable auth token is actually available (it could be the user
-     * never unlocked the device within the timeouts in the access control profiles) and
-     * in this case the tokens aren't filled in either.
-     *
-     * For test credentials (identified by the testCredential boolean in the CredentialData
-     * CBOR created at provisioning time), the |mac| field in both the authToken and
-     * verificationToken should not be checked against the shared HMAC key (see IKeyMasterDevice
-     * for details). This is to enable VTS tests to check for correct behavior.
+     * If the provided authToken is not valid this method fails with STATUS_INVALID_AUTH_TOKEN.
      *
      * Each of the provided accessControlProfiles is checked in this call. If they are not
      * all valid, the call fails with STATUS_INVALID_DATA.
@@ -151,8 +130,8 @@ interface IIdentityCredential {
      *   IntentToRetain = bool
      *
      * For the readerSignature parameter, this can either be empty or if non-empty it
-     * must be a COSE_Sign1 where the payload is the bytes of the
-     * ReaderAuthenticationBytes CBOR defined below:
+     * must be a COSE_Sign1 structure with an ECDSA signature over the content of the
+     * CBOR conforming to the following CDDL:
      *
      *     ReaderAuthentication = [
      *       "ReaderAuthentication",
@@ -160,11 +139,14 @@ interface IIdentityCredential {
      *       ItemsRequestBytes
      *     ]
      *
-     *     SessionTranscript = any
+     *     SessionTranscript = [
+     *       DeviceEngagementBytes,
+     *       EReaderKeyBytes
+     *     ]
      *
+     *     DeviceEngagementBytes = #6.24(bstr .cbor DeviceEngagement)
+     *     EReaderKeyBytes = #6.24(bstr .cbor EReaderKey.Pub)
      *     ItemsRequestBytes = #6.24(bstr .cbor ItemsRequest)
-     *
-     *     ReaderAuthenticationBytes = #6.24(bstr .cbor ReaderAuthentication)
      *
      * The public key corresponding to the key used to made signature, can be found in the
      * 'x5chain' unprotected header element of the COSE_Sign1 structure (as as described
@@ -179,12 +161,8 @@ interface IIdentityCredential {
      *
      * If the SessionTranscript CBOR is not empty, the X and Y coordinates of the public
      * part of the key-pair previously generated by createEphemeralKeyPair() must appear
-     * somewhere in the bytes of the CBOR. Each of these coordinates must appear encoded
-     * with the most significant bits first and use the exact amount of bits indicated by
-     * the key size of the ephemeral keys. For example, if the ephemeral key is using the
-     * P-256 curve then the 32 bytes for the X coordinate encoded with the most significant
-     * bits first must appear somewhere in the CBOR and ditto for the 32 bytes for the Y
-     * coordinate. If this is not satisfied, the call fails with
+     * somewhere in the bytes of DeviceEngagement structure. Both X and Y should be in
+     * uncompressed form. If this is not satisfied, the call fails with
      * STATUS_EPHEMERAL_PUBLIC_KEY_NOT_FOUND.
      *
      * @param accessControlProfiles
@@ -193,8 +171,7 @@ interface IIdentityCredential {
      *
      * @param authToken
      *   The authentication token that proves the user was authenticated, as required
-     *   by one or more of the provided accessControlProfiles. This token is only valid
-     *   if the timestamp field is non-zero. See above.
+     *   by one or more of the provided accessControlProfiles. See above.
      *
      * @param itemsRequest
      *   If non-empty, contains request data that is signed by the reader. See above.
@@ -243,11 +220,13 @@ interface IIdentityCredential {
      *
      * It is permissible to keep retrieving values if an access control check fails.
      *
-     * @param nameSpace is the namespace of the element, e.g. "org.iso.18013.5.1"
+     * @param nameSpace is the namespace of the element, e.g. "org.iso.18013"
      *
-     * @param name is the name of the element, e.g. "driving_privileges".
+     * @param name is the name of the element.
      *
-     * @param entrySize is the size of the entry value encoded in CBOR.
+     * @param entrySize is the size of the entry value, if it's a text string or a byte string.
+     *     It must be zero if the entry value is an integer or boolean. If this requirement
+     *     is not met the call fails with STATUS_INVALID_DATA.
      *
      * @param accessControlProfileIds specifies the set of access control profiles that can
      *     authorize access to the provisioned element. If an identifier of a profile
@@ -280,28 +259,33 @@ interface IIdentityCredential {
      *
      * @param out mac is empty if signingKeyBlob or the sessionTranscript passed to
      *    startRetrieval() is empty. Otherwise it is a COSE_Mac0 with empty payload
-     *    and the detached content is set to DeviceAuthenticationBytes as defined below.
-     *    This code is produced by using the key agreement and key derivation function
-     *    from the ciphersuite with the authentication private key and the reader
-     *    ephemeral public key to compute a shared message authentication code (MAC)
-     *    key, then using the MAC function from the ciphersuite to compute a MAC of
-     *    the authenticated data. See section 9.2.3.5 of ISO/IEC 18013-5 for details
-     *    of this operation.
+     *    and the detached content is set to DeviceAuthentication as defined below.
+     *    The key used for the MAC operation is EMacKey and is derived as follows:
+     *
+     *     KDF(ECDH(SDeviceKey.Priv, EReaderKey.Pub))
+     *
+     *    where SDeviceKey.Priv is the key identified by signingKeyBlob. The KDF
+     *    and ECDH functions shall be the same as the ciphersuite selected and
+     *    passed to IIdentityStore.getCredential(). The EMacKey shall be derived
+     *    using a salt of 0x00.
      *
      *        DeviceAuthentication = [
      *            "DeviceAuthentication",
      *            SessionTranscript,
      *            DocType,
-     *            DeviceNameSpacesBytes,
+     *            DeviceNameSpaceBytes,
      *        ]
      *
      *        DocType = tstr
      *
-     *        SessionTranscript = any
+     *        SessionTranscript = [
+     *            DeviceEngagementBytes,
+     *            EReaderKeyBytes
+     *        ]
      *
+     *        DeviceEngagementBytes = #6.24(bstr .cbor DeviceEngagement)
+     *        EReaderKeyBytes = #6.24(bstr .cbor EReaderKey.Pub)
      *        DeviceNameSpacesBytes = #6.24(bstr .cbor DeviceNameSpaces)
-     *
-     *        DeviceAuthenticationBytes = #6.24(bstr .cbor DeviceAuthentication)
      *
      *    where
      *
@@ -324,60 +308,10 @@ interface IIdentityCredential {
     /**
      * Generate a key pair to be used for signing session data and retrieved data items.
      *
-     * The generated key must be an EC key using the P-256 curve.
-     *
-     * This method shall return just a single X.509 certificate which is signed by CredentialKey.
-     * When combined with the certificate chain returned at provisioning time by
-     * getAttestationCertificate() on IWritableIdentityCredential (for the credential key), this
-     * forms a chain all the way from the root of trust to the generated key.
-     *
-     * The public part of a signing key is usually included in issuer-signed data and is
-     * used for anti-cloning purposes or as a mechanism for the issuer to attest to data
-     * generated on the device.
-     *
-     * The following non-optional fields for the X.509 certificate shall be set as follows:
-     *
-     *  - version: INTEGER 2 (means v3 certificate).
-     *
-     *  - serialNumber: INTEGER 1 (fixed value: same on all certs).
-     *
-     *  - signature: must be set to ECDSA.
-     *
-     *  - subject: CN shall be set to "Android Identity Credential Authentication Key".
-     *
-     *  - issuer: shall be set to "credentialStoreName (credentialStoreAuthorName)" using the
-     *    values returned in HardwareInformation.
-     *
-     *  - validity: should be from current time and one year in the future.
-     *
-     *  - subjectPublicKeyInfo: must contain attested public key.
-     *
-     * @param out signingKeyBlob contains an AES-GCM-ENC(storageKey, R, signingKey, docType)
-     *     where signingKey is an EC private key in uncompressed form. That is, the returned
-     *     blob is an encrypted copy of the newly-generated private signing key.
+     * @param out signingKeyBlob contains an encrypted copy of the newly-generated private
+     *     signing key.
      *
      * @return an X.509 certificate for the new signing key, signed by the credential key.
      */
     Certificate generateSigningKeyPair(out byte[] signingKeyBlob);
-
-    /**
-     * Sets the namespaces and data items (including their size and access control profiles)
-     * which will be requested. This method must be called before startRetrieval() is called.
-     *
-     * This information is provided to make it possible for a HAL implementation to
-     * incrementally build up cryptographically authenticated data which includes the
-     * DeviceNameSpaces CBOR.
-     *
-     * @param requestNamespaces Namespaces and data items which will be requested.
-     */
-    void setRequestedNamespaces(in RequestNamespace[] requestNamespaces);
-
-   /**
-    * Sets the VerificationToken. This method must be called before startRetrieval() is
-    * called. This token uses the same challenge as returned by createAuthChallenge().
-    *
-    * @param verificationToken
-    *   The verification token. This token is only valid if the timestamp field is non-zero.
-    */
-    void setVerificationToken(in VerificationToken verificationToken);
 }

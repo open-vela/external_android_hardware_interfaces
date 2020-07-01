@@ -299,11 +299,9 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidPeriodicity2) {
 }
 
 /*
- * The following test is disabled due to b/112206766
- *
  * Test IRadio.startNetworkScan() with valid periodicity
  */
-TEST_P(RadioHidlTest_v1_2, DISABLED_startNetworkScan_GoodRequest1) {
+TEST_P(RadioHidlTest_v1_2, startNetworkScan_GoodRequest1) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {
@@ -335,11 +333,9 @@ TEST_P(RadioHidlTest_v1_2, DISABLED_startNetworkScan_GoodRequest1) {
 }
 
 /*
- * The following test is disabled due to b/112206766
- *
  * Test IRadio.startNetworkScan() with valid periodicity and plmns
  */
-TEST_P(RadioHidlTest_v1_2, DISABLED_startNetworkScan_GoodRequest2) {
+TEST_P(RadioHidlTest_v1_2, startNetworkScan_GoodRequest2) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {
@@ -735,7 +731,7 @@ TEST_P(RadioHidlTest_v1_2, getDataRegistrationState) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_2->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_2->rspInfo.serial);
 
-    ALOGI("getDataRegistrationStateResponse_1_2, rspInfo.error = %s\n",
+    ALOGI("getVoiceRegistrationStateResponse_1_2, rspInfo.error = %s\n",
           toString(radioRsp_v1_2->rspInfo.error).c_str());
     ASSERT_TRUE(CheckAnyOfErrors(
         radioRsp_v1_2->rspInfo.error,
