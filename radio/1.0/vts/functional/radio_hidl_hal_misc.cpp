@@ -14,14 +14,12 @@
  * limitations under the License.
  */
 
-#include <android-base/logging.h>
 #include <radio_hidl_hal_utils_v1_0.h>
 
 /*
  * Test IRadio.getSignalStrength() for the response returned.
  */
 TEST_P(RadioHidlTest, getSignalStrength) {
-    LOG(DEBUG) << "getSignalStrength";
     serial = GetRandomSerialNumber();
 
     radio->getSignalStrength(serial);
@@ -32,14 +30,12 @@ TEST_P(RadioHidlTest, getSignalStrength) {
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
     }
-    LOG(DEBUG) << "getSignalStrength finished";
 }
 
 /*
  * Test IRadio.getVoiceRegistrationState() for the response returned.
  */
 TEST_P(RadioHidlTest, getVoiceRegistrationState) {
-    LOG(DEBUG) << "getVoiceRegistrationState";
     serial = GetRandomSerialNumber();
 
     radio->getVoiceRegistrationState(serial);
@@ -50,14 +46,12 @@ TEST_P(RadioHidlTest, getVoiceRegistrationState) {
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
     }
-    LOG(DEBUG) << "getVoiceRegistrationState finished";
 }
 
 /*
  * Test IRadio.getOperator() for the response returned.
  */
 TEST_P(RadioHidlTest, getOperator) {
-    LOG(DEBUG) << "getOperator";
     serial = GetRandomSerialNumber();
 
     radio->getOperator(serial);
@@ -68,14 +62,12 @@ TEST_P(RadioHidlTest, getOperator) {
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
     }
-    LOG(DEBUG) << "getOperator finished";
 }
 
 /*
  * Test IRadio.setRadioPower() for the response returned.
  */
 TEST_P(RadioHidlTest, setRadioPower) {
-    LOG(DEBUG) << "setRadioPower";
     serial = GetRandomSerialNumber();
 
     radio->setRadioPower(serial, 1);
@@ -86,14 +78,12 @@ TEST_P(RadioHidlTest, setRadioPower) {
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
     }
-    LOG(DEBUG) << "setRadioPower finished";
 }
 
 /*
  * Test IRadio.getNetworkSelectionMode() for the response returned.
  */
 TEST_P(RadioHidlTest, getNetworkSelectionMode) {
-    LOG(DEBUG) << "getNetworkSelectionMode";
     serial = GetRandomSerialNumber();
 
     radio->getNetworkSelectionMode(serial);
@@ -104,14 +94,12 @@ TEST_P(RadioHidlTest, getNetworkSelectionMode) {
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
     }
-    LOG(DEBUG) << "getNetworkSelectionMode finished";
 }
 
 /*
  * Test IRadio.setNetworkSelectionModeAutomatic() for the response returned.
  */
 TEST_P(RadioHidlTest, setNetworkSelectionModeAutomatic) {
-    LOG(DEBUG) << "setNetworkSelectionModeAutomatic";
     serial = GetRandomSerialNumber();
 
     radio->setNetworkSelectionModeAutomatic(serial);
@@ -125,14 +113,12 @@ TEST_P(RadioHidlTest, setNetworkSelectionModeAutomatic) {
             {RadioError::NONE, RadioError::ILLEGAL_SIM_OR_ME, RadioError::OPERATION_NOT_ALLOWED},
             CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "setNetworkSelectionModeAutomatic finished";
 }
 
 /*
  * Test IRadio.setNetworkSelectionModeManual() for the response returned.
  */
 TEST_P(RadioHidlTest, setNetworkSelectionModeManual) {
-    LOG(DEBUG) << "setNetworkSelectionModeManual";
     serial = GetRandomSerialNumber();
 
     radio->setNetworkSelectionModeManual(serial, "123456");
@@ -146,14 +132,12 @@ TEST_P(RadioHidlTest, setNetworkSelectionModeManual) {
                                       RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE},
                                      CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "setNetworkSelectionModeManual finished";
 }
 
 /*
  * Test IRadio.getAvailableNetworks() for the response returned.
  */
 TEST_P(RadioHidlTest, getAvailableNetworks) {
-    LOG(DEBUG) << "getAvailableNetworks";
     serial = GetRandomSerialNumber();
 
     radio->getAvailableNetworks(serial);
@@ -169,14 +153,12 @@ TEST_P(RadioHidlTest, getAvailableNetworks) {
                               RadioError::MODEM_ERR, RadioError::OPERATION_NOT_ALLOWED},
                              CHECK_GENERAL_ERROR));
   }
-  LOG(DEBUG) << "getAvailableNetworks finished";
 }
 
 /*
  * Test IRadio.getBasebandVersion() for the response returned.
  */
 TEST_P(RadioHidlTest, getBasebandVersion) {
-    LOG(DEBUG) << "getBasebandVersion";
     serial = GetRandomSerialNumber();
 
     radio->getBasebandVersion(serial);
@@ -187,14 +169,12 @@ TEST_P(RadioHidlTest, getBasebandVersion) {
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
     }
-    LOG(DEBUG) << "getBasebandVersion finished";
 }
 
 /*
  * Test IRadio.setBandMode() for the response returned.
  */
 TEST_P(RadioHidlTest, setBandMode) {
-    LOG(DEBUG) << "setBandMode";
     serial = GetRandomSerialNumber();
 
     radio->setBandMode(serial, RadioBandMode::BAND_MODE_USA);
@@ -206,14 +186,12 @@ TEST_P(RadioHidlTest, setBandMode) {
         ASSERT_TRUE(
             CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::NONE}, CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "setBandMode finished";
 }
 
 /*
  * Test IRadio.getAvailableBandModes() for the response returned.
  */
 TEST_P(RadioHidlTest, getAvailableBandModes) {
-    LOG(DEBUG) << "getAvailableBandModes";
     serial = GetRandomSerialNumber();
 
     radio->getAvailableBandModes(serial);
@@ -224,14 +202,12 @@ TEST_P(RadioHidlTest, getAvailableBandModes) {
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
     }
-    LOG(DEBUG) << "getAvailableBandModes finished";
 }
 
 /*
  * Test IRadio.setPreferredNetworkType() for the response returned.
  */
 TEST_P(RadioHidlTest, setPreferredNetworkType) {
-    LOG(DEBUG) << "setPreferredNetworkType";
     serial = GetRandomSerialNumber();
 
     radio->setPreferredNetworkType(serial, PreferredNetworkType::GSM_ONLY);
@@ -243,14 +219,12 @@ TEST_P(RadioHidlTest, setPreferredNetworkType) {
         ASSERT_TRUE(
             CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::NONE}, CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "setPreferredNetworkType finished";
 }
 
 /*
  * Test IRadio.getPreferredNetworkType() for the response returned.
  */
 TEST_P(RadioHidlTest, getPreferredNetworkType) {
-    LOG(DEBUG) << "getPreferredNetworkType";
     serial = GetRandomSerialNumber();
 
     radio->getPreferredNetworkType(serial);
@@ -261,14 +235,12 @@ TEST_P(RadioHidlTest, getPreferredNetworkType) {
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
     }
-    LOG(DEBUG) << "getPreferredNetworkType finished";
 }
 
 /*
  * Test IRadio.getNeighboringCids() for the response returned.
  */
 TEST_P(RadioHidlTest, getNeighboringCids) {
-    LOG(DEBUG) << "getNeighboringCids";
     serial = GetRandomSerialNumber();
 
     radio->getNeighboringCids(serial);
@@ -281,14 +253,12 @@ TEST_P(RadioHidlTest, getNeighboringCids) {
                                      {RadioError::NONE, RadioError::SIM_ABSENT},
                                      CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "getNeighboringCids finished";
 }
 
 /*
  * Test IRadio.setLocationUpdates() for the response returned.
  */
 TEST_P(RadioHidlTest, setLocationUpdates) {
-    LOG(DEBUG) << "setLocationUpdates";
     serial = GetRandomSerialNumber();
 
     radio->setLocationUpdates(serial, true);
@@ -300,14 +270,12 @@ TEST_P(RadioHidlTest, setLocationUpdates) {
         ASSERT_TRUE(
             CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::NONE, RadioError::SIM_ABSENT}));
     }
-    LOG(DEBUG) << "setLocationUpdates finished";
 }
 
 /*
  * Test IRadio.setCdmaRoamingPreference() for the response returned.
  */
 TEST_P(RadioHidlTest, setCdmaRoamingPreference) {
-    LOG(DEBUG) << "setCdmaRoamingPreference";
     serial = GetRandomSerialNumber();
 
     radio->setCdmaRoamingPreference(serial, CdmaRoamingType::HOME_NETWORK);
@@ -320,14 +288,12 @@ TEST_P(RadioHidlTest, setCdmaRoamingPreference) {
             radioRsp->rspInfo.error,
             {RadioError::NONE, RadioError::SIM_ABSENT, RadioError::REQUEST_NOT_SUPPORTED}));
     }
-    LOG(DEBUG) << "setCdmaRoamingPreference finished";
 }
 
 /*
  * Test IRadio.getCdmaRoamingPreference() for the response returned.
  */
 TEST_P(RadioHidlTest, getCdmaRoamingPreference) {
-    LOG(DEBUG) << "getCdmaRoamingPreference";
     serial = GetRandomSerialNumber();
 
     radio->getCdmaRoamingPreference(serial);
@@ -341,14 +307,12 @@ TEST_P(RadioHidlTest, getCdmaRoamingPreference) {
                              {RadioError::NONE, RadioError::SIM_ABSENT, RadioError::MODEM_ERR},
                              CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "getCdmaRoamingPreference finished";
 }
 
 /*
  * Test IRadio.getTTYMode() for the response returned.
  */
 TEST_P(RadioHidlTest, getTTYMode) {
-    LOG(DEBUG) << "getTTYMode";
     serial = GetRandomSerialNumber();
 
     radio->getTTYMode(serial);
@@ -359,14 +323,12 @@ TEST_P(RadioHidlTest, getTTYMode) {
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
     }
-    LOG(DEBUG) << "getTTYMode finished";
 }
 
 /*
  * Test IRadio.setTTYMode() for the response returned.
  */
 TEST_P(RadioHidlTest, setTTYMode) {
-    LOG(DEBUG) << "setTTYMode";
     serial = GetRandomSerialNumber();
 
     radio->setTTYMode(serial, TtyMode::OFF);
@@ -377,14 +339,12 @@ TEST_P(RadioHidlTest, setTTYMode) {
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
     }
-    LOG(DEBUG) << "setTTYMode finished";
 }
 
 /*
  * Test IRadio.setPreferredVoicePrivacy() for the response returned.
  */
 TEST_P(RadioHidlTest, setPreferredVoicePrivacy) {
-    LOG(DEBUG) << "setPreferredVoicePrivacy";
     serial = GetRandomSerialNumber();
 
     radio->setPreferredVoicePrivacy(serial, true);
@@ -396,14 +356,12 @@ TEST_P(RadioHidlTest, setPreferredVoicePrivacy) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
                                      {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED}));
     }
-    LOG(DEBUG) << "setPreferredVoicePrivacy finished";
 }
 
 /*
  * Test IRadio.getPreferredVoicePrivacy() for the response returned.
  */
 TEST_P(RadioHidlTest, getPreferredVoicePrivacy) {
-    LOG(DEBUG) << "getPreferredVoicePrivacy";
     serial = GetRandomSerialNumber();
 
     radio->getPreferredVoicePrivacy(serial);
@@ -415,14 +373,12 @@ TEST_P(RadioHidlTest, getPreferredVoicePrivacy) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
                                      {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED}));
     }
-    LOG(DEBUG) << "getPreferredVoicePrivacy finished";
 }
 
 /*
  * Test IRadio.getCDMASubscription() for the response returned.
  */
 TEST_P(RadioHidlTest, getCDMASubscription) {
-    LOG(DEBUG) << "getCDMASubscription";
     serial = GetRandomSerialNumber();
 
     radio->getCDMASubscription(serial);
@@ -435,14 +391,12 @@ TEST_P(RadioHidlTest, getCDMASubscription) {
             radioRsp->rspInfo.error,
             {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED, RadioError::SIM_ABSENT}));
     }
-    LOG(DEBUG) << "getCDMASubscription finished";
 }
 
 /*
  * Test IRadio.getDeviceIdentity() for the response returned.
  */
 TEST_P(RadioHidlTest, getDeviceIdentity) {
-    LOG(DEBUG) << "getDeviceIdentity";
     serial = GetRandomSerialNumber();
 
     radio->getDeviceIdentity(serial);
@@ -454,14 +408,12 @@ TEST_P(RadioHidlTest, getDeviceIdentity) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
                                      {RadioError::NONE, RadioError::EMPTY_RECORD}));
     }
-    LOG(DEBUG) << "getDeviceIdentity finished";
 }
 
 /*
  * Test IRadio.exitEmergencyCallbackMode() for the response returned.
  */
 TEST_P(RadioHidlTest, exitEmergencyCallbackMode) {
-    LOG(DEBUG) << "exitEmergencyCallbackMode";
     serial = GetRandomSerialNumber();
 
     radio->exitEmergencyCallbackMode(serial);
@@ -474,14 +426,12 @@ TEST_P(RadioHidlTest, exitEmergencyCallbackMode) {
             radioRsp->rspInfo.error,
             {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED, RadioError::SIM_ABSENT}));
     }
-    LOG(DEBUG) << "exitEmergencyCallbackMode finished";
 }
 
 /*
  * Test IRadio.getCdmaSubscriptionSource() for the response returned.
  */
 TEST_P(RadioHidlTest, getCdmaSubscriptionSource) {
-    LOG(DEBUG) << "getCdmaSubscriptionSource";
     serial = GetRandomSerialNumber();
 
     radio->getCdmaSubscriptionSource(serial);
@@ -494,14 +444,12 @@ TEST_P(RadioHidlTest, getCdmaSubscriptionSource) {
             radioRsp->rspInfo.error,
             {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED, RadioError::SIM_ABSENT}));
     }
-    LOG(DEBUG) << "getCdmaSubscriptionSource finished";
 }
 
 /*
  * Test IRadio.setCdmaSubscriptionSource() for the response returned.
  */
 TEST_P(RadioHidlTest, setCdmaSubscriptionSource) {
-    LOG(DEBUG) << "setCdmaSubscriptionSource";
     serial = GetRandomSerialNumber();
 
     radio->setCdmaSubscriptionSource(serial, CdmaSubscriptionSource::RUIM_SIM);
@@ -515,14 +463,12 @@ TEST_P(RadioHidlTest, setCdmaSubscriptionSource) {
             {RadioError::NONE, RadioError::SIM_ABSENT, RadioError::SUBSCRIPTION_NOT_AVAILABLE},
             CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "setCdmaSubscriptionSource finished";
 }
 
 /*
  * Test IRadio.getVoiceRadioTechnology() for the response returned.
  */
 TEST_P(RadioHidlTest, getVoiceRadioTechnology) {
-    LOG(DEBUG) << "getVoiceRadioTechnology";
     serial = GetRandomSerialNumber();
 
     radio->getVoiceRadioTechnology(serial);
@@ -533,14 +479,12 @@ TEST_P(RadioHidlTest, getVoiceRadioTechnology) {
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
     }
-    LOG(DEBUG) << "getVoiceRadioTechnology finished";
 }
 
 /*
  * Test IRadio.getCellInfoList() for the response returned.
  */
 TEST_P(RadioHidlTest, getCellInfoList) {
-    LOG(DEBUG) << "getCellInfoList";
     serial = GetRandomSerialNumber();
 
     radio->getCellInfoList(serial);
@@ -553,14 +497,12 @@ TEST_P(RadioHidlTest, getCellInfoList) {
                                      {RadioError::NONE, RadioError::NO_NETWORK_FOUND},
                                      CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "getCellInfoList finished";
 }
 
 /*
  * Test IRadio.setCellInfoListRate() for the response returned.
  */
 TEST_P(RadioHidlTest, setCellInfoListRate) {
-    LOG(DEBUG) << "setCellInfoListRate";
     serial = GetRandomSerialNumber();
 
     // TODO(sanketpadawe): RIL crashes with value of rate = 10
@@ -573,14 +515,12 @@ TEST_P(RadioHidlTest, setCellInfoListRate) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
                                      {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED}));
     }
-    LOG(DEBUG) << "setCellInfoListRate finished";
 }
 
 /*
  * Test IRadio.nvReadItem() for the response returned.
  */
 TEST_P(RadioHidlTest, nvReadItem) {
-    LOG(DEBUG) << "nvReadItem";
     serial = GetRandomSerialNumber();
 
     radio->nvReadItem(serial, NvItem::LTE_BAND_ENABLE_25);
@@ -592,14 +532,12 @@ TEST_P(RadioHidlTest, nvReadItem) {
         ASSERT_TRUE(
             CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::NONE}, CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "nvReadItem finished";
 }
 
 /*
  * Test IRadio.nvWriteItem() for the response returned.
  */
 TEST_P(RadioHidlTest, nvWriteItem) {
-    LOG(DEBUG) << "nvWriteItem";
     serial = GetRandomSerialNumber();
     NvWriteItem item;
     memset(&item, 0, sizeof(item));
@@ -614,14 +552,12 @@ TEST_P(RadioHidlTest, nvWriteItem) {
         ASSERT_TRUE(
             CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::NONE}, CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "nvWriteItem finished";
 }
 
 /*
  * Test IRadio.nvWriteCdmaPrl() for the response returned.
  */
 TEST_P(RadioHidlTest, nvWriteCdmaPrl) {
-    LOG(DEBUG) << "nvWriteCdmaPrl";
     serial = GetRandomSerialNumber();
     std::vector<uint8_t> prl = {1, 2, 3, 4, 5};
 
@@ -634,17 +570,15 @@ TEST_P(RadioHidlTest, nvWriteCdmaPrl) {
         ASSERT_TRUE(
             CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::NONE}, CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "nvWriteCdmaPrl finished";
 }
 
 /*
  * Test IRadio.nvResetConfig() for the response returned.
  */
 TEST_P(RadioHidlTest, nvResetConfig) {
-    LOG(DEBUG) << "nvResetConfig";
     serial = GetRandomSerialNumber();
 
-    radio->nvResetConfig(serial, ResetNvType::FACTORY_RESET);
+    radio->nvResetConfig(serial, ResetNvType::ERASE);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp->rspInfo.type);
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
@@ -653,14 +587,12 @@ TEST_P(RadioHidlTest, nvResetConfig) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
                                      {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED}));
     }
-    LOG(DEBUG) << "nvResetConfig finished";
 }
 
 /*
  * Test IRadio.setUiccSubscription() for the response returned.
  */
 TEST_P(RadioHidlTest, setUiccSubscription) {
-    LOG(DEBUG) << "setUiccSubscription";
     serial = GetRandomSerialNumber();
     SelectUiccSub item;
     memset(&item, 0, sizeof(item));
@@ -677,14 +609,12 @@ TEST_P(RadioHidlTest, setUiccSubscription) {
                               RadioError::MODEM_ERR, RadioError::SUBSCRIPTION_NOT_SUPPORTED},
                              CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "setUiccSubscription finished";
 }
 
 /*
  * Test IRadio.getHardwareConfig() for the response returned.
  */
 TEST_P(RadioHidlTest, getHardwareConfig) {
-    LOG(DEBUG) << "getHardwareConfig";
     serial = GetRandomSerialNumber();
 
     radio->getHardwareConfig(serial);
@@ -696,15 +626,12 @@ TEST_P(RadioHidlTest, getHardwareConfig) {
         ASSERT_TRUE(
             CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::NONE}, CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "getHardwareConfig finished";
 }
 
 /*
- * The following test is disabled due to b/64734869
- *
  * Test IRadio.requestShutdown() for the response returned.
  */
-TEST_P(RadioHidlTest, DISABLED_requestShutdown) {
+TEST_P(RadioHidlTest, requestShutdown) {
     serial = GetRandomSerialNumber();
 
     radio->requestShutdown(serial);
@@ -722,7 +649,6 @@ TEST_P(RadioHidlTest, DISABLED_requestShutdown) {
  * Test IRadio.getRadioCapability() for the response returned.
  */
 TEST_P(RadioHidlTest, getRadioCapability) {
-    LOG(DEBUG) << "getRadioCapability";
     serial = GetRandomSerialNumber();
 
     radio->getRadioCapability(serial);
@@ -733,14 +659,12 @@ TEST_P(RadioHidlTest, getRadioCapability) {
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
     }
-    LOG(DEBUG) << "getRadioCapability finished";
 }
 
 /*
  * Test IRadio.setRadioCapability() for the response returned.
  */
 TEST_P(RadioHidlTest, setRadioCapability) {
-    LOG(DEBUG) << "setRadioCapability";
     serial = GetRandomSerialNumber();
     RadioCapability rc;
     memset(&rc, 0, sizeof(rc));
@@ -756,14 +680,12 @@ TEST_P(RadioHidlTest, setRadioCapability) {
                                      {RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE},
                                      CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "setRadioCapability finished";
 }
 
 /*
  * Test IRadio.startLceService() for the response returned.
  */
 TEST_P(RadioHidlTest, startLceService) {
-    LOG(DEBUG) << "startLceService";
     serial = GetRandomSerialNumber();
 
     radio->startLceService(serial, 5, true);
@@ -777,14 +699,12 @@ TEST_P(RadioHidlTest, startLceService) {
             {RadioError::INTERNAL_ERR, RadioError::LCE_NOT_SUPPORTED,
              RadioError::RADIO_NOT_AVAILABLE, RadioError::SIM_ABSENT, RadioError::NONE}));
     }
-    LOG(DEBUG) << "startLceService finished";
 }
 
 /*
  * Test IRadio.stopLceService() for the response returned.
  */
 TEST_P(RadioHidlTest, stopLceService) {
-    LOG(DEBUG) << "stopLceService";
     serial = GetRandomSerialNumber();
 
     radio->stopLceService(serial);
@@ -797,14 +717,12 @@ TEST_P(RadioHidlTest, stopLceService) {
                                      {RadioError::NONE, RadioError::LCE_NOT_SUPPORTED,
                                       RadioError::REQUEST_NOT_SUPPORTED, RadioError::SIM_ABSENT}));
     }
-    LOG(DEBUG) << "stopLceService finished";
 }
 
 /*
  * Test IRadio.pullLceData() for the response returned.
  */
 TEST_P(RadioHidlTest, pullLceData) {
-    LOG(DEBUG) << "pullLceData";
     serial = GetRandomSerialNumber();
 
     radio->pullLceData(serial);
@@ -818,14 +736,12 @@ TEST_P(RadioHidlTest, pullLceData) {
                                       RadioError::RADIO_NOT_AVAILABLE, RadioError::SIM_ABSENT},
                                      CHECK_OEM_ERROR));
     }
-    LOG(DEBUG) << "pullLceData finished";
 }
 
 /*
  * Test IRadio.getModemActivityInfo() for the response returned.
  */
 TEST_P(RadioHidlTest, getModemActivityInfo) {
-    LOG(DEBUG) << "getModemActivityInfo";
     serial = GetRandomSerialNumber();
 
     radio->getModemActivityInfo(serial);
@@ -837,15 +753,12 @@ TEST_P(RadioHidlTest, getModemActivityInfo) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
                                      {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED}));
     }
-    LOG(DEBUG) << "getModemActivityInfo finished";
 }
 
 /*
- * The following test is disabled due to b/79930549
- *
  * Test IRadio.setAllowedCarriers() for the response returned.
  */
-TEST_P(RadioHidlTest, DISABLED_setAllowedCarriers) {
+TEST_P(RadioHidlTest, setAllowedCarriers) {
     serial = GetRandomSerialNumber();
     CarrierRestrictions carriers;
     memset(&carriers, 0, sizeof(carriers));
@@ -923,7 +836,6 @@ TEST_P(RadioHidlTest, DISABLED_setAllowedCarriers) {
  * Test IRadio.getAllowedCarriers() for the response returned.
  */
 TEST_P(RadioHidlTest, getAllowedCarriers) {
-    LOG(DEBUG) << "getAllowedCarriers";
     serial = GetRandomSerialNumber();
 
     radio->getAllowedCarriers(serial);
@@ -935,14 +847,12 @@ TEST_P(RadioHidlTest, getAllowedCarriers) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
                                      {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED}));
     }
-    LOG(DEBUG) << "getAllowedCarriers finished";
 }
 
 /*
  * Test IRadio.sendDeviceState() for the response returned.
  */
 TEST_P(RadioHidlTest, sendDeviceState) {
-    LOG(DEBUG) << "sendDeviceState";
     serial = GetRandomSerialNumber();
 
     radio->sendDeviceState(serial, DeviceStateType::POWER_SAVE_MODE, true);
@@ -956,14 +866,12 @@ TEST_P(RadioHidlTest, sendDeviceState) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
                                      {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED}));
     }
-    LOG(DEBUG) << "sendDeviceState finished";
 }
 
 /*
  * Test IRadio.setIndicationFilter() for the response returned.
  */
 TEST_P(RadioHidlTest, setIndicationFilter) {
-    LOG(DEBUG) << "setIndicationFilter";
     serial = GetRandomSerialNumber();
 
     radio->setIndicationFilter(serial, 1);
@@ -977,14 +885,12 @@ TEST_P(RadioHidlTest, setIndicationFilter) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
                                      {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED}));
     }
-    LOG(DEBUG) << "setIndicationFilter finished";
 }
 
 /*
  * Test IRadio.setSimCardPower() for the response returned.
  */
 TEST_P(RadioHidlTest, setSimCardPower) {
-    LOG(DEBUG) << "setSimCardPower";
     serial = GetRandomSerialNumber();
 
     radio->setSimCardPower(serial, true);
@@ -996,5 +902,4 @@ TEST_P(RadioHidlTest, setSimCardPower) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
                                      {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED}));
     }
-    LOG(DEBUG) << "setSimCardPower finished";
 }
