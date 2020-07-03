@@ -503,21 +503,15 @@ TEST_P(RadioHidlTest_v1_5, areUiccApplicationsEnabled) {
 TEST_P(RadioHidlTest_v1_5, setSystemSelectionChannels_1_5) {
     serial = GetRandomSerialNumber();
 
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands bandP900;
-    bandP900.geranBands() = {GeranBands::BAND_P900};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands band850;
-    band850.geranBands() = {GeranBands::BAND_850};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifierP900 = {
-            .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = bandP900,
-            .channels = {1, 2}};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier850 = {
-            .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = band850,
-            .channels = {128, 129}};
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
+    rasBands.geranBands() = {GeranBands::BAND_450, GeranBands::BAND_480};
 
-    Return<void> res =
-            radio_v1_5->setSystemSelectionChannels_1_5(serial, true, {specifierP900, specifier850});
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier = {
+            .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
+            .bands = rasBands,
+            .channels = {1, 2}};
+
+    Return<void> res = radio_v1_5->setSystemSelectionChannels_1_5(serial, true, {specifier});
     ASSERT_OK(res);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
@@ -530,8 +524,7 @@ TEST_P(RadioHidlTest_v1_5, setSystemSelectionChannels_1_5) {
 
     if (radioRsp_v1_5->rspInfo.error == RadioError::NONE) {
         serial = GetRandomSerialNumber();
-        Return<void> res = radio_v1_5->setSystemSelectionChannels_1_5(
-                serial, false, {specifierP900, specifier850});
+        Return<void> res = radio_v1_5->setSystemSelectionChannels_1_5(serial, false, {specifier});
         ASSERT_OK(res);
         EXPECT_EQ(std::cv_status::no_timeout, wait());
         EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
@@ -548,23 +541,18 @@ TEST_P(RadioHidlTest_v1_5, setSystemSelectionChannels_1_5) {
 TEST_P(RadioHidlTest_v1_5, startNetworkScan) {
     serial = GetRandomSerialNumber();
 
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands bandP900;
-    bandP900.geranBands() = {GeranBands::BAND_P900};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands band850;
-    band850.geranBands() = {GeranBands::BAND_850};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifierP900 = {
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
+    rasBands.geranBands() = {GeranBands::BAND_450, GeranBands::BAND_480};
+
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier = {
             .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = bandP900,
+            .bands = rasBands,
             .channels = {1, 2}};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier850 = {
-            .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = band850,
-            .channels = {128, 129}};
 
     ::android::hardware::radio::V1_5::NetworkScanRequest request = {
             .type = ScanType::ONE_SHOT,
             .interval = 60,
-            .specifiers = {specifierP900, specifier850},
+            .specifiers = {specifier},
             .maxSearchTime = 60,
             .incrementalResults = false,
             .incrementalResultsPeriodicity = 1};
@@ -585,11 +573,6 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan) {
         // support scanning requests combined with some parameters.
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_5->rspInfo.error,
                                      {RadioError::NONE, RadioError::OPERATION_NOT_ALLOWED}));
-    }
-
-    if (radioRsp_v1_5->rspInfo.error == RadioError::NONE) {
-        ALOGI("Stop Network Scan");
-        stopNetworkScan();
     }
 }
 
@@ -626,23 +609,18 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidArgument) {
 TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidInterval1) {
     serial = GetRandomSerialNumber();
 
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands bandP900;
-    bandP900.geranBands() = {GeranBands::BAND_P900};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands band850;
-    band850.geranBands() = {GeranBands::BAND_850};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifierP900 = {
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
+    rasBands.geranBands() = {GeranBands::BAND_450, GeranBands::BAND_480};
+
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier = {
             .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = bandP900,
+            .bands = rasBands,
             .channels = {1, 2}};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier850 = {
-            .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = band850,
-            .channels = {128, 129}};
 
     ::android::hardware::radio::V1_5::NetworkScanRequest request = {
             .type = ScanType::ONE_SHOT,
             .interval = 4,
-            .specifiers = {specifierP900, specifier850},
+            .specifiers = {specifier},
             .maxSearchTime = 60,
             .incrementalResults = false,
             .incrementalResultsPeriodicity = 1};
@@ -670,23 +648,18 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidInterval1) {
 TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidInterval2) {
     serial = GetRandomSerialNumber();
 
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands bandP900;
-    bandP900.geranBands() = {GeranBands::BAND_P900};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands band850;
-    band850.geranBands() = {GeranBands::BAND_850};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifierP900 = {
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
+    rasBands.geranBands() = {GeranBands::BAND_450, GeranBands::BAND_480};
+
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier = {
             .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = bandP900,
+            .bands = rasBands,
             .channels = {1, 2}};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier850 = {
-            .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = band850,
-            .channels = {128, 129}};
 
     ::android::hardware::radio::V1_5::NetworkScanRequest request = {
             .type = ScanType::ONE_SHOT,
             .interval = 301,
-            .specifiers = {specifierP900, specifier850},
+            .specifiers = {specifier},
             .maxSearchTime = 60,
             .incrementalResults = false,
             .incrementalResultsPeriodicity = 1};
@@ -714,23 +687,18 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidInterval2) {
 TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidMaxSearchTime1) {
     serial = GetRandomSerialNumber();
 
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands bandP900;
-    bandP900.geranBands() = {GeranBands::BAND_P900};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands band850;
-    band850.geranBands() = {GeranBands::BAND_850};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifierP900 = {
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
+    rasBands.geranBands() = {GeranBands::BAND_450, GeranBands::BAND_480};
+
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier = {
             .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = bandP900,
+            .bands = rasBands,
             .channels = {1, 2}};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier850 = {
-            .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = band850,
-            .channels = {128, 129}};
 
     ::android::hardware::radio::V1_5::NetworkScanRequest request = {
             .type = ScanType::ONE_SHOT,
             .interval = 60,
-            .specifiers = {specifierP900, specifier850},
+            .specifiers = {specifier},
             .maxSearchTime = 59,
             .incrementalResults = false,
             .incrementalResultsPeriodicity = 1};
@@ -758,23 +726,18 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidMaxSearchTime1) {
 TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidMaxSearchTime2) {
     serial = GetRandomSerialNumber();
 
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands bandP900;
-    bandP900.geranBands() = {GeranBands::BAND_P900};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands band850;
-    band850.geranBands() = {GeranBands::BAND_850};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifierP900 = {
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
+    rasBands.geranBands() = {GeranBands::BAND_450, GeranBands::BAND_480};
+
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier = {
             .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = bandP900,
+            .bands = rasBands,
             .channels = {1, 2}};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier850 = {
-            .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = band850,
-            .channels = {128, 129}};
 
     ::android::hardware::radio::V1_5::NetworkScanRequest request = {
             .type = ScanType::ONE_SHOT,
             .interval = 60,
-            .specifiers = {specifierP900, specifier850},
+            .specifiers = {specifier},
             .maxSearchTime = 3601,
             .incrementalResults = false,
             .incrementalResultsPeriodicity = 1};
@@ -802,23 +765,18 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidMaxSearchTime2) {
 TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidPeriodicity1) {
     serial = GetRandomSerialNumber();
 
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands bandP900;
-    bandP900.geranBands() = {GeranBands::BAND_P900};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands band850;
-    band850.geranBands() = {GeranBands::BAND_850};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifierP900 = {
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
+    rasBands.geranBands() = {GeranBands::BAND_450, GeranBands::BAND_480};
+
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier = {
             .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = bandP900,
+            .bands = rasBands,
             .channels = {1, 2}};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier850 = {
-            .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = band850,
-            .channels = {128, 129}};
 
     ::android::hardware::radio::V1_5::NetworkScanRequest request = {
             .type = ScanType::ONE_SHOT,
             .interval = 60,
-            .specifiers = {specifierP900, specifier850},
+            .specifiers = {specifier},
             .maxSearchTime = 600,
             .incrementalResults = true,
             .incrementalResultsPeriodicity = 0};
@@ -846,23 +804,18 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidPeriodicity1) {
 TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidPeriodicity2) {
     serial = GetRandomSerialNumber();
 
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands bandP900;
-    bandP900.geranBands() = {GeranBands::BAND_P900};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands band850;
-    band850.geranBands() = {GeranBands::BAND_850};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifierP900 = {
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
+    rasBands.geranBands() = {GeranBands::BAND_450, GeranBands::BAND_480};
+
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier = {
             .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = bandP900,
+            .bands = rasBands,
             .channels = {1, 2}};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier850 = {
-            .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = band850,
-            .channels = {128, 129}};
 
     ::android::hardware::radio::V1_5::NetworkScanRequest request = {
             .type = ScanType::ONE_SHOT,
             .interval = 60,
-            .specifiers = {specifierP900, specifier850},
+            .specifiers = {specifier},
             .maxSearchTime = 600,
             .incrementalResults = true,
             .incrementalResultsPeriodicity = 11};
@@ -890,23 +843,18 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_InvalidPeriodicity2) {
 TEST_P(RadioHidlTest_v1_5, startNetworkScan_GoodRequest1) {
     serial = GetRandomSerialNumber();
 
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands bandP900;
-    bandP900.geranBands() = {GeranBands::BAND_P900};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands band850;
-    band850.geranBands() = {GeranBands::BAND_850};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifierP900 = {
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
+    rasBands.geranBands() = {GeranBands::BAND_450, GeranBands::BAND_480};
+
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier = {
             .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = bandP900,
+            .bands = rasBands,
             .channels = {1, 2}};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier850 = {
-            .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = band850,
-            .channels = {128, 129}};
 
     ::android::hardware::radio::V1_5::NetworkScanRequest request = {
             .type = ScanType::ONE_SHOT,
             .interval = 60,
-            .specifiers = {specifierP900, specifier850},
+            .specifiers = {specifier},
             .maxSearchTime = 360,
             .incrementalResults = false,
             .incrementalResultsPeriodicity = 10};
@@ -926,11 +874,6 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_GoodRequest1) {
                                      {RadioError::NONE, RadioError::INVALID_ARGUMENTS,
                                       RadioError::REQUEST_NOT_SUPPORTED}));
     }
-
-    if (radioRsp_v1_5->rspInfo.error == RadioError::NONE) {
-        ALOGI("Stop Network Scan");
-        stopNetworkScan();
-    }
 }
 
 /*
@@ -939,23 +882,18 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_GoodRequest1) {
 TEST_P(RadioHidlTest_v1_5, startNetworkScan_GoodRequest2) {
     serial = GetRandomSerialNumber();
 
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands bandP900;
-    bandP900.geranBands() = {GeranBands::BAND_P900};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands band850;
-    band850.geranBands() = {GeranBands::BAND_850};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifierP900 = {
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier::Bands rasBands;
+    rasBands.geranBands() = {GeranBands::BAND_450, GeranBands::BAND_480};
+
+    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier = {
             .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = bandP900,
+            .bands = rasBands,
             .channels = {1, 2}};
-    ::android::hardware::radio::V1_5::RadioAccessSpecifier specifier850 = {
-            .radioAccessNetwork = ::android::hardware::radio::V1_5::RadioAccessNetworks::GERAN,
-            .bands = band850,
-            .channels = {128, 129}};
 
     ::android::hardware::radio::V1_5::NetworkScanRequest request = {
             .type = ScanType::ONE_SHOT,
             .interval = 60,
-            .specifiers = {specifierP900, specifier850},
+            .specifiers = {specifier},
             .maxSearchTime = 360,
             .incrementalResults = false,
             .incrementalResultsPeriodicity = 10,
@@ -975,11 +913,6 @@ TEST_P(RadioHidlTest_v1_5, startNetworkScan_GoodRequest2) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_5->rspInfo.error,
                                      {RadioError::NONE, RadioError::INVALID_ARGUMENTS,
                                       RadioError::REQUEST_NOT_SUPPORTED}));
-    }
-
-    if (radioRsp_v1_5->rspInfo.error == RadioError::NONE) {
-        ALOGI("Stop Network Scan");
-        stopNetworkScan();
     }
 }
 
