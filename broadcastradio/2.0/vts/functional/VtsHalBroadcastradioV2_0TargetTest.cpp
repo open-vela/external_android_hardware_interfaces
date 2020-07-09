@@ -116,10 +116,7 @@ class BroadcastRadioHalTest : public ::testing::TestWithParam<std::string> {
 };
 
 static void printSkipped(std::string msg) {
-    const auto testInfo = testing::UnitTest::GetInstance()->current_test_info();
-    std::cout << "[  SKIPPED ] " << testInfo->test_case_name() << "." << testInfo->name()
-              << std::endl;
-    std::cout << msg << std::endl;
+    std::cout << "[  SKIPPED ] " << msg << std::endl;
 }
 
 MATCHER_P(InfoHasId, id,
@@ -431,9 +428,8 @@ TEST_P(BroadcastRadioHalTest, FmTune) {
     ProgramInfo infoCb = {};
     EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_,
                         InfoHasId(utils::make_identifier(IdentifierType::AMFM_FREQUENCY, freq)))
-            .Times(AnyNumber())
-            .WillOnce(DoAll(SaveArg<0>(&infoCb), testing::Return(ByMove(Void()))))
-            .WillRepeatedly(testing::InvokeWithoutArgs([] { return Void(); }));
+        .Times(AnyNumber())
+        .WillOnce(DoAll(SaveArg<0>(&infoCb), testing::Return(ByMove(Void()))));
     auto result = mSession->tune(sel);
 
     // expect a failure if it's not supported
