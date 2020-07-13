@@ -19,6 +19,7 @@
 
 #include <android/hardware/tv/tuner/1.0/IFilter.h>
 #include <fmq/MessageQueue.h>
+#include <ion/ion.h>
 #include <math.h>
 #include <set>
 #include "Demux.h"
@@ -83,10 +84,15 @@ class Filter : public IFilter {
     uint16_t getTpid();
     void updateFilterOutput(vector<uint8_t> data);
     void updateRecordOutput(vector<uint8_t> data);
+    void updatePts(uint64_t pts);
     Result startFilterHandler();
     Result startRecordFilterHandler();
     void attachFilterToRecord(const sp<Dvr> dvr);
     void detachFilterFromRecord();
+    void freeAvHandle();
+    bool isMediaFilter() { return mIsMediaFilter; };
+    bool isPcrFilter() { return mIsPcrFilter; };
+    bool isRecordFilter() { return mIsRecordFilter; };
 
   private:
     // Tuner service
@@ -101,6 +107,9 @@ class Filter : public IFilter {
     uint32_t mFilterId;
     uint32_t mBufferSize;
     DemuxFilterType mType;
+    bool mIsMediaFilter = false;
+    bool mIsPcrFilter = false;
+    bool mIsRecordFilter = false;
     DemuxFilterSettings mFilterSettings;
 
     uint16_t mTpid;
@@ -108,7 +117,9 @@ class Filter : public IFilter {
     bool mIsDataSourceDemux = true;
     vector<uint8_t> mFilterOutput;
     vector<uint8_t> mRecordFilterOutput;
+    uint64_t mPts = 0;
     unique_ptr<FilterMQ> mFilterMQ;
+    bool mIsUsingFMQ = false;
     EventFlag* mFilterEventFlag;
     DemuxFilterEvent mFilterEvent;
 
@@ -160,6 +171,11 @@ class Filter : public IFilter {
     static void* __threadLoopFilter(void* user);
     void filterThreadLoop();
 
+    int createAvIonFd(int size);
+    uint8_t* getIonBuffer(int fd, int size);
+    native_handle_t* createNativeHandle(int fd);
+    Result createMediaFilterEventWithIon(vector<uint8_t> output);
+
     /**
      * Lock to protect writes to the FMQs
      */
@@ -181,6 +197,11 @@ class Filter : public IFilter {
     // TODO handle mulptiple Pes filters
     int mPesSizeLeft = 0;
     vector<uint8_t> mPesOutput;
+
+    // A map from data id to ion handle
+    std::map<uint64_t, int> mDataId2Avfd;
+    uint64_t mLastUsedDataId = 1;
+    int mAvBufferCopyCount = 0;
 };
 
 }  // namespace implementation
