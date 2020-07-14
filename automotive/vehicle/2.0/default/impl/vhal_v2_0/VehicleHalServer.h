@@ -38,8 +38,6 @@ class VehicleHalServer : public IVehicleServer {
     // Set the Property Value Pool used in this server
     void setValuePool(VehiclePropValuePool* valuePool);
 
-    EmulatedUserHal* getEmulatedUserHal();
-
   private:
     using VehiclePropValuePtr = recyclable_ptr<VehiclePropValue>;
 
