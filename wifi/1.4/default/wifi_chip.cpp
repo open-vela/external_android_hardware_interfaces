@@ -335,8 +335,7 @@ WifiChip::WifiChip(
     ChipId chip_id, const std::weak_ptr<legacy_hal::WifiLegacyHal> legacy_hal,
     const std::weak_ptr<mode_controller::WifiModeController> mode_controller,
     const std::weak_ptr<iface_util::WifiIfaceUtil> iface_util,
-    const std::weak_ptr<feature_flags::WifiFeatureFlags> feature_flags,
-    const std::function<void(const std::string&)>& handler)
+    const std::weak_ptr<feature_flags::WifiFeatureFlags> feature_flags)
     : chip_id_(chip_id),
       legacy_hal_(legacy_hal),
       mode_controller_(mode_controller),
@@ -344,8 +343,7 @@ WifiChip::WifiChip(
       is_valid_(true),
       current_mode_id_(feature_flags::chip_mode_ids::kInvalid),
       modes_(feature_flags.lock()->getChipModes()),
-      debug_ring_buffer_cb_registered_(false),
-      subsystemCallbackHandler_(handler) {
+      debug_ring_buffer_cb_registered_(false) {
     setActiveWlanIfaceNameProperty(kNoActiveWlanIfaceNamePropertyValue);
 }
 
@@ -739,10 +737,6 @@ WifiStatus WifiChip::configureChipInternal(
     current_mode_id_ = mode_id;
     LOG(INFO) << "Configured chip in mode " << mode_id;
     setActiveWlanIfaceNameProperty(getFirstActiveWlanIfaceName());
-
-    legacy_hal_.lock()->registerSubsystemRestartCallbackHandler(
-        subsystemCallbackHandler_);
-
     return status;
 }
 
