@@ -15,11 +15,12 @@
 //
 
 cc_library_static {
-    name: "VtsHalNeuralNetworksV1_2Callbacks",
+    name: "VtsHalNeuralNetworksV1_2_utils",
     defaults: ["neuralnetworks_vts_functional_defaults"],
     export_include_dirs: ["include"],
     srcs: [
         "Callbacks.cpp",
+        "Utils.cpp",
     ],
     static_libs: [
         "android.hardware.neuralnetworks@1.0",
@@ -39,6 +40,7 @@ cc_test {
         "CompilationCachingTests.cpp",
         "GeneratedTestHarness.cpp",
         "TestAssertions.cpp",
+        "TestMain.cpp",
         "ValidateBurst.cpp",
         "ValidateModel.cpp",
         "ValidateRequest.cpp",
@@ -51,7 +53,7 @@ cc_test {
     ],
     static_libs: [
         "VtsHalNeuralNetworksV1_0_utils",
-        "VtsHalNeuralNetworksV1_2Callbacks",
+        "VtsHalNeuralNetworksV1_2_utils",
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
         "android.hardware.neuralnetworks@1.2",
@@ -72,6 +74,6 @@ cc_test {
     ],
     test_suites: [
         "general-tests",
-        "vts-core",
+        "vts",
     ],
 }

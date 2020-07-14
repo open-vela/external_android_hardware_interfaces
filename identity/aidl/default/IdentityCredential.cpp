@@ -25,6 +25,7 @@
 #include <string.h>
 
 #include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
 #include <cppbor.h>
 #include <cppbor_parse.h>
@@ -32,11 +33,16 @@
 namespace aidl::android::hardware::identity {
 
 using ::aidl::android::hardware::keymaster::Timestamp;
+using ::android::base::StringPrintf;
 using ::std::optional;
 
 using namespace ::android::hardware::identity;
 
 int IdentityCredential::initialize() {
+    if (credentialData_.size() == 0) {
+        LOG(ERROR) << "CredentialData is empty";
+        return IIdentityCredentialStore::STATUS_INVALID_DATA;
+    }
     auto [item, _, message] = cppbor::parse(credentialData_);
     if (item == nullptr) {
         LOG(ERROR) << "CredentialData is not valid CBOR: " << message;
@@ -162,6 +168,7 @@ ndk::ScopedAStatus IdentityCredential::createAuthChallenge(int64_t* outChallenge
     }
 
     *outChallenge = challenge;
+    authChallenge_ = challenge;
     return ndk::ScopedAStatus::ok();
 }
 
@@ -196,19 +203,21 @@ bool checkReaderAuthentication(const SecureAccessControlProfile& profile,
     return false;
 }
 
-Timestamp clockGetTime() {
-    struct timespec time;
-    clock_gettime(CLOCK_MONOTONIC, &time);
-    Timestamp ts;
-    ts.milliSeconds = time.tv_sec * 1000 + time.tv_nsec / 1000000;
-    return ts;
-}
-
 bool checkUserAuthentication(const SecureAccessControlProfile& profile,
+                             const VerificationToken& verificationToken,
                              const HardwareAuthToken& authToken, uint64_t authChallenge) {
     if (profile.secureUserId != authToken.userId) {
         LOG(ERROR) << "secureUserId in profile (" << profile.secureUserId
                    << ") differs from userId in authToken (" << authToken.userId << ")";
+        return false;
+    }
+
+    if (verificationToken.timestamp.milliSeconds == 0) {
+        LOG(ERROR) << "VerificationToken is not set";
+        return false;
+    }
+    if (authToken.timestamp.milliSeconds == 0) {
+        LOG(ERROR) << "AuthToken is not set";
         return false;
     }
 
@@ -219,25 +228,18 @@ bool checkUserAuthentication(const SecureAccessControlProfile& profile,
         }
 
         if (authToken.challenge != int64_t(authChallenge)) {
-            LOG(ERROR) << "Challenge in authToken doesn't match the challenge we created";
+            LOG(ERROR) << "Challenge in authToken (" << uint64_t(authToken.challenge) << ") "
+                       << "doesn't match the challenge we created (" << authChallenge << ")";
             return false;
         }
         return true;
     }
 
-    // Note that the Epoch for timestamps in HardwareAuthToken is at the
-    // discretion of the vendor:
+    // Timeout-based user auth follows. The verification token conveys what the
+    // time is right now in the environment which generated the auth token. This
+    // is what makes it possible to do timeout-based checks.
     //
-    //   "[...] since some starting point (generally the most recent device
-    //    boot) which all of the applications within one secure environment
-    //    must agree upon."
-    //
-    // Therefore, if this software implementation is used on a device which isn't
-    // the emulator then the assumption that the epoch is the same as used in
-    // clockGetTime above will not hold. This is OK as this software
-    // implementation should never be used on a real device.
-    //
-    Timestamp now = clockGetTime();
+    const Timestamp now = verificationToken.timestamp;
     if (authToken.timestamp.milliSeconds > now.milliSeconds) {
         LOG(ERROR) << "Timestamp in authToken (" << authToken.timestamp.milliSeconds
                    << ") is in the future (now: " << now.milliSeconds << ")";
@@ -251,6 +253,18 @@ bool checkUserAuthentication(const SecureAccessControlProfile& profile,
         return false;
     }
     return true;
+}
+
+ndk::ScopedAStatus IdentityCredential::setRequestedNamespaces(
+        const vector<RequestNamespace>& requestNamespaces) {
+    requestNamespaces_ = requestNamespaces;
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus IdentityCredential::setVerificationToken(
+        const VerificationToken& verificationToken) {
+    verificationToken_ = verificationToken;
+    return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus IdentityCredential::startRetrieval(
@@ -302,13 +316,16 @@ ndk::ScopedAStatus IdentityCredential::startRetrieval(
         }
 
         const vector<uint8_t>& itemsRequestBytes = itemsRequest;
-        vector<uint8_t> dataThatWasSigned = cppbor::Array()
-                                                    .add("ReaderAuthentication")
-                                                    .add(sessionTranscriptItem_->clone())
-                                                    .add(cppbor::Semantic(24, itemsRequestBytes))
-                                                    .encode();
+        vector<uint8_t> encodedReaderAuthentication =
+                cppbor::Array()
+                        .add("ReaderAuthentication")
+                        .add(sessionTranscriptItem_->clone())
+                        .add(cppbor::Semantic(24, itemsRequestBytes))
+                        .encode();
+        vector<uint8_t> encodedReaderAuthenticationBytes =
+                cppbor::Semantic(24, encodedReaderAuthentication).encode();
         if (!support::coseCheckEcDsaSignature(readerSignature,
-                                              dataThatWasSigned,  // detached content
+                                              encodedReaderAuthenticationBytes,  // detached content
                                               readerPublicKey.value())) {
             return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                     IIdentityCredentialStore::STATUS_READER_SIGNATURE_CHECK_FAILED,
@@ -329,28 +346,6 @@ ndk::ScopedAStatus IdentityCredential::startRetrieval(
     //
     // We do this by just searching for the X and Y coordinates.
     if (sessionTranscript.size() > 0) {
-        const cppbor::Array* array = sessionTranscriptItem_->asArray();
-        if (array == nullptr || array->size() != 2) {
-            return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
-                    IIdentityCredentialStore::STATUS_EPHEMERAL_PUBLIC_KEY_NOT_FOUND,
-                    "SessionTranscript is not an array with two items"));
-        }
-        const cppbor::Semantic* taggedEncodedDE = (*array)[0]->asSemantic();
-        if (taggedEncodedDE == nullptr || taggedEncodedDE->value() != 24) {
-            return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
-                    IIdentityCredentialStore::STATUS_EPHEMERAL_PUBLIC_KEY_NOT_FOUND,
-                    "First item in SessionTranscript array is not a "
-                    "semantic with value 24"));
-        }
-        const cppbor::Bstr* encodedDE = (taggedEncodedDE->child())->asBstr();
-        if (encodedDE == nullptr) {
-            return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
-                    IIdentityCredentialStore::STATUS_EPHEMERAL_PUBLIC_KEY_NOT_FOUND,
-                    "Child of semantic in first item in SessionTranscript "
-                    "array is not a bstr"));
-        }
-        const vector<uint8_t>& bytesDE = encodedDE->value();
-
         auto [getXYSuccess, ePubX, ePubY] = support::ecPublicKeyGetXandY(ephemeralPublicKey_);
         if (!getXYSuccess) {
             return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
@@ -358,8 +353,10 @@ ndk::ScopedAStatus IdentityCredential::startRetrieval(
                     "Error extracting X and Y from ePub"));
         }
         if (sessionTranscript.size() > 0 &&
-            !(memmem(bytesDE.data(), bytesDE.size(), ePubX.data(), ePubX.size()) != nullptr &&
-              memmem(bytesDE.data(), bytesDE.size(), ePubY.data(), ePubY.size()) != nullptr)) {
+            !(memmem(sessionTranscript.data(), sessionTranscript.size(), ePubX.data(),
+                     ePubX.size()) != nullptr &&
+              memmem(sessionTranscript.data(), sessionTranscript.size(), ePubY.data(),
+                     ePubY.size()) != nullptr)) {
             return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                     IIdentityCredentialStore::STATUS_EPHEMERAL_PUBLIC_KEY_NOT_FOUND,
                     "Did not find ephemeral public key's X and Y coordinates in "
@@ -447,7 +444,7 @@ ndk::ScopedAStatus IdentityCredential::startRetrieval(
                         "Type mismatch in nameSpaces map"));
             }
             string requestedNamespace = nsKey->value();
-            vector<string> requestedKeys;
+            set<string> requestedKeys;
             for (size_t m = 0; m < nsInnerMap->size(); m++) {
                 const auto& [innerMapKeyItem, innerMapValueItem] = (*nsInnerMap)[m];
                 const cppbor::Tstr* nameItem = innerMapKeyItem->asTstr();
@@ -459,23 +456,25 @@ ndk::ScopedAStatus IdentityCredential::startRetrieval(
                             IIdentityCredentialStore::STATUS_INVALID_ITEMS_REQUEST_MESSAGE,
                             "Type mismatch in value in nameSpaces map"));
                 }
-                requestedKeys.push_back(nameItem->value());
+                requestedKeys.insert(nameItem->value());
             }
             requestedNameSpacesAndNames_[requestedNamespace] = requestedKeys;
         }
     }
 
-    // Finally, validate all the access control profiles in the requestData.
-    bool haveAuthToken = (authToken.mac.size() > 0);
+    // Validate all the access control profiles in the requestData.
+    bool haveAuthToken = (authToken.timestamp.milliSeconds != int64_t(0));
     for (const auto& profile : accessControlProfiles) {
         if (!secureAccessControlProfileCheckMac(profile, storageKey_)) {
+            LOG(ERROR) << "Error checking MAC for profile";
             return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                     IIdentityCredentialStore::STATUS_INVALID_DATA,
                     "Error checking MAC for profile"));
         }
         int accessControlCheck = IIdentityCredentialStore::STATUS_OK;
         if (profile.userAuthenticationRequired) {
-            if (!haveAuthToken || !checkUserAuthentication(profile, authToken, authChallenge_)) {
+            if (!haveAuthToken ||
+                !checkUserAuthentication(profile, verificationToken_, authToken, authChallenge_)) {
                 accessControlCheck = IIdentityCredentialStore::STATUS_USER_AUTHENTICATION_FAILED;
             }
         } else if (profile.readerCertificate.encodedCertificate.size() > 0) {
@@ -496,8 +495,116 @@ ndk::ScopedAStatus IdentityCredential::startRetrieval(
     itemsRequest_ = itemsRequest;
     signingKeyBlob_ = signingKeyBlob;
 
+    // Finally, calculate the size of DeviceNameSpaces. We need to know it ahead of time.
+    expectedDeviceNameSpacesSize_ = calcDeviceNameSpacesSize();
+
     numStartRetrievalCalls_ += 1;
     return ndk::ScopedAStatus::ok();
+}
+
+size_t cborNumBytesForLength(size_t length) {
+    if (length < 24) {
+        return 0;
+    } else if (length <= 0xff) {
+        return 1;
+    } else if (length <= 0xffff) {
+        return 2;
+    } else if (length <= 0xffffffff) {
+        return 4;
+    }
+    return 8;
+}
+
+size_t cborNumBytesForTstr(const string& value) {
+    return 1 + cborNumBytesForLength(value.size()) + value.size();
+}
+
+size_t IdentityCredential::calcDeviceNameSpacesSize() {
+    /*
+     * This is how DeviceNameSpaces is defined:
+     *
+     *        DeviceNameSpaces = {
+     *            * NameSpace => DeviceSignedItems
+     *        }
+     *        DeviceSignedItems = {
+     *            + DataItemName => DataItemValue
+     *        }
+     *
+     *        Namespace = tstr
+     *        DataItemName = tstr
+     *        DataItemValue = any
+     *
+     * This function will calculate its length using knowledge of how CBOR is
+     * encoded.
+     */
+    size_t ret = 0;
+    size_t numNamespacesWithValues = 0;
+    for (const RequestNamespace& rns : requestNamespaces_) {
+        vector<RequestDataItem> itemsToInclude;
+
+        for (const RequestDataItem& rdi : rns.items) {
+            // If we have a CBOR request message, skip if item isn't in it
+            if (itemsRequest_.size() > 0) {
+                const auto& it = requestedNameSpacesAndNames_.find(rns.namespaceName);
+                if (it == requestedNameSpacesAndNames_.end()) {
+                    continue;
+                }
+                const set<string>& dataItemNames = it->second;
+                if (dataItemNames.find(rdi.name) == dataItemNames.end()) {
+                    continue;
+                }
+            }
+
+            // Access is granted if at least one of the profiles grants access.
+            //
+            // If an item is configured without any profiles, access is denied.
+            //
+            bool authorized = false;
+            for (auto id : rdi.accessControlProfileIds) {
+                auto it = profileIdToAccessCheckResult_.find(id);
+                if (it != profileIdToAccessCheckResult_.end()) {
+                    int accessControlForProfile = it->second;
+                    if (accessControlForProfile == IIdentityCredentialStore::STATUS_OK) {
+                        authorized = true;
+                        break;
+                    }
+                }
+            }
+            if (!authorized) {
+                continue;
+            }
+
+            itemsToInclude.push_back(rdi);
+        }
+
+        // If no entries are to be in the namespace, we don't include it...
+        if (itemsToInclude.size() == 0) {
+            continue;
+        }
+
+        // Key: NameSpace
+        ret += cborNumBytesForTstr(rns.namespaceName);
+
+        // Value: Open the DeviceSignedItems map
+        ret += 1 + cborNumBytesForLength(itemsToInclude.size());
+
+        for (const RequestDataItem& item : itemsToInclude) {
+            // Key: DataItemName
+            ret += cborNumBytesForTstr(item.name);
+
+            // Value: DataItemValue - entryData.size is the length of serialized CBOR so we use
+            // that.
+            ret += item.size;
+        }
+
+        numNamespacesWithValues++;
+    }
+
+    // Now that we now the nunber of namespaces with values, we know how many
+    // bytes the DeviceNamespaces map in the beginning is going to take up.
+    ret += 1 + cborNumBytesForLength(numNamespacesWithValues);
+
+    return ret;
 }
 
 ndk::ScopedAStatus IdentityCredential::startRetrieveEntryValue(
@@ -558,8 +665,8 @@ ndk::ScopedAStatus IdentityCredential::startRetrieveEntryValue(
                     IIdentityCredentialStore::STATUS_NOT_IN_REQUEST_MESSAGE,
                     "Name space was not requested in startRetrieval"));
         }
-        const auto& dataItemNames = it->second;
-        if (std::find(dataItemNames.begin(), dataItemNames.end(), name) == dataItemNames.end()) {
+        const set<string>& dataItemNames = it->second;
+        if (dataItemNames.find(name) == dataItemNames.end()) {
             return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                     IIdentityCredentialStore::STATUS_NOT_IN_REQUEST_MESSAGE,
                     "Data item name in name space was not requested in startRetrieval"));
@@ -653,6 +760,17 @@ ndk::ScopedAStatus IdentityCredential::finishRetrieval(vector<uint8_t>* outMac,
     }
     vector<uint8_t> encodedDeviceNameSpaces = deviceNameSpacesMap_.encode();
 
+    if (encodedDeviceNameSpaces.size() != expectedDeviceNameSpacesSize_) {
+        LOG(ERROR) << "encodedDeviceNameSpaces is " << encodedDeviceNameSpaces.size() << " bytes, "
+                   << "was expecting " << expectedDeviceNameSpacesSize_;
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_INVALID_DATA,
+                StringPrintf(
+                        "Unexpected CBOR size %zd for encodedDeviceNameSpaces, was expecting %zd",
+                        encodedDeviceNameSpaces.size(), expectedDeviceNameSpacesSize_)
+                        .c_str()));
+    }
+
     // If there's no signing key or no sessionTranscript or no reader ephemeral
     // public key, we return the empty MAC.
     optional<vector<uint8_t>> mac;
@@ -663,7 +781,7 @@ ndk::ScopedAStatus IdentityCredential::finishRetrieval(vector<uint8_t>* outMac,
         array.add(sessionTranscriptItem_->clone());
         array.add(docType_);
         array.add(cppbor::Semantic(24, encodedDeviceNameSpaces));
-        vector<uint8_t> encodedDeviceAuthentication = array.encode();
+        vector<uint8_t> deviceAuthenticationBytes = cppbor::Semantic(24, array.encode()).encode();
 
         vector<uint8_t> docTypeAsBlob(docType_.begin(), docType_.end());
         optional<vector<uint8_t>> signingKey =
@@ -681,17 +799,24 @@ ndk::ScopedAStatus IdentityCredential::finishRetrieval(vector<uint8_t>* outMac,
                     IIdentityCredentialStore::STATUS_FAILED, "Error doing ECDH"));
         }
 
+        // Mix-in SessionTranscriptBytes
+        vector<uint8_t> sessionTranscriptBytes = cppbor::Semantic(24, sessionTranscript_).encode();
+        vector<uint8_t> sharedSecretWithSessionTranscriptBytes = sharedSecret.value();
+        std::copy(sessionTranscriptBytes.begin(), sessionTranscriptBytes.end(),
+                  std::back_inserter(sharedSecretWithSessionTranscriptBytes));
+
         vector<uint8_t> salt = {0x00};
         vector<uint8_t> info = {};
-        optional<vector<uint8_t>> derivedKey = support::hkdf(sharedSecret.value(), salt, info, 32);
+        optional<vector<uint8_t>> derivedKey =
+                support::hkdf(sharedSecretWithSessionTranscriptBytes, salt, info, 32);
         if (!derivedKey) {
             return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                     IIdentityCredentialStore::STATUS_FAILED,
                     "Error deriving key from shared secret"));
         }
 
-        mac = support::coseMac0(derivedKey.value(), {},        // payload
-                                encodedDeviceAuthentication);  // additionalData
+        mac = support::coseMac0(derivedKey.value(), {},      // payload
+                                deviceAuthenticationBytes);  // detached content
         if (!mac) {
             return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                     IIdentityCredentialStore::STATUS_FAILED, "Error MACing data"));
