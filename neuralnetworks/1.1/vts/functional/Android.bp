@@ -20,6 +20,7 @@ cc_test {
     srcs: [
         "BasicTests.cpp",
         "TestAssertions.cpp",
+        "TestMain.cpp",
         "ValidateModel.cpp",
         "ValidateRequest.cpp",
         "VtsHalNeuralnetworks.cpp",
@@ -47,5 +48,5 @@ cc_test {
     header_libs: [
         "libneuralnetworks_headers",
     ],
-    test_suites: ["general-tests", "vts-core"],
+    test_suites: ["general-tests", "vts"],
 }

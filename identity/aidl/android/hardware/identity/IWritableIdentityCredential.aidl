@@ -29,9 +29,27 @@ interface IWritableIdentityCredential {
      * Gets the certificate chain for credentialKey which can be used to prove the hardware
      * characteristics to an issuing authority.  Must not be called more than once.
      *
+     * The following non-optional fields for the X.509 certificate shall be set as follows:
+     *
+     *  - version: INTEGER 2 (means v3 certificate).
+     *
+     *  - serialNumber: INTEGER 1 (fixed value: same on all certs).
+     *
+     *  - signature: must be set to ECDSA.
+     *
+     *  - subject: CN shall be set to "Android Identity Credential Key".
+     *
+     *  - issuer: shall be set to "credentialStoreName (credentialStoreAuthorName)" using the
+     *    values returned in HardwareInformation.
+     *
+     *  - validity: should be from current time and expire at the same time as the
+     *    attestation batch certificate used.
+     *
+     *  - subjectPublicKeyInfo: must contain attested public key.
+     *
      * The certificate chain must be generated using Keymaster Attestation
      * (see https://source.android.com/security/keystore/attestation) with the
-     * following additional requirements:
+     * following additional requirements on the data in the attestation extension:
      *
      *  - The attestationVersion field in the attestation extension must be at least 3.
      *
@@ -60,18 +78,57 @@ interface IWritableIdentityCredential {
      *    attestationApplicationId.
      *
      *  - The teeEnforced field in the attestation extension must include
-     *    Tag::IDENTITY_CREDENTIAL_KEY. This tag indicates that the key is an Identity
-     *    Credential key (which can only sign/MAC very specific messages) and not an Android
-     *    Keystore key (which can be used to sign/MAC anything).
+     *
+     *    - Tag::IDENTITY_CREDENTIAL_KEY which indicates that the key is an Identity
+     *      Credential key (which can only sign/MAC very specific messages) and not an Android
+     *      Keystore key (which can be used to sign/MAC anything).
+     *
+     *    - Tag::PURPOSE must be set to SIGN
+     *
+     *    - Tag::KEY_SIZE must be set to the appropriate key size, in bits (e.g. 256)
+     *
+     *    - Tag::ALGORITHM must be set to EC
+     *
+     *    - Tag::NO_AUTH_REQUIRED must be set
+     *
+     *    - Tag::DIGEST must be set to SHA_2_256
+     *
+     *    - Tag::EC_CURVE must be set to P_256
      *
      * Additional authorizations may be needed in the softwareEnforced and teeEnforced
-     * fields - the above is not an exhaustive list.
+     * fields - the above is not an exhaustive list. Specifically, authorizations containing
+     * information about the root of trust, OS version, verified boot state, and so on should
+     * be included.
+     *
+     * Since the chain is required to be generated using Keymaster Attestation, the returned
+     * certificate chain has the following properties:
+     *
+     *  - The certificate chain is of at least length three.
+     *
+     *  - The root of trust is the same as for Keymaster Attestation. This is usually
+     *    a certificate owned by Google but depending on the specific Android device it may
+     *    be another certificate.
+     *
+     * As with any user of attestation, the Issuing Authority (as a relying party) wishing
+     * to issue a credential to a device using these APIs, must carefully examine the
+     * returned certificate chain for all of the above (and more). In particular, the Issuing
+     * Authority should check the root of trust, verified boot state, patch level,
+     * application id, etc.
+     *
+     * This all depends on the needs of the Issuing Authority and the kind of credential but
+     * in general an Issuing Authority should never issue a credential to a device without
+     * verified boot enabled, to an unrecognized application, or if it appears the device
+     * hasn't been updated for a long time.
+     *
+     * See https://github.com/google/android-key-attestation for an example of how to
+     * examine attestations generated from Android devices.
      *
      * @param attestationApplicationId is the DER encoded value to be stored
      *     in Tag::ATTESTATION_APPLICATION_ID. This schema is described in
      *     https://developer.android.com/training/articles/security-key-attestation#certificate_schema_attestationid
      *
-     * @param attestationChallenge a challenge set by the issuer to ensure freshness.
+     * @param attestationChallenge a challenge set by the issuer to ensure freshness. If
+     *    this is empty, the call fails with STATUS_INVALID_DATA.
      *
      * @return the X.509 certificate chain for the credentialKey
      */
@@ -81,6 +138,8 @@ interface IWritableIdentityCredential {
      * Start the personalization process.
      *
      * startPersonalization must not be called more than once.
+     *
+     * The setExpectedProofOfProvisioningSize() method will be called before this method.
      *
      * @param accessControlProfileCount specifies the number of access control profiles that will
      *     be provisioned with addAccessControlProfile().
@@ -102,10 +161,11 @@ interface IWritableIdentityCredential {
      * with STATUS_INVALID_DATA.
      *
      * @param id a numeric identifier that must be unique within the context of a Credential and may
-     *     be used to reference the profile. If this is not satisfied the call fails with
+     *     be used to reference the profile. This id must be non-negative and less than 32 (allowing
+     *     for a total of 32 profiles). If this is not satisfied the call fails with
      *     STATUS_INVALID_DATA.
      *
-     * @param readerCertificate if non-empty, specifies a X.509 certificate (or chain of
+     * @param readerCertificate if non-empty, specifies a single X.509 certificate (not a chain of
      *     certificates) that must be used to authenticate requests (see the readerSignature
      *     parameter in IIdentityCredential.startRetrieval).
      *
@@ -142,7 +202,7 @@ interface IWritableIdentityCredential {
      * @param accessControlProfileIds specifies the set of access control profiles that can
      *     authorize access to the provisioned element.
      *
-     * @param nameSpace is the namespace of the element, e.g. "org.iso.18013"
+     * @param nameSpace is the namespace of the element, e.g. "org.iso.18013.5.1"
      *
      * @param name is the name of the element.
      *
@@ -209,6 +269,7 @@ interface IWritableIdentityCredential {
      *         CredentialKeys = [
      *              bstr,   ; storageKey, a 128-bit AES key
      *              bstr    ; credentialPrivKey, the private key for credentialKey
+     *                      ; in uncompressed form
      *         ]
      *
      * @param out proofOfProvisioningSignature proves to the IA that the credential was imported
@@ -249,4 +310,16 @@ interface IWritableIdentityCredential {
      */
     void finishAddingEntries(out byte[] credentialData,
         out byte[] proofOfProvisioningSignature);
+
+    /**
+     * Sets the expected size of the ProofOfProvisioning returned by finishAddingEntries(). This
+     * method must be called before startPersonalization() is called.
+     *
+     * This information is provided to make it possible for a HAL implementation to
+     * incrementally build up cryptographically authenticated data which includes the
+     * ProofOfProvisioning CBOR.
+     *
+     * @param expectedProofOfProvisioningSize the expected size of ProofOfProvisioning.
+     */
+    void setExpectedProofOfProvisioningSize(in int expectedProofOfProvisioningSize);
 }

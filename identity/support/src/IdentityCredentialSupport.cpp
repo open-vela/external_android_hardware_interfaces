@@ -958,9 +958,14 @@ optional<std::pair<vector<uint8_t>, vector<vector<uint8_t>>>> createEcKeyPairAnd
 optional<vector<uint8_t>> createEcKeyPair() {
     auto ec_key = EC_KEY_Ptr(EC_KEY_new());
     auto pkey = EVP_PKEY_Ptr(EVP_PKEY_new());
-    auto group = EC_GROUP_Ptr(EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
     if (ec_key.get() == nullptr || pkey.get() == nullptr) {
         LOG(ERROR) << "Memory allocation failed";
+        return {};
+    }
+
+    auto group = EC_GROUP_Ptr(EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
+    if (group.get() == nullptr) {
+        LOG(ERROR) << "Error creating EC group by curve name";
         return {};
     }
 
@@ -1040,6 +1045,42 @@ optional<vector<uint8_t>> ecKeyPairGetPrivateKey(const vector<uint8_t>& keyPair)
     privateKey.resize(BN_num_bytes(bignum));
     BN_bn2bin(bignum, privateKey.data());
     return privateKey;
+}
+
+optional<vector<uint8_t>> ecPrivateKeyToKeyPair(const vector<uint8_t>& privateKey) {
+    auto bn = BIGNUM_Ptr(BN_bin2bn(privateKey.data(), privateKey.size(), nullptr));
+    if (bn.get() == nullptr) {
+        LOG(ERROR) << "Error creating BIGNUM";
+        return {};
+    }
+
+    auto ecKey = EC_KEY_Ptr(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+    if (EC_KEY_set_private_key(ecKey.get(), bn.get()) != 1) {
+        LOG(ERROR) << "Error setting private key from BIGNUM";
+        return {};
+    }
+
+    auto pkey = EVP_PKEY_Ptr(EVP_PKEY_new());
+    if (pkey.get() == nullptr) {
+        LOG(ERROR) << "Memory allocation failed";
+        return {};
+    }
+
+    if (EVP_PKEY_set1_EC_KEY(pkey.get(), ecKey.get()) != 1) {
+        LOG(ERROR) << "Error getting private key";
+        return {};
+    }
+
+    int size = i2d_PrivateKey(pkey.get(), nullptr);
+    if (size == 0) {
+        LOG(ERROR) << "Error generating public key encoding";
+        return {};
+    }
+    vector<uint8_t> keyPair;
+    keyPair.resize(size);
+    unsigned char* p = keyPair.data();
+    i2d_PrivateKey(pkey.get(), &p);
+    return keyPair;
 }
 
 optional<vector<uint8_t>> ecKeyPairGetPkcs12(const vector<uint8_t>& keyPair, const string& name,

@@ -21,9 +21,11 @@
 #include <android/hardware/identity/support/IdentityCredentialSupport.h>
 
 #include <cppbor.h>
+#include <set>
 
 namespace aidl::android::hardware::identity {
 
+using ::std::set;
 using ::std::string;
 using ::std::vector;
 
@@ -40,6 +42,9 @@ class WritableIdentityCredential : public BnWritableIdentityCredential {
     ndk::ScopedAStatus getAttestationCertificate(const vector<uint8_t>& attestationApplicationId,
                                                  const vector<uint8_t>& attestationChallenge,
                                                  vector<Certificate>* outCertificateChain) override;
+
+    ndk::ScopedAStatus setExpectedProofOfProvisioningSize(
+            int32_t expectedProofOfProvisioningSize) override;
 
     ndk::ScopedAStatus startPersonalization(int32_t accessControlProfileCount,
                                             const vector<int32_t>& entryCounts) override;
@@ -60,12 +65,14 @@ class WritableIdentityCredential : public BnWritableIdentityCredential {
             vector<uint8_t>* outCredentialData,
             vector<uint8_t>* outProofOfProvisioningSignature) override;
 
-    // private:
+  private:
     string docType_;
     bool testCredential_;
 
     // This is set in initialize().
     vector<uint8_t> storageKey_;
+    bool startPersonalizationCalled_;
+    bool firstEntry_;
 
     // These are set in getAttestationCertificate().
     vector<uint8_t> credentialPrivKey_;
@@ -78,6 +85,10 @@ class WritableIdentityCredential : public BnWritableIdentityCredential {
     cppbor::Array signedDataAccessControlProfiles_;
     cppbor::Map signedDataNamespaces_;
     cppbor::Array signedDataCurrentNamespace_;
+    size_t expectedProofOfProvisioningSize_;
+
+    // This field is initialized in addAccessControlProfile
+    set<int32_t> accessControlProfileIds_;
 
     // These fields are initialized during beginAddEntry()
     size_t entryRemainingBytes_;
@@ -86,6 +97,7 @@ class WritableIdentityCredential : public BnWritableIdentityCredential {
     string entryName_;
     vector<int32_t> entryAccessControlProfileIds_;
     vector<uint8_t> entryBytes_;
+    set<string> allNameSpaces_;
 };
 
 }  // namespace aidl::android::hardware::identity

@@ -43,6 +43,7 @@ cc_test {
         "MemoryDomainTests.cpp",
         "QualityOfServiceTests.cpp",
         "TestAssertions.cpp",
+        "TestMain.cpp",
         "ValidateBurst.cpp",
         "ValidateModel.cpp",
         "ValidateRequest.cpp",
@@ -54,7 +55,7 @@ cc_test {
     ],
     static_libs: [
         "VtsHalNeuralNetworksV1_0_utils",
-        "VtsHalNeuralNetworksV1_2Callbacks",
+        "VtsHalNeuralNetworksV1_2_utils",
         "VtsHalNeuralNetworksV1_3_utils",
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",

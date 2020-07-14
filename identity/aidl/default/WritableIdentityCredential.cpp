@@ -22,6 +22,7 @@
 #include <android/hardware/identity/support/IdentityCredentialSupport.h>
 
 #include <android-base/logging.h>
+#include <android-base/stringprintf.h>
 
 #include <cppbor/cppbor.h>
 #include <cppbor/cppbor_parse.h>
@@ -34,6 +35,7 @@
 
 namespace aidl::android::hardware::identity {
 
+using ::android::base::StringPrintf;
 using ::std::optional;
 using namespace ::android::hardware::identity;
 
@@ -44,6 +46,8 @@ bool WritableIdentityCredential::initialize() {
         return false;
     }
     storageKey_ = random.value();
+    startPersonalizationCalled_ = false;
+    firstEntry_ = true;
 
     return true;
 }
@@ -60,6 +64,10 @@ ndk::ScopedAStatus WritableIdentityCredential::getAttestationCertificate(
         return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                 IIdentityCredentialStore::STATUS_FAILED,
                 "Error attestation certificate previously generated"));
+    }
+    if (attestationChallenge.empty()) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_INVALID_DATA, "Challenge can not be empty"));
     }
 
     vector<uint8_t> challenge(attestationChallenge.begin(), attestationChallenge.end());
@@ -103,8 +111,20 @@ ndk::ScopedAStatus WritableIdentityCredential::getAttestationCertificate(
     return ndk::ScopedAStatus::ok();
 }
 
+ndk::ScopedAStatus WritableIdentityCredential::setExpectedProofOfProvisioningSize(
+        int32_t expectedProofOfProvisioningSize) {
+    expectedProofOfProvisioningSize_ = expectedProofOfProvisioningSize;
+    return ndk::ScopedAStatus::ok();
+}
+
 ndk::ScopedAStatus WritableIdentityCredential::startPersonalization(
         int32_t accessControlProfileCount, const vector<int32_t>& entryCounts) {
+    if (startPersonalizationCalled_) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_FAILED, "startPersonalization called already"));
+    }
+
+    startPersonalizationCalled_ = true;
     numAccessControlProfileRemaining_ = accessControlProfileCount;
     remainingEntryCounts_ = entryCounts;
     entryNameSpace_ = "";
@@ -128,12 +148,32 @@ ndk::ScopedAStatus WritableIdentityCredential::addAccessControlProfile(
                 "numAccessControlProfileRemaining_ is 0 and expected non-zero"));
     }
 
+    if (accessControlProfileIds_.find(id) != accessControlProfileIds_.end()) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_INVALID_DATA,
+                "Access Control Profile id must be unique"));
+    }
+    accessControlProfileIds_.insert(id);
+
+    if (id < 0 || id >= 32) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_INVALID_DATA,
+                "Access Control Profile id must be non-negative and less than 32"));
+    }
+
     // Spec requires if |userAuthenticationRequired| is false, then |timeoutMillis| must also
     // be zero.
     if (!userAuthenticationRequired && timeoutMillis != 0) {
         return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                 IIdentityCredentialStore::STATUS_INVALID_DATA,
                 "userAuthenticationRequired is false but timeout is non-zero"));
+    }
+
+    // If |userAuthenticationRequired| is true, then |secureUserId| must be non-zero.
+    if (userAuthenticationRequired && secureUserId == 0) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_INVALID_DATA,
+                "userAuthenticationRequired is true but secureUserId is zero"));
     }
 
     profile.id = id;
@@ -183,12 +223,20 @@ ndk::ScopedAStatus WritableIdentityCredential::beginAddEntry(
     }
 
     // Handle initial beginEntry() call.
-    if (entryNameSpace_ == "") {
+    if (firstEntry_) {
+        firstEntry_ = false;
         entryNameSpace_ = nameSpace;
+        allNameSpaces_.insert(nameSpace);
     }
 
     // If the namespace changed...
     if (nameSpace != entryNameSpace_) {
+        if (allNameSpaces_.find(nameSpace) != allNameSpaces_.end()) {
+            return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                    IIdentityCredentialStore::STATUS_INVALID_DATA,
+                    "Name space cannot be added in interleaving fashion"));
+        }
+
         // Then check that all entries in the previous namespace have been added..
         if (remainingEntryCounts_[0] != 0) {
             return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
@@ -196,6 +244,8 @@ ndk::ScopedAStatus WritableIdentityCredential::beginAddEntry(
                     "New namespace but a non-zero number of entries remain to be added"));
         }
         remainingEntryCounts_.erase(remainingEntryCounts_.begin());
+        remainingEntryCounts_[0] -= 1;
+        allNameSpaces_.insert(nameSpace);
 
         if (signedDataCurrentNamespace_.size() > 0) {
             signedDataNamespaces_.add(entryNameSpace_, std::move(signedDataCurrentNamespace_));
@@ -328,6 +378,18 @@ bool generateCredentialData(const vector<uint8_t>& hardwareBoundKey, const strin
 
 ndk::ScopedAStatus WritableIdentityCredential::finishAddingEntries(
         vector<uint8_t>* outCredentialData, vector<uint8_t>* outProofOfProvisioningSignature) {
+    if (numAccessControlProfileRemaining_ != 0) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_INVALID_DATA,
+                "numAccessControlProfileRemaining_ is not 0 and expected zero"));
+    }
+
+    if (remainingEntryCounts_.size() > 1 || remainingEntryCounts_[0] != 0) {
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_INVALID_DATA,
+                "More entry spaces remain than startPersonalization configured"));
+    }
+
     if (signedDataCurrentNamespace_.size() > 0) {
         signedDataNamespaces_.add(entryNameSpace_, std::move(signedDataCurrentNamespace_));
     }
@@ -338,6 +400,16 @@ ndk::ScopedAStatus WritableIdentityCredential::finishAddingEntries(
             .add(std::move(signedDataNamespaces_))
             .add(testCredential_);
     vector<uint8_t> encodedCbor = popArray.encode();
+
+    if (encodedCbor.size() != expectedProofOfProvisioningSize_) {
+        LOG(ERROR) << "CBOR for proofOfProvisioning is " << encodedCbor.size() << " bytes, "
+                   << "was expecting " << expectedProofOfProvisioningSize_;
+        return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
+                IIdentityCredentialStore::STATUS_INVALID_DATA,
+                StringPrintf("Unexpected CBOR size %zd for proofOfProvisioning, was expecting %zd",
+                             encodedCbor.size(), expectedProofOfProvisioningSize_)
+                        .c_str()));
+    }
 
     optional<vector<uint8_t>> signature = support::coseSignEcDsa(credentialPrivKey_,
                                                                  encodedCbor,  // payload
