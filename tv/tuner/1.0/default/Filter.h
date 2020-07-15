@@ -84,7 +84,6 @@ class Filter : public IFilter {
     uint16_t getTpid();
     void updateFilterOutput(vector<uint8_t> data);
     void updateRecordOutput(vector<uint8_t> data);
-    void updatePts(uint64_t pts);
     Result startFilterHandler();
     Result startRecordFilterHandler();
     void attachFilterToRecord(const sp<Dvr> dvr);
@@ -92,7 +91,6 @@ class Filter : public IFilter {
     void freeAvHandle();
     bool isMediaFilter() { return mIsMediaFilter; };
     bool isPcrFilter() { return mIsPcrFilter; };
-    bool isRecordFilter() { return mIsRecordFilter; };
 
   private:
     // Tuner service
@@ -109,7 +107,6 @@ class Filter : public IFilter {
     DemuxFilterType mType;
     bool mIsMediaFilter = false;
     bool mIsPcrFilter = false;
-    bool mIsRecordFilter = false;
     DemuxFilterSettings mFilterSettings;
 
     uint16_t mTpid;
@@ -117,7 +114,6 @@ class Filter : public IFilter {
     bool mIsDataSourceDemux = true;
     vector<uint8_t> mFilterOutput;
     vector<uint8_t> mRecordFilterOutput;
-    uint64_t mPts = 0;
     unique_ptr<FilterMQ> mFilterMQ;
     bool mIsUsingFMQ = false;
     EventFlag* mFilterEventFlag;
@@ -174,7 +170,6 @@ class Filter : public IFilter {
     int createAvIonFd(int size);
     uint8_t* getIonBuffer(int fd, int size);
     native_handle_t* createNativeHandle(int fd);
-    Result createMediaFilterEventWithIon(vector<uint8_t> output);
 
     /**
      * Lock to protect writes to the FMQs
