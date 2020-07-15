@@ -31,7 +31,6 @@
 #include <utils/Mutex.h>
 #include <map>
 
-#include "DvrTests.h"
 #include "VtsHalTvTunerV1_0TestConfigurations.h"
 
 #define WAIT_TIMEOUT 3000000000
@@ -101,11 +100,7 @@ class FrontendTests {
   public:
     sp<ITuner> mService;
 
-    void setService(sp<ITuner> tuner) {
-        mService = tuner;
-        mDvrTests.setService(tuner);
-        getDefaultSoftwareFrontendPlaybackConfig(mDvrConfig);
-    }
+    void setService(sp<ITuner> tuner) { mService = tuner; }
 
     AssertionResult getFrontendIds();
     AssertionResult getFrontendInfo(uint32_t frontendId);
@@ -113,45 +108,19 @@ class FrontendTests {
     AssertionResult setFrontendCallback();
     AssertionResult scanFrontend(FrontendConfig config, FrontendScanType type);
     AssertionResult stopScanFrontend();
-    AssertionResult tuneFrontend(FrontendConfig config, bool testWithDemux);
-    AssertionResult setLnb(uint32_t lnbId);
+    AssertionResult tuneFrontend(FrontendConfig config);
     void verifyFrontendStatus(vector<FrontendStatusType> statusTypes,
                               vector<FrontendStatus> expectStatuses);
-    AssertionResult stopTuneFrontend(bool testWithDemux);
+    AssertionResult stopTuneFrontend();
     AssertionResult closeFrontend();
 
     void getFrontendIdByType(FrontendType feType, uint32_t& feId);
     void tuneTest(FrontendConfig frontendConf);
     void scanTest(FrontendConfig frontend, FrontendScanType type);
 
-    void setDvrTests(DvrTests dvrTests) { mDvrTests = dvrTests; }
-    void setDemux(sp<IDemux> demux) { mDvrTests.setDemux(demux); }
-    void setSoftwareFrontendDvrConfig(DvrConfig conf) { mDvrConfig = conf; }
-
   protected:
-    static AssertionResult failure() { return ::testing::AssertionFailure(); }
-    static AssertionResult success() { return ::testing::AssertionSuccess(); }
-
-    void getDefaultSoftwareFrontendPlaybackConfig(DvrConfig& dvrConfig) {
-        PlaybackSettings playbackSettings{
-                .statusMask = 0xf,
-                .lowThreshold = 0x1000,
-                .highThreshold = 0x07fff,
-                .dataFormat = DataFormat::TS,
-                .packetSize = 188,
-        };
-        dvrConfig.type = DvrType::PLAYBACK;
-        dvrConfig.playbackInputFile = "/data/local/tmp/segment000000.ts";
-        dvrConfig.bufferSize = FMQ_SIZE_4M;
-        dvrConfig.settings.playback(playbackSettings);
-    }
-
     sp<IFrontend> mFrontend;
     FrontendInfo mFrontendInfo;
     sp<FrontendCallback> mFrontendCallback;
     hidl_vec<FrontendId> mFeIds;
-
-    DvrTests mDvrTests;
-    bool mIsSoftwareFe = false;
-    DvrConfig mDvrConfig;
 };

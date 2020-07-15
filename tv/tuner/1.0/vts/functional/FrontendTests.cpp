@@ -360,46 +360,21 @@ void FrontendTests::verifyFrontendStatus(vector<FrontendStatusType> statusTypes,
     ASSERT_TRUE(status == Result::SUCCESS);
 }
 
-AssertionResult FrontendTests::tuneFrontend(FrontendConfig config, bool testWithDemux) {
+AssertionResult FrontendTests::tuneFrontend(FrontendConfig config) {
     EXPECT_TRUE(mFrontendCallback)
             << "test with openFrontendById/setFrontendCallback/getFrontendInfo first.";
 
     EXPECT_TRUE(mFrontendInfo.type == config.type)
             << "FrontendConfig does not match the frontend info of the given id.";
 
-    mIsSoftwareFe = config.isSoftwareFe;
-    bool result = true;
-    if (mIsSoftwareFe && testWithDemux) {
-        result &= mDvrTests.openDvrInDemux(mDvrConfig.type, mDvrConfig.bufferSize) == success();
-        result &= mDvrTests.configDvrPlayback(mDvrConfig.settings) == success();
-        result &= mDvrTests.getDvrPlaybackMQDescriptor() == success();
-        mDvrTests.startPlaybackInputThread(mDvrConfig.playbackInputFile,
-                                           mDvrConfig.settings.playback());
-        if (!result) {
-            ALOGW("[vts] Software frontend dvr configure failed.");
-            return failure();
-        }
-    }
     mFrontendCallback->tuneTestOnLock(mFrontend, config.settings);
     return AssertionResult(true);
 }
 
-AssertionResult FrontendTests::setLnb(uint32_t lnbId) {
-    if (!mFrontendCallback) {
-        ALOGW("[vts] open and set frontend callback first.");
-        return failure();
-    }
-    return AssertionResult(mFrontend->setLnb(lnbId) == Result::SUCCESS);
-}
-
-AssertionResult FrontendTests::stopTuneFrontend(bool testWithDemux) {
+AssertionResult FrontendTests::stopTuneFrontend() {
     EXPECT_TRUE(mFrontend) << "Test with openFrontendById first.";
     Result status;
     status = mFrontend->stopTune();
-    if (mIsSoftwareFe && testWithDemux) {
-        mDvrTests.stopPlaybackThread();
-        mDvrTests.closeDvrPlayback();
-    }
     return AssertionResult(status == Result::SUCCESS);
 }
 
@@ -432,9 +407,9 @@ void FrontendTests::tuneTest(FrontendConfig frontendConf) {
     ASSERT_TRUE(feId != INVALID_ID);
     ASSERT_TRUE(openFrontendById(feId));
     ASSERT_TRUE(setFrontendCallback());
-    ASSERT_TRUE(tuneFrontend(frontendConf, false /*testWithDemux*/));
+    ASSERT_TRUE(tuneFrontend(frontendConf));
     verifyFrontendStatus(frontendConf.tuneStatusTypes, frontendConf.expectTuneStatuses);
-    ASSERT_TRUE(stopTuneFrontend(false /*testWithDemux*/));
+    ASSERT_TRUE(stopTuneFrontend());
     ASSERT_TRUE(closeFrontend());
 }
 
