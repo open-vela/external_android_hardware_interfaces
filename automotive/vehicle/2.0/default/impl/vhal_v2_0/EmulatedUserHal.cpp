@@ -65,7 +65,7 @@ android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::onSetP
         case USER_IDENTIFICATION_ASSOCIATION:
             return onSetUserIdentificationAssociation(value);
         default:
-            return android::base::Error(static_cast<int>(StatusCode::INVALID_ARG))
+            return android::base::Error((int)StatusCode::INVALID_ARG)
                    << "Unsupported property: " << toString(value);
     }
 }
@@ -113,7 +113,7 @@ android::base::Result<std::unique_ptr<VehiclePropValue>>
 EmulatedUserHal::onSetInitialUserInfoResponse(const VehiclePropValue& value) {
     if (value.value.int32Values.size() == 0) {
         ALOGE("set(INITIAL_USER_INFO): no int32values, ignoring it: %s", toString(value).c_str());
-        return android::base::Error(static_cast<int>(StatusCode::INVALID_ARG))
+        return android::base::Error((int)StatusCode::INVALID_ARG)
                << "no int32values on " << toString(value);
     }
 
@@ -150,11 +150,20 @@ android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::onSetS
         const VehiclePropValue& value) {
     if (value.value.int32Values.size() == 0) {
         ALOGE("set(SWITCH_USER): no int32values, ignoring it: %s", toString(value).c_str());
-        return android::base::Error(static_cast<int>(StatusCode::INVALID_ARG))
+        return android::base::Error((int)StatusCode::INVALID_ARG)
                << "no int32values on " << toString(value);
     }
 
     if (value.areaId != 0) {
+        if (value.value.int32Values.size() >= 2 &&
+            static_cast<SwitchUserMessageType>(value.value.int32Values[1]) ==
+                    SwitchUserMessageType::VEHICLE_REQUEST) {
+            // User HAL can also request a user switch, so we need to check it first
+            ALOGD("set(SWITCH_USER) called from lshal to emulate a vehicle request: %s",
+                  toString(value).c_str());
+            return std::unique_ptr<VehiclePropValue>(new VehiclePropValue(value));
+        }
+        // Otherwise, we store it
         ALOGD("set(SWITCH_USER) called from lshal; storing it: %s", toString(value).c_str());
         mSwitchUserResponseFromCmd.reset(new VehiclePropValue(value));
         return {};
@@ -284,12 +293,12 @@ android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::sendUs
         case 3:
             ALOGD("not generating a property change event because of lshal prop: %s",
                   toString(*response).c_str());
-            return android::base::Error(static_cast<int>(StatusCode::NOT_AVAILABLE))
+            return android::base::Error((int)StatusCode::NOT_AVAILABLE)
                    << "not generating a property change event because of lshal prop: "
                    << toString(*response);
         default:
             ALOGE("invalid action on lshal response: %s", toString(*response).c_str());
-            return android::base::Error(static_cast<int>(StatusCode::INTERNAL_ERROR))
+            return android::base::Error((int)StatusCode::INTERNAL_ERROR)
                    << "invalid action on lshal response: " << toString(*response);
     }
 
