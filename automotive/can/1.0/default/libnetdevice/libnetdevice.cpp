@@ -16,62 +16,48 @@
 
 #include <libnetdevice/libnetdevice.h>
 
-#include "NetlinkRequest.h"
-#include "NetlinkSocket.h"
 #include "common.h"
+#include "ifreqs.h"
 
 #include <android-base/logging.h>
+#include <libnetdevice/NetlinkRequest.h>
+#include <libnetdevice/NetlinkSocket.h>
 
 #include <linux/can.h>
 #include <net/if.h>
 
 namespace android::netdevice {
 
+void useSocketDomain(int domain) {
+    ifreqs::socketDomain = domain;
+}
+
 bool exists(std::string ifname) {
     return nametoindex(ifname) != 0;
 }
 
-static bool sendIfreq(unsigned long request, struct ifreq& ifr) {
-    /* For general interfaces it would be socket(AF_INET, SOCK_DGRAM, 0),
-     * but SEPolicy forces us to limit our flexibility here. */
-    base::unique_fd sock(socket(PF_CAN, SOCK_RAW, CAN_RAW));
-    if (!sock.ok()) {
-        LOG(ERROR) << "Can't create socket";
-        return false;
-    }
-
-    if (ioctl(sock.get(), request, &ifr) < 0) {
-        PLOG(ERROR) << "ioctl(" << std::hex << request << std::dec << ") failed";
-        return false;
-    }
-
-    return true;
-}
-
-static struct ifreq ifreqFromName(const std::string& ifname) {
-    struct ifreq ifr = {};
-    strlcpy(ifr.ifr_name, ifname.c_str(), IF_NAMESIZE);
-    return ifr;
-}
-
 std::optional<bool> isUp(std::string ifname) {
-    struct ifreq ifr = ifreqFromName(ifname);
-    if (!sendIfreq(SIOCGIFFLAGS, ifr)) return std::nullopt;
+    auto ifr = ifreqs::fromName(ifname);
+    if (!ifreqs::send(SIOCGIFFLAGS, ifr)) return std::nullopt;
     return ifr.ifr_flags & IFF_UP;
 }
 
+bool existsAndIsUp(const std::string& ifname) {
+    return exists(ifname) && isUp(ifname).value_or(false);
+}
+
 bool up(std::string ifname) {
-    struct ifreq ifr = ifreqFromName(ifname);
-    if (!sendIfreq(SIOCGIFFLAGS, ifr)) return false;
+    auto ifr = ifreqs::fromName(ifname);
+    if (!ifreqs::send(SIOCGIFFLAGS, ifr)) return false;
     ifr.ifr_flags |= IFF_UP;
-    return sendIfreq(SIOCSIFFLAGS, ifr);
+    return ifreqs::send(SIOCSIFFLAGS, ifr);
 }
 
 bool down(std::string ifname) {
-    struct ifreq ifr = ifreqFromName(ifname);
-    if (!sendIfreq(SIOCGIFFLAGS, ifr)) return false;
+    auto ifr = ifreqs::fromName(ifname);
+    if (!ifreqs::send(SIOCGIFFLAGS, ifr)) return false;
     ifr.ifr_flags &= ~IFF_UP;
-    return sendIfreq(SIOCSIFFLAGS, ifr);
+    return ifreqs::send(SIOCSIFFLAGS, ifr);
 }
 
 bool add(std::string dev, std::string type) {
@@ -95,4 +81,28 @@ bool del(std::string dev) {
     return sock.send(req) && sock.receiveAck();
 }
 
+std::optional<hwaddr_t> getHwAddr(const std::string& ifname) {
+    auto ifr = ifreqs::fromName(ifname);
+    if (!ifreqs::send(SIOCGIFHWADDR, ifr)) return std::nullopt;
+
+    hwaddr_t hwaddr;
+    memcpy(hwaddr.data(), ifr.ifr_hwaddr.sa_data, hwaddr.size());
+    return hwaddr;
+}
+
+bool setHwAddr(const std::string& ifname, hwaddr_t hwaddr) {
+    auto ifr = ifreqs::fromName(ifname);
+
+    // fetch sa_family
+    if (!ifreqs::send(SIOCGIFHWADDR, ifr)) return false;
+
+    memcpy(ifr.ifr_hwaddr.sa_data, hwaddr.data(), hwaddr.size());
+    return ifreqs::send(SIOCSIFHWADDR, ifr);
+}
+
 }  // namespace android::netdevice
+
+bool operator==(const android::netdevice::hwaddr_t lhs, const unsigned char rhs[ETH_ALEN]) {
+    static_assert(lhs.size() == ETH_ALEN);
+    return 0 == memcmp(lhs.data(), rhs, lhs.size());
+}
