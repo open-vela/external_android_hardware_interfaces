@@ -21,7 +21,6 @@
 
 #include <map>
 #include <sstream>
-#include <variant>
 
 namespace android::netdevice::protocols {
 
@@ -58,13 +57,11 @@ struct AttributeDefinition {
         Nested,
         String,
         Uint,
-        Struct,
     };
-    using ToStream = std::function<void(std::stringstream& ss, const nlbuf<nlattr> attr)>;
 
     std::string name;
     DataType dataType = DataType::Raw;
-    std::variant<AttributeMap, ToStream> ops = AttributeMap{};
+    AttributeMap subTypes = {};
 };
 
 /**
@@ -110,13 +107,13 @@ class MessageDefinition : public MessageDescriptor {
         : MessageDescriptor(name, messageTypes, attrTypes, sizeof(T)) {}
 
     void dataToStream(std::stringstream& ss, const nlbuf<nlmsghdr> hdr) const override {
-        const auto& [ok, msg] = hdr.data<T>().getFirst();
-        if (!ok) {
+        const auto msg = hdr.data<T>().getFirst();
+        if (!msg.has_value()) {
             ss << "{incomplete payload}";
             return;
         }
 
-        toStream(ss, msg);
+        toStream(ss, *msg);
     }
 
   protected:
