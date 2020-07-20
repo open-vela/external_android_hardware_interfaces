@@ -216,7 +216,6 @@ TEST_P(DeviceUniqueAttestationTest, NonStrongBoxOnly) {
                               .Authorization(TAG_ATTESTATION_CHALLENGE, HidlBuf("challenge"))
                               .Authorization(TAG_ATTESTATION_APPLICATION_ID, HidlBuf("foo")),
                       &cert_chain)));
-    CheckedDeleteKey();
 }
 
 TEST_P(DeviceUniqueAttestationTest, Rsa) {
