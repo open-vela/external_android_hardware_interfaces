@@ -85,16 +85,17 @@ static void toStream(std::stringstream& ss, const nlbuf<nlattr> attr,
 
     ss << attrtype.name << ": ";
     switch (attrtype.dataType) {
-        case DataType::Raw:
+        case DataType::Raw: {
             toStream(ss, attr.data<uint8_t>());
             break;
+        }
         case DataType::Nested: {
             ss << '{';
             bool first = true;
-            for (const auto childattr : attr.data<nlattr>()) {
+            for (auto childattr : attr.data<nlattr>()) {
                 if (!first) ss << ", ";
                 first = false;
-                toStream(ss, childattr, std::get<protocols::AttributeMap>(attrtype.ops));
+                toStream(ss, childattr, attrtype.subTypes);
             }
             ss << '}';
             break;
@@ -104,13 +105,8 @@ static void toStream(std::stringstream& ss, const nlbuf<nlattr> attr,
             ss << '"' << sanitize({str.ptr(), str.len()}) << '"';
             break;
         }
-        case DataType::Uint:
+        case DataType::Uint: {
             ss << attr.data<uint32_t>().copyFirst();
-            break;
-        case DataType::Struct: {
-            const auto structToStream =
-                    std::get<protocols::AttributeDefinition::ToStream>(attrtype.ops);
-            structToStream(ss, attr);
             break;
         }
     }
