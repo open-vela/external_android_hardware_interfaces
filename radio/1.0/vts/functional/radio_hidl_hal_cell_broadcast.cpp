@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <android-base/logging.h>
 #include <radio_hidl_hal_utils_v1_0.h>
 
 using namespace ::android::hardware::radio::V1_0;
@@ -22,8 +21,10 @@ using namespace ::android::hardware::radio::V1_0;
 /*
  * Test IRadio.setGsmBroadcastConfig() for the response returned.
  */
-TEST_P(RadioHidlTest, setGsmBroadcastConfig) {
-    LOG(DEBUG) << "setGsmBroadcastConfig";
+/*
+ * TODO(b/145710242) this is commented out because it breaks on TSTS devices on Q. The test
+ * can be safely enabled for future devices).
+TEST_F(RadioHidlTest, setGsmBroadcastConfig) {
     serial = GetRandomSerialNumber();
 
     // Create GsmBroadcastSmsConfigInfo #1
@@ -81,14 +82,13 @@ TEST_P(RadioHidlTest, setGsmBroadcastConfig) {
                                       RadioError::INVALID_MODEM_STATE, RadioError::INVALID_STATE},
                                      CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "setGsmBroadcastConfig finished";
 }
+*/
 
 /*
  * Test IRadio.getGsmBroadcastConfig() for the response returned.
  */
-TEST_P(RadioHidlTest, getGsmBroadcastConfig) {
-    LOG(DEBUG) << "getGsmBroadcastConfig";
+TEST_F(RadioHidlTest, getGsmBroadcastConfig) {
     serial = GetRandomSerialNumber();
 
     radio->getGsmBroadcastConfig(serial);
@@ -103,14 +103,12 @@ TEST_P(RadioHidlTest, getGsmBroadcastConfig) {
             {RadioError::NONE, RadioError::INVALID_MODEM_STATE, RadioError::INVALID_STATE},
             CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "getGsmBroadcastConfig finished";
 }
 
 /*
  * Test IRadio.setCdmaBroadcastConfig() for the response returned.
  */
-TEST_P(RadioHidlTest, setCdmaBroadcastConfig) {
-    LOG(DEBUG) << "setCdmaBroadcastConfig";
+TEST_F(RadioHidlTest, setCdmaBroadcastConfig) {
     serial = GetRandomSerialNumber();
 
     CdmaBroadcastSmsConfigInfo cbSmsConfig;
@@ -132,14 +130,12 @@ TEST_P(RadioHidlTest, setCdmaBroadcastConfig) {
                                      {RadioError::NONE, RadioError::INVALID_MODEM_STATE},
                                      CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "setCdmaBroadcastConfig finished";
 }
 
 /*
  * Test IRadio.getCdmaBroadcastConfig() for the response returned.
  */
-TEST_P(RadioHidlTest, getCdmaBroadcastConfig) {
-    LOG(DEBUG) << "getCdmaBroadcastConfig";
+TEST_F(RadioHidlTest, getCdmaBroadcastConfig) {
     serial = GetRandomSerialNumber();
 
     radio->getCdmaBroadcastConfig(serial);
@@ -152,14 +148,12 @@ TEST_P(RadioHidlTest, getCdmaBroadcastConfig) {
         ASSERT_TRUE(
             CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::NONE}, CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "getCdmaBroadcastConfig finished";
 }
 
 /*
  * Test IRadio.setCdmaBroadcastActivation() for the response returned.
  */
-TEST_P(RadioHidlTest, setCdmaBroadcastActivation) {
-    LOG(DEBUG) << "setCdmaBroadcastActivation";
+TEST_F(RadioHidlTest, setCdmaBroadcastActivation) {
     serial = GetRandomSerialNumber();
     bool activate = false;
 
@@ -174,14 +168,12 @@ TEST_P(RadioHidlTest, setCdmaBroadcastActivation) {
                                      {RadioError::NONE, RadioError::INVALID_ARGUMENTS},
                                      CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "setCdmaBroadcastActivation finished";
 }
 
 /*
  * Test IRadio.setGsmBroadcastActivation() for the response returned.
  */
-TEST_P(RadioHidlTest, setGsmBroadcastActivation) {
-    LOG(DEBUG) << "setGsmBroadcastActivation";
+TEST_F(RadioHidlTest, setGsmBroadcastActivation) {
     serial = GetRandomSerialNumber();
     bool activate = false;
 
@@ -198,5 +190,4 @@ TEST_P(RadioHidlTest, setGsmBroadcastActivation) {
              RadioError::INVALID_STATE, RadioError::OPERATION_NOT_ALLOWED},
             CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "setGsmBroadcastActivation finished";
 }

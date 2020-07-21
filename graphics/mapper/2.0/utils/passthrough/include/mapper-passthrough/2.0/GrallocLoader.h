@@ -68,14 +68,7 @@ class GrallocImportedBufferPool {
         return mBufferHandles.erase(bufferHandle) == 1 ? bufferHandle : nullptr;
     }
 
-    native_handle_t* get(void* buffer) {
-        auto bufferHandle = static_cast<native_handle_t*>(buffer);
-
-        std::lock_guard<std::mutex> lock(mMutex);
-        return mBufferHandles.count(bufferHandle) == 1 ? bufferHandle : nullptr;
-    }
-
-    const native_handle_t* getConst(void* buffer) {
+    const native_handle_t* get(void* buffer) {
         auto bufferHandle = static_cast<const native_handle_t*>(buffer);
 
         std::lock_guard<std::mutex> lock(mMutex);
@@ -99,12 +92,8 @@ class GrallocMapper : public T {
         return GrallocImportedBufferPool::getInstance().remove(buffer);
     }
 
-    native_handle_t* getImportedBuffer(void* buffer) const override {
+    const native_handle_t* getImportedBuffer(void* buffer) const override {
         return GrallocImportedBufferPool::getInstance().get(buffer);
-    }
-
-    const native_handle_t* getConstImportedBuffer(void* buffer) const override {
-        return GrallocImportedBufferPool::getInstance().getConst(buffer);
     }
 };
 
