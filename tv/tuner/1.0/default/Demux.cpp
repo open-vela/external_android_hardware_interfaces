@@ -163,7 +163,6 @@ Return<Result> Demux::close() {
     mRecordFilterIds.clear();
     mFilters.clear();
     mLastUsedFilterId = -1;
-    mTunerService->removeDemux(mDemuxId);
 
     return Result::SUCCESS;
 }
@@ -318,12 +317,6 @@ void* Demux::__threadLoopFrontend(void* user) {
 void Demux::frontendInputThreadLoop() {
     std::lock_guard<std::mutex> lock(mFrontendInputThreadLock);
     mFrontendInputThreadRunning = true;
-
-    if (!mDvrPlayback) {
-        ALOGW("[Demux] No software Frontend input configured. Ending Frontend thread loop.");
-        mFrontendInputThreadRunning = false;
-        return;
-    }
 
     while (mFrontendInputThreadRunning) {
         uint32_t efState = 0;
