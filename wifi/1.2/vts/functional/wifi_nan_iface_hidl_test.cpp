@@ -16,13 +16,10 @@
 
 #include <android-base/logging.h>
 
-#include <VtsCoreUtil.h>
-#include <android/hardware/wifi/1.2/IWifi.h>
 #include <android/hardware/wifi/1.2/IWifiNanIface.h>
 #include <android/hardware/wifi/1.2/IWifiNanIfaceEventCallback.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+
+#include <VtsHalHidlTargetTestBase.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -39,24 +36,19 @@ using ::android::sp;
 
 #define TIMEOUT_PERIOD 10
 
-android::sp<android::hardware::wifi::V1_2::IWifiNanIface> getWifiNanIface_1_2(
-    const std::string& instance_name) {
+android::sp<android::hardware::wifi::V1_2::IWifiNanIface>
+getWifiNanIface_1_2() {
     return android::hardware::wifi::V1_2::IWifiNanIface::castFrom(
-        getWifiNanIface(instance_name));
+        getWifiNanIface());
 }
 
 /**
  * Fixture to use for all NAN Iface HIDL interface tests.
  */
-class WifiNanIfaceHidlTest : public ::testing::TestWithParam<std::string> {
+class WifiNanIfaceHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        if (!::testing::deviceSupportsFeature("android.hardware.wifi.aware"))
-            GTEST_SKIP() << "Skipping this test since NAN is not supported.";
-        // Make sure to start with a clean state
-        stopWifi(GetInstanceName());
-
-        iwifiNanIface = getWifiNanIface_1_2(GetInstanceName());
+        iwifiNanIface = getWifiNanIface_1_2();
         ASSERT_NE(nullptr, iwifiNanIface.get());
         ASSERT_EQ(WifiStatusCode::SUCCESS,
                   HIDL_INVOKE(iwifiNanIface, registerEventCallback_1_2,
@@ -64,7 +56,7 @@ class WifiNanIfaceHidlTest : public ::testing::TestWithParam<std::string> {
                       .code);
     }
 
-    virtual void TearDown() override { stopWifi(GetInstanceName()); }
+    virtual void TearDown() override { stopWifi(); }
 
     /* Used as a mechanism to inform the test about data/event callback */
     inline void notify() {
@@ -442,7 +434,7 @@ class WifiNanIfaceHidlTest : public ::testing::TestWithParam<std::string> {
     // synchronization objects
     std::mutex mtx_;
     std::condition_variable cv_;
-    int count_ = 0;
+    int count_;
 
    protected:
     android::sp<::android::hardware::wifi::V1_2::IWifiNanIface> iwifiNanIface;
@@ -466,8 +458,6 @@ class WifiNanIfaceHidlTest : public ::testing::TestWithParam<std::string> {
     ::android::hardware::wifi::V1_2::NanDataPathConfirmInd
         nanDataPathConfirmInd_1_2;
     NanDataPathScheduleUpdateInd nanDataPathScheduleUpdateInd;
-
-    std::string GetInstanceName() { return GetParam(); }
 };
 
 /*
@@ -475,92 +465,76 @@ class WifiNanIfaceHidlTest : public ::testing::TestWithParam<std::string> {
  * Ensures that an instance of the IWifiNanIface proxy object is
  * successfully created.
  */
-TEST_P(WifiNanIfaceHidlTest, Create) {
-    // The creation of a proxy object is tested as part of SetUp method.
+TEST(WifiNanIfaceHidlTestNoFixture, Create) {
+    ASSERT_NE(nullptr, getWifiNanIface_1_2().get());
+    stopWifi();
 }
 
 /*
  * enableRequest_1_2InvalidArgs: validate that fails with invalid arguments
  */
-TEST_P(WifiNanIfaceHidlTest, enableRequest_1_2InvalidArgs) {
+TEST_F(WifiNanIfaceHidlTest, enableRequest_1_2InvalidArgs) {
     uint16_t inputCmdId = 10;
     callbackType = INVALID;
     NanEnableRequest nanEnableRequest = {};
     NanConfigRequestSupplemental nanConfigRequestSupp = {};
-    const auto& halStatus =
-        HIDL_INVOKE(iwifiNanIface, enableRequest_1_2, inputCmdId,
-                    nanEnableRequest, nanConfigRequestSupp);
-    if (halStatus.code != WifiStatusCode::ERROR_NOT_SUPPORTED) {
-        ASSERT_EQ(WifiStatusCode::SUCCESS, halStatus.code);
-
-        // wait for a callback
-        ASSERT_EQ(std::cv_status::no_timeout, wait(NOTIFY_ENABLE_RESPONSE));
-        ASSERT_EQ(NOTIFY_ENABLE_RESPONSE, callbackType);
-        ASSERT_EQ(id, inputCmdId);
-        ASSERT_EQ(status.status, NanStatusType::INVALID_ARGS);
-    }
+    ASSERT_EQ(WifiStatusCode::SUCCESS,
+              HIDL_INVOKE(iwifiNanIface, enableRequest_1_2, inputCmdId,
+                          nanEnableRequest, nanConfigRequestSupp)
+                  .code);
+    // wait for a callback
+    ASSERT_EQ(std::cv_status::no_timeout, wait(NOTIFY_ENABLE_RESPONSE));
+    ASSERT_EQ(NOTIFY_ENABLE_RESPONSE, callbackType);
+    ASSERT_EQ(id, inputCmdId);
+    ASSERT_EQ(status.status, NanStatusType::INVALID_ARGS);
 }
 
 /*
  * enableRequest_1_2ShimInvalidArgs: validate that fails with invalid arguments
  * to the shim
  */
-TEST_P(WifiNanIfaceHidlTest, enableRequest_1_2ShimInvalidArgs) {
+TEST_F(WifiNanIfaceHidlTest, enableRequest_1_2ShimInvalidArgs) {
     uint16_t inputCmdId = 10;
     NanEnableRequest nanEnableRequest = {};
     nanEnableRequest.configParams.numberOfPublishServiceIdsInBeacon =
         128;  // must be <= 127
     NanConfigRequestSupplemental nanConfigRequestSupp = {};
-    const auto& halStatus =
-        HIDL_INVOKE(iwifiNanIface, enableRequest_1_2, inputCmdId,
-                    nanEnableRequest, nanConfigRequestSupp);
-    if (halStatus.code != WifiStatusCode::ERROR_NOT_SUPPORTED) {
-        ASSERT_EQ(WifiStatusCode::ERROR_INVALID_ARGS, halStatus.code);
-    }
+    ASSERT_EQ(WifiStatusCode::ERROR_INVALID_ARGS,
+              HIDL_INVOKE(iwifiNanIface, enableRequest_1_2, inputCmdId,
+                          nanEnableRequest, nanConfigRequestSupp)
+                  .code);
 }
 
 /*
  * configRequest_1_2InvalidArgs: validate that fails with invalid arguments
  */
-TEST_P(WifiNanIfaceHidlTest, configRequest_1_2InvalidArgs) {
+TEST_F(WifiNanIfaceHidlTest, configRequest_1_2InvalidArgs) {
     uint16_t inputCmdId = 10;
     callbackType = INVALID;
     NanConfigRequest nanConfigRequest = {};
     NanConfigRequestSupplemental nanConfigRequestSupp = {};
-    const auto& halStatus =
-        HIDL_INVOKE(iwifiNanIface, configRequest_1_2, inputCmdId,
-                    nanConfigRequest, nanConfigRequestSupp);
-
-    if (halStatus.code != WifiStatusCode::ERROR_NOT_SUPPORTED) {
-        ASSERT_EQ(WifiStatusCode::SUCCESS, halStatus.code);
-
-        // wait for a callback
-        ASSERT_EQ(std::cv_status::no_timeout, wait(NOTIFY_CONFIG_RESPONSE));
-        ASSERT_EQ(NOTIFY_CONFIG_RESPONSE, callbackType);
-        ASSERT_EQ(id, inputCmdId);
-        ASSERT_EQ(status.status, NanStatusType::INVALID_ARGS);
-    }
+    ASSERT_EQ(WifiStatusCode::SUCCESS,
+              HIDL_INVOKE(iwifiNanIface, configRequest_1_2, inputCmdId,
+                          nanConfigRequest, nanConfigRequestSupp)
+                  .code);
+    // wait for a callback
+    ASSERT_EQ(std::cv_status::no_timeout, wait(NOTIFY_CONFIG_RESPONSE));
+    ASSERT_EQ(NOTIFY_CONFIG_RESPONSE, callbackType);
+    ASSERT_EQ(id, inputCmdId);
+    ASSERT_EQ(status.status, NanStatusType::INVALID_ARGS);
 }
 
 /*
  * configRequest_1_2ShimInvalidArgs: validate that fails with invalid arguments
  * to the shim
  */
-TEST_P(WifiNanIfaceHidlTest, configRequest_1_2ShimInvalidArgs) {
+TEST_F(WifiNanIfaceHidlTest, configRequest_1_2ShimInvalidArgs) {
     uint16_t inputCmdId = 10;
     NanConfigRequest nanConfigRequest = {};
     nanConfigRequest.numberOfPublishServiceIdsInBeacon = 128;  // must be <= 127
     NanConfigRequestSupplemental nanConfigRequestSupp = {};
-    const auto& halStatus =
-        HIDL_INVOKE(iwifiNanIface, configRequest_1_2, inputCmdId,
-                    nanConfigRequest, nanConfigRequestSupp);
-    if (halStatus.code != WifiStatusCode::ERROR_NOT_SUPPORTED) {
-        ASSERT_EQ(WifiStatusCode::ERROR_INVALID_ARGS, halStatus.code);
-    }
+    ASSERT_EQ(WifiStatusCode::ERROR_INVALID_ARGS,
+              HIDL_INVOKE(iwifiNanIface, configRequest_1_2, inputCmdId,
+                          nanConfigRequest, nanConfigRequestSupp)
+                  .code);
 }
-
-INSTANTIATE_TEST_SUITE_P(
-    PerInstance, WifiNanIfaceHidlTest,
-    testing::ValuesIn(android::hardware::getAllHalInstanceNames(
-        ::android::hardware::wifi::V1_2::IWifi::descriptor)),
-    android::hardware::PrintInstanceNameToString);
