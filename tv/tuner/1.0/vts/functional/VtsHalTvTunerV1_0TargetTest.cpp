@@ -292,18 +292,18 @@ void TunerDescramblerHidlTest::scrambledBroadcastTest(set<struct FilterConfig> m
         ASSERT_TRUE(mFilterTests.configFilter((*config).settings, filterId));
         filterIds.insert(filterId);
     }
-    mDescramblerTests.openDescrambler(demuxId);
+    ASSERT_TRUE(mDescramblerTests.openDescrambler(demuxId));
     TunerKeyToken token;
     ASSERT_TRUE(mDescramblerTests.getKeyToken(descConfig.casSystemId, descConfig.provisionStr,
                                               descConfig.hidlPvtData, token));
-    mDescramblerTests.setKeyToken(token);
+    ASSERT_TRUE(mDescramblerTests.setKeyToken(token));
     vector<DemuxPid> pids;
     DemuxPid pid;
     for (config = mediaFilterConfs.begin(); config != mediaFilterConfs.end(); config++) {
         ASSERT_TRUE(mDescramblerTests.getDemuxPidFromFilterSettings((*config).type,
                                                                     (*config).settings, pid));
         pids.push_back(pid);
-        mDescramblerTests.addPid(pid, nullptr);
+        ASSERT_TRUE(mDescramblerTests.addPid(pid, nullptr));
     }
     for (id = filterIds.begin(); id != filterIds.end(); id++) {
         ASSERT_TRUE(mFilterTests.startFilter(*id));
@@ -316,9 +316,9 @@ void TunerDescramblerHidlTest::scrambledBroadcastTest(set<struct FilterConfig> m
         ASSERT_TRUE(mFilterTests.stopFilter(*id));
     }
     for (auto pid : pids) {
-        mDescramblerTests.removePid(pid, nullptr);
+        ASSERT_TRUE(mDescramblerTests.removePid(pid, nullptr));
     }
-    mDescramblerTests.closeDescrambler();
+    ASSERT_TRUE(mDescramblerTests.closeDescrambler());
     for (id = filterIds.begin(); id != filterIds.end(); id++) {
         ASSERT_TRUE(mFilterTests.closeFilter(*id));
     }
@@ -410,9 +410,9 @@ TEST_P(TunerDemuxHidlTest, getAvSyncTime) {
                                                filterArray[TS_PCR0].bufferSize));
     ASSERT_TRUE(mFilterTests.getNewlyOpenedFilterId(pcrFilterId));
     ASSERT_TRUE(mFilterTests.configFilter(filterArray[TS_PCR0].settings, pcrFilterId));
-    mDemuxTests.getAvSyncId(mediaFilter, avSyncHwId);
+    ASSERT_TRUE(mDemuxTests.getAvSyncId(mediaFilter, avSyncHwId));
     ASSERT_TRUE(pcrFilterId == avSyncHwId);
-    mDemuxTests.getAvSyncTime(pcrFilterId);
+    ASSERT_TRUE(mDemuxTests.getAvSyncTime(pcrFilterId));
     ASSERT_TRUE(mFilterTests.closeFilter(pcrFilterId));
     ASSERT_TRUE(mFilterTests.closeFilter(mediaFilterId));
     ASSERT_TRUE(mDemuxTests.closeDemux());
@@ -486,6 +486,62 @@ TEST_P(TunerBroadcastHidlTest, LnbBroadcastDataFlowVideoFilterTest) {
     broadcastSingleFilterTest(filterArray[TS_VIDEO0], frontendArray[DVBS]);
 }
 
+TEST_P(TunerBroadcastHidlTest, BroadcastEsDataFlowMediaFiltersTest) {
+    description("Test Meida Filters functionality in Broadcast use case with ES input.");
+    uint32_t feId;
+    uint32_t demuxId;
+    sp<IDemux> demux;
+    uint32_t filterId;
+
+    mFrontendTests.getFrontendIdByType(frontendArray[DVBT].type, feId);
+    if (feId == INVALID_ID) {
+        // TODO broadcast test on Cuttlefish needs licensed ts input,
+        // these tests are runnable on vendor device with real frontend module
+        // or with manual ts installing and use DVBT frontend.
+        return;
+    }
+    ASSERT_TRUE(mFrontendTests.openFrontendById(feId));
+    ASSERT_TRUE(mFrontendTests.setFrontendCallback());
+    ASSERT_TRUE(mDemuxTests.openDemux(demux, demuxId));
+    ASSERT_TRUE(mDemuxTests.setDemuxFrontendDataSource(feId));
+    mFrontendTests.setDemux(demux);
+    mFilterTests.setDemux(demux);
+    ASSERT_TRUE(mFilterTests.openFilterInDemux(filterArray[TS_AUDIO1].type,
+                                               filterArray[TS_AUDIO1].bufferSize));
+    ASSERT_TRUE(mFilterTests.getNewlyOpenedFilterId(filterId));
+    ASSERT_TRUE(mFilterTests.configFilter(filterArray[TS_AUDIO1].settings, filterId));
+    ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId));
+    ASSERT_TRUE(mFilterTests.startFilter(filterId));
+    ASSERT_TRUE(mFilterTests.openFilterInDemux(filterArray[TS_VIDEO1].type,
+                                               filterArray[TS_VIDEO1].bufferSize));
+    ASSERT_TRUE(mFilterTests.getNewlyOpenedFilterId(filterId));
+    ASSERT_TRUE(mFilterTests.configFilter(filterArray[TS_VIDEO1].settings, filterId));
+    ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId));
+    ASSERT_TRUE(mFilterTests.startFilter(filterId));
+    // tune test
+    PlaybackSettings playbackSettings{
+            .statusMask = 0xf,
+            .lowThreshold = 0x1000,
+            .highThreshold = 0x07fff,
+            .dataFormat = DataFormat::ES,
+            .packetSize = 188,
+    };
+    DvrConfig dvrConfig{
+            .type = DvrType::PLAYBACK,
+            .playbackInputFile = "/data/local/tmp/test.es",
+            .bufferSize = FMQ_SIZE_4M,
+    };
+    dvrConfig.settings.playback(playbackSettings);
+    mFrontendTests.setSoftwareFrontendDvrConfig(dvrConfig);
+    ASSERT_TRUE(mFrontendTests.tuneFrontend(frontendArray[DVBT], true /*testWithDemux*/));
+    ASSERT_TRUE(filterDataOutputTest(goldenOutputFiles));
+    ASSERT_TRUE(mFrontendTests.stopTuneFrontend(true /*testWithDemux*/));
+    ASSERT_TRUE(mFilterTests.stopFilter(filterId));
+    ASSERT_TRUE(mFilterTests.closeFilter(filterId));
+    ASSERT_TRUE(mDemuxTests.closeDemux());
+    ASSERT_TRUE(mFrontendTests.closeFrontend());
+}
+
 TEST_P(TunerPlaybackHidlTest, PlaybackDataFlowWithTsSectionFilterTest) {
     description("Feed ts data from playback and configure Ts section filter to get output");
     playbackSingleFilterTest(filterArray[TS_SECTION0], dvrArray[DVR_PLAYBACK0]);
@@ -519,8 +575,8 @@ TEST_P(TunerDescramblerHidlTest, CreateDescrambler) {
     ASSERT_TRUE(mFrontendTests.setFrontendCallback());
     ASSERT_TRUE(mDemuxTests.openDemux(demux, demuxId));
     ASSERT_TRUE(mDemuxTests.setDemuxFrontendDataSource(feId));
-    mDescramblerTests.openDescrambler(demuxId);
-    mDescramblerTests.closeDescrambler();
+    ASSERT_TRUE(mDescramblerTests.openDescrambler(demuxId));
+    ASSERT_TRUE(mDescramblerTests.closeDescrambler());
     ASSERT_TRUE(mDemuxTests.closeDemux());
     ASSERT_TRUE(mFrontendTests.closeFrontend());
 }
