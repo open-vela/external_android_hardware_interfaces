@@ -3,9 +3,6 @@
 hidl_interface {
     name: "android.hardware.drm@1.0",
     root: "android.hardware",
-    vndk: {
-        enabled: true,
-    },
     srcs: [
         "types.hal",
         "ICryptoFactory.hal",
@@ -17,6 +14,5 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
-    gen_java: false,
+    gen_java: true,
 }
-
