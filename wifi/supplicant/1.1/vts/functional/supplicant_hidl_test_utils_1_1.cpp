@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <VtsHalHidlTargetTestBase.h>
 #include <android-base/logging.h>
 
 #include "supplicant_hidl_test_utils.h"
@@ -24,19 +25,14 @@ using ::android::hardware::wifi::supplicant::V1_1::ISupplicantStaIface;
 using ::android::hardware::wifi::supplicant::V1_1::ISupplicantStaNetwork;
 using ::android::sp;
 
-sp<ISupplicant> getSupplicant_1_1(const std::string& supplicant_instance_name,
-                                  bool isP2pOn) {
-    return ISupplicant::castFrom(
-        getSupplicant(supplicant_instance_name, isP2pOn));
+sp<ISupplicant> getSupplicant_1_1() {
+    return ISupplicant::castFrom(getSupplicant());
 }
 
-sp<ISupplicantStaIface> getSupplicantStaIface_1_1(
-    const sp<ISupplicant>& supplicant) {
-    return ISupplicantStaIface::castFrom(getSupplicantStaIface(supplicant));
+sp<ISupplicantStaIface> getSupplicantStaIface_1_1() {
+    return ISupplicantStaIface::castFrom(getSupplicantStaIface());
 }
 
-sp<ISupplicantStaNetwork> createSupplicantStaNetwork_1_1(
-    const sp<ISupplicant>& supplicant) {
-    return ISupplicantStaNetwork::castFrom(
-        createSupplicantStaNetwork(supplicant));
+sp<ISupplicantStaNetwork> createSupplicantStaNetwork_1_1() {
+    return ISupplicantStaNetwork::castFrom(createSupplicantStaNetwork());
 }
