@@ -17,11 +17,10 @@
 #ifndef CAMERA_COMMON_1_0_HANDLEIMPORTED_H
 #define CAMERA_COMMON_1_0_HANDLEIMPORTED_H
 
+#include <utils/Mutex.h>
 #include <android/hardware/graphics/mapper/2.0/IMapper.h>
 #include <android/hardware/graphics/mapper/3.0/IMapper.h>
-#include <android/hardware/graphics/mapper/4.0/IMapper.h>
 #include <cutils/native_handle.h>
-#include <utils/Mutex.h>
 
 using android::hardware::graphics::mapper::V2_0::IMapper;
 using android::hardware::graphics::mapper::V2_0::YCbCrLayout;
@@ -46,13 +45,10 @@ public:
     bool importFence(const native_handle_t* handle, int& fd) const;
     void closeFence(int fd) const;
 
-    // Locks 1-D buffer. Assumes caller has waited for acquire fences.
+    // Assume caller has done waiting for acquire fences
     void* lock(buffer_handle_t& buf, uint64_t cpuUsage, size_t size);
 
-    // Locks 2-D buffer. Assumes caller has waited for acquire fences.
-    void* lock(buffer_handle_t& buf, uint64_t cpuUsage, const IMapper::Rect& accessRegion);
-
-    // Assumes caller has waited for acquire fences.
+    // Assume caller has done waiting for acquire fences
     YCbCrLayout lockYCbCr(buffer_handle_t& buf, uint64_t cpuUsage,
                           const IMapper::Rect& accessRegion);
 
@@ -74,7 +70,6 @@ private:
     bool mInitialized;
     sp<IMapper> mMapperV2;
     sp<graphics::mapper::V3_0::IMapper> mMapperV3;
-    sp<graphics::mapper::V4_0::IMapper> mMapperV4;
 };
 
 } // namespace helper
