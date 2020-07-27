@@ -222,7 +222,6 @@ TEST_P(SupplicantStaNetworkHidlTest, EnableTlsSuiteBEapPhase1Param) {
         });
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantStaNetworkHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantStaNetworkHidlTest,
     testing::Combine(
