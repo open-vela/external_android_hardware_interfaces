@@ -251,7 +251,7 @@ TEST_P(StoreHidlTest, ListRoles) {
     };
 
     // Matching rules for node names and owners
-    const testing::internal::RE nodeNamePattern = "[a-zA-Z0-9._-]+";
+    const testing::internal::RE nodeNamePattern = "[a-zA-Z0-9.-]+";
     const testing::internal::RE nodeOwnerPattern = "[a-zA-Z0-9._-]+";
 
     std::set<const std::string> roleKeys;
@@ -418,7 +418,6 @@ TEST_P(StoreHidlTest, ListNodes) {
     EXPECT_TRUE(isPass);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(StoreHidlTest);
 INSTANTIATE_TEST_CASE_P(
         PerInstance, StoreHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IOmxStore::descriptor)),
