@@ -76,7 +76,6 @@ TEST_P(PowerHidlTest, PowerHintAsync_1_2) {
     } while (std::next_permutation(hints2.begin(), hints2.end(), compareHints));
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(PowerHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, PowerHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IPower::descriptor)),
