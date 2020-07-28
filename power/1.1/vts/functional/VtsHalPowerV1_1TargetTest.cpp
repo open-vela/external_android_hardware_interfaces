@@ -41,7 +41,7 @@ class PowerHidlTest : public testing::TestWithParam<std::string> {
   sp<IPower> power;
 };
 
-// Validate Power::getSubsystemLowPowerStats().
+// Sanity check Power::getSubsystemLowPowerStats().
 TEST_P(PowerHidlTest, GetSubsystemLowPowerStats) {
   hidl_vec<PowerStateSubsystem> vec;
   Status s;
@@ -56,7 +56,7 @@ TEST_P(PowerHidlTest, GetSubsystemLowPowerStats) {
   ASSERT_TRUE(s == Status::SUCCESS || s == Status::FILESYSTEM_ERROR);
 }
 
-// Validate Power::powerHintAsync on good and bad inputs.
+// Sanity check Power::powerHintAsync on good and bad inputs.
 TEST_P(PowerHidlTest, PowerHintAsync) {
     PowerHint badHint = static_cast<PowerHint>(0xA);
     auto hints = {PowerHint::VSYNC,        PowerHint::INTERACTION, PowerHint::VIDEO_ENCODE,
