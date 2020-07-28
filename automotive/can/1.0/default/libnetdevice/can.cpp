@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include <libnetdevice/can.h>
+#include <libnetdevice/libnetdevice.h>
 
+#include "NetlinkRequest.h"
+#include "NetlinkSocket.h"
 #include "common.h"
 
 #include <android-base/logging.h>
 #include <android-base/unique_fd.h>
-#include <libnl++/NetlinkRequest.h>
-#include <libnl++/NetlinkSocket.h>
 
 #include <linux/can.h>
 #include <linux/can/error.h>
