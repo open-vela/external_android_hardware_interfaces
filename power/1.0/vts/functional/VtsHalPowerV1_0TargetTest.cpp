@@ -19,8 +19,6 @@
 
 #include <cutils/properties.h>
 
-#include <android-base/file.h>
-#include <android-base/strings.h>
 #include <android-base/unique_fd.h>
 #include <android/hardware/power/1.0/IPower.h>
 #include <gtest/gtest.h>
@@ -59,7 +57,7 @@ class PowerHidlTest : public testing::TestWithParam<std::string> {
   sp<IPower> power;
 };
 
-// Sanity check Power::setInteractive.
+// Validate Power::setInteractive.
 TEST_P(PowerHidlTest, SetInteractive) {
   Return<void> ret;
 
@@ -75,16 +73,26 @@ TEST_P(PowerHidlTest, SetInteractive) {
 TEST_P(PowerHidlTest, TryDifferentGovernors) {
   Return<void> ret;
 
-  std::string old_governor, governors;
-  if (!android::base::ReadFileToString(CPU_GOVERNOR_PATH, &old_governor) ||
-      !android::base::ReadFileToString(AVAILABLE_GOVERNORS_PATH, &governors)) {
+  unique_fd fd1(open(CPU_GOVERNOR_PATH, O_RDWR));
+  unique_fd fd2(open(AVAILABLE_GOVERNORS_PATH, O_RDONLY));
+  if (fd1 < 0 || fd2 < 0) {
     // Files don't exist, so skip the rest of the test case
     SUCCEED();
     return;
   }
-  auto all_governors = android::base::Split(governors, " \n");
-  for (const auto &governor : all_governors) {
-      ASSERT_TRUE(android::base::WriteStringToFile(governor, CPU_GOVERNOR_PATH));
+
+  char old_governor[80];
+  ASSERT_LE(0, read(fd1, old_governor, 80));
+
+  char governors[1024];
+  unsigned len = read(fd2, governors, 1024);
+  ASSERT_LE(0u, len);
+  governors[len] = '\0';
+
+  char *saveptr;
+  char *name = strtok_r(governors, " \n", &saveptr);
+  while (name) {
+    ASSERT_LE(0, write(fd1, name, strlen(name)));
     ret = power->setInteractive(true);
     ASSERT_TRUE(ret.isOk());
 
@@ -96,12 +104,14 @@ TEST_P(PowerHidlTest, TryDifferentGovernors) {
 
     power->powerHint(PowerHint::LAUNCH, 1);
     power->powerHint(PowerHint::LAUNCH, 0);
+
+    name = strtok_r(NULL, " \n", &saveptr);
   }
 
-  ASSERT_TRUE(android::base::WriteStringToFile(old_governor, CPU_GOVERNOR_PATH));
+  ASSERT_LE(0, write(fd1, old_governor, strlen(old_governor)));
 }
 
-// Sanity check Power::powerHint on good and bad inputs.
+// Validate Power::powerHint on good and bad inputs.
 TEST_P(PowerHidlTest, PowerHint) {
   PowerHint badHint = static_cast<PowerHint>(0xA);
   auto hints = {PowerHint::VSYNC,         PowerHint::INTERACTION,
@@ -139,7 +149,7 @@ TEST_P(PowerHidlTest, PowerHint) {
   } while (std::next_permutation(hints2.begin(), hints2.end(), compareHints));
 }
 
-// Sanity check Power::setFeature() on good and bad inputs.
+// Validate Power::setFeature() on good and bad inputs.
 TEST_P(PowerHidlTest, SetFeature) {
   Return<void> ret;
   ret = power->setFeature(Feature::POWER_FEATURE_DOUBLE_TAP_TO_WAKE, true);
@@ -154,7 +164,7 @@ TEST_P(PowerHidlTest, SetFeature) {
   ASSERT_TRUE(ret.isOk());
 }
 
-// Sanity check Power::getPlatformLowPowerStats().
+// Validate Power::getPlatformLowPowerStats().
 TEST_P(PowerHidlTest, GetPlatformLowPowerStats) {
   hidl_vec<PowerStatePlatformSleepState> vec;
   Status s;
