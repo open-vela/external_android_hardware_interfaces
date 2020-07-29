@@ -115,9 +115,7 @@ class Keymaster4_1HidlTest : public V4_0::test::KeymasterHidlTest {
     ErrorCode UseHmacKey(const HidlBuf& hmacKeyBlob) {
         auto [result, mac, out_params] =
                 ProcessMessage(hmacKeyBlob, KeyPurpose::SIGN, "1234567890123456",
-                               AuthorizationSetBuilder()
-                                       .Authorization(TAG_MAC_LENGTH, 128)
-                                       .Digest(Digest::SHA_2_256));
+                               AuthorizationSetBuilder().Authorization(TAG_MAC_LENGTH, 128));
         return result;
     }
 
@@ -153,6 +151,7 @@ bool contains(hidl_vec<KeyParameter>& set, TypedTag typedTag) {
 }
 
 #define INSTANTIATE_KEYMASTER_4_1_HIDL_TEST(name)                                     \
+    GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(name);                              \
     INSTANTIATE_TEST_SUITE_P(PerInstance, name,                                       \
                              testing::ValuesIn(Keymaster4_1HidlTest::build_params()), \
                              android::hardware::PrintInstanceNameToString)
