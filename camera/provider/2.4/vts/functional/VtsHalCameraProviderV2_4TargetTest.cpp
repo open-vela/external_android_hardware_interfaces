@@ -7584,7 +7584,6 @@ void CameraHidlTest::verifyRequestTemplate(const camera_metadata_t* metadata,
     }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(CameraHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, CameraHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(ICameraProvider::descriptor)),
