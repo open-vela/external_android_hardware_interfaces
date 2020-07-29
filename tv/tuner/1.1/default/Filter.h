@@ -18,7 +18,6 @@
 #define ANDROID_HARDWARE_TV_TUNER_V1_1_FILTER_H_
 
 #include <android/hardware/tv/tuner/1.1/IFilter.h>
-#include <android/hardware/tv/tuner/1.1/IFilterCallback.h>
 #include <fmq/MessageQueue.h>
 #include <inttypes.h>
 #include <ion/ion.h>
@@ -103,12 +102,7 @@ class Filter : public V1_1::IFilter {
     /**
      * Filter callbacks used on filter events or FMQ status
      */
-    sp<IFilterCallback> mCallback = nullptr;
-
-    /**
-     * V1_1 Filter callbacks used on filter events or FMQ status
-     */
-    sp<V1_1::IFilterCallback> mCallback_1_1 = nullptr;
+    sp<IFilterCallback> mCallback;
 
     uint64_t mFilterId;
     uint32_t mBufferSize;
@@ -128,7 +122,6 @@ class Filter : public V1_1::IFilter {
     bool mIsUsingFMQ = false;
     EventFlag* mFilterEventFlag;
     DemuxFilterEvent mFilterEvent;
-    V1_1::DemuxFilterEvent mFilterEvent_1_1;
 
     // Thread handlers
     pthread_t mFilterThread;

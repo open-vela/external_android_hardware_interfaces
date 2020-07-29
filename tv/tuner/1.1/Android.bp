@@ -4,11 +4,9 @@ hidl_interface {
     name: "android.hardware.tv.tuner@1.1",
     root: "android.hardware",
     srcs: [
-        "IDemux.hal",
         "IFilter.hal",
-        "IFilterCallback.hal",
         "ITuner.hal",
-        "types.hal",
+        "IDemux.hal",
     ],
     interfaces: [
         "android.hidl.base@1.0",
