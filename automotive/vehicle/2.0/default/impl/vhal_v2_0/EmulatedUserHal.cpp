@@ -30,11 +30,18 @@ namespace impl {
 
 constexpr int INITIAL_USER_INFO = static_cast<int>(VehicleProperty::INITIAL_USER_INFO);
 constexpr int SWITCH_USER = static_cast<int>(VehicleProperty::SWITCH_USER);
+constexpr int CREATE_USER = static_cast<int>(VehicleProperty::CREATE_USER);
+constexpr int REMOVE_USER = static_cast<int>(VehicleProperty::REMOVE_USER);
+constexpr int USER_IDENTIFICATION_ASSOCIATION =
+        static_cast<int>(VehicleProperty::USER_IDENTIFICATION_ASSOCIATION);
 
 bool EmulatedUserHal::isSupported(int32_t prop) {
     switch (prop) {
         case INITIAL_USER_INFO:
         case SWITCH_USER:
+        case CREATE_USER:
+        case REMOVE_USER:
+        case USER_IDENTIFICATION_ASSOCIATION:
             return true;
         default:
             return false;
@@ -50,10 +57,56 @@ android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::onSetP
             return onSetInitialUserInfoResponse(value);
         case SWITCH_USER:
             return onSetSwitchUserResponse(value);
+        case CREATE_USER:
+            return onSetCreateUserResponse(value);
+        case REMOVE_USER:
+            ALOGI("REMOVE_USER is FYI only, nothing to do...");
+            return {};
+        case USER_IDENTIFICATION_ASSOCIATION:
+            return onSetUserIdentificationAssociation(value);
         default:
             return android::base::Error(static_cast<int>(StatusCode::INVALID_ARG))
                    << "Unsupported property: " << toString(value);
     }
+}
+
+android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::onGetProperty(
+        const VehiclePropValue& value) {
+    ALOGV("onGetProperty(%s)", toString(value).c_str());
+    switch (value.prop) {
+        case INITIAL_USER_INFO:
+        case SWITCH_USER:
+        case CREATE_USER:
+        case REMOVE_USER:
+            ALOGE("onGetProperty(): %d is only supported on SET", value.prop);
+            return android::base::Error(static_cast<int>(StatusCode::INVALID_ARG))
+                   << "only supported on SET";
+        case USER_IDENTIFICATION_ASSOCIATION:
+            return onGetUserIdentificationAssociation(value);
+        default:
+            ALOGE("onGetProperty(): %d is not supported", value.prop);
+            return android::base::Error(static_cast<int>(StatusCode::INVALID_ARG))
+                   << "not supported by User HAL";
+    }
+}
+
+android::base::Result<std::unique_ptr<VehiclePropValue>>
+EmulatedUserHal::onGetUserIdentificationAssociation(const VehiclePropValue& value) {
+    if (mSetUserIdentificationAssociationResponseFromCmd != nullptr) {
+        ALOGI("get(USER_IDENTIFICATION_ASSOCIATION): returning %s",
+              toString(*mSetUserIdentificationAssociationResponseFromCmd).c_str());
+        auto newValue = std::unique_ptr<VehiclePropValue>(
+                new VehiclePropValue(*mSetUserIdentificationAssociationResponseFromCmd));
+        // Must use the same requestId
+        if (value.value.int32Values.size() > 0) {
+            newValue->value.int32Values[0] = value.value.int32Values[0];
+        } else {
+            ALOGE("get(USER_IDENTIFICATION_ASSOCIATION): no requestId on %s",
+                  toString(value).c_str());
+        }
+        return newValue;
+    }
+    return defaultUserIdentificationAssociation(value);
 }
 
 android::base::Result<std::unique_ptr<VehiclePropValue>>
@@ -102,6 +155,15 @@ android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::onSetS
     }
 
     if (value.areaId != 0) {
+        if (value.value.int32Values.size() >= 2 &&
+            static_cast<SwitchUserMessageType>(value.value.int32Values[1]) ==
+                    SwitchUserMessageType::VEHICLE_REQUEST) {
+            // User HAL can also request a user switch, so we need to check it first
+            ALOGD("set(SWITCH_USER) called from lshal to emulate a vehicle request: %s",
+                  toString(value).c_str());
+            return std::unique_ptr<VehiclePropValue>(new VehiclePropValue(value));
+        }
+        // Otherwise, we store it
         ALOGD("set(SWITCH_USER) called from lshal; storing it: %s", toString(value).c_str());
         mSwitchUserResponseFromCmd.reset(new VehiclePropValue(value));
         return {};
@@ -142,6 +204,79 @@ android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::onSetS
           toString(*updatedValue).c_str());
 
     return updatedValue;
+}
+
+android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::onSetCreateUserResponse(
+        const VehiclePropValue& value) {
+    if (value.value.int32Values.size() == 0) {
+        ALOGE("set(CREATE_USER): no int32values, ignoring it: %s", toString(value).c_str());
+        return android::base::Error(static_cast<int>(StatusCode::INVALID_ARG))
+               << "no int32values on " << toString(value);
+    }
+
+    if (value.areaId != 0) {
+        ALOGD("set(CREATE_USER) called from lshal; storing it: %s", toString(value).c_str());
+        mCreateUserResponseFromCmd.reset(new VehiclePropValue(value));
+        return {};
+    }
+    ALOGD("set(CREATE_USER) called from Android: %s", toString(value).c_str());
+
+    int32_t requestId = value.value.int32Values[0];
+    if (mCreateUserResponseFromCmd != nullptr) {
+        ALOGI("replying CREATE_USER with lshal value:  %s",
+              toString(*mCreateUserResponseFromCmd).c_str());
+        return sendUserHalResponse(std::move(mCreateUserResponseFromCmd), requestId);
+    }
+
+    // Returns default response
+    auto updatedValue = std::unique_ptr<VehiclePropValue>(new VehiclePropValue);
+    updatedValue->prop = CREATE_USER;
+    updatedValue->timestamp = elapsedRealtimeNano();
+    updatedValue->value.int32Values.resize(2);
+    updatedValue->value.int32Values[0] = requestId;
+    updatedValue->value.int32Values[1] = (int32_t)CreateUserStatus::SUCCESS;
+
+    ALOGI("no lshal response; replying with SUCCESS: %s", toString(*updatedValue).c_str());
+
+    return updatedValue;
+}
+
+android::base::Result<std::unique_ptr<VehiclePropValue>>
+EmulatedUserHal::onSetUserIdentificationAssociation(const VehiclePropValue& value) {
+    if (value.value.int32Values.size() == 0) {
+        ALOGE("set(USER_IDENTIFICATION_ASSOCIATION): no int32values, ignoring it: %s",
+              toString(value).c_str());
+        return android::base::Error(static_cast<int>(StatusCode::INVALID_ARG))
+               << "no int32values on " << toString(value);
+    }
+
+    if (value.areaId != 0) {
+        ALOGD("set(USER_IDENTIFICATION_ASSOCIATION) called from lshal; storing it: %s",
+              toString(value).c_str());
+        mSetUserIdentificationAssociationResponseFromCmd.reset(new VehiclePropValue(value));
+        return {};
+    }
+    ALOGD("set(USER_IDENTIFICATION_ASSOCIATION) called from Android: %s", toString(value).c_str());
+
+    int32_t requestId = value.value.int32Values[0];
+    if (mSetUserIdentificationAssociationResponseFromCmd != nullptr) {
+        ALOGI("replying USER_IDENTIFICATION_ASSOCIATION with lshal value:  %s",
+              toString(*mSetUserIdentificationAssociationResponseFromCmd).c_str());
+        // Not moving response so it can be used on GET requests
+        auto copy = std::unique_ptr<VehiclePropValue>(
+                new VehiclePropValue(*mSetUserIdentificationAssociationResponseFromCmd));
+        return sendUserHalResponse(std::move(copy), requestId);
+    }
+
+    // Returns default response
+    return defaultUserIdentificationAssociation(value);
+}
+
+android::base::Result<std::unique_ptr<VehiclePropValue>>
+EmulatedUserHal::defaultUserIdentificationAssociation(const VehiclePropValue& request) {
+    // TODO(b/159498909): return a response with NOT_ASSOCIATED_ANY_USER for all requested types
+    ALOGE("no lshal response for %s; replying with NOT_AVAILABLE", toString(request).c_str());
+    return android::base::Error(static_cast<int>(StatusCode::NOT_AVAILABLE)) << "not set by lshal";
 }
 
 android::base::Result<std::unique_ptr<VehiclePropValue>> EmulatedUserHal::sendUserHalResponse(
@@ -188,6 +323,18 @@ void EmulatedUserHal::dump(int fd, std::string indent) {
                 toString(*mSwitchUserResponseFromCmd).c_str());
     } else {
         dprintf(fd, "%sNo SwitchUser response\n", indent.c_str());
+    }
+    if (mCreateUserResponseFromCmd != nullptr) {
+        dprintf(fd, "%sCreateUser response: %s\n", indent.c_str(),
+                toString(*mCreateUserResponseFromCmd).c_str());
+    } else {
+        dprintf(fd, "%sNo CreateUser response\n", indent.c_str());
+    }
+    if (mSetUserIdentificationAssociationResponseFromCmd != nullptr) {
+        dprintf(fd, "%sSetUserIdentificationAssociation response: %s\n", indent.c_str(),
+                toString(*mSetUserIdentificationAssociationResponseFromCmd).c_str());
+    } else {
+        dprintf(fd, "%sNo SetUserIdentificationAssociation response\n", indent.c_str());
     }
 }
 
