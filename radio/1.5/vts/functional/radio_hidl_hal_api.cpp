@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <android-base/properties.h>
 #include <radio_hidl_hal_utils_v1_5.h>
 
 #define ASSERT_OK(ret) ASSERT_TRUE(ret.isOk())
@@ -1215,7 +1214,7 @@ TEST_P(RadioHidlTest_v1_5, sendCdmaSmsExpectMore) {
     cdmaSmsMessage.address = cdmaSmsAddress;
     cdmaSmsMessage.subAddress = cdmaSmsSubaddress;
     cdmaSmsMessage.bearerData =
-            (std::vector<uint8_t>){15, 0, 3, 32, 3, 16, 1, 8, 16, 53, 76, 68, 6, 51, 106, 0};
+        (std::vector<uint8_t>){15, 0, 3, 32, 3, 16, 1, 8, 16, 53, 76, 68, 6, 51, 106, 0};
 
     radio_v1_5->sendCdmaSmsExpectMore(serial, cdmaSmsMessage);
 
@@ -1225,9 +1224,9 @@ TEST_P(RadioHidlTest_v1_5, sendCdmaSmsExpectMore) {
 
     if (cardStatus.base.base.base.cardState == CardState::ABSENT) {
         ASSERT_TRUE(CheckAnyOfErrors(
-                radioRsp_v1_5->rspInfo.error,
-                {RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE, RadioError::SIM_ABSENT},
-                CHECK_GENERAL_ERROR));
+            radioRsp_v1_5->rspInfo.error,
+            {RadioError::INVALID_ARGUMENTS, RadioError::INVALID_STATE, RadioError::SIM_ABSENT},
+            CHECK_GENERAL_ERROR));
     }
 }
 
@@ -1242,17 +1241,6 @@ TEST_P(RadioHidlTest_v1_5, getBarringInfo) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_5->rspInfo.serial);
 
-    int32_t firstApiLevel = android::base::GetIntProperty<int32_t>("ro.product.first_api_level", 0);
-    // Allow devices shipping with Radio::1_5 and Android 11 to not support barring info.
-    if (firstApiLevel > 0 && firstApiLevel <= 30) {
-        ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_5->rspInfo.error,
-                                     {RadioError::NONE, RadioError::REQUEST_NOT_SUPPORTED}));
-        // Early exit for devices that don't support barring info.
-        if (radioRsp_v1_5->rspInfo.error != RadioError::NONE) {
-            return;
-        }
-    }
-
     ASSERT_TRUE(radioRsp_v1_5->barringInfos.size() > 0);
 
     std::set<BarringInfo::ServiceType> reportedServices;
@@ -1265,7 +1253,7 @@ TEST_P(RadioHidlTest_v1_5, getBarringInfo) {
                      info.serviceType <= BarringInfo::ServiceType::OPERATOR_32));
         reportedServices.insert(info.serviceType);
 
-        // Any type that is "conditional" must have valid values for conditional barring
+        // Any type that is "conditional" must have sane values for conditional barring
         // factor and time.
         switch (info.barringType) {
             case BarringInfo::BarringType::NONE:  // fall through
@@ -1284,7 +1272,7 @@ TEST_P(RadioHidlTest_v1_5, getBarringInfo) {
 
     // Certain types of barring are relevant for certain RANs. Ensure that only the right
     // types are reported. Note that no types are required, simply that for a given technology
-    // only certain types are valid. This is one way to check that implementations are
+    // only certain types are valid. This is one way to sanity check that implementations are
     // not providing information that they don't have.
     static const std::set<BarringInfo::ServiceType> UTRA_SERVICES{
             BarringInfo::ServiceType::CS_SERVICE, BarringInfo::ServiceType::PS_SERVICE,
