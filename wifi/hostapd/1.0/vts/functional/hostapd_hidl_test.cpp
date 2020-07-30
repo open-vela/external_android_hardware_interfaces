@@ -57,8 +57,6 @@ class HostapdHidlTest
 
     virtual void TearDown() override {
         HIDL_INVOKE_VOID_WITHOUT_ARGUMENTS(hostapd_, terminate);
-        // Wait 3 seconds to allow terminate processing before kill hostapd.
-        sleep(3);
         stopHostapd(wifi_instance_name_);
     }
 
@@ -267,6 +265,7 @@ TEST_P(HostapdHidlTest, AddInvalidPskAccessPointWithoutAcs) {
  */
 TEST_P(HostapdHidlTest, Terminate) { hostapd_->terminate(); }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(HostapdHidlTest);
 INSTANTIATE_TEST_SUITE_P(
     PerInstance, HostapdHidlTest,
     testing::Combine(
