@@ -19,7 +19,6 @@
 #include <stdio.h>
 
 #include <log/log.h>
-#include <media/AudioContainers.h>
 
 namespace android {
 namespace hardware {
@@ -32,22 +31,26 @@ std::string deviceAddressToHal(const DeviceAddress& address) {
     char halAddress[AUDIO_DEVICE_MAX_ADDRESS_LEN];
     memset(halAddress, 0, sizeof(halAddress));
     uint32_t halDevice = static_cast<uint32_t>(address.device);
-    if (getAudioDeviceOutAllA2dpSet().count(halDevice) > 0 ||
-        halDevice == AUDIO_DEVICE_IN_BLUETOOTH_A2DP) {
+    const bool isInput = (halDevice & AUDIO_DEVICE_BIT_IN) != 0;
+    if (isInput) halDevice &= ~AUDIO_DEVICE_BIT_IN;
+    if ((!isInput && (halDevice & AUDIO_DEVICE_OUT_ALL_A2DP) != 0) ||
+        (isInput && (halDevice & AUDIO_DEVICE_IN_BLUETOOTH_A2DP) != 0)) {
         snprintf(halAddress, sizeof(halAddress), "%02X:%02X:%02X:%02X:%02X:%02X",
                  address.address.mac[0], address.address.mac[1], address.address.mac[2],
                  address.address.mac[3], address.address.mac[4], address.address.mac[5]);
-    } else if (halDevice == AUDIO_DEVICE_OUT_IP || halDevice == AUDIO_DEVICE_IN_IP) {
+    } else if ((!isInput && (halDevice & AUDIO_DEVICE_OUT_IP) != 0) ||
+               (isInput && (halDevice & AUDIO_DEVICE_IN_IP) != 0)) {
         snprintf(halAddress, sizeof(halAddress), "%d.%d.%d.%d", address.address.ipv4[0],
                  address.address.ipv4[1], address.address.ipv4[2], address.address.ipv4[3]);
-    } else if (getAudioDeviceOutAllUsbSet().count(halDevice) > 0 ||
-               getAudioDeviceInAllUsbSet().count(halDevice) > 0) {
+    } else if ((!isInput && (halDevice & AUDIO_DEVICE_OUT_ALL_USB) != 0) ||
+               (isInput && (halDevice & AUDIO_DEVICE_IN_ALL_USB) != 0)) {
         snprintf(halAddress, sizeof(halAddress), "card=%d;device=%d", address.address.alsa.card,
                  address.address.alsa.device);
-    } else if (halDevice == AUDIO_DEVICE_OUT_BUS || halDevice == AUDIO_DEVICE_IN_BUS) {
+    } else if ((!isInput && (halDevice & AUDIO_DEVICE_OUT_BUS) != 0) ||
+               (isInput && (halDevice & AUDIO_DEVICE_IN_BUS) != 0)) {
         snprintf(halAddress, sizeof(halAddress), "%s", address.busAddress.c_str());
-    } else if (halDevice == AUDIO_DEVICE_OUT_REMOTE_SUBMIX ||
-               halDevice == AUDIO_DEVICE_IN_REMOTE_SUBMIX) {
+    } else if ((!isInput && (halDevice & AUDIO_DEVICE_OUT_REMOTE_SUBMIX)) != 0 ||
+               (isInput && (halDevice & AUDIO_DEVICE_IN_REMOTE_SUBMIX) != 0)) {
         snprintf(halAddress, sizeof(halAddress), "%s", address.rSubmixAddress.c_str());
     }
     return halAddress;
@@ -64,28 +67,32 @@ status_t deviceAddressFromHal(audio_devices_t device, const char* halAddress,
         return OK;
     }
 
-    if (getAudioDeviceOutAllA2dpSet().count(device) > 0 ||
-        device == AUDIO_DEVICE_IN_BLUETOOTH_A2DP) {
+    const bool isInput = (device & AUDIO_DEVICE_BIT_IN) != 0;
+    if (isInput) device &= ~AUDIO_DEVICE_BIT_IN;
+    if ((!isInput && (device & AUDIO_DEVICE_OUT_ALL_A2DP) != 0) ||
+        (isInput && (device & AUDIO_DEVICE_IN_BLUETOOTH_A2DP) != 0)) {
         int status =
             sscanf(halAddress, "%hhX:%hhX:%hhX:%hhX:%hhX:%hhX", &address->address.mac[0],
                    &address->address.mac[1], &address->address.mac[2], &address->address.mac[3],
                    &address->address.mac[4], &address->address.mac[5]);
         return status == 6 ? OK : BAD_VALUE;
-    } else if (device == AUDIO_DEVICE_OUT_IP || device == AUDIO_DEVICE_IN_IP) {
+    } else if ((!isInput && (device & AUDIO_DEVICE_OUT_IP) != 0) ||
+               (isInput && (device & AUDIO_DEVICE_IN_IP) != 0)) {
         int status =
             sscanf(halAddress, "%hhu.%hhu.%hhu.%hhu", &address->address.ipv4[0],
                    &address->address.ipv4[1], &address->address.ipv4[2], &address->address.ipv4[3]);
         return status == 4 ? OK : BAD_VALUE;
-    } else if (getAudioDeviceOutAllUsbSet().count(device) > 0 ||
-               getAudioDeviceInAllUsbSet().count(device) > 0) {
+    } else if ((!isInput && (device & AUDIO_DEVICE_OUT_ALL_USB)) != 0 ||
+               (isInput && (device & AUDIO_DEVICE_IN_ALL_USB)) != 0) {
         int status = sscanf(halAddress, "card=%d;device=%d", &address->address.alsa.card,
                             &address->address.alsa.device);
         return status == 2 ? OK : BAD_VALUE;
-    } else if (device == AUDIO_DEVICE_OUT_BUS || device == AUDIO_DEVICE_IN_BUS) {
+    } else if ((!isInput && (device & AUDIO_DEVICE_OUT_BUS) != 0) ||
+               (isInput && (device & AUDIO_DEVICE_IN_BUS) != 0)) {
         address->busAddress = halAddress;
         return OK;
-    } else if (device == AUDIO_DEVICE_OUT_REMOTE_SUBMIX ||
-               device == AUDIO_DEVICE_IN_REMOTE_SUBMIX) {
+    } else if ((!isInput && (device & AUDIO_DEVICE_OUT_REMOTE_SUBMIX)) != 0 ||
+               (isInput && (device & AUDIO_DEVICE_IN_REMOTE_SUBMIX) != 0)) {
         address->rSubmixAddress = halAddress;
         return OK;
     }

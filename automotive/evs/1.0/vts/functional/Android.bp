@@ -25,10 +25,8 @@ cc_test {
     shared_libs: [
         "libui",
     ],
-    static_libs: [
-        "android.hardware.automotive.evs@1.0",
-    ],
-    test_suites: ["vts"],
+    static_libs: ["android.hardware.automotive.evs@1.0"],
+    test_suites: ["general-tests"],
     cflags: [
         "-O0",
         "-g",

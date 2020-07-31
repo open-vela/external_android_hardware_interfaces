@@ -119,13 +119,12 @@ GnssData GnssMeasurement::getMockMeasurement() {
     V2_0::IGnssMeasurementCallback::GnssMeasurement measurement_2_0 = {
             .v1_1 = measurement_1_1,
             .codeType = "C",
+            .constellation = GnssConstellationType::GLONASS,
             .state = GnssMeasurementState::STATE_CODE_LOCK | GnssMeasurementState::STATE_BIT_SYNC |
                      GnssMeasurementState::STATE_SUBFRAME_SYNC |
                      GnssMeasurementState::STATE_TOW_DECODED |
                      GnssMeasurementState::STATE_GLO_STRING_SYNC |
-                     GnssMeasurementState::STATE_GLO_TOD_DECODED,
-            .constellation = GnssConstellationType::GLONASS,
-    };
+                     GnssMeasurementState::STATE_GLO_TOD_DECODED};
 
     hidl_vec<IGnssMeasurementCallback::GnssMeasurement> measurements(1);
     measurements[0] = measurement_2_0;

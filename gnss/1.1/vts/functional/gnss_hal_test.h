@@ -29,9 +29,8 @@
 using android::hardware::Return;
 using android::hardware::Void;
 
-using android::hardware::gnss::V1_0::GnssLocation;
-
 using android::hardware::gnss::V1_0::GnssConstellationType;
+using android::hardware::gnss::V1_0::GnssLocation;
 using android::hardware::gnss::V1_0::GnssLocationFlags;
 using android::hardware::gnss::V1_1::IGnss;
 using android::hardware::gnss::V1_1::IGnssCallback;
@@ -114,9 +113,11 @@ class GnssHalTest : public ::testing::VtsHalHidlTargetTestBase {
      *   <p> Note this leaves the Location request active, to enable Stop call vs. other call
      *   reordering tests.
      *
+     *   <p> if 'strict' is true, the test will fail if no location is generated.
+     *
      * returns  true if a location was successfully generated
      */
-    bool StartAndCheckFirstLocation();
+    bool StartAndCheckFirstLocation(bool strict);
 
     /*
      * CheckLocation:

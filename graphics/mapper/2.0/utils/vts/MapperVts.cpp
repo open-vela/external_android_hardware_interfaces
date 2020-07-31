@@ -16,6 +16,8 @@
 
 #include <mapper-vts/2.0/MapperVts.h>
 
+#include <VtsHalHidlTargetTestBase.h>
+
 namespace android {
 namespace hardware {
 namespace graphics {
@@ -28,10 +30,10 @@ Gralloc::Gralloc(const std::string& allocatorServiceName, const std::string& map
 }
 
 void Gralloc::init(const std::string& allocatorServiceName, const std::string& mapperServiceName) {
-    mAllocator = IAllocator::getService(allocatorServiceName);
+    mAllocator = ::testing::VtsHalHidlTargetTestBase::getService<IAllocator>(allocatorServiceName);
     ASSERT_NE(nullptr, mAllocator.get()) << "failed to get allocator service";
 
-    mMapper = IMapper::getService(mapperServiceName);
+    mMapper = ::testing::VtsHalHidlTargetTestBase::getService<IMapper>(mapperServiceName);
     ASSERT_NE(nullptr, mMapper.get()) << "failed to get mapper service";
     ASSERT_FALSE(mMapper->isRemote()) << "mapper is not in passthrough mode";
 }

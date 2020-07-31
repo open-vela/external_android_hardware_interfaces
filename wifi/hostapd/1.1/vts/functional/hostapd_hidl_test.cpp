@@ -17,15 +17,13 @@
 #include <android-base/logging.h>
 #include <cutils/properties.h>
 
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+#include <VtsHalHidlTargetTestBase.h>
 
-#include <android/hardware/wifi/1.0/IWifi.h>
 #include <android/hardware/wifi/hostapd/1.1/IHostapd.h>
 
 #include "hostapd_hidl_call_util.h"
 #include "hostapd_hidl_test_utils.h"
+#include "hostapd_hidl_test_utils_1_1.h"
 
 using ::android::sp;
 using ::android::hardware::hidl_string;
@@ -35,7 +33,6 @@ using ::android::hardware::wifi::hostapd::V1_0::HostapdStatus;
 using ::android::hardware::wifi::hostapd::V1_0::HostapdStatusCode;
 using ::android::hardware::wifi::hostapd::V1_1::IHostapd;
 using ::android::hardware::wifi::hostapd::V1_1::IHostapdCallback;
-using ::android::hardware::wifi::V1_0::IWifi;
 
 namespace {
 constexpr unsigned char kNwSsid[] = {'t', 'e', 's', 't', '1',
@@ -45,20 +42,16 @@ constexpr int kIfaceChannel = 6;
 constexpr int kIfaceInvalidChannel = 567;
 }  // namespace
 
-class HostapdHidlTest
-    : public ::testing::TestWithParam<std::tuple<std::string, std::string>> {
+class HostapdHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        wifi_instance_name_ = std::get<0>(GetParam());
-        hostapd_instance_name_ = std::get<1>(GetParam());
-        stopSupplicantIfNeeded(wifi_instance_name_);
-        startHostapdAndWaitForHidlService(wifi_instance_name_,
-                                          hostapd_instance_name_);
-        hostapd_ = IHostapd::getService(hostapd_instance_name_);
+        stopSupplicantIfNeeded();
+        startHostapdAndWaitForHidlService();
+        hostapd_ = getHostapd_1_1();
         ASSERT_NE(hostapd_.get(), nullptr);
     }
 
-    virtual void TearDown() override { stopHostapd(wifi_instance_name_); }
+    virtual void TearDown() override { stopHostapd(); }
 
    protected:
     std::string getPrimaryWlanIfaceName() {
@@ -159,8 +152,6 @@ class HostapdHidlTest
 
     // IHostapd object used for all tests in this fixture.
     sp<IHostapd> hostapd_;
-    std::string wifi_instance_name_;
-    std::string hostapd_instance_name_;
 };
 
 class IfaceCallback : public IHostapdCallback {
@@ -173,7 +164,7 @@ class IfaceCallback : public IHostapdCallback {
 /*
  * RegisterCallback
  */
-TEST_P(HostapdHidlTest, registerCallback) {
+TEST_F(HostapdHidlTest, registerCallback) {
     hostapd_->registerCallback(
         new IfaceCallback(), [](const HostapdStatus& status) {
             EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
@@ -184,7 +175,7 @@ TEST_P(HostapdHidlTest, registerCallback) {
  * Adds an access point with PSK network config & ACS enabled.
  * Access point creation should pass.
  */
-TEST_P(HostapdHidlTest, AddPskAccessPointWithAcs) {
+TEST_F(HostapdHidlTest, AddPskAccessPointWithAcs) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithAcs(), getPskNwParams());
     // TODO: b/140172237, fix this in R.
@@ -195,7 +186,7 @@ TEST_P(HostapdHidlTest, AddPskAccessPointWithAcs) {
  * Adds an access point with PSK network config, ACS enabled & channel Range.
  * Access point creation should pass.
  */
-TEST_P(HostapdHidlTest, AddPskAccessPointWithAcsAndChannelRange) {
+TEST_F(HostapdHidlTest, AddPskAccessPointWithAcsAndChannelRange) {
     auto status =
         HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                     getIfaceParamsWithAcsAndChannelRange(), getPskNwParams());
@@ -207,7 +198,7 @@ TEST_P(HostapdHidlTest, AddPskAccessPointWithAcsAndChannelRange) {
  * Adds an access point with invalid channel range.
  * Access point creation should fail.
  */
-TEST_P(HostapdHidlTest, AddPskAccessPointWithAcsAndInvalidChannelRange) {
+TEST_F(HostapdHidlTest, AddPskAccessPointWithAcsAndInvalidChannelRange) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithAcsAndInvalidChannelRange(),
                               getPskNwParams());
@@ -219,7 +210,7 @@ TEST_P(HostapdHidlTest, AddPskAccessPointWithAcsAndInvalidChannelRange) {
  * Adds an access point with Open network config & ACS enabled.
  * Access point creation should pass.
  */
-TEST_P(HostapdHidlTest, AddOpenAccessPointWithAcs) {
+TEST_F(HostapdHidlTest, AddOpenAccessPointWithAcs) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithAcs(), getOpenNwParams());
     // TODO: b/140172237, fix this in R
@@ -230,7 +221,7 @@ TEST_P(HostapdHidlTest, AddOpenAccessPointWithAcs) {
  * Adds an access point with PSK network config & ACS disabled.
  * Access point creation should pass.
  */
-TEST_P(HostapdHidlTest, AddPskAccessPointWithoutAcs) {
+TEST_F(HostapdHidlTest, AddPskAccessPointWithoutAcs) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithoutAcs(), getPskNwParams());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
@@ -240,7 +231,7 @@ TEST_P(HostapdHidlTest, AddPskAccessPointWithoutAcs) {
  * Adds an access point with Open network config & ACS disabled.
  * Access point creation should pass.
  */
-TEST_P(HostapdHidlTest, AddOpenAccessPointWithoutAcs) {
+TEST_F(HostapdHidlTest, AddOpenAccessPointWithoutAcs) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithoutAcs(), getOpenNwParams());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
@@ -250,7 +241,7 @@ TEST_P(HostapdHidlTest, AddOpenAccessPointWithoutAcs) {
  * Adds & then removes an access point with PSK network config & ACS enabled.
  * Access point creation & removal should pass.
  */
-TEST_P(HostapdHidlTest, RemoveAccessPointWithAcs) {
+TEST_F(HostapdHidlTest, RemoveAccessPointWithAcs) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithAcs(), getPskNwParams());
     // TODO: b/140172237, fix this in R
@@ -266,7 +257,7 @@ TEST_P(HostapdHidlTest, RemoveAccessPointWithAcs) {
  * Adds & then removes an access point with PSK network config & ACS disabled.
  * Access point creation & removal should pass.
  */
-TEST_P(HostapdHidlTest, RemoveAccessPointWithoutAcs) {
+TEST_F(HostapdHidlTest, RemoveAccessPointWithoutAcs) {
     auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                               getIfaceParamsWithoutAcs(), getPskNwParams());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
@@ -279,7 +270,7 @@ TEST_P(HostapdHidlTest, RemoveAccessPointWithoutAcs) {
  * Adds an access point with invalid channel.
  * Access point creation should fail.
  */
-TEST_P(HostapdHidlTest, AddPskAccessPointWithInvalidChannel) {
+TEST_F(HostapdHidlTest, AddPskAccessPointWithInvalidChannel) {
     auto status =
         HIDL_INVOKE(hostapd_, addAccessPoint_1_1,
                     getIfaceParamsWithInvalidChannel(), getPskNwParams());
@@ -290,18 +281,9 @@ TEST_P(HostapdHidlTest, AddPskAccessPointWithInvalidChannel) {
  * Adds an access point with invalid PSK network config.
  * Access point creation should fail.
  */
-TEST_P(HostapdHidlTest, AddInvalidPskAccessPointWithoutAcs) {
+TEST_F(HostapdHidlTest, AddInvalidPskAccessPointWithoutAcs) {
     auto status =
         HIDL_INVOKE(hostapd_, addAccessPoint_1_1, getIfaceParamsWithoutAcs(),
                     getInvalidPskNwParams());
     EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
 }
-
-INSTANTIATE_TEST_CASE_P(
-    PerInstance, HostapdHidlTest,
-    testing::Combine(
-        testing::ValuesIn(
-            android::hardware::getAllHalInstanceNames(IWifi::descriptor)),
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(
-            android::hardware::wifi::hostapd::V1_1::IHostapd::descriptor))),
-    android::hardware::PrintInstanceTupleNameToString<>);

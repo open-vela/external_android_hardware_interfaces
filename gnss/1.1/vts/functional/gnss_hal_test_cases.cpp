@@ -92,7 +92,7 @@ TEST_F(GnssHalTest, GetLocationLowPower) {
     SetPositionMode(kMinIntervalMsec, kLowPowerMode);
 
     // Don't expect true - as without AGPS access
-    if (!StartAndCheckFirstLocation()) {
+    if (!StartAndCheckFirstLocation(/* strict= */ false)) {
         ALOGW("GetLocationLowPower test - no first low power location received.");
     }
 
@@ -372,6 +372,7 @@ TEST_F(GnssHalTest, BlacklistConstellationWithLocationOff) {
     sources.resize(1);
     sources[0] = source_to_blacklist;
 
+    // setBlacklist when location is off.
     auto result = gnss_configuration_hal->setBlacklist(sources);
     ASSERT_TRUE(result.isOk());
     EXPECT_TRUE(result);
@@ -419,6 +420,7 @@ TEST_F(GnssHalTest, BlacklistConstellationWithLocationOn) {
     }
 
     const int kLocationsToAwait = 3;
+    // Find first non-GPS constellation to blacklist
     GnssConstellationType constellation_to_blacklist = startLocationAndGetNonGpsConstellation();
 
     IGnssConfiguration::BlacklistedSource source_to_blacklist;

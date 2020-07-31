@@ -106,7 +106,7 @@ void GnssHalTest::SetPositionMode(const int min_interval_msec, const bool low_po
     EXPECT_TRUE(result);
 }
 
-bool GnssHalTest::StartAndCheckFirstLocation() {
+bool GnssHalTest::StartAndCheckFirstLocation(bool strict) {
     auto result = gnss_hal_->start();
 
     EXPECT_TRUE(result.isOk());
@@ -119,7 +119,9 @@ bool GnssHalTest::StartAndCheckFirstLocation() {
     const int kFirstGnssLocationTimeoutSeconds = 75;
 
     wait(kFirstGnssLocationTimeoutSeconds);
-    EXPECT_EQ(location_called_count_, 1);
+    if (strict) {
+        EXPECT_EQ(location_called_count_, 1);
+    }
 
     if (location_called_count_ > 0) {
         // don't require speed on first fix
@@ -142,7 +144,7 @@ void GnssHalTest::StartAndCheckLocations(int count) {
 
     SetPositionMode(kMinIntervalMsec, kLowPowerMode);
 
-    EXPECT_TRUE(StartAndCheckFirstLocation());
+    EXPECT_TRUE(StartAndCheckFirstLocation(/* strict= */ true));
 
     for (int i = 1; i < count; i++) {
         EXPECT_EQ(std::cv_status::no_timeout, wait(kLocationTimeoutSubsequentSec));
@@ -177,6 +179,24 @@ bool GnssHalTest::IsGnssHalVersion_1_1() const {
     return hasGnssHalVersion_1_1 && !hasGnssHalVersion_2_0;
 }
 
+void GnssHalTest::notify() {
+    std::unique_lock<std::mutex> lock(mtx_);
+    notify_count_++;
+    cv_.notify_one();
+}
+
+std::cv_status GnssHalTest::wait(int timeout_seconds) {
+    std::unique_lock<std::mutex> lock(mtx_);
+
+    auto status = std::cv_status::no_timeout;
+    while (notify_count_ == 0) {
+        status = cv_.wait_for(lock, std::chrono::seconds(timeout_seconds));
+        if (status == std::cv_status::timeout) return status;
+    }
+    notify_count_--;
+    return status;
+}
+
 GnssConstellationType GnssHalTest::startLocationAndGetNonGpsConstellation() {
     const int kLocationsToAwait = 3;
 
@@ -187,7 +207,7 @@ GnssConstellationType GnssHalTest::startLocationAndGetNonGpsConstellation() {
     ALOGD("Observed %d GnssSvStatus, while awaiting %d Locations (%d received)",
           (int)list_gnss_sv_status_.size(), kLocationsToAwait, location_called_count_);
 
-    // Find first non-GPS constellation
+    // Find first non-GPS constellation to blacklist
     GnssConstellationType constellation_to_blacklist = GnssConstellationType::UNKNOWN;
     for (const auto& gnss_sv_status : list_gnss_sv_status_) {
         for (uint32_t iSv = 0; iSv < gnss_sv_status.numSvs; iSv++) {
@@ -207,28 +227,10 @@ GnssConstellationType GnssHalTest::startLocationAndGetNonGpsConstellation() {
 
     if (constellation_to_blacklist == GnssConstellationType::UNKNOWN) {
         ALOGI("No non-GPS constellations found, constellation blacklist test less effective.");
-        // Proceed functionally to return something.
+        // Proceed functionally to blacklist something.
         constellation_to_blacklist = GnssConstellationType::GLONASS;
     }
     return constellation_to_blacklist;
-}
-
-void GnssHalTest::notify() {
-    std::unique_lock<std::mutex> lock(mtx_);
-    notify_count_++;
-    cv_.notify_one();
-}
-
-std::cv_status GnssHalTest::wait(int timeout_seconds) {
-    std::unique_lock<std::mutex> lock(mtx_);
-
-    auto status = std::cv_status::no_timeout;
-    while (notify_count_ == 0) {
-        status = cv_.wait_for(lock, std::chrono::seconds(timeout_seconds));
-        if (status == std::cv_status::timeout) return status;
-    }
-    notify_count_--;
-    return status;
 }
 
 Return<void> GnssHalTest::GnssCallback::gnssSetSystemInfoCb(

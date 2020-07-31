@@ -19,6 +19,7 @@ LOCAL_SHARED_LIBRARIES := \
         libfmq \
         libhardware \
         libhidlbase \
+        libhidltransport \
         libhwc2on1adapter \
         libhwc2onfbadapter \
         liblog \

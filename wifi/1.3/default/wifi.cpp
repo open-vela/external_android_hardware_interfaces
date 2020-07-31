@@ -124,8 +124,6 @@ WifiStatus Wifi::startInternal() {
             }
         }
         LOG(ERROR) << "Wifi HAL start failed";
-        // Clear the event callback objects since the HAL start failed.
-        event_cb_handler_.invalidate();
     }
     return wifi_status;
 }
@@ -160,8 +158,6 @@ WifiStatus Wifi::stopInternal(
         }
         LOG(ERROR) << "Wifi HAL stop failed";
     }
-    // Clear the event callback objects since the HAL is now stopped.
-    event_cb_handler_.invalidate();
     return wifi_status;
 }
 

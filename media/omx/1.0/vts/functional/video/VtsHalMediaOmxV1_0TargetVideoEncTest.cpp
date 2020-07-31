@@ -34,8 +34,6 @@
 #include <android/hidl/allocator/1.0/IAllocator.h>
 #include <android/hidl/memory/1.0/IMapper.h>
 #include <android/hidl/memory/1.0/IMemory.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
 
 using ::android::hardware::graphics::bufferqueue::V1_0::IGraphicBufferProducer;
 using ::android::hardware::graphics::bufferqueue::V1_0::IProducerListener;
@@ -58,48 +56,51 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::hidl_string;
 using ::android::sp;
 
+#include <VtsHalHidlTargetTestBase.h>
 #include <getopt.h>
 #include <media/hardware/HardwareAPI.h>
+#include <media_hidl_test_common.h>
 #include <media_video_hidl_test_common.h>
 #include <system/window.h>
 #include <fstream>
 #include <variant>
 
-// Resource directory
-std::string sResourceDir = "";
+static ComponentTestEnvironment* gEnv = nullptr;
 
 // video encoder test fixture class
-class VideoEncHidlTest
-    : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string>> {
-  public:
-    ::std::string getTestCaseInfo() const {
-        return ::std::string() + "Component: " + component_ + " | " + "Role: " + role_ + " | " +
-               "Instance: " + instance_ + " | " + "Res: " + sResourceDir;
+class VideoEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+   private:
+    typedef ::testing::VtsHalHidlTargetTestBase Super;
+   public:
+    ::std::string getTestCaseInfo() const override {
+        return ::std::string() +
+                "Component: " + gEnv->getComponent().c_str() + " | " +
+                "Role: " + gEnv->getRole().c_str() + " | " +
+                "Instance: " + gEnv->getInstance().c_str() + " | " +
+                "Res: " + gEnv->getRes().c_str();
     }
 
     virtual void SetUp() override {
-        instance_ = std::get<0>(GetParam());
-        component_ = std::get<1>(GetParam());
-        role_ = std::get<2>(GetParam());
-        ASSERT_NE(sResourceDir.empty(), true);
-
+        Super::SetUp();
         disableTest = false;
         android::hardware::media::omx::V1_0::Status status;
-        omx = IOmx::getService(instance_);
+        omx = Super::getService<IOmx>(gEnv->getInstance());
         ASSERT_NE(omx, nullptr);
         observer =
             new CodecObserver([this](Message msg, const BufferInfo* buffer) {
                 handleMessage(msg, buffer);
             });
         ASSERT_NE(observer, nullptr);
-        if (component_.find("OMX.") != 0) disableTest = true;
-        EXPECT_TRUE(omx->allocateNode(component_, observer,
-                                      [&](android::hardware::media::omx::V1_0::Status _s,
-                                          sp<IOmxNode> const& _nl) {
-                                          status = _s;
-                                          this->omxNode = _nl;
-                                      })
-                            .isOk());
+        if (strncmp(gEnv->getComponent().c_str(), "OMX.", 4) != 0)
+            disableTest = true;
+        EXPECT_TRUE(omx->allocateNode(
+                           gEnv->getComponent(), observer,
+                           [&](android::hardware::media::omx::V1_0::Status _s,
+                               sp<IOmxNode> const& _nl) {
+                               status = _s;
+                               this->omxNode = _nl;
+                           })
+                        .isOk());
         if (status == android::hardware::media::omx::V1_0::Status::NAME_NOT_FOUND) {
             disableTest = true;
             std::cout << "[   WARN   ] Test Disabled, component not present\n";
@@ -107,7 +108,7 @@ class VideoEncHidlTest
         }
         ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
         ASSERT_NE(omxNode, nullptr);
-        ASSERT_NE(role_.empty(), true) << "Invalid Component Role";
+        ASSERT_NE(gEnv->getRole().empty(), true) << "Invalid Component Role";
         struct StringToName {
             const char* Name;
             standardComp CompName;
@@ -120,7 +121,7 @@ class VideoEncHidlTest
             sizeof(kStringToName) / sizeof(kStringToName[0]);
         const char* pch;
         char substring[OMX_MAX_STRINGNAME_SIZE];
-        strcpy(substring, role_.c_str());
+        strcpy(substring, gEnv->getRole().c_str());
         pch = strchr(substring, '.');
         ASSERT_NE(pch, nullptr);
         compName = unknown_comp;
@@ -157,8 +158,11 @@ class VideoEncHidlTest
         source = nullptr;
         isSecure = false;
         size_t suffixLen = strlen(".secure");
-        if (component_.rfind(".secure") == component_.length() - suffixLen) {
-            isSecure = true;
+        if (strlen(gEnv->getComponent().c_str()) >= suffixLen) {
+            isSecure =
+                !strcmp(gEnv->getComponent().c_str() +
+                            strlen(gEnv->getComponent().c_str()) - suffixLen,
+                        ".secure");
         }
         if (isSecure) disableTest = true;
         if (disableTest) std::cout << "[   WARN   ] Test Disabled \n";
@@ -173,6 +177,7 @@ class VideoEncHidlTest
             EXPECT_TRUE((omxNode->freeNode()).isOk());
             omxNode = nullptr;
         }
+        Super::TearDown();
     }
 
     // callback function to process messages received by onMessages() from IL
@@ -240,10 +245,6 @@ class VideoEncHidlTest
         unknown_comp,
     };
 
-    std::string component_;
-    std::string role_;
-    std::string instance_;
-
     sp<IOmx> omx;
     sp<CodecObserver> observer;
     sp<IOmxNode> omxNode;
@@ -289,11 +290,11 @@ struct CodecProducerListener : public IProducerListener {
 };
 
 // Mock IOmxBufferSource class. GraphicBufferSource.cpp in libstagefright/omx/
-// implements this class. Below class is introduced to test if callback
+// implements this class. Below is dummy class introduced to test if callback
 // functions are actually being called or not
-struct MockBufferSource : public IOmxBufferSource {
+struct DummyBufferSource : public IOmxBufferSource {
    public:
-    MockBufferSource(sp<IOmxNode> node) {
+    DummyBufferSource(sp<IOmxNode> node) {
         callback = 0;
         executing = false;
         omxNode = node;
@@ -311,7 +312,7 @@ struct MockBufferSource : public IOmxBufferSource {
     android::Vector<BufferInfo> iBuffer, oBuffer;
 };
 
-Return<void> MockBufferSource::onOmxExecuting() {
+Return<void> DummyBufferSource::onOmxExecuting() {
     executing = true;
     callback |= 0x1;
     size_t index;
@@ -332,25 +333,25 @@ Return<void> MockBufferSource::onOmxExecuting() {
     return Void();
 };
 
-Return<void> MockBufferSource::onOmxIdle() {
+Return<void> DummyBufferSource::onOmxIdle() {
     callback |= 0x2;
     executing = false;
     return Void();
 };
 
-Return<void> MockBufferSource::onOmxLoaded() {
+Return<void> DummyBufferSource::onOmxLoaded() {
     callback |= 0x4;
     return Void();
 };
 
-Return<void> MockBufferSource::onInputBufferAdded(uint32_t buffer) {
+Return<void> DummyBufferSource::onInputBufferAdded(uint32_t buffer) {
     (void)buffer;
     EXPECT_EQ(executing, false);
     callback |= 0x8;
     return Void();
 };
 
-Return<void> MockBufferSource::onInputBufferEmptied(
+Return<void> DummyBufferSource::onInputBufferEmptied(
     uint32_t buffer, const ::android::hardware::hidl_handle& fence) {
     (void)fence;
     callback |= 0x10;
@@ -1084,23 +1085,23 @@ void encodeNFrames(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
 }
 
 // set component role
-TEST_P(VideoEncHidlTest, SetRole) {
+TEST_F(VideoEncHidlTest, SetRole) {
     description("Test Set Component Role");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
-    status = setRole(omxNode, role_);
+    status = setRole(omxNode, gEnv->getRole().c_str());
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
 }
 
 // port format enumeration
-TEST_P(VideoEncHidlTest, EnumeratePortFormat) {
+TEST_F(VideoEncHidlTest, EnumeratePortFormat) {
     description("Test Component on Mandatory Port Parameters (Port Format)");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
     OMX_COLOR_FORMATTYPE eColorFormat = OMX_COLOR_FormatYUV420Planar;
     OMX_U32 xFramerate = (30U << 16);
-    status = setRole(omxNode, role_);
+    status = setRole(omxNode, gEnv->getRole().c_str());
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1120,12 +1121,12 @@ TEST_P(VideoEncHidlTest, EnumeratePortFormat) {
 }
 
 // Test IOmxBufferSource CallBacks
-TEST_P(VideoEncHidlTest, BufferSourceCallBacks) {
+TEST_F(VideoEncHidlTest, BufferSourceCallBacks) {
     description("Test IOmxBufferSource CallBacks");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, role_);
+    status = setRole(omxNode, gEnv->getRole().c_str());
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1143,7 +1144,7 @@ TEST_P(VideoEncHidlTest, BufferSourceCallBacks) {
     setupRAWPort(omxNode, kPortIndexInput, nFrameWidth, nFrameHeight, 0,
                  xFramerate, eColorFormat);
 
-    sp<MockBufferSource> buffersource = new MockBufferSource(omxNode);
+    sp<DummyBufferSource> buffersource = new DummyBufferSource(omxNode);
     ASSERT_NE(buffersource, nullptr);
     status = omxNode->setInputSurface(buffersource);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
@@ -1177,12 +1178,12 @@ TEST_P(VideoEncHidlTest, BufferSourceCallBacks) {
 }
 
 // test raw stream encode (input is byte buffers)
-TEST_P(VideoEncHidlTest, EncodeTest) {
+TEST_F(VideoEncHidlTest, EncodeTest) {
     description("Test Encode");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, role_);
+    status = setRole(omxNode, gEnv->getRole().c_str());
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1192,7 +1193,7 @@ TEST_P(VideoEncHidlTest, EncodeTest) {
         kPortIndexOutput = kPortIndexInput + 1;
     }
     char mURL[512];
-    strcpy(mURL, sResourceDir.c_str());
+    strcpy(mURL, gEnv->getRes().c_str());
     GetURLForComponent(mURL);
 
     std::ifstream eleStream;
@@ -1292,12 +1293,12 @@ TEST_P(VideoEncHidlTest, EncodeTest) {
 }
 
 // test raw stream encode (input is ANW buffers)
-TEST_P(VideoEncHidlTest, EncodeTestBufferMetaModes) {
+TEST_F(VideoEncHidlTest, EncodeTestBufferMetaModes) {
     description("Test Encode Input buffer metamodes");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, role_);
+    status = setRole(omxNode, gEnv->getRole().c_str());
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1382,7 +1383,7 @@ TEST_P(VideoEncHidlTest, EncodeTestBufferMetaModes) {
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
 
     char mURL[512];
-    strcpy(mURL, sResourceDir.c_str());
+    strcpy(mURL, gEnv->getRes().c_str());
     GetURLForComponent(mURL);
 
     uint32_t latency = 0;
@@ -1459,12 +1460,12 @@ TEST_P(VideoEncHidlTest, EncodeTestBufferMetaModes) {
 }
 
 // Test end of stream
-TEST_P(VideoEncHidlTest, EncodeTestEOS) {
+TEST_F(VideoEncHidlTest, EncodeTestEOS) {
     description("Test EOS");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, role_);
+    status = setRole(omxNode, gEnv->getRole().c_str());
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1573,22 +1574,15 @@ TEST_P(VideoEncHidlTest, EncodeTestEOS) {
     ASSERT_EQ(returnval, 0);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(VideoEncHidlTest);
-INSTANTIATE_TEST_SUITE_P(PerInstance, VideoEncHidlTest, testing::ValuesIn(kTestParameters),
-                         android::hardware::PrintInstanceTupleNameToString<>);
-
 int main(int argc, char** argv) {
-    kTestParameters = getTestParameters("video_encoder");
+    gEnv = new ComponentTestEnvironment();
+    ::testing::AddGlobalTestEnvironment(gEnv);
     ::testing::InitGoogleTest(&argc, argv);
-
-    // Set the resource directory based on command line args.
-    // Test will fail to set up if the argument is not set.
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-P") == 0 && i < argc - 1) {
-            sResourceDir = argv[i + 1];
-            break;
-        }
+    gEnv->init(&argc, argv);
+    int status = gEnv->initFromOptions(argc, argv);
+    if (status == 0) {
+        status = RUN_ALL_TESTS();
+        ALOGI("Test result = %d", status);
     }
-
-    return RUN_ALL_TESTS();
+    return status;
 }
