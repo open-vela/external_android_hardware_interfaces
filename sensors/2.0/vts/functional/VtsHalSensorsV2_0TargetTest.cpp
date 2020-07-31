@@ -20,8 +20,6 @@
 
 #include <android/hardware/sensors/2.0/ISensors.h>
 #include <android/hardware/sensors/2.0/types.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 #include <log/log.h>
 #include <utils/SystemClock.h>
 
@@ -122,13 +120,9 @@ class EventCallback : public IEventCallback {
 class SensorsHidlTest : public SensorsHidlTestBase {
   public:
     virtual void SetUp() override {
-        mEnvironment = new SensorsHidlEnvironmentV2_0(GetParam());
-        mEnvironment->HidlSetUp();
         // Ensure that we have a valid environment before performing tests
         ASSERT_NE(getSensors(), nullptr);
     }
-
-    virtual void TearDown() override { mEnvironment->HidlTearDown(); }
 
   protected:
     SensorInfo defaultSensorByType(SensorType type) override;
@@ -166,10 +160,12 @@ class SensorsHidlTest : public SensorsHidlTestBase {
     }
 
     inline sp<::android::hardware::sensors::V2_0::ISensors>& getSensors() {
-        return mEnvironment->mSensors;
+        return SensorsHidlEnvironmentV2_0::Instance()->mSensors;
     }
 
-    SensorsHidlEnvironmentBase* getEnvironment() override { return mEnvironment; }
+    SensorsHidlEnvironmentBase* getEnvironment() override {
+        return SensorsHidlEnvironmentV2_0::Instance();
+    }
 
     // Test helpers
     void runSingleFlushTest(const std::vector<SensorInfo>& sensors, bool activateSensor,
@@ -195,10 +191,6 @@ class SensorsHidlTest : public SensorsHidlTestBase {
     void checkRateLevel(const SensorInfo& sensor, int32_t directChannelHandle, RateLevel rateLevel);
     void queryDirectChannelSupport(SharedMemType memType, bool* supportsSharedMemType,
                                    bool* supportsAnyDirectChannel);
-
-  private:
-    // Test environment for sensors HAL.
-    SensorsHidlEnvironmentV2_0* mEnvironment;
 };
 
 Return<Result> SensorsHidlTest::activate(int32_t sensorHandle, bool enabled) {
@@ -303,13 +295,13 @@ int32_t SensorsHidlTest::getInvalidSensorHandle() {
     // Find a sensor handle that does not exist in the sensor list
     int32_t maxHandle = 0;
     for (const SensorInfo& sensor : getSensorsList()) {
-        maxHandle = std::max(maxHandle, sensor.sensorHandle);
+        maxHandle = max(maxHandle, sensor.sensorHandle);
     }
     return maxHandle + 1;
 }
 
 // Test if sensor list returned is valid
-TEST_P(SensorsHidlTest, SensorListValid) {
+TEST_F(SensorsHidlTest, SensorListValid) {
     getSensors()->getSensorsList([&](const auto& list) {
         const size_t count = list.size();
         for (size_t i = 0; i < count; ++i) {
@@ -320,13 +312,11 @@ TEST_P(SensorsHidlTest, SensorListValid) {
                          << s.sensorHandle << std::dec << " type=" << static_cast<int>(s.type)
                          << " name=" << s.name);
 
-            // Test type string non-empty only for private sensor types.
-            if (s.type >= SensorType::DEVICE_PRIVATE_BASE) {
-                EXPECT_FALSE(s.typeAsString.empty());
-            } else if (!s.typeAsString.empty()) {
-                // Test type string matches framework string if specified for non-private types.
-                EXPECT_NO_FATAL_FAILURE(assertTypeMatchStringType(s.type, s.typeAsString));
-            }
+            // Test non-empty type string
+            EXPECT_FALSE(s.typeAsString.empty());
+
+            // Test defined type matches defined string type
+            EXPECT_NO_FATAL_FAILURE(assertTypeMatchStringType(s.type, s.typeAsString));
 
             // Test if all sensor has name and vendor
             EXPECT_FALSE(s.name.empty());
@@ -356,7 +346,7 @@ TEST_P(SensorsHidlTest, SensorListValid) {
 }
 
 // Test that SetOperationMode returns the expected value
-TEST_P(SensorsHidlTest, SetOperationMode) {
+TEST_F(SensorsHidlTest, SetOperationMode) {
     std::vector<SensorInfo> sensors = getInjectEventSensors();
     if (getInjectEventSensors().size() > 0) {
         ASSERT_EQ(Result::OK, getSensors()->setOperationMode(OperationMode::NORMAL));
@@ -368,7 +358,7 @@ TEST_P(SensorsHidlTest, SetOperationMode) {
 }
 
 // Test that an injected event is written back to the Event FMQ
-TEST_P(SensorsHidlTest, InjectSensorEventData) {
+TEST_F(SensorsHidlTest, InjectSensorEventData) {
     std::vector<SensorInfo> sensors = getInjectEventSensors();
     if (sensors.size() == 0) {
         return;
@@ -424,196 +414,196 @@ TEST_P(SensorsHidlTest, InjectSensorEventData) {
 }
 
 // Test if sensor hal can do UI speed accelerometer streaming properly
-TEST_P(SensorsHidlTest, AccelerometerStreamingOperationSlow) {
+TEST_F(SensorsHidlTest, AccelerometerStreamingOperationSlow) {
     testStreamingOperation(SensorType::ACCELEROMETER, std::chrono::milliseconds(200),
                            std::chrono::seconds(5), sAccelNormChecker);
 }
 
 // Test if sensor hal can do normal speed accelerometer streaming properly
-TEST_P(SensorsHidlTest, AccelerometerStreamingOperationNormal) {
+TEST_F(SensorsHidlTest, AccelerometerStreamingOperationNormal) {
     testStreamingOperation(SensorType::ACCELEROMETER, std::chrono::milliseconds(20),
                            std::chrono::seconds(5), sAccelNormChecker);
 }
 
 // Test if sensor hal can do game speed accelerometer streaming properly
-TEST_P(SensorsHidlTest, AccelerometerStreamingOperationFast) {
+TEST_F(SensorsHidlTest, AccelerometerStreamingOperationFast) {
     testStreamingOperation(SensorType::ACCELEROMETER, std::chrono::milliseconds(5),
                            std::chrono::seconds(5), sAccelNormChecker);
 }
 
 // Test if sensor hal can do UI speed gyroscope streaming properly
-TEST_P(SensorsHidlTest, GyroscopeStreamingOperationSlow) {
+TEST_F(SensorsHidlTest, GyroscopeStreamingOperationSlow) {
     testStreamingOperation(SensorType::GYROSCOPE, std::chrono::milliseconds(200),
                            std::chrono::seconds(5), sGyroNormChecker);
 }
 
 // Test if sensor hal can do normal speed gyroscope streaming properly
-TEST_P(SensorsHidlTest, GyroscopeStreamingOperationNormal) {
+TEST_F(SensorsHidlTest, GyroscopeStreamingOperationNormal) {
     testStreamingOperation(SensorType::GYROSCOPE, std::chrono::milliseconds(20),
                            std::chrono::seconds(5), sGyroNormChecker);
 }
 
 // Test if sensor hal can do game speed gyroscope streaming properly
-TEST_P(SensorsHidlTest, GyroscopeStreamingOperationFast) {
+TEST_F(SensorsHidlTest, GyroscopeStreamingOperationFast) {
     testStreamingOperation(SensorType::GYROSCOPE, std::chrono::milliseconds(5),
                            std::chrono::seconds(5), sGyroNormChecker);
 }
 
 // Test if sensor hal can do UI speed magnetometer streaming properly
-TEST_P(SensorsHidlTest, MagnetometerStreamingOperationSlow) {
+TEST_F(SensorsHidlTest, MagnetometerStreamingOperationSlow) {
     testStreamingOperation(SensorType::MAGNETIC_FIELD, std::chrono::milliseconds(200),
                            std::chrono::seconds(5), NullChecker());
 }
 
 // Test if sensor hal can do normal speed magnetometer streaming properly
-TEST_P(SensorsHidlTest, MagnetometerStreamingOperationNormal) {
+TEST_F(SensorsHidlTest, MagnetometerStreamingOperationNormal) {
     testStreamingOperation(SensorType::MAGNETIC_FIELD, std::chrono::milliseconds(20),
                            std::chrono::seconds(5), NullChecker());
 }
 
 // Test if sensor hal can do game speed magnetometer streaming properly
-TEST_P(SensorsHidlTest, MagnetometerStreamingOperationFast) {
+TEST_F(SensorsHidlTest, MagnetometerStreamingOperationFast) {
     testStreamingOperation(SensorType::MAGNETIC_FIELD, std::chrono::milliseconds(5),
                            std::chrono::seconds(5), NullChecker());
 }
 
 // Test if sensor hal can do accelerometer sampling rate switch properly when sensor is active
-TEST_P(SensorsHidlTest, AccelerometerSamplingPeriodHotSwitchOperation) {
+TEST_F(SensorsHidlTest, AccelerometerSamplingPeriodHotSwitchOperation) {
     testSamplingRateHotSwitchOperation(SensorType::ACCELEROMETER);
     testSamplingRateHotSwitchOperation(SensorType::ACCELEROMETER, false /*fastToSlow*/);
 }
 
 // Test if sensor hal can do gyroscope sampling rate switch properly when sensor is active
-TEST_P(SensorsHidlTest, GyroscopeSamplingPeriodHotSwitchOperation) {
+TEST_F(SensorsHidlTest, GyroscopeSamplingPeriodHotSwitchOperation) {
     testSamplingRateHotSwitchOperation(SensorType::GYROSCOPE);
     testSamplingRateHotSwitchOperation(SensorType::GYROSCOPE, false /*fastToSlow*/);
 }
 
 // Test if sensor hal can do magnetometer sampling rate switch properly when sensor is active
-TEST_P(SensorsHidlTest, MagnetometerSamplingPeriodHotSwitchOperation) {
+TEST_F(SensorsHidlTest, MagnetometerSamplingPeriodHotSwitchOperation) {
     testSamplingRateHotSwitchOperation(SensorType::MAGNETIC_FIELD);
     testSamplingRateHotSwitchOperation(SensorType::MAGNETIC_FIELD, false /*fastToSlow*/);
 }
 
 // Test if sensor hal can do accelerometer batching properly
-TEST_P(SensorsHidlTest, AccelerometerBatchingOperation) {
+TEST_F(SensorsHidlTest, AccelerometerBatchingOperation) {
     testBatchingOperation(SensorType::ACCELEROMETER);
 }
 
 // Test if sensor hal can do gyroscope batching properly
-TEST_P(SensorsHidlTest, GyroscopeBatchingOperation) {
+TEST_F(SensorsHidlTest, GyroscopeBatchingOperation) {
     testBatchingOperation(SensorType::GYROSCOPE);
 }
 
 // Test if sensor hal can do magnetometer batching properly
-TEST_P(SensorsHidlTest, MagnetometerBatchingOperation) {
+TEST_F(SensorsHidlTest, MagnetometerBatchingOperation) {
     testBatchingOperation(SensorType::MAGNETIC_FIELD);
 }
 
 // Test sensor event direct report with ashmem for accel sensor at normal rate
-TEST_P(SensorsHidlTest, AccelerometerAshmemDirectReportOperationNormal) {
+TEST_F(SensorsHidlTest, AccelerometerAshmemDirectReportOperationNormal) {
     testDirectReportOperation(SensorType::ACCELEROMETER, SharedMemType::ASHMEM, RateLevel::NORMAL,
                               sAccelNormChecker);
 }
 
 // Test sensor event direct report with ashmem for accel sensor at fast rate
-TEST_P(SensorsHidlTest, AccelerometerAshmemDirectReportOperationFast) {
+TEST_F(SensorsHidlTest, AccelerometerAshmemDirectReportOperationFast) {
     testDirectReportOperation(SensorType::ACCELEROMETER, SharedMemType::ASHMEM, RateLevel::FAST,
                               sAccelNormChecker);
 }
 
 // Test sensor event direct report with ashmem for accel sensor at very fast rate
-TEST_P(SensorsHidlTest, AccelerometerAshmemDirectReportOperationVeryFast) {
+TEST_F(SensorsHidlTest, AccelerometerAshmemDirectReportOperationVeryFast) {
     testDirectReportOperation(SensorType::ACCELEROMETER, SharedMemType::ASHMEM,
                               RateLevel::VERY_FAST, sAccelNormChecker);
 }
 
 // Test sensor event direct report with ashmem for gyro sensor at normal rate
-TEST_P(SensorsHidlTest, GyroscopeAshmemDirectReportOperationNormal) {
+TEST_F(SensorsHidlTest, GyroscopeAshmemDirectReportOperationNormal) {
     testDirectReportOperation(SensorType::GYROSCOPE, SharedMemType::ASHMEM, RateLevel::NORMAL,
                               sGyroNormChecker);
 }
 
 // Test sensor event direct report with ashmem for gyro sensor at fast rate
-TEST_P(SensorsHidlTest, GyroscopeAshmemDirectReportOperationFast) {
+TEST_F(SensorsHidlTest, GyroscopeAshmemDirectReportOperationFast) {
     testDirectReportOperation(SensorType::GYROSCOPE, SharedMemType::ASHMEM, RateLevel::FAST,
                               sGyroNormChecker);
 }
 
 // Test sensor event direct report with ashmem for gyro sensor at very fast rate
-TEST_P(SensorsHidlTest, GyroscopeAshmemDirectReportOperationVeryFast) {
+TEST_F(SensorsHidlTest, GyroscopeAshmemDirectReportOperationVeryFast) {
     testDirectReportOperation(SensorType::GYROSCOPE, SharedMemType::ASHMEM, RateLevel::VERY_FAST,
                               sGyroNormChecker);
 }
 
 // Test sensor event direct report with ashmem for mag sensor at normal rate
-TEST_P(SensorsHidlTest, MagnetometerAshmemDirectReportOperationNormal) {
+TEST_F(SensorsHidlTest, MagnetometerAshmemDirectReportOperationNormal) {
     testDirectReportOperation(SensorType::MAGNETIC_FIELD, SharedMemType::ASHMEM, RateLevel::NORMAL,
                               NullChecker());
 }
 
 // Test sensor event direct report with ashmem for mag sensor at fast rate
-TEST_P(SensorsHidlTest, MagnetometerAshmemDirectReportOperationFast) {
+TEST_F(SensorsHidlTest, MagnetometerAshmemDirectReportOperationFast) {
     testDirectReportOperation(SensorType::MAGNETIC_FIELD, SharedMemType::ASHMEM, RateLevel::FAST,
                               NullChecker());
 }
 
 // Test sensor event direct report with ashmem for mag sensor at very fast rate
-TEST_P(SensorsHidlTest, MagnetometerAshmemDirectReportOperationVeryFast) {
+TEST_F(SensorsHidlTest, MagnetometerAshmemDirectReportOperationVeryFast) {
     testDirectReportOperation(SensorType::MAGNETIC_FIELD, SharedMemType::ASHMEM,
                               RateLevel::VERY_FAST, NullChecker());
 }
 
 // Test sensor event direct report with gralloc for accel sensor at normal rate
-TEST_P(SensorsHidlTest, AccelerometerGrallocDirectReportOperationNormal) {
+TEST_F(SensorsHidlTest, AccelerometerGrallocDirectReportOperationNormal) {
     testDirectReportOperation(SensorType::ACCELEROMETER, SharedMemType::GRALLOC, RateLevel::NORMAL,
                               sAccelNormChecker);
 }
 
 // Test sensor event direct report with gralloc for accel sensor at fast rate
-TEST_P(SensorsHidlTest, AccelerometerGrallocDirectReportOperationFast) {
+TEST_F(SensorsHidlTest, AccelerometerGrallocDirectReportOperationFast) {
     testDirectReportOperation(SensorType::ACCELEROMETER, SharedMemType::GRALLOC, RateLevel::FAST,
                               sAccelNormChecker);
 }
 
 // Test sensor event direct report with gralloc for accel sensor at very fast rate
-TEST_P(SensorsHidlTest, AccelerometerGrallocDirectReportOperationVeryFast) {
+TEST_F(SensorsHidlTest, AccelerometerGrallocDirectReportOperationVeryFast) {
     testDirectReportOperation(SensorType::ACCELEROMETER, SharedMemType::GRALLOC,
                               RateLevel::VERY_FAST, sAccelNormChecker);
 }
 
 // Test sensor event direct report with gralloc for gyro sensor at normal rate
-TEST_P(SensorsHidlTest, GyroscopeGrallocDirectReportOperationNormal) {
+TEST_F(SensorsHidlTest, GyroscopeGrallocDirectReportOperationNormal) {
     testDirectReportOperation(SensorType::GYROSCOPE, SharedMemType::GRALLOC, RateLevel::NORMAL,
                               sGyroNormChecker);
 }
 
 // Test sensor event direct report with gralloc for gyro sensor at fast rate
-TEST_P(SensorsHidlTest, GyroscopeGrallocDirectReportOperationFast) {
+TEST_F(SensorsHidlTest, GyroscopeGrallocDirectReportOperationFast) {
     testDirectReportOperation(SensorType::GYROSCOPE, SharedMemType::GRALLOC, RateLevel::FAST,
                               sGyroNormChecker);
 }
 
 // Test sensor event direct report with gralloc for gyro sensor at very fast rate
-TEST_P(SensorsHidlTest, GyroscopeGrallocDirectReportOperationVeryFast) {
+TEST_F(SensorsHidlTest, GyroscopeGrallocDirectReportOperationVeryFast) {
     testDirectReportOperation(SensorType::GYROSCOPE, SharedMemType::GRALLOC, RateLevel::VERY_FAST,
                               sGyroNormChecker);
 }
 
 // Test sensor event direct report with gralloc for mag sensor at normal rate
-TEST_P(SensorsHidlTest, MagnetometerGrallocDirectReportOperationNormal) {
+TEST_F(SensorsHidlTest, MagnetometerGrallocDirectReportOperationNormal) {
     testDirectReportOperation(SensorType::MAGNETIC_FIELD, SharedMemType::GRALLOC, RateLevel::NORMAL,
                               NullChecker());
 }
 
 // Test sensor event direct report with gralloc for mag sensor at fast rate
-TEST_P(SensorsHidlTest, MagnetometerGrallocDirectReportOperationFast) {
+TEST_F(SensorsHidlTest, MagnetometerGrallocDirectReportOperationFast) {
     testDirectReportOperation(SensorType::MAGNETIC_FIELD, SharedMemType::GRALLOC, RateLevel::FAST,
                               NullChecker());
 }
 
 // Test sensor event direct report with gralloc for mag sensor at very fast rate
-TEST_P(SensorsHidlTest, MagnetometerGrallocDirectReportOperationVeryFast) {
+TEST_F(SensorsHidlTest, MagnetometerGrallocDirectReportOperationVeryFast) {
     testDirectReportOperation(SensorType::MAGNETIC_FIELD, SharedMemType::GRALLOC,
                               RateLevel::VERY_FAST, NullChecker());
 }
@@ -629,13 +619,9 @@ void SensorsHidlTest::activateAllSensors(bool enable) {
 
 // Test that if initialize is called twice, then the HAL writes events to the FMQs from the second
 // call to the function.
-TEST_P(SensorsHidlTest, CallInitializeTwice) {
+TEST_F(SensorsHidlTest, CallInitializeTwice) {
     // Create a helper class so that a second environment is able to be instantiated
-    class SensorsHidlEnvironmentTest : public SensorsHidlEnvironmentV2_0 {
-      public:
-        SensorsHidlEnvironmentTest(const std::string& service_name)
-            : SensorsHidlEnvironmentV2_0(service_name) {}
-    };
+    class SensorsHidlEnvironmentTest : public SensorsHidlEnvironmentV2_0 {};
 
     if (getSensorsList().size() == 0) {
         // No sensors
@@ -647,7 +633,7 @@ TEST_P(SensorsHidlTest, CallInitializeTwice) {
 
     // Create a new environment that calls initialize()
     std::unique_ptr<SensorsHidlEnvironmentTest> newEnv =
-            std::make_unique<SensorsHidlEnvironmentTest>(GetParam());
+        std::make_unique<SensorsHidlEnvironmentTest>();
     newEnv->HidlSetUp();
     if (HasFatalFailure()) {
         return;  // Exit early if setting up the new environment failed
@@ -676,7 +662,7 @@ TEST_P(SensorsHidlTest, CallInitializeTwice) {
     activateAllSensors(false);
 }
 
-TEST_P(SensorsHidlTest, CleanupConnectionsOnInitialize) {
+TEST_F(SensorsHidlTest, CleanupConnectionsOnInitialize) {
     activateAllSensors(true);
 
     // Verify that events are received
@@ -745,7 +731,7 @@ void SensorsHidlTest::runFlushTest(const std::vector<SensorInfo>& sensors, bool 
     }
 }
 
-TEST_P(SensorsHidlTest, FlushSensor) {
+TEST_F(SensorsHidlTest, FlushSensor) {
     // Find a sensor that is not a one-shot sensor
     std::vector<SensorInfo> sensors = getNonOneShotSensors();
     if (sensors.size() == 0) {
@@ -757,7 +743,7 @@ TEST_P(SensorsHidlTest, FlushSensor) {
     runFlushTest(sensors, true /* activateSensor */, kFlushes, kFlushes, Result::OK);
 }
 
-TEST_P(SensorsHidlTest, FlushOneShotSensor) {
+TEST_F(SensorsHidlTest, FlushOneShotSensor) {
     // Find a sensor that is a one-shot sensor
     std::vector<SensorInfo> sensors = getOneShotSensors();
     if (sensors.size() == 0) {
@@ -768,7 +754,7 @@ TEST_P(SensorsHidlTest, FlushOneShotSensor) {
                        Result::BAD_VALUE);
 }
 
-TEST_P(SensorsHidlTest, FlushInactiveSensor) {
+TEST_F(SensorsHidlTest, FlushInactiveSensor) {
     // Attempt to find a non-one shot sensor, then a one-shot sensor if necessary
     std::vector<SensorInfo> sensors = getNonOneShotSensors();
     if (sensors.size() == 0) {
@@ -782,7 +768,7 @@ TEST_P(SensorsHidlTest, FlushInactiveSensor) {
                        Result::BAD_VALUE);
 }
 
-TEST_P(SensorsHidlTest, FlushNonexistentSensor) {
+TEST_F(SensorsHidlTest, FlushNonexistentSensor) {
     SensorInfo sensor;
     std::vector<SensorInfo> sensors = getNonOneShotSensors();
     if (sensors.size() == 0) {
@@ -797,7 +783,7 @@ TEST_P(SensorsHidlTest, FlushNonexistentSensor) {
                        0 /* expectedFlushCount */, Result::BAD_VALUE);
 }
 
-TEST_P(SensorsHidlTest, Batch) {
+TEST_F(SensorsHidlTest, Batch) {
     if (getSensorsList().size() == 0) {
         return;
     }
@@ -829,7 +815,7 @@ TEST_P(SensorsHidlTest, Batch) {
               Result::BAD_VALUE);
 }
 
-TEST_P(SensorsHidlTest, Activate) {
+TEST_F(SensorsHidlTest, Activate) {
     if (getSensorsList().size() == 0) {
         return;
     }
@@ -855,7 +841,7 @@ TEST_P(SensorsHidlTest, Activate) {
     ASSERT_EQ(activate(invalidHandle, false), Result::BAD_VALUE);
 }
 
-TEST_P(SensorsHidlTest, NoStaleEvents) {
+TEST_F(SensorsHidlTest, NoStaleEvents) {
     constexpr milliseconds kFiveHundredMs(500);
     constexpr milliseconds kOneSecond(1000);
 
@@ -899,8 +885,6 @@ TEST_P(SensorsHidlTest, NoStaleEvents) {
     activateAllSensors(true);
     callback.waitForEvents(sensors, kFiveHundredMs + (5 * maxMinDelay));
     activateAllSensors(false);
-
-    getEnvironment()->unregisterCallback();
 
     for (const SensorInfo& sensor : sensors) {
         // Skip sensors that did not previously report an event
@@ -1037,11 +1021,11 @@ void SensorsHidlTest::verifyDirectChannel(SharedMemType memType) {
     }
 }
 
-TEST_P(SensorsHidlTest, DirectChannelAshmem) {
+TEST_F(SensorsHidlTest, DirectChannelAshmem) {
     verifyDirectChannel(SharedMemType::ASHMEM);
 }
 
-TEST_P(SensorsHidlTest, DirectChannelGralloc) {
+TEST_F(SensorsHidlTest, DirectChannelGralloc) {
     verifyDirectChannel(SharedMemType::GRALLOC);
 }
 
@@ -1080,7 +1064,7 @@ bool SensorsHidlTest::getDirectChannelSensor(SensorInfo* sensor, SharedMemType* 
     return found;
 }
 
-TEST_P(SensorsHidlTest, ConfigureDirectChannelWithInvalidHandle) {
+TEST_F(SensorsHidlTest, ConfigureDirectChannelWithInvalidHandle) {
     SensorInfo sensor;
     SharedMemType memType;
     RateLevel rate;
@@ -1094,7 +1078,7 @@ TEST_P(SensorsHidlTest, ConfigureDirectChannelWithInvalidHandle) {
     });
 }
 
-TEST_P(SensorsHidlTest, CleanupDirectConnectionOnInitialize) {
+TEST_F(SensorsHidlTest, CleanupDirectConnectionOnInitialize) {
     constexpr size_t kNumEvents = 1;
     constexpr size_t kMemSize = kNumEvents * kEventSize;
 
@@ -1140,8 +1124,12 @@ TEST_P(SensorsHidlTest, CleanupDirectConnectionOnInitialize) {
     mDirectChannelHandles = handles;
 }
 
-INSTANTIATE_TEST_SUITE_P(PerInstance, SensorsHidlTest,
-                         testing::ValuesIn(android::hardware::getAllHalInstanceNames(
-                                 android::hardware::sensors::V2_0::ISensors::descriptor)),
-                         android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(SensorsHidlEnvironmentV2_0::Instance());
+    ::testing::InitGoogleTest(&argc, argv);
+    SensorsHidlEnvironmentV2_0::Instance()->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    ALOGI("Test result = %d", status);
+    return status;
+}
 // vim: set ts=2 sw=2
