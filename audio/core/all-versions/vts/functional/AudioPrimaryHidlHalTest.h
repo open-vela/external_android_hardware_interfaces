@@ -109,6 +109,11 @@ static auto invalidStateOrNotSupported = {Result::INVALID_STATE, Result::NOT_SUP
 class HidlTest : public ::testing::Test {
   public:
     virtual ~HidlTest() = default;
+    // public access to avoid annoyances when using this method in template classes
+    // derived from test classes
+    sp<IDevice> getDevice() const {
+        return DeviceManager::getInstance().get(getFactoryName(), getDeviceName());
+    }
 
   protected:
     // Factory and device name getters to be overridden in subclasses.
@@ -117,9 +122,6 @@ class HidlTest : public ::testing::Test {
 
     sp<IDevicesFactory> getDevicesFactory() const {
         return DevicesFactoryManager::getInstance().get(getFactoryName());
-    }
-    sp<IDevice> getDevice() const {
-        return DeviceManager::getInstance().get(getFactoryName(), getDeviceName());
     }
     bool resetDevice() const {
         return DeviceManager::getInstance().reset(getFactoryName(), getDeviceName());
@@ -329,9 +331,6 @@ TEST_P(AudioPolicyConfigTest, HasPrimaryModule) {
 INSTANTIATE_TEST_CASE_P(AudioHidl, AudioPolicyConfigTest,
                         ::testing::ValuesIn(getDeviceParametersForFactoryTests()),
                         &DeviceParameterToString);
-// When the VTS test runs on a device lacking the corresponding HAL version the parameter
-// list is empty, this isn't a problem.
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(AudioPolicyConfigTest);
 
 //////////////////////////////////////////////////////////////////////////////
 ////////////////////// getService audio_devices_factory //////////////////////
@@ -367,9 +366,6 @@ TEST_P(AudioHidlTest, OpenDeviceInvalidParameter) {
 INSTANTIATE_TEST_CASE_P(AudioHidl, AudioHidlTest,
                         ::testing::ValuesIn(getDeviceParametersForFactoryTests()),
                         &DeviceParameterToString);
-// When the VTS test runs on a device lacking the corresponding HAL version the parameter
-// list is empty, this isn't a problem.
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(AudioHidlTest);
 
 //////////////////////////////////////////////////////////////////////////////
 /////////////////////////////// openDevice ///////////////////////////////////
@@ -395,9 +391,6 @@ TEST_P(AudioHidlDeviceTest, Init) {
 
 INSTANTIATE_TEST_CASE_P(AudioHidlDevice, AudioHidlDeviceTest,
                         ::testing::ValuesIn(getDeviceParameters()), &DeviceParameterToString);
-// When the VTS test runs on a device lacking the corresponding HAL version the parameter
-// list is empty, this isn't a problem.
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(AudioHidlDeviceTest);
 
 //////////////////////////////////////////////////////////////////////////////
 /////////////////////////////// openDevice primary ///////////////////////////
@@ -411,7 +404,8 @@ class AudioPrimaryHidlTest : public AudioHidlDeviceTest {
         ASSERT_TRUE(getDevice() != nullptr);
     }
 
-  protected:
+    // public access to avoid annoyances when using this method in template classes
+    // derived from test classes
     sp<IPrimaryDevice> getDevice() const {
         return DeviceManager::getInstance().getPrimary(getFactoryName());
     }
@@ -424,9 +418,6 @@ TEST_P(AudioPrimaryHidlTest, OpenPrimaryDevice) {
 INSTANTIATE_TEST_CASE_P(AudioPrimaryHidl, AudioPrimaryHidlTest,
                         ::testing::ValuesIn(getDeviceParametersForPrimaryDeviceTests()),
                         &DeviceParameterToString);
-// When the VTS test runs on a device lacking the corresponding HAL version the parameter
-// list is empty, this isn't a problem.
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(AudioPrimaryHidlTest);
 
 //////////////////////////////////////////////////////////////////////////////
 ///////////////////// {set,get}{Master,Mic}{Mute,Volume} /////////////////////
@@ -445,15 +436,15 @@ class AccessorHidlTest : public BaseTestClass {
     /** Test a property getter and setter.
      *  The getter and/or the setter may return NOT_SUPPORTED if optionality == OPTIONAL.
      */
-    template <Optionality optionality = REQUIRED, class Getter, class Setter>
-    void testAccessors(const string& propertyName, const Initial expectedInitial,
-                       list<Property> valuesToTest, Setter setter, Getter getter,
-                       const vector<Property>& invalidValues = {}) {
+    template <Optionality optionality = REQUIRED, class IUTGetter, class Getter, class Setter>
+    void testAccessors(IUTGetter iutGetter, const string& propertyName,
+                       const Initial expectedInitial, list<Property> valuesToTest, Setter setter,
+                       Getter getter, const vector<Property>& invalidValues = {}) {
         const auto expectedResults = {Result::OK,
                                       optionality == OPTIONAL ? Result::NOT_SUPPORTED : Result::OK};
 
         Property initialValue = expectedInitial.value;
-        ASSERT_OK((BaseTestClass::getDevice().get()->*getter)(returnIn(res, initialValue)));
+        ASSERT_OK(((this->*iutGetter)().get()->*getter)(returnIn(res, initialValue)));
         ASSERT_RESULT(expectedResults, res);
         if (res == Result::OK && expectedInitial.check == REQUIRED) {
             EXPECT_EQ(expectedInitial.value, initialValue);
@@ -464,7 +455,7 @@ class AccessorHidlTest : public BaseTestClass {
         for (Property setValue : valuesToTest) {
             SCOPED_TRACE("Test " + propertyName + " getter and setter for " +
                          testing::PrintToString(setValue));
-            auto ret = (BaseTestClass::getDevice().get()->*setter)(setValue);
+            auto ret = ((this->*iutGetter)().get()->*setter)(setValue);
             ASSERT_RESULT(expectedResults, ret);
             if (ret == Result::NOT_SUPPORTED) {
                 doc::partialTest(propertyName + " setter is not supported");
@@ -472,7 +463,7 @@ class AccessorHidlTest : public BaseTestClass {
             }
             Property getValue;
             // Make sure the getter returns the same value just set
-            ASSERT_OK((BaseTestClass::getDevice().get()->*getter)(returnIn(res, getValue)));
+            ASSERT_OK(((this->*iutGetter)().get()->*getter)(returnIn(res, getValue)));
             ASSERT_RESULT(expectedResults, res);
             if (res == Result::NOT_SUPPORTED) {
                 doc::partialTest(propertyName + " getter is not supported");
@@ -485,11 +476,18 @@ class AccessorHidlTest : public BaseTestClass {
             SCOPED_TRACE("Try to set " + propertyName + " with the invalid value " +
                          testing::PrintToString(invalidValue));
             EXPECT_RESULT(invalidArgsOrNotSupported,
-                          (BaseTestClass::getDevice().get()->*setter)(invalidValue));
+                          ((this->*iutGetter)().get()->*setter)(invalidValue));
         }
 
         // Restore initial value
-        EXPECT_RESULT(expectedResults, (BaseTestClass::getDevice().get()->*setter)(initialValue));
+        EXPECT_RESULT(expectedResults, ((this->*iutGetter)().get()->*setter)(initialValue));
+    }
+    template <Optionality optionality = REQUIRED, class Getter, class Setter>
+    void testAccessors(const string& propertyName, const Initial expectedInitial,
+                       list<Property> valuesToTest, Setter setter, Getter getter,
+                       const vector<Property>& invalidValues = {}) {
+        testAccessors<optionality>(&BaseTestClass::getDevice, propertyName, expectedInitial,
+                                   valuesToTest, setter, getter, invalidValues);
     }
 };
 
@@ -515,10 +513,6 @@ INSTANTIATE_TEST_CASE_P(BoolAccessorHidl, BoolAccessorHidlTest,
 INSTANTIATE_TEST_CASE_P(BoolAccessorPrimaryHidl, BoolAccessorPrimaryHidlTest,
                         ::testing::ValuesIn(getDeviceParametersForPrimaryDeviceTests()),
                         &DeviceParameterToString);
-// When the VTS test runs on a device lacking the corresponding HAL version the parameter
-// list is empty, this isn't a problem.
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BoolAccessorHidlTest);
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BoolAccessorPrimaryHidlTest);
 
 using FloatAccessorHidlTest = AccessorHidlTest<float>;
 TEST_P(FloatAccessorHidlTest, MasterVolumeTest) {
@@ -531,9 +525,6 @@ TEST_P(FloatAccessorHidlTest, MasterVolumeTest) {
 
 INSTANTIATE_TEST_CASE_P(FloatAccessorHidl, FloatAccessorHidlTest,
                         ::testing::ValuesIn(getDeviceParameters()), &DeviceParameterToString);
-// When the VTS test runs on a device lacking the corresponding HAL version the parameter
-// list is empty, this isn't a problem.
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(FloatAccessorHidlTest);
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////// AudioPatches ////////////////////////////////
@@ -556,9 +547,6 @@ TEST_P(AudioPatchHidlTest, AudioPatches) {
 
 INSTANTIATE_TEST_CASE_P(AudioPatchHidl, AudioPatchHidlTest,
                         ::testing::ValuesIn(getDeviceParameters()), &DeviceParameterToString);
-// When the VTS test runs on a device lacking the corresponding HAL version the parameter
-// list is empty, this isn't a problem.
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(AudioPatchHidlTest);
 
 // Nesting a tuple in another tuple allows to use GTest Combine function to generate
 // all combinations of devices and configs.
@@ -729,15 +717,11 @@ INSTANTIATE_TEST_CASE_P(
                 ::testing::ValuesIn(ConfigHelper::getRecommendedSupportCaptureAudioConfig()),
                 ::testing::Values(AudioInputFlag::NONE)),
         &DeviceConfigParameterToString);
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OptionalInputBufferSizeTest);
 #elif MAJOR_VERSION >= 6
 INSTANTIATE_TEST_CASE_P(SupportedInputBufferSize, RequiredInputBufferSizeTest,
                         ::testing::ValuesIn(getInputDeviceConfigParameters()),
                         &DeviceConfigParameterToString);
 #endif
-// When the VTS test runs on a device lacking the corresponding HAL version the parameter
-// list is empty, this isn't a problem.
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(RequiredInputBufferSizeTest);
 
 //////////////////////////////////////////////////////////////////////////////
 /////////////////////////////// setScreenState ///////////////////////////////
@@ -881,6 +865,11 @@ class StreamHelper {
 
 template <class Stream>
 class OpenStreamTest : public AudioHidlTestWithDeviceConfigParameter {
+  public:
+    // public access to avoid annoyances when using this method in template classes
+    // derived from test classes
+    sp<Stream> getStream() const { return stream; }
+
   protected:
     OpenStreamTest() : AudioHidlTestWithDeviceConfigParameter(), helper(stream) {}
     template <class Open>
@@ -971,9 +960,6 @@ INSTANTIATE_TEST_CASE_P(DeclaredOutputStreamConfigSupport, OutputStreamTest,
                         ::testing::ValuesIn(getOutputDeviceConfigParameters()),
                         &DeviceConfigParameterToString);
 #endif
-// When the VTS test runs on a device lacking the corresponding HAL version the parameter
-// list is empty, this isn't a problem.
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OutputStreamTest);
 
 ////////////////////////////// openInputStream //////////////////////////////
 
@@ -1029,9 +1015,6 @@ INSTANTIATE_TEST_CASE_P(DeclaredInputStreamConfigSupport, InputStreamTest,
                         ::testing::ValuesIn(getInputDeviceConfigParameters()),
                         &DeviceConfigParameterToString);
 #endif
-// When the VTS test runs on a device lacking the corresponding HAL version the parameter
-// list is empty, this isn't a problem.
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(InputStreamTest);
 
 //////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// IStream getters ///////////////////////////////
@@ -1570,9 +1553,6 @@ TEST_P(TtyModeAccessorPrimaryHidlTest, setGetTtyMode) {
 INSTANTIATE_TEST_CASE_P(TtyModeAccessorPrimaryHidl, TtyModeAccessorPrimaryHidlTest,
                         ::testing::ValuesIn(getDeviceParametersForPrimaryDeviceTests()),
                         &DeviceParameterToString);
-// When the VTS test runs on a device lacking the corresponding HAL version the parameter
-// list is empty, this isn't a problem.
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TtyModeAccessorPrimaryHidlTest);
 
 TEST_P(BoolAccessorPrimaryHidlTest, setGetHac) {
     doc::test("Query and set the HAC state");
