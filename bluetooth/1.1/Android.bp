@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.bluetooth@1.1",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "IBluetoothHci.hal",
         "IBluetoothHciCallbacks.hal",
