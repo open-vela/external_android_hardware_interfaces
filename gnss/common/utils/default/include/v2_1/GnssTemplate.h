@@ -17,7 +17,6 @@
 #pragma once
 
 #include <android/hardware/gnss/2.1/IGnss.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <hidl/MQDescriptor.h>
 #include <hidl/Status.h>
@@ -159,16 +158,14 @@ GnssTemplate<T_IGnss>::~GnssTemplate() {
 template <class T_IGnss>
 std::unique_ptr<V2_0::GnssLocation> GnssTemplate<T_IGnss>::getLocationFromHW() {
     char inputBuffer[INPUT_BUFFER_SIZE];
+    mHardwareModeOn = false;
     if (mGnssFd == -1) {
         mGnssFd = open(GNSS_PATH, O_RDWR | O_NONBLOCK);
     }
-
     if (mGnssFd == -1) {
-        ALOGW("Failed to open /dev/gnss0 errno: %d", errno);
         return nullptr;
     }
-    // Indicates it is a hardwareMode, don't report the default location.
-    mHardwareModeOn = true;
+    // Send control message to device
     int bytes_write = write(mGnssFd, CMD_GET_LOCATION, strlen(CMD_GET_LOCATION));
     if (bytes_write <= 0) {
         return nullptr;
@@ -182,7 +179,8 @@ std::unique_ptr<V2_0::GnssLocation> GnssTemplate<T_IGnss>::getLocationFromHW() {
     int bytes_read = -1;
     std::string inputStr = "";
     int epoll_ret = epoll_wait(epoll_fd, events, 1, mMinIntervalMs);
-
+    // Indicates it is a hardwareMode, don't need to wait outside.
+    mHardwareModeOn = true;
     if (epoll_ret == -1) {
         return nullptr;
     }
@@ -208,12 +206,10 @@ Return<bool> GnssTemplate<T_IGnss>::start() {
         while (mIsActive == true) {
             auto svStatus = filterBlacklistedSatellitesV2_1(Utils::getMockSvInfoListV2_1());
             this->reportSvStatus(svStatus);
+
             auto currentLocation = getLocationFromHW();
-            if (mHardwareModeOn) {
-                if (currentLocation != nullptr) {
-                    // Only report location if the return from hardware is valid
-                    this->reportLocation(*currentLocation);
-                }
+            if (currentLocation != nullptr) {
+                this->reportLocation(*currentLocation);
             } else {
                 if (sGnssCallback_2_1 != nullptr || sGnssCallback_2_0 != nullptr) {
                     const auto location = Utils::getMockLocationV2_0();
@@ -222,8 +218,13 @@ Return<bool> GnssTemplate<T_IGnss>::start() {
                     const auto location = Utils::getMockLocationV1_0();
                     this->reportLocation(location);
                 }
+
+                // Only need do the sleep in the static location mode, which mocks the "wait
+                // for" hardware behavior.
+                if (!mHardwareModeOn) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(mMinIntervalMs));
+                }
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(mMinIntervalMs));
         }
     });
     return true;
