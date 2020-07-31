@@ -1461,6 +1461,7 @@ TEST_P(VideoEncHidlTest, EncodeTestEOS) {
     ASSERT_EQ(returnval, 0);
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(VideoEncHidlTest);
 INSTANTIATE_TEST_SUITE_P(PerInstance, VideoEncHidlTest, testing::ValuesIn(kTestParameters),
                          android::hardware::PrintInstanceTupleNameToString<>);
 
