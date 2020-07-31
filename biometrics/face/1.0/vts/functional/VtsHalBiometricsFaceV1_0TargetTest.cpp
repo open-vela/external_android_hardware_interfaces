@@ -28,7 +28,6 @@
 #include <chrono>
 #include <cstdint>
 #include <random>
-#include <thread>
 
 using android::sp;
 using android::hardware::hidl_vec;
@@ -145,10 +144,7 @@ class FaceHidlTest : public ::testing::TestWithParam<std::string> {
         ASSERT_EQ(Status::OK, static_cast<Status>(ret2));
     }
 
-    void TearDown() override {
-        // Hack to allow the asynchronous operations to finish on time.
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
-    }
+    void TearDown() override {}
 
     sp<IBiometricsFace> mService;
     sp<FaceCallback> mCallback;
@@ -348,6 +344,7 @@ TEST_P(FaceHidlTest, OnLockoutChangedTest) {
 
 }  // anonymous namespace
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(FaceHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, FaceHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IBiometricsFace::descriptor)),
