@@ -21,7 +21,6 @@
 #include <map>
 #include "Demux.h"
 #include "Frontend.h"
-#include "Lnb.h"
 
 using namespace std;
 
@@ -63,24 +62,19 @@ class Tuner : public ITuner {
 
     void setFrontendAsDemuxSource(uint32_t frontendId, uint32_t demuxId);
 
-    void frontendStartTune(uint32_t frontendId);
     void frontendStopTune(uint32_t frontendId);
-    void removeDemux(uint32_t demuxId);
-    void removeFrontend(uint32_t frontendId);
 
   private:
     virtual ~Tuner();
     // Static mFrontends array to maintain local frontends information
-    map<uint32_t, sp<Frontend>> mFrontends;
-    map<uint32_t, FrontendInfo::FrontendCapabilities> mFrontendCaps;
-    map<uint32_t, uint32_t> mFrontendToDemux;
-    map<uint32_t, sp<Demux>> mDemuxes;
+    vector<sp<Frontend>> mFrontends;
+    std::map<uint32_t, uint32_t> mFrontendToDemux;
+    std::map<uint32_t, sp<Demux>> mDemuxes;
     // To maintain how many Frontends we have
     int mFrontendSize;
     // The last used demux id. Initial value is -1.
     // First used id will be 0.
     int mLastUsedId = -1;
-    vector<sp<Lnb>> mLnbs;
 };
 
 }  // namespace implementation
