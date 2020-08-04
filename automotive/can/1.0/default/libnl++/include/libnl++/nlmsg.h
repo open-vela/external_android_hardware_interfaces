@@ -16,8 +16,7 @@
 
 #pragma once
 
-#include <libnl++/Attributes.h>
-#include <libnl++/Buffer.h>
+#include <libnl++/nlbuf.h>
 
 namespace android::nl {
 
@@ -27,20 +26,17 @@ namespace android::nl {
  * This is a C++-style, memory safe(r) implementation of linux/netlink.h macros accessing Netlink
  * message contents. The class doesn't own the underlying data, so the instance is valid as long as
  * the source buffer is allocated and unmodified.
- *
- * WARNING: this class is NOT thread-safe (it's safe to be used in multithreaded application, but
- * a single instance can only be used by a single thread - the one owning the underlying buffer).
  */
 template <typename T>
-class Message {
+class nlmsg {
   public:
     /**
-     * Validate buffer contents as a message carrying T data and create instance of parsed message.
+     * Validate buffer contents as a message carrying T data and create instance of nlmsg.
      *
      * \param buf Buffer containing the message.
      * \return Parsed message or nullopt, if the buffer data is invalid.
      */
-    static std::optional<Message<T>> parse(Buffer<nlmsghdr> buf) {
+    static std::optional<nlmsg<T>> parse(nlbuf<nlmsghdr> buf) {
         const auto& [nlOk, nlHeader] = buf.getFirst();
         if (!nlOk) return std::nullopt;
 
@@ -49,18 +45,18 @@ class Message {
 
         const auto attributes = buf.data<nlattr>(sizeof(T));
 
-        return Message<T>(nlHeader, dataHeader, attributes);
+        return nlmsg<T>(nlHeader, dataHeader, attributes);
     }
 
     /**
-     * Validate buffer contents as a message of a given type and create instance of parsed message.
+     * Validate buffer contents as a message of a given type and create instance of nlmsg.
      *
      * \param buf Buffer containing the message.
      * \param msgtypes Acceptable message types (within a specific Netlink protocol)
      * \return Parsed message or nullopt, if the buffer data is invalid or message type
      *         doesn't match.
      */
-    static std::optional<Message<T>> parse(Buffer<nlmsghdr> buf, std::set<nlmsgtype_t> msgtypes) {
+    static std::optional<nlmsg<T>> parse(nlbuf<nlmsghdr> buf, std::set<nlmsgtype_t> msgtypes) {
         const auto& [nlOk, nlHeader] = buf.getFirst();  // we're doing it twice, but it's fine
         if (!nlOk) return std::nullopt;
 
@@ -86,12 +82,12 @@ class Message {
     /**
      * Netlink message attributes.
      */
-    const Attributes attributes;
+    const nlbuf<nlattr> attributes;
 
     const T* operator->() const { return &data; }
 
   private:
-    Message(const nlmsghdr& nlHeader, const T& dataHeader, Attributes attributes)
+    nlmsg(const nlmsghdr& nlHeader, const T& dataHeader, nlbuf<nlattr> attributes)
         : header(nlHeader), data(dataHeader), attributes(attributes) {}
 };
 
