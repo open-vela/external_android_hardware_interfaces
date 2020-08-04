@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <libnl++/Socket.h>
+#include <libnl++/NetlinkSocket.h>
 
 #include <libnl++/printer.h>
 
@@ -27,7 +27,8 @@ namespace android::nl {
  */
 static constexpr bool kSuperVerbose = false;
 
-Socket::Socket(int protocol, unsigned pid, uint32_t groups) : mProtocol(protocol) {
+NetlinkSocket::NetlinkSocket(int protocol, unsigned int pid, uint32_t groups)
+    : mProtocol(protocol) {
     mFd.reset(socket(AF_NETLINK, SOCK_RAW, protocol));
     if (!mFd.ok()) {
         PLOG(ERROR) << "Can't open Netlink socket";
@@ -47,65 +48,88 @@ Socket::Socket(int protocol, unsigned pid, uint32_t groups) : mProtocol(protocol
     }
 }
 
-bool Socket::send(const Buffer<nlmsghdr>& msg, const sockaddr_nl& sa) {
+bool NetlinkSocket::send(nlmsghdr* nlmsg, size_t totalLen) {
     if constexpr (kSuperVerbose) {
-        LOG(VERBOSE) << (mFailed ? "(not) " : "") << "sending Netlink message ("  //
-                     << msg->nlmsg_pid << " -> " << sa.nl_pid << "): " << toString(msg, mProtocol);
+        nlmsg->nlmsg_seq = mSeq;
+        LOG(VERBOSE) << (mFailed ? "(not) " : "")
+                     << "sending Netlink message: " << toString({nlmsg, totalLen}, mProtocol);
     }
+
     if (mFailed) return false;
 
-    mSeq = msg->nlmsg_seq;
+    nlmsg->nlmsg_pid = 0;  // kernel
+    nlmsg->nlmsg_seq = mSeq++;
+    nlmsg->nlmsg_flags |= NLM_F_ACK;
+
+    iovec iov = {nlmsg, nlmsg->nlmsg_len};
+
+    sockaddr_nl sa = {};
+    sa.nl_family = AF_NETLINK;
+
+    msghdr msg = {};
+    msg.msg_name = &sa;
+    msg.msg_namelen = sizeof(sa);
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+
+    if (sendmsg(mFd.get(), &msg, 0) < 0) {
+        PLOG(ERROR) << "Can't send Netlink message";
+        return false;
+    }
+    return true;
+}
+
+bool NetlinkSocket::send(const nlbuf<nlmsghdr>& msg, const sockaddr_nl& sa) {
+    if constexpr (kSuperVerbose) {
+        LOG(VERBOSE) << (mFailed ? "(not) " : "")
+                     << "sending Netlink message: " << toString(msg, mProtocol);
+    }
+
+    if (mFailed) return false;
     const auto rawMsg = msg.getRaw();
     const auto bytesSent = sendto(mFd.get(), rawMsg.ptr(), rawMsg.len(), 0,
                                   reinterpret_cast<const sockaddr*>(&sa), sizeof(sa));
     if (bytesSent < 0) {
         PLOG(ERROR) << "Can't send Netlink message";
         return false;
-    } else if (size_t(bytesSent) != rawMsg.len()) {
-        LOG(ERROR) << "Can't send Netlink message: truncated message";
-        return false;
     }
     return true;
 }
 
-std::optional<Buffer<nlmsghdr>> Socket::receive(size_t maxSize) {
-    return receiveFrom(maxSize).first;
+std::optional<nlbuf<nlmsghdr>> NetlinkSocket::receive(void* buf, size_t bufLen) {
+    sockaddr_nl sa = {};
+    return receive(buf, bufLen, sa);
 }
 
-std::pair<std::optional<Buffer<nlmsghdr>>, sockaddr_nl> Socket::receiveFrom(size_t maxSize) {
-    if (mFailed) return {std::nullopt, {}};
+std::optional<nlbuf<nlmsghdr>> NetlinkSocket::receive(void* buf, size_t bufLen, sockaddr_nl& sa) {
+    if (mFailed) return std::nullopt;
 
-    if (maxSize == 0) {
-        LOG(ERROR) << "Maximum receive size should not be zero";
-        return {std::nullopt, {}};
-    }
-    if (mReceiveBuffer.size() < maxSize) mReceiveBuffer.resize(maxSize);
-
-    sockaddr_nl sa = {};
     socklen_t saLen = sizeof(sa);
-    const auto bytesReceived = recvfrom(mFd.get(), mReceiveBuffer.data(), maxSize, MSG_TRUNC,
-                                        reinterpret_cast<sockaddr*>(&sa), &saLen);
-
+    if (bufLen == 0) {
+        LOG(ERROR) << "Receive buffer has zero size!";
+        return std::nullopt;
+    }
+    const auto bytesReceived =
+            recvfrom(mFd.get(), buf, bufLen, MSG_TRUNC, reinterpret_cast<sockaddr*>(&sa), &saLen);
     if (bytesReceived <= 0) {
         PLOG(ERROR) << "Failed to receive Netlink message";
-        return {std::nullopt, {}};
-    } else if (size_t(bytesReceived) > maxSize) {
-        PLOG(ERROR) << "Received data larger than maximum receive size: "  //
-                    << bytesReceived << " > " << maxSize;
-        return {std::nullopt, {}};
+        return std::nullopt;
+    } else if (unsigned(bytesReceived) > bufLen) {
+        PLOG(ERROR) << "Received data larger than the receive buffer! " << bytesReceived << " > "
+                    << bufLen;
+        return std::nullopt;
     }
 
-    Buffer<nlmsghdr> msg(reinterpret_cast<nlmsghdr*>(mReceiveBuffer.data()), bytesReceived);
+    nlbuf<nlmsghdr> msg(reinterpret_cast<nlmsghdr*>(buf), bytesReceived);
     if constexpr (kSuperVerbose) {
-        LOG(VERBOSE) << "received (" << sa.nl_pid << " -> " << msg->nlmsg_pid << "):"  //
-                     << toString(msg, mProtocol);
+        LOG(VERBOSE) << "received " << toString(msg, mProtocol);
     }
-    return {msg, sa};
+    return msg;
 }
 
 /* TODO(161389935): Migrate receiveAck to use nlmsg<> internally. Possibly reuse
- * Socket::receive(). */
-bool Socket::receiveAck() {
+ * NetlinkSocket::receive(). */
+bool NetlinkSocket::receiveAck() {
     if (mFailed) return false;
 
     char buf[8192];
@@ -156,11 +180,11 @@ bool Socket::receiveAck() {
     return false;
 }
 
-std::optional<unsigned> Socket::getPid() {
+std::optional<unsigned int> NetlinkSocket::getSocketPid() {
     sockaddr_nl sa = {};
     socklen_t sasize = sizeof(sa);
     if (getsockname(mFd.get(), reinterpret_cast<sockaddr*>(&sa), &sasize) < 0) {
-        PLOG(ERROR) << "Failed to get PID of Netlink socket";
+        PLOG(ERROR) << "Failed to getsockname() for netlink_fd!";
         return std::nullopt;
     }
     return sa.nl_pid;
