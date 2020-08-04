@@ -25,7 +25,7 @@
 
 namespace android::nl {
 
-/** Implementation details, do not use outside MessageFactory template. */
+/** Implementation details, do not use outside NetlinkRequest template. */
 namespace impl {
 
 struct nlattr* addattr_l(struct nlmsghdr* n, size_t maxLen, nlattrtype_t type, const void* data,
@@ -35,6 +35,7 @@ void addattr_nest_end(struct nlmsghdr* n, struct nlattr* nest);
 
 }  // namespace impl
 
+// TODO(twasilczyk): rename to NetlinkMessage
 /**
  * Wrapper around NETLINK_ROUTE messages, to build them in C++ style.
  *
@@ -42,7 +43,7 @@ void addattr_nest_end(struct nlmsghdr* n, struct nlattr* nest);
  * \param BUFSIZE how much space to reserve for payload (not counting the header size)
  */
 template <class T, unsigned int BUFSIZE = 128>
-struct MessageFactory {
+struct NetlinkRequest {
     struct RequestData {
         struct nlmsghdr nlmsg;
         T data;
@@ -57,7 +58,7 @@ struct MessageFactory {
      * \param type Message type (such as RTM_NEWLINK)
      * \param flags Message flags (such as NLM_F_REQUEST)
      */
-    MessageFactory(nlmsgtype_t type, uint16_t flags) {
+    NetlinkRequest(nlmsgtype_t type, uint16_t flags) {
         mRequest.nlmsg.nlmsg_len = NLMSG_LENGTH(sizeof(mRequest.data));
         mRequest.nlmsg.nlmsg_type = type;
         mRequest.nlmsg.nlmsg_flags = flags;
@@ -95,11 +96,11 @@ struct MessageFactory {
 
     /** Guard class to frame nested attributes. See nest(int). */
     struct Nest {
-        Nest(MessageFactory& req, nlattrtype_t type) : mReq(req), mAttr(req.nestStart(type)) {}
+        Nest(NetlinkRequest& req, nlattrtype_t type) : mReq(req), mAttr(req.nestStart(type)) {}
         ~Nest() { mReq.nestEnd(mAttr); }
 
       private:
-        MessageFactory& mReq;
+        NetlinkRequest& mReq;
         struct nlattr* mAttr;
 
         DISALLOW_COPY_AND_ASSIGN(Nest);
@@ -113,7 +114,7 @@ struct MessageFactory {
      *
      * Example usage nesting IFLA_CAN_BITTIMING inside IFLA_INFO_DATA, which is nested
      * inside IFLA_LINKINFO:
-     *    MessageFactory<struct ifinfomsg> req(RTM_NEWLINK, NLM_F_REQUEST);
+     *    NetlinkRequest<struct ifinfomsg> req(RTM_NEWLINK, NLM_F_REQUEST);
      *    {
      *        auto linkinfo = req.nest(IFLA_LINKINFO);
      *        req.addattr(IFLA_INFO_KIND, "can");

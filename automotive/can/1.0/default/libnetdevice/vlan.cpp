@@ -19,8 +19,8 @@
 #include "common.h"
 
 #include <android-base/logging.h>
-#include <libnl++/MessageFactory.h>
-#include <libnl++/Socket.h>
+#include <libnl++/NetlinkRequest.h>
+#include <libnl++/NetlinkSocket.h>
 
 #include <linux/rtnetlink.h>
 
@@ -33,8 +33,8 @@ bool add(const std::string& eth, const std::string& vlan, uint16_t id) {
         return false;
     }
 
-    nl::MessageFactory<struct ifinfomsg> req(RTM_NEWLINK,
-                                             NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL | NLM_F_ACK);
+    nl::NetlinkRequest<struct ifinfomsg> req(RTM_NEWLINK,
+                                             NLM_F_REQUEST | NLM_F_CREATE | NLM_F_EXCL);
     req.addattr(IFLA_IFNAME, vlan);
     req.addattr<uint32_t>(IFLA_LINK, ethidx);
 
@@ -48,7 +48,7 @@ bool add(const std::string& eth, const std::string& vlan, uint16_t id) {
         }
     }
 
-    nl::Socket sock(NETLINK_ROUTE);
+    nl::NetlinkSocket sock(NETLINK_ROUTE);
     return sock.send(req) && sock.receiveAck();
 }
 

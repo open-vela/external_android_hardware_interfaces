@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <libnl++/nlbuf.h>
+
 #include <linux/can.h>
 #include <net/if.h>
 
