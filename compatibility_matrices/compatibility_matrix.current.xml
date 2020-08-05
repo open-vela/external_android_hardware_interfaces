@@ -203,6 +203,7 @@
     <hal format="hidl" optional="true">
         <name>android.hardware.gnss</name>
         <version>2.0-1</version>
+        <version>3.0</version>
         <interface>
             <name>IGnss</name>
             <instance>default</instance>
@@ -481,7 +482,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.tv.tuner</name>
-        <version>1.0</version>
+        <version>1.0-1</version>
         <interface>
             <name>ITuner</name>
             <instance>default</instance>
@@ -528,7 +529,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.wifi</name>
-        <version>1.0-4</version>
+        <version>1.0-5</version>
         <interface>
             <name>IWifi</name>
             <instance>default</instance>
