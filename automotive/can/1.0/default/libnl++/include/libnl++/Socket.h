@@ -76,12 +76,13 @@ class Socket {
      */
     template <typename T, unsigned BUFSIZE>
     bool send(MessageFactory<T, BUFSIZE>& req, const sockaddr_nl& sa) {
-        req.header.nlmsg_seq = mSeq + 1;
+        if (!req.isGood()) return false;
 
-        const auto msg = req.build();
-        if (!msg.has_value()) return false;
+        const auto nlmsg = req.header();
+        nlmsg->nlmsg_seq = mSeq + 1;
 
-        return send(*msg, sa);
+        // With MessageFactory<>, we trust nlmsg_len to be correct.
+        return send({nlmsg, nlmsg->nlmsg_len}, sa);
     }
 
     /**
@@ -155,7 +156,7 @@ class Socket {
      */
     template <typename T, unsigned BUFSIZE>
     bool receiveAck(MessageFactory<T, BUFSIZE>& req) {
-        return receiveAck(req.header.nlmsg_seq);
+        return receiveAck(req.header()->nlmsg_seq);
     }
 
     /**

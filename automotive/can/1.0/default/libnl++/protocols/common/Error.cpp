@@ -22,21 +22,15 @@
 
 namespace android::nl::protocols::base {
 
-using DataType = AttributeDefinition::DataType;
-
 // clang-format off
 Error::Error(int protocol) : MessageDefinition<nlmsgerr>("nlmsg", {
-    {NLMSG_ERROR, {"ERROR", MessageGenre::ACK}},
-}, {
-    {NLMSGERR_ATTR_MSG, {"MSG", DataType::String}},
-    {NLMSGERR_ATTR_OFFS, {"OFFS", DataType::Uint}},
-    {NLMSGERR_ATTR_COOKIE, {"COOKIE", DataType::Raw}},
+    {NLMSG_ERROR, "ERROR"},
 }), mProtocol(protocol) {}
 // clang-format on
 
 void Error::toStream(std::stringstream& ss, const nlmsgerr& data) const {
     ss << "nlmsgerr{error=" << data.error
-       << ", msg=" << toString({&data.msg, sizeof(data.msg)}, mProtocol, false) << "}";
+       << ", msg=" << toString({&data.msg, sizeof(data.msg)}, mProtocol) << "}";
 }
 
 }  // namespace android::nl::protocols::base
