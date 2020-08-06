@@ -14,19 +14,20 @@
  * limitations under the License.
  */
 
-#include <libnetdevice/libnetdevice.h>
+#include <libnetdevice/can.h>
 
-#include "NetlinkRequest.h"
-#include "NetlinkSocket.h"
 #include "common.h"
 
 #include <android-base/logging.h>
 #include <android-base/unique_fd.h>
+#include <libnl++/MessageFactory.h>
+#include <libnl++/Socket.h>
 
 #include <linux/can.h>
 #include <linux/can/error.h>
 #include <linux/can/netlink.h>
 #include <linux/can/raw.h>
+#include <linux/rtnetlink.h>
 
 namespace android::netdevice::can {
 
@@ -69,7 +70,7 @@ bool setBitrate(std::string ifname, uint32_t bitrate) {
     struct can_bittiming bt = {};
     bt.bitrate = bitrate;
 
-    NetlinkRequest<struct ifinfomsg> req(RTM_NEWLINK, NLM_F_REQUEST);
+    nl::MessageFactory<struct ifinfomsg> req(RTM_NEWLINK, NLM_F_REQUEST | NLM_F_ACK);
 
     const auto ifidx = nametoindex(ifname);
     if (ifidx == 0) {
@@ -89,8 +90,8 @@ bool setBitrate(std::string ifname, uint32_t bitrate) {
         }
     }
 
-    NetlinkSocket sock(NETLINK_ROUTE);
-    return sock.send(req) && sock.receiveAck();
+    nl::Socket sock(NETLINK_ROUTE);
+    return sock.send(req) && sock.receiveAck(req);
 }
 
 }  // namespace android::netdevice::can
