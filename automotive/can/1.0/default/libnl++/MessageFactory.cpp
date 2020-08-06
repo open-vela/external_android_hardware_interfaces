@@ -17,36 +17,41 @@
 #include <libnl++/MessageFactory.h>
 
 #include <android-base/logging.h>
-#include <libnl++/bits.h>
 
-namespace android::nl {
+// for RTA_ macros missing from NLA_ definitions
+#include <linux/rtnetlink.h>
 
-static nlattr* tail(nlmsghdr* msg) {
-    return reinterpret_cast<nlattr*>(uintptr_t(msg) + impl::align(msg->nlmsg_len));
+namespace android::nl::impl {
+
+static struct nlattr* nlmsg_tail(struct nlmsghdr* n) {
+    return reinterpret_cast<struct nlattr*>(  //
+            reinterpret_cast<uintptr_t>(n) + NLMSG_ALIGN(n->nlmsg_len));
 }
 
-nlattr* MessageFactoryBase::add(nlmsghdr* msg, size_t maxLen, nlattrtype_t type, const void* data,
-                                size_t dataLen) {
-    const auto totalAttrLen = impl::space<nlattr>(dataLen);
-    const auto newLen = impl::align(msg->nlmsg_len) + totalAttrLen;
+struct nlattr* addattr_l(struct nlmsghdr* n, size_t maxLen, nlattrtype_t type, const void* data,
+                         size_t dataLen) {
+    size_t newLen = NLMSG_ALIGN(n->nlmsg_len) + RTA_SPACE(dataLen);
     if (newLen > maxLen) {
-        LOG(ERROR) << "Can't add attribute of size " << dataLen  //
-                   << " - exceeded maxLen: " << newLen << " > " << maxLen;
+        LOG(ERROR) << "addattr_l failed - exceeded maxLen: " << newLen << " > " << maxLen;
         return nullptr;
     }
 
-    auto attr = tail(msg);
-    attr->nla_len = totalAttrLen;
+    auto attr = nlmsg_tail(n);
+    attr->nla_len = RTA_SPACE(dataLen);
     attr->nla_type = type;
-    if (dataLen > 0) memcpy(impl::data<nlattr, void>(attr), data, dataLen);
+    if (dataLen > 0) memcpy(RTA_DATA(attr), data, dataLen);
 
-    msg->nlmsg_len = newLen;
+    n->nlmsg_len = newLen;
     return attr;
 }
 
-void MessageFactoryBase::closeNested(nlmsghdr* msg, nlattr* nested) {
-    if (nested == nullptr) return;
-    nested->nla_len = uintptr_t(tail(msg)) - uintptr_t(nested);
+struct nlattr* addattr_nest(struct nlmsghdr* n, size_t maxLen, nlattrtype_t type) {
+    return addattr_l(n, maxLen, type, nullptr, 0);
 }
 
-}  // namespace android::nl
+void addattr_nest_end(struct nlmsghdr* n, struct nlattr* nest) {
+    size_t nestLen = reinterpret_cast<uintptr_t>(nlmsg_tail(n)) - reinterpret_cast<uintptr_t>(nest);
+    nest->nla_len = nestLen;
+}
+
+}  // namespace android::nl::impl

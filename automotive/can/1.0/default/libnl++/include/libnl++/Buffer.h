@@ -17,7 +17,6 @@
 #pragma once
 
 #include <android-base/logging.h>
-#include <libnl++/bits.h>
 
 #include <linux/netlink.h>
 
@@ -26,7 +25,7 @@
 namespace android::nl {
 
 /**
- * Buffer wrapper containing netlink structure (e.g. nlmsghdr, nlattr).
+ * Buffer wrapper containing netlink structure (e.g. struct nlmsghdr, struct nlattr).
  *
  * This is a C++-style, memory safe(r) and generic implementation of linux/netlink.h macros.
  *
@@ -44,6 +43,15 @@ namespace android::nl {
  */
 template <typename T>
 class Buffer {
+    // The following definitions are C++ equivalents of NLMSG_* macros from linux/netlink.h
+
+    static constexpr size_t alignto = NLMSG_ALIGNTO;
+    static_assert(NLMSG_ALIGNTO == NLA_ALIGNTO);
+
+    static constexpr size_t align(size_t ptr) { return (ptr + alignto - 1) & ~(alignto - 1); }
+
+    static constexpr size_t hdrlen = align(sizeof(T));
+
   public:
     /**
      * Constructs empty buffer of size 0.
@@ -88,7 +96,9 @@ class Buffer {
 
     template <typename D>
     const Buffer<D> data(size_t offset = 0) const {
-        return {impl::data<const T, const D>(mData, offset), dataEnd()};
+        // Equivalent to NLMSG_DATA(hdr) + NLMSG_ALIGN(offset)
+        const D* dptr = reinterpret_cast<const D*>(uintptr_t(mData) + hdrlen + align(offset));
+        return {dptr, dataEnd()};
     }
 
     class iterator {
@@ -101,7 +111,7 @@ class Buffer {
         iterator operator++() {
             // mBufferEnd stays the same
             mCurrent.mData = reinterpret_cast<const T*>(  //
-                    uintptr_t(mCurrent.mData) + impl::align(mCurrent.declaredLength()));
+                    uintptr_t(mCurrent.mData) + align(mCurrent.declaredLength()));
 
             return *this;
         }

@@ -49,11 +49,7 @@ Attributes Attributes::parse(Buffer<nlattr> buf) {
 template <>
 std::string Attributes::parse(Buffer<nlattr> buf) {
     const auto rawString = buf.data<char>().getRaw();
-    std::string str(rawString.ptr(), rawString.len());
-
-    str.erase(std::find(str.begin(), str.end(), '\0'), str.end());
-
-    return str;
+    return std::string(rawString.ptr(), rawString.len());
 }
 
 template <typename T>
