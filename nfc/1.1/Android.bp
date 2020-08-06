@@ -3,9 +3,6 @@
 hidl_interface {
     name: "android.hardware.nfc@1.1",
     root: "android.hardware",
-    vndk: {
-        enabled: true,
-    },
     srcs: [
         "types.hal",
         "INfc.hal",
@@ -17,4 +14,3 @@ hidl_interface {
     ],
     gen_java: true,
 }
-
