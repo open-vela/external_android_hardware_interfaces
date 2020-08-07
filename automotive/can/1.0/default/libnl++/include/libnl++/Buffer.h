@@ -94,7 +94,7 @@ class Buffer {
     class iterator {
       public:
         iterator() : mCurrent(nullptr, size_t(0)) {
-            CHECK(isEnd()) << "end() iterator should indicate it's beyond end";
+            CHECK(!mCurrent.ok()) << "end() iterator should indicate it's beyond end";
         }
         iterator(const Buffer<T>& buf) : mCurrent(buf) {}
 
@@ -108,14 +108,12 @@ class Buffer {
 
         bool operator==(const iterator& other) const {
             // all iterators beyond end are the same
-            if (isEnd() && other.isEnd()) return true;
+            if (!mCurrent.ok() && !other.mCurrent.ok()) return true;
 
             return uintptr_t(other.mCurrent.mData) == uintptr_t(mCurrent.mData);
         }
 
         const Buffer<T>& operator*() const { return mCurrent; }
-
-        bool isEnd() const { return !mCurrent.ok(); }
 
       protected:
         Buffer<T> mCurrent;
