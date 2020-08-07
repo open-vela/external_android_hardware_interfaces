@@ -165,24 +165,28 @@ void waitFor(std::set<std::string> ifnames, WaitCondition cnd, bool allOf) {
 
     LOG(DEBUG) << "Waiting for " << (allOf ? "" : "any of ") << toString(ifnames) << " to "
                << toString(cnd);
-    for (const auto rawMsg : sock) {
-        const auto msg = nl::Message<ifinfomsg>::parse(rawMsg, {RTM_NEWLINK, RTM_DELLINK});
-        if (!msg.has_value()) continue;
+    while (true) {
+        const auto msgBuf = sock.receive();
+        CHECK(msgBuf.has_value()) << "Can't read Netlink socket";
 
-        const auto ifname = msg->attributes.get<std::string>(IFLA_IFNAME);
-        if (ifnames.count(ifname) == 0) continue;
+        for (const auto rawMsg : *msgBuf) {
+            const auto msg = nl::Message<ifinfomsg>::parse(rawMsg, {RTM_NEWLINK, RTM_DELLINK});
+            if (!msg.has_value()) continue;
 
-        const bool present = (msg->header.nlmsg_type != RTM_DELLINK);
-        const bool up = present && (msg->data.ifi_flags & IFF_UP) != 0;
-        states[ifname] = {present, up};
+            const auto ifname = msg->attributes.get<std::string>(IFLA_IFNAME);
+            if (ifnames.count(ifname) == 0) continue;
 
-        if (isFullySatisfied()) {
-            LOG(DEBUG) << "Finished waiting for " << (allOf ? "" : "some of ") << toString(ifnames)
-                       << " to " << toString(cnd);
-            return;
+            const bool present = (msg->header.nlmsg_type != RTM_DELLINK);
+            const bool up = present && (msg->data.ifi_flags & IFF_UP) != 0;
+            states[ifname] = {present, up};
+
+            if (isFullySatisfied()) {
+                LOG(DEBUG) << "Finished waiting for " << (allOf ? "" : "some of ")
+                           << toString(ifnames) << " to " << toString(cnd);
+                return;
+            }
         }
     }
-    LOG(FATAL) << "Can't read Netlink socket";
 }
 
 }  // namespace android::netdevice
