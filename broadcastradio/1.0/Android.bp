@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.broadcastradio@1.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IBroadcastRadio.hal",
@@ -15,3 +18,4 @@ hidl_interface {
     ],
     gen_java: false,
 }
+
