@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.audio@5.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IDevice.hal",
@@ -22,3 +25,4 @@ hidl_interface {
     gen_java: false,
     gen_java_constants: true,
 }
+

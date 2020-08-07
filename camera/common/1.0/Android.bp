@@ -3,8 +3,12 @@
 hidl_interface {
     name: "android.hardware.camera.common@1.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
     ],
     gen_java: true,
 }
+

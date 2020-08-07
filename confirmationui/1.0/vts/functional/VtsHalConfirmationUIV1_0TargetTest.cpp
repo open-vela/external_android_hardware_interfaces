@@ -26,12 +26,8 @@
 #include <android/hardware/confirmationui/1.0/types.h>
 #include <android/hardware/confirmationui/support/confirmationui_utils.h>
 
-#include <gtest/gtest.h>
-
 #include <VtsHalHidlTargetCallbackBase.h>
-
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+#include <VtsHalHidlTargetTestBase.h>
 
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
@@ -203,17 +199,42 @@ class ConfirmationTestCallback : public ::testing::VtsHalHidlTargetCallbackBase<
     }
 };
 
-class ConfirmationUIHidlTest : public ::testing::TestWithParam<std::string> {
-  public:
-    void TearDown() override { confirmator_->abort(); }
-    void SetUp() override {
-        confirmator_ = IConfirmationUI::getService(GetParam());
+class ConfirmationUIHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static ConfirmationUIHidlEnvironment* Instance() {
+        static ConfirmationUIHidlEnvironment* instance = new ConfirmationUIHidlEnvironment;
+        return instance;
+    }
+
+    void registerTestServices() override { registerTestService<IConfirmationUI>(); }
+
+   private:
+    ConfirmationUIHidlEnvironment(){};
+
+    GTEST_DISALLOW_COPY_AND_ASSIGN_(ConfirmationUIHidlEnvironment);
+};
+
+class ConfirmationUIHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+   public:
+    void TearDown() override { confirmator().abort(); }
+
+    static void SetUpTestCase() {
+        string service_name =
+            ConfirmationUIHidlEnvironment::Instance()->getServiceName<IConfirmationUI>();
+        confirmator_ = IConfirmationUI::getService(service_name);
         ASSERT_NE(nullptr, confirmator_.get());
     }
 
-  protected:
-    sp<IConfirmationUI> confirmator_;
+    static void TearDownTestCase() { confirmator_.clear(); }
+
+    static IConfirmationUI& confirmator() { return *confirmator_; }
+
+   private:
+    static sp<IConfirmationUI> confirmator_;
 };
+
+sp<IConfirmationUI> ConfirmationUIHidlTest::confirmator_;
 
 #define ASSERT_HAL_CALL(expected, call)                               \
     {                                                                 \
@@ -229,17 +250,17 @@ struct CnCborDeleter {
 typedef std::unique_ptr<cn_cbor, CnCborDeleter> CnCborPtr;
 
 // Simulates the User taping Ok
-TEST_P(ConfirmationUIHidlTest, UserOkTest) {
+TEST_F(ConfirmationUIHidlTest, UserOkTest) {
     static constexpr char test_prompt[] = "Me first, gimme gimme!";
     static constexpr uint8_t test_extra[] = {0x1, 0x2, 0x3};
     sp<ConfirmationTestCallback> conf_cb = new ConfirmationTestCallback;
     hidl_string prompt_text(test_prompt);
     hidl_vec<uint8_t> extra(test_extra, test_extra + 3);
     ASSERT_HAL_CALL(ResponseCode::OK,
-                    confirmator_->promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
+                    confirmator().promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
 
-    ASSERT_HAL_CALL(ResponseCode::OK, confirmator_->deliverSecureInputEvent(
-                                              makeTestToken(TestModeCommands::OK_EVENT)));
+    ASSERT_HAL_CALL(ResponseCode::OK, confirmator().deliverSecureInputEvent(
+                                          makeTestToken(TestModeCommands::OK_EVENT)));
 
     auto result = conf_cb->WaitForCallback();
     ASSERT_EQ(ResponseCode::OK, result.args->error_);
@@ -273,40 +294,40 @@ TEST_P(ConfirmationUIHidlTest, UserOkTest) {
 }
 
 // Initiates a confirmation prompt with a message that is too long
-TEST_P(ConfirmationUIHidlTest, MessageTooLongTest) {
+TEST_F(ConfirmationUIHidlTest, MessageTooLongTest) {
     static constexpr uint8_t test_extra[static_cast<uint32_t>(MessageSize::MAX)] = {};
     static constexpr char test_prompt[] = "D\'oh!";
     sp<ConfirmationTestCallback> conf_cb = new ConfirmationTestCallback;
     hidl_string prompt_text(test_prompt);
     hidl_vec<uint8_t> extra(test_extra, test_extra + sizeof(test_extra));
     ASSERT_HAL_CALL(ResponseCode::UIErrorMessageTooLong,
-                    confirmator_->promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
+                    confirmator().promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
 }
 
 // If the message gets very long some HAL implementations might fail even before the message
 // reaches the trusted app implementation. But the HAL must still diagnose the correct error.
-TEST_P(ConfirmationUIHidlTest, MessageWayTooLongTest) {
+TEST_F(ConfirmationUIHidlTest, MessageWayTooLongTest) {
     static constexpr uint8_t test_extra[static_cast<uint32_t>(MessageSize::MAX) * 10] = {};
     static constexpr char test_prompt[] = "D\'oh!";
     sp<ConfirmationTestCallback> conf_cb = new ConfirmationTestCallback;
     hidl_string prompt_text(test_prompt);
     hidl_vec<uint8_t> extra(test_extra, test_extra + sizeof(test_extra));
     ASSERT_HAL_CALL(ResponseCode::UIErrorMessageTooLong,
-                    confirmator_->promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
+                    confirmator().promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
 }
 
 // Simulates the User tapping the Cancel
-TEST_P(ConfirmationUIHidlTest, UserCancelTest) {
+TEST_F(ConfirmationUIHidlTest, UserCancelTest) {
     static constexpr char test_prompt[] = "Me first, gimme gimme!";
     static constexpr uint8_t test_extra[] = {0x1, 0x2, 0x3};
     sp<ConfirmationTestCallback> conf_cb = new ConfirmationTestCallback;
     hidl_string prompt_text(test_prompt);
     hidl_vec<uint8_t> extra(test_extra, test_extra + 3);
     ASSERT_HAL_CALL(ResponseCode::OK,
-                    confirmator_->promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
+                    confirmator().promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
 
-    ASSERT_HAL_CALL(ResponseCode::OK, confirmator_->deliverSecureInputEvent(
-                                              makeTestToken(TestModeCommands::CANCEL_EVENT)));
+    ASSERT_HAL_CALL(ResponseCode::OK, confirmator().deliverSecureInputEvent(
+                                          makeTestToken(TestModeCommands::CANCEL_EVENT)));
 
     auto result = conf_cb->WaitForCallback();
     ASSERT_EQ(ResponseCode::Canceled, result.args->error_);
@@ -315,103 +336,17 @@ TEST_P(ConfirmationUIHidlTest, UserCancelTest) {
     ASSERT_EQ(0U, result.args->formattedMessage_.size());
 }
 
-// Simulates the framework cancelling an ongoing prompt
-TEST_P(ConfirmationUIHidlTest, AbortTest) {
+// Simulates the framework candelling an ongoing prompt
+TEST_F(ConfirmationUIHidlTest, AbortTest) {
     static constexpr char test_prompt[] = "Me first, gimme gimme!";
     static constexpr uint8_t test_extra[] = {0x1, 0x2, 0x3};
     sp<ConfirmationTestCallback> conf_cb = new ConfirmationTestCallback;
     hidl_string prompt_text(test_prompt);
     hidl_vec<uint8_t> extra(test_extra, test_extra + 3);
     ASSERT_HAL_CALL(ResponseCode::OK,
-                    confirmator_->promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
+                    confirmator().promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
 
-    confirmator_->abort();
-
-    auto result = conf_cb->WaitForCallback();
-    ASSERT_EQ(ResponseCode::Aborted, result.args->error_);
-    ASSERT_EQ(0U, result.args->confirmationToken_.size());
-    ASSERT_EQ(0U, result.args->formattedMessage_.size());
-}
-
-// Tests if the confirmation dialog can successfully render 100 'W' characters as required by
-// the design guidelines.
-TEST_P(ConfirmationUIHidlTest, PortableMessageTest1) {
-    static constexpr char test_prompt[] =
-            "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
-            "WWWWWWWWWWWWWW";
-    static constexpr uint8_t test_extra[] = {0x1, 0x2, 0x3};
-    sp<ConfirmationTestCallback> conf_cb = new ConfirmationTestCallback;
-    hidl_string prompt_text(test_prompt);
-    hidl_vec<uint8_t> extra(test_extra, test_extra + 3);
-    ASSERT_HAL_CALL(ResponseCode::OK,
-                    confirmator_->promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
-
-    confirmator_->abort();
-
-    auto result = conf_cb->WaitForCallback();
-    ASSERT_EQ(ResponseCode::Aborted, result.args->error_);
-    ASSERT_EQ(0U, result.args->confirmationToken_.size());
-    ASSERT_EQ(0U, result.args->formattedMessage_.size());
-}
-
-// Tests if the confirmation dialog can successfully render 100 'W' characters as required by
-// the design guidelines in magnified mode.
-TEST_P(ConfirmationUIHidlTest, PortableMessageTest1Magnified) {
-    static constexpr char test_prompt[] =
-            "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW"
-            "WWWWWWWWWWWWWW";
-    static constexpr uint8_t test_extra[] = {0x1, 0x2, 0x3};
-    sp<ConfirmationTestCallback> conf_cb = new ConfirmationTestCallback;
-    hidl_string prompt_text(test_prompt);
-    hidl_vec<uint8_t> extra(test_extra, test_extra + 3);
-    ASSERT_HAL_CALL(ResponseCode::OK,
-                    confirmator_->promptUserConfirmation(conf_cb, prompt_text, extra, "en",
-                                                         {UIOption::AccessibilityMagnified}));
-
-    confirmator_->abort();
-
-    auto result = conf_cb->WaitForCallback();
-    ASSERT_EQ(ResponseCode::Aborted, result.args->error_);
-    ASSERT_EQ(0U, result.args->confirmationToken_.size());
-    ASSERT_EQ(0U, result.args->formattedMessage_.size());
-}
-
-// Tests if the confirmation dialog can successfully render 8 groups of 12 'W' characters as
-// required by the design guidelines.
-TEST_P(ConfirmationUIHidlTest, PortableMessageTest2) {
-    static constexpr char test_prompt[] =
-            "WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW "
-            "WWWWWWWWWWWW WWWWWWWWWWWW";
-    static constexpr uint8_t test_extra[] = {0x1, 0x2, 0x3};
-    sp<ConfirmationTestCallback> conf_cb = new ConfirmationTestCallback;
-    hidl_string prompt_text(test_prompt);
-    hidl_vec<uint8_t> extra(test_extra, test_extra + 3);
-    ASSERT_HAL_CALL(ResponseCode::OK,
-                    confirmator_->promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
-
-    confirmator_->abort();
-
-    auto result = conf_cb->WaitForCallback();
-    ASSERT_EQ(ResponseCode::Aborted, result.args->error_);
-    ASSERT_EQ(0U, result.args->confirmationToken_.size());
-    ASSERT_EQ(0U, result.args->formattedMessage_.size());
-}
-
-// Tests if the confirmation dialog can successfully render 8 groups of 12 'W' characters as
-// required by the design guidelines in magnified mode.
-TEST_P(ConfirmationUIHidlTest, PortableMessageTest2Magnified) {
-    static constexpr char test_prompt[] =
-            "WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW WWWWWWWWWWWW "
-            "WWWWWWWWWWWW WWWWWWWWWWWW";
-    static constexpr uint8_t test_extra[] = {0x1, 0x2, 0x3};
-    sp<ConfirmationTestCallback> conf_cb = new ConfirmationTestCallback;
-    hidl_string prompt_text(test_prompt);
-    hidl_vec<uint8_t> extra(test_extra, test_extra + 3);
-    ASSERT_HAL_CALL(ResponseCode::OK,
-                    confirmator_->promptUserConfirmation(conf_cb, prompt_text, extra, "en",
-                                                         {UIOption::AccessibilityMagnified}));
-
-    confirmator_->abort();
+    confirmator().abort();
 
     auto result = conf_cb->WaitForCallback();
     ASSERT_EQ(ResponseCode::Aborted, result.args->error_);
@@ -421,19 +356,19 @@ TEST_P(ConfirmationUIHidlTest, PortableMessageTest2Magnified) {
 
 // Passing malformed UTF-8 to the confirmation UI
 // This test passes a string that ends in the middle of a multibyte character
-TEST_P(ConfirmationUIHidlTest, MalformedUTF8Test1) {
+TEST_F(ConfirmationUIHidlTest, MalformedUTF8Test1) {
     static constexpr char test_prompt[] = {char(0xc0), 0};
     static constexpr uint8_t test_extra[] = {0x1, 0x2, 0x3};
     sp<ConfirmationTestCallback> conf_cb = new ConfirmationTestCallback;
     hidl_string prompt_text(test_prompt);
     hidl_vec<uint8_t> extra(test_extra, test_extra + 3);
     ASSERT_HAL_CALL(ResponseCode::UIErrorMalformedUTF8Encoding,
-                    confirmator_->promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
+                    confirmator().promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
 }
 
 // Passing malformed UTF-8 to the confirmation UI
 // This test passes a string with a 5-byte character.
-TEST_P(ConfirmationUIHidlTest, MalformedUTF8Test2) {
+TEST_F(ConfirmationUIHidlTest, MalformedUTF8Test2) {
     static constexpr char test_prompt[] = {char(0xf8), char(0x82), char(0x82),
                                            char(0x82), char(0x82), 0};
     static constexpr uint8_t test_extra[] = {0x1, 0x2, 0x3};
@@ -441,19 +376,19 @@ TEST_P(ConfirmationUIHidlTest, MalformedUTF8Test2) {
     hidl_string prompt_text(test_prompt);
     hidl_vec<uint8_t> extra(test_extra, test_extra + 3);
     ASSERT_HAL_CALL(ResponseCode::UIErrorMalformedUTF8Encoding,
-                    confirmator_->promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
+                    confirmator().promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
 }
 
 // Passing malformed UTF-8 to the confirmation UI
 // This test passes a string with a 2-byte character followed by a stray non UTF-8 character.
-TEST_P(ConfirmationUIHidlTest, MalformedUTF8Test3) {
+TEST_F(ConfirmationUIHidlTest, MalformedUTF8Test3) {
     static constexpr char test_prompt[] = {char(0xc0), char(0x82), char(0x83), 0};
     static constexpr uint8_t test_extra[] = {0x1, 0x2, 0x3};
     sp<ConfirmationTestCallback> conf_cb = new ConfirmationTestCallback;
     hidl_string prompt_text(test_prompt);
     hidl_vec<uint8_t> extra(test_extra, test_extra + 3);
     ASSERT_HAL_CALL(ResponseCode::UIErrorMalformedUTF8Encoding,
-                    confirmator_->promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
+                    confirmator().promptUserConfirmation(conf_cb, prompt_text, extra, "en", {}));
 }
 
 // Test the implementation of HMAC SHA 256 against a golden blob.
@@ -473,14 +408,16 @@ TEST(ConfirmationUITestSelfTest, HMAC256SelfTest) {
     ASSERT_EQ(expected, result.value());
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(ConfirmationUIHidlTest);
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, ConfirmationUIHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IConfirmationUI::descriptor)),
-        android::hardware::PrintInstanceNameToString);
-
 }  // namespace test
 }  // namespace V1_0
 }  // namespace confirmationui
 }  // namespace hardware
 }  // namespace android
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    std::vector<std::string> positional_args;
+    int status = RUN_ALL_TESTS();
+    ALOGI("Test result = %d", status);
+    return status;
+}
