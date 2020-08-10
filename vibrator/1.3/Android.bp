@@ -7,8 +7,8 @@ hidl_interface {
         enabled: true,
     },
     srcs: [
-        "types.hal",
         "IVibrator.hal",
+        "types.hal",
     ],
     interfaces: [
         "android.hardware.vibrator@1.0",
@@ -18,3 +18,4 @@ hidl_interface {
     ],
     gen_java: true,
 }
+
