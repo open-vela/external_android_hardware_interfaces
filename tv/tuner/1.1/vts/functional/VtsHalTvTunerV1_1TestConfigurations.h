@@ -46,7 +46,6 @@ using android::hardware::tv::tuner::V1_0::FrontendStatusType;
 using android::hardware::tv::tuner::V1_0::FrontendType;
 using android::hardware::tv::tuner::V1_0::PlaybackSettings;
 using android::hardware::tv::tuner::V1_0::RecordSettings;
-using android::hardware::tv::tuner::V1_1::FrontendSettingsExt;
 
 using namespace std;
 
@@ -74,11 +73,6 @@ typedef enum {
 } Frontend;
 
 typedef enum {
-    SCAN_DVBT,
-    SCAN_MAX,
-} FrontendScan;
-
-typedef enum {
     DVR_RECORD0,
     DVR_PLAYBACK0,
     DVR_MAX,
@@ -96,7 +90,6 @@ struct FrontendConfig {
     bool isSoftwareFe;
     FrontendType type;
     FrontendSettings settings;
-    FrontendSettingsExt settingsExt;
     vector<FrontendStatusType> tuneStatusTypes;
     vector<FrontendStatus> expectTuneStatuses;
 };
@@ -109,7 +102,6 @@ struct DvrConfig {
 };
 
 static FrontendConfig frontendArray[FILTER_MAX];
-static FrontendConfig frontendScanArray[SCAN_MAX];
 static FilterConfig filterArray[FILTER_MAX];
 static DvrConfig dvrArray[DVR_MAX];
 
@@ -137,34 +129,8 @@ inline void initFrontendConfig() {
     frontendArray[DVBT].tuneStatusTypes = types;
     frontendArray[DVBT].expectTuneStatuses = statuses;
     frontendArray[DVBT].isSoftwareFe = true;
-    frontendArray[DVBT].settingsExt.settingExt.dvbt({
-            .transmissionMode =
-                    android::hardware::tv::tuner::V1_1::FrontendDvbtTransmissionMode::MODE_8K_E,
-    });
     frontendArray[DVBS].type = FrontendType::DVBS;
     frontendArray[DVBS].isSoftwareFe = true;
-};
-
-/** Configuration array for the frontend scan test */
-inline void initFrontendScanConfig() {
-    frontendScanArray[SCAN_DVBT].type = FrontendType::DVBT;
-    frontendScanArray[SCAN_DVBT].settings.dvbt({
-            .frequency = 578000,
-            .transmissionMode = FrontendDvbtTransmissionMode::MODE_8K,
-            .bandwidth = FrontendDvbtBandwidth::BANDWIDTH_8MHZ,
-            .constellation = FrontendDvbtConstellation::AUTO,
-            .hierarchy = FrontendDvbtHierarchy::AUTO,
-            .hpCoderate = FrontendDvbtCoderate::AUTO,
-            .lpCoderate = FrontendDvbtCoderate::AUTO,
-            .guardInterval = FrontendDvbtGuardInterval::AUTO,
-            .isHighPriority = true,
-            .standard = FrontendDvbtStandard::T,
-    });
-    frontendScanArray[SCAN_DVBT].settingsExt.endFrequency = 800000;
-    frontendScanArray[SCAN_DVBT].settingsExt.settingExt.dvbt({
-            .transmissionMode =
-                    android::hardware::tv::tuner::V1_1::FrontendDvbtTransmissionMode::MODE_8K_E,
-    });
 };
 
 /** Configuration array for the filter test */

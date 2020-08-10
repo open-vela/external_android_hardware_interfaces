@@ -32,16 +32,14 @@ unsigned int nametoindex(const std::string& ifname) {
     return 0;
 }
 
-std::string sanitize(std::string str) {
-    str.erase(std::find(str.begin(), str.end(), '\0'), str.end());
-
+std::string printableOnly(std::string str) {
     const auto isInvalid = [](char c) { return !isprint(c); };
     std::replace_if(str.begin(), str.end(), isInvalid, '?');
 
     return str;
 }
 
-uint16_t crc16(const nlbuf<uint8_t> data, uint16_t crc) {
+uint16_t crc16(const Buffer<uint8_t> data, uint16_t crc) {
     for (const auto byte : data.getRaw()) {
         crc ^= byte;
         for (unsigned i = 0; i < 8; i++) {
