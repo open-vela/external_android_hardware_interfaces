@@ -20,7 +20,6 @@
 
 #include <algorithm>
 #include <array>
-#include <regex>
 #include <linux/videodev2.h>
 #include "android-base/macros.h"
 #include "CameraMetadata.h"
@@ -47,20 +46,10 @@ constexpr int OPEN_RETRY_SLEEP_US = 100000; // 100ms * MAX_RETRY = 0.5 seconds
 
 } // anonymous namespace
 
-const std::regex kDevicePathRE("/dev/video([0-9]+)");
-
 ExternalCameraDevice::ExternalCameraDevice(
-        const std::string& devicePath, const ExternalCameraConfig& cfg) :
-        mCameraId("-1"),
-        mDevicePath(devicePath),
-        mCfg(cfg) {
-    std::smatch sm;
-    if (std::regex_match(mDevicePath, sm, kDevicePathRE)) {
-        mCameraId = std::to_string(mCfg.cameraIdOffset + std::stoi(sm[1]));
-    } else {
-        ALOGE("%s: device path match failed for %s", __FUNCTION__, mDevicePath.c_str());
-    }
-}
+        const std::string& cameraId, const ExternalCameraConfig& cfg) :
+        mCameraId(cameraId),
+        mCfg(cfg) {}
 
 ExternalCameraDevice::~ExternalCameraDevice() {}
 
@@ -140,20 +129,20 @@ Return<void> ExternalCameraDevice::open(
         return Void();
     }
 
-    unique_fd fd(::open(mDevicePath.c_str(), O_RDWR));
+    unique_fd fd(::open(mCameraId.c_str(), O_RDWR));
     if (fd.get() < 0) {
         int numAttempt = 0;
         do {
             ALOGW("%s: v4l2 device %s open failed, wait 33ms and try again",
-                    __FUNCTION__, mDevicePath.c_str());
+                    __FUNCTION__, mCameraId.c_str());
             usleep(OPEN_RETRY_SLEEP_US); // sleep and try again
-            fd.reset(::open(mDevicePath.c_str(), O_RDWR));
+            fd.reset(::open(mCameraId.c_str(), O_RDWR));
             numAttempt++;
         } while (fd.get() < 0 && numAttempt <= MAX_RETRY);
 
         if (fd.get() < 0) {
             ALOGE("%s: v4l2 device open %s failed: %s",
-                    __FUNCTION__, mDevicePath.c_str(), strerror(errno));
+                    __FUNCTION__, mCameraId.c_str(), strerror(errno));
             mLock.unlock();
             _hidl_cb(Status::INTERNAL_ERROR, nullptr);
             return Void();
@@ -214,9 +203,9 @@ Return<void> ExternalCameraDevice::dumpState(const ::android::hardware::hidl_han
 status_t ExternalCameraDevice::initCameraCharacteristics() {
     if (mCameraCharacteristics.isEmpty()) {
         // init camera characteristics
-        unique_fd fd(::open(mDevicePath.c_str(), O_RDWR));
+        unique_fd fd(::open(mCameraId.c_str(), O_RDWR));
         if (fd.get() < 0) {
-            ALOGE("%s: v4l2 device open %s failed", __FUNCTION__, mDevicePath.c_str());
+            ALOGE("%s: v4l2 device open %s failed", __FUNCTION__, mCameraId.c_str());
             return DEAD_OBJECT;
         }
 
@@ -765,11 +754,11 @@ void ExternalCameraDevice::getFrameRateList(
         int fd, double fpsUpperBound, SupportedV4L2Format* format) {
     format->frameRates.clear();
 
-    v4l2_frmivalenum frameInterval{
-            .index = 0,
-            .pixel_format = format->fourcc,
-            .width = format->width,
-            .height = format->height,
+    v4l2_frmivalenum frameInterval {
+        .pixel_format = format->fourcc,
+        .width = format->width,
+        .height = format->height,
+        .index = 0
     };
 
     for (frameInterval.index = 0;
