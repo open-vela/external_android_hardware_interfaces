@@ -74,7 +74,7 @@ static const AacParameters kDefaultOffloadAacCapability = {
     .objectType = AacObjectType::MPEG2_LC,
     .sampleRate = SampleRate::RATE_44100,
     .channelMode = ChannelMode::STEREO,
-    .variableBitRateEnabled = AacVariableBitRate::DISABLED,
+    .variableBitRateEnabled = AacVariableBitRate::ENABLED,
     .bitsPerSample = BitsPerSample::BITS_16};
 
 // LDAC: mSampleRate:(44100|48000|88200|96000), mBitsPerSample:(16|24|32),
@@ -94,16 +94,18 @@ static const LdacParameters kDefaultOffloadLdacCapability = {
 static const AptxParameters kDefaultOffloadAptxCapability = {
     .sampleRate = static_cast<SampleRate>(SampleRate::RATE_44100 |
                                           SampleRate::RATE_48000),
+    .channelMode = ChannelMode::STEREO,
     .bitsPerSample = BitsPerSample::BITS_16,
-    .channelMode = ChannelMode::STEREO};
+};
 
 // aptX HD: mSampleRate:(44100|48000), mBitsPerSample:(24),
 //          mChannelMode:(STEREO)
 static const AptxParameters kDefaultOffloadAptxHdCapability = {
     .sampleRate = static_cast<SampleRate>(SampleRate::RATE_44100 |
                                           SampleRate::RATE_48000),
+    .channelMode = ChannelMode::STEREO,
     .bitsPerSample = BitsPerSample::BITS_24,
-    .channelMode = ChannelMode::STEREO};
+};
 
 const std::vector<CodecCapabilities> kDefaultOffloadA2dpCodecCapabilities = {
     {.codecType = CodecType::SBC, .capabilities = {}},
