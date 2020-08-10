@@ -17,6 +17,7 @@
 #pragma once
 
 #include <android-base/logging.h>
+#include <libnl++/bits.h>
 
 #include <linux/netlink.h>
 
@@ -25,7 +26,7 @@
 namespace android::nl {
 
 /**
- * Buffer containing netlink structure (e.g. struct nlmsghdr, struct nlattr).
+ * Buffer wrapper containing netlink structure (e.g. nlmsghdr, nlattr).
  *
  * This is a C++-style, memory safe(r) and generic implementation of linux/netlink.h macros.
  *
@@ -33,7 +34,7 @@ namespace android::nl {
  * not be trusted - the value may either be larger than the buffer message is allocated in or
  * smaller than the header itself (so it couldn't even fit itself).
  *
- * As a solution, nlbuf<> keeps track of two lengths (both attribute for header with payload):
+ * As a solution, Buffer<> keeps track of two lengths (both attribute for header with payload):
  * - buffer length - how much memory was allocated to a given structure
  * - declared length - what nlmsg_len or nla_len says how long the structure is
  *
@@ -42,24 +43,20 @@ namespace android::nl {
  * this template attempts to protect against.
  */
 template <typename T>
-class nlbuf {
-    // The following definitions are C++ equivalents of NLMSG_* macros from linux/netlink.h
-
-    static constexpr size_t alignto = NLMSG_ALIGNTO;
-    static_assert(NLMSG_ALIGNTO == NLA_ALIGNTO);
-
-    static constexpr size_t align(size_t ptr) { return (ptr + alignto - 1) & ~(alignto - 1); }
-
-    static constexpr size_t hdrlen = align(sizeof(T));
-
+class Buffer {
   public:
     /**
-     * Constructor for nlbuf.
-     *
-     * \param data A pointer to the data the nlbuf wraps.
-     * \param bufferLen Length of buffer.
+     * Constructs empty buffer of size 0.
      */
-    nlbuf(const T* data, size_t bufferLen) : mData(data), mBufferEnd(pointerAdd(data, bufferLen)) {}
+    Buffer() : mData(nullptr), mBufferEnd(nullptr) {}
+
+    /**
+     * Buffer constructor.
+     *
+     * \param data A pointer to the data the Buffer wraps.
+     * \param bufLen Length of the buffer.
+     */
+    Buffer(const T* data, size_t bufLen) : mData(data), mBufferEnd(pointerAdd(data, bufLen)) {}
 
     const T* operator->() const {
         CHECK(firstOk()) << "buffer can't fit the first element's header";
@@ -68,8 +65,8 @@ class nlbuf {
 
     std::pair<bool, const T&> getFirst() const {
         if (!ok()) {
-            static const T dummy = {};
-            return {false, dummy};
+            static const T empty = {};
+            return {false, empty};
         }
         return {true, *mData};
     }
@@ -78,7 +75,8 @@ class nlbuf {
      * Copy the first element of the buffer.
      *
      * This is a memory-safe cast operation, useful for reading e.g. uint32_t values
-     * from 1-byte buffer.
+     * from 1-byte buffer. If the buffer is smaller than the copied type, the rest is
+     * padded with default constructor output (usually zeros).
      */
     T copyFirst() const {
         T val = {};
@@ -89,38 +87,38 @@ class nlbuf {
     bool firstOk() const { return sizeof(T) <= remainingLength(); }
 
     template <typename D>
-    const nlbuf<D> data(size_t offset = 0) const {
-        // Equivalent to NLMSG_DATA(hdr) + NLMSG_ALIGN(offset)
-        const D* dptr = reinterpret_cast<const D*>(uintptr_t(mData) + hdrlen + align(offset));
-        return {dptr, dataEnd()};
+    const Buffer<D> data(size_t offset = 0) const {
+        return {impl::data<const T, const D>(mData, offset), dataEnd()};
     }
 
     class iterator {
       public:
         iterator() : mCurrent(nullptr, size_t(0)) {
-            CHECK(!mCurrent.ok()) << "end() iterator should indicate it's beyond end";
+            CHECK(isEnd()) << "end() iterator should indicate it's beyond end";
         }
-        iterator(const nlbuf<T>& buf) : mCurrent(buf) {}
+        iterator(const Buffer<T>& buf) : mCurrent(buf) {}
 
         iterator operator++() {
             // mBufferEnd stays the same
             mCurrent.mData = reinterpret_cast<const T*>(  //
-                    uintptr_t(mCurrent.mData) + align(mCurrent.declaredLength()));
+                    uintptr_t(mCurrent.mData) + impl::align(mCurrent.declaredLength()));
 
             return *this;
         }
 
         bool operator==(const iterator& other) const {
             // all iterators beyond end are the same
-            if (!mCurrent.ok() && !other.mCurrent.ok()) return true;
+            if (isEnd() && other.isEnd()) return true;
 
             return uintptr_t(other.mCurrent.mData) == uintptr_t(mCurrent.mData);
         }
 
-        const nlbuf<T>& operator*() const { return mCurrent; }
+        const Buffer<T>& operator*() const { return mCurrent; }
+
+        bool isEnd() const { return !mCurrent.ok(); }
 
       protected:
-        nlbuf<T> mCurrent;
+        Buffer<T> mCurrent;
     };
     iterator begin() const { return {*this}; }
     iterator end() const { return {}; }
@@ -136,7 +134,7 @@ class nlbuf {
 
     class raw_view {
       public:
-        raw_view(const nlbuf<T>& buffer) : mBuffer(buffer) {}
+        raw_view(const Buffer<T>& buffer) : mBuffer(buffer) {}
         raw_iterator begin() const { return {mBuffer}; }
         raw_iterator end() const { return {}; }
 
@@ -144,7 +142,7 @@ class nlbuf {
         size_t len() const { return mBuffer.remainingLength(); }
 
       private:
-        const nlbuf<T> mBuffer;
+        const Buffer<T> mBuffer;
     };
 
     raw_view getRaw() const { return {*this}; }
@@ -153,7 +151,7 @@ class nlbuf {
     const T* mData;
     const void* mBufferEnd;
 
-    nlbuf(const T* data, const void* bufferEnd) : mData(data), mBufferEnd(bufferEnd) {}
+    Buffer(const T* data, const void* bufferEnd) : mData(data), mBufferEnd(bufferEnd) {}
 
     bool ok() const { return declaredLength() <= remainingLength(); }
 
@@ -186,16 +184,16 @@ class nlbuf {
     }
 
     template <typename D>
-    friend class nlbuf;  // calling private constructor of data buffers
+    friend class Buffer;  // calling private constructor of data buffers
 };
 
 template <>
-inline size_t nlbuf<nlmsghdr>::declaredLengthImpl() const {
+inline size_t Buffer<nlmsghdr>::declaredLengthImpl() const {
     return mData->nlmsg_len;
 }
 
 template <>
-inline size_t nlbuf<nlattr>::declaredLengthImpl() const {
+inline size_t Buffer<nlattr>::declaredLengthImpl() const {
     return mData->nla_len;
 }
 

@@ -18,7 +18,7 @@
 
 namespace android::nl::protocols {
 
-NetlinkProtocol::NetlinkProtocol(int protocol, const std::string name,
+NetlinkProtocol::NetlinkProtocol(int protocol, const std::string& name,
                                  const MessageDescriptorList&& messageDescrs)
     : mProtocol(protocol), mName(name), mMessageDescrs(toMap(messageDescrs, protocol)) {}
 
@@ -42,7 +42,7 @@ NetlinkProtocol::MessageDescriptorMap NetlinkProtocol::toMap(
         const NetlinkProtocol::MessageDescriptorList& descrs, int protocol) {
     MessageDescriptorMap map;
     for (const auto& descr : descrs) {
-        for (const auto& [mtype, mname] : descr->getMessageTypeMap()) {
+        for (const auto& [mtype, mdet] : descr->getMessageDetailsMap()) {
             map.emplace(mtype, descr);
         }
     }
@@ -53,7 +53,7 @@ NetlinkProtocol::MessageDescriptorMap NetlinkProtocol::toMap(
     };
 
     for (const auto& descr : baseDescriptors) {
-        for (const auto& [mtype, mname] : descr->getMessageTypeMap()) {
+        for (const auto& [mtype, mdet] : descr->getMessageDetailsMap()) {
             map.emplace(mtype, descr);
         }
     }
