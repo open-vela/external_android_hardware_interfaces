@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.health@2.1",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IHealth.hal",
