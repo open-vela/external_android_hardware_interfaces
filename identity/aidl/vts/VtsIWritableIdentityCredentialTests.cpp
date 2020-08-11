@@ -700,7 +700,6 @@ TEST_P(IdentityCredentialTests, verifyAccessControlProfileIdOutOfRange) {
     ASSERT_EQ(IIdentityCredentialStore::STATUS_INVALID_DATA, result.serviceSpecificErrorCode());
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(IdentityCredentialTests);
 INSTANTIATE_TEST_SUITE_P(
         Identity, IdentityCredentialTests,
         testing::ValuesIn(android::getAidlHalInstanceNames(IIdentityCredentialStore::descriptor)),
