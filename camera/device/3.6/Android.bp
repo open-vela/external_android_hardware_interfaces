@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.camera.device@3.6",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "ICameraDevice.hal",
