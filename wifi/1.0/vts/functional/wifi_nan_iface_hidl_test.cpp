@@ -509,7 +509,6 @@ TEST_P(WifiNanIfaceHidlTest, getCapabilitiesRequest) {
     EXPECT_NE(capabilities.supportedCipherSuites, (unsigned int)0);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(WifiNanIfaceHidlTest);
 INSTANTIATE_TEST_SUITE_P(
     PerInstance, WifiNanIfaceHidlTest,
     testing::ValuesIn(
