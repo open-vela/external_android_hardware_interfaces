@@ -30,7 +30,6 @@
 #include "vhal_v2_0/VehiclePropertyStore.h"
 
 #include "DefaultConfig.h"
-#include "EmulatedUserHal.h"
 #include "EmulatedVehicleConnector.h"
 #include "GeneratorHub.h"
 #include "VehicleEmulator.h"
@@ -46,8 +45,8 @@ namespace impl {
 /** Implementation of VehicleHal that connected to emulator instead of real vehicle network. */
 class EmulatedVehicleHal : public EmulatedVehicleHalIface {
 public:
-    EmulatedVehicleHal(VehiclePropertyStore* propStore, VehicleHalClient* client,
-                       EmulatedUserHal* emulatedUserHal = nullptr);
+    EmulatedVehicleHal(VehiclePropertyStore* propStore,
+                       VehicleHalClient* client);
     ~EmulatedVehicleHal() = default;
 
     //  Methods from VehicleHal
@@ -63,7 +62,6 @@ public:
     //  Methods from EmulatedVehicleHalIface
     bool setPropertyFromVehicle(const VehiclePropValue& propValue) override;
     std::vector<VehiclePropValue> getAllProperties() const override;
-    void getAllPropertiesOverride();
 
 private:
     constexpr std::chrono::nanoseconds hertzToNanoseconds(float hz) const {
@@ -88,10 +86,6 @@ private:
     std::unordered_set<int32_t> mHvacPowerProps;
     RecurrentTimer mRecurrentTimer;
     VehicleHalClient* mVehicleClient;
-    bool mInEmulator;
-    bool mInitVhalValueOverride;
-    std::vector<VehiclePropValue> mVehiclePropertiesOverride;
-    EmulatedUserHal* mEmulatedUserHal;
 };
 
 }  // impl

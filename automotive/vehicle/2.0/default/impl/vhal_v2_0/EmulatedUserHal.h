@@ -46,19 +46,11 @@ class EmulatedUserHal {
     bool isSupported(int32_t prop);
 
     /**
-     * Lets the emulator set the property.
+     * Lets the emulator handle the property.
      *
      * @return updated property and StatusCode
      */
     android::base::Result<std::unique_ptr<VehiclePropValue>> onSetProperty(
-            const VehiclePropValue& value);
-
-    /**
-     * Gets the property value from the emulator.
-     *
-     * @return property value and StatusCode
-     */
-    android::base::Result<std::unique_ptr<VehiclePropValue>> onGetProperty(
             const VehiclePropValue& value);
 
     /**
@@ -105,39 +97,11 @@ class EmulatedUserHal {
     android::base::Result<std::unique_ptr<VehiclePropValue>> onSetSwitchUserResponse(
             const VehiclePropValue& value);
 
-    /**
-     * Used to emulate CREATE_USER - see onSetInitialUserInfoResponse() for usage.
-     */
-    android::base::Result<std::unique_ptr<VehiclePropValue>> onSetCreateUserResponse(
-            const VehiclePropValue& value);
-
-    /**
-     * Used to emulate set USER_IDENTIFICATION_ASSOCIATION - see onSetInitialUserInfoResponse() for
-     * usage.
-     */
-    android::base::Result<std::unique_ptr<VehiclePropValue>> onSetUserIdentificationAssociation(
-            const VehiclePropValue& value);
-
-    /**
-     * Used to emulate get USER_IDENTIFICATION_ASSOCIATION - see onSetInitialUserInfoResponse() for
-     * usage.
-     */
-    android::base::Result<std::unique_ptr<VehiclePropValue>> onGetUserIdentificationAssociation(
-            const VehiclePropValue& value);
-
-    /**
-     * Creates a default USER_IDENTIFICATION_ASSOCIATION when it was not set by lshal.
-     */
-    android::base::Result<std::unique_ptr<VehiclePropValue>> defaultUserIdentificationAssociation(
-            const VehiclePropValue& request);
-
     android::base::Result<std::unique_ptr<VehiclePropValue>> sendUserHalResponse(
             std::unique_ptr<VehiclePropValue> response, int32_t requestId);
 
     std::unique_ptr<VehiclePropValue> mInitialUserResponseFromCmd;
     std::unique_ptr<VehiclePropValue> mSwitchUserResponseFromCmd;
-    std::unique_ptr<VehiclePropValue> mCreateUserResponseFromCmd;
-    std::unique_ptr<VehiclePropValue> mSetUserIdentificationAssociationResponseFromCmd;
 };
 
 }  // namespace impl
