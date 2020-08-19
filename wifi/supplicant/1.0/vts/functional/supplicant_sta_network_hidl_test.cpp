@@ -19,6 +19,7 @@
 #include <VtsCoreUtil.h>
 #include <android/hardware/wifi/1.0/IWifi.h>
 #include <android/hardware/wifi/supplicant/1.0/ISupplicantStaNetwork.h>
+#include <android/hardware/wifi/supplicant/1.3/ISupplicantStaNetwork.h>
 #include <gtest/gtest.h>
 #include <hidl/GtestPrinter.h>
 #include <hidl/ServiceManagement.h>
@@ -84,20 +85,31 @@ class SupplicantStaNetworkHidlTest
     virtual void SetUp() override {
         wifi_instance_name_ = std::get<0>(GetParam());
         supplicant_instance_name_ = std::get<1>(GetParam());
+        isP2pOn_ =
+            testing::deviceSupportsFeature("android.hardware.wifi.direct");
+        // Stop Framework
+        std::system("/system/bin/stop");
         stopSupplicant(wifi_instance_name_);
         startSupplicantAndWaitForHidlService(wifi_instance_name_,
                                              supplicant_instance_name_);
-        isP2pOn_ =
-            testing::deviceSupportsFeature("android.hardware.wifi.direct");
         supplicant_ = getSupplicant(supplicant_instance_name_, isP2pOn_);
         EXPECT_TRUE(turnOnExcessiveLogging(supplicant_));
         sta_network_ = createSupplicantStaNetwork(supplicant_);
         ASSERT_NE(sta_network_.get(), nullptr);
+        /* variable used to check if the underlying HAL version is 1.3 or
+         * higher. This is to skip tests which are using deprecated methods.
+         */
+        v1_3 = ::android::hardware::wifi::supplicant::V1_3::
+            ISupplicantStaNetwork::castFrom(sta_network_);
 
         ssid_.assign(kTestSsidStr, kTestSsidStr + strlen(kTestSsidStr));
     }
 
-    virtual void TearDown() override { stopSupplicant(wifi_instance_name_); }
+    virtual void TearDown() override {
+        stopSupplicant(wifi_instance_name_);
+        // Start Framework
+        std::system("/system/bin/start");
+    }
 
    protected:
     void removeNetwork() {
@@ -114,6 +126,8 @@ class SupplicantStaNetworkHidlTest
         });
     }
 
+    sp<::android::hardware::wifi::supplicant::V1_3::ISupplicantStaNetwork>
+        v1_3 = nullptr;
     bool isP2pOn_ = false;
     sp<ISupplicant> supplicant_;
     // ISupplicantStaNetwork object used for all tests in this fixture.
@@ -221,6 +235,9 @@ TEST_P(SupplicantStaNetworkHidlTest, SetGetBssid) {
  * SetGetKeyMgmt
  */
 TEST_P(SupplicantStaNetworkHidlTest, SetGetKeyMgmt) {
+    if (v1_3 != nullptr) {
+        GTEST_SKIP() << "Skipping test since HAL is 1.3 or higher";
+    }
     sta_network_->setKeyMgmt(kTestKeyMgmt, [](const SupplicantStatus& status) {
         EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
     });
@@ -235,6 +252,9 @@ TEST_P(SupplicantStaNetworkHidlTest, SetGetKeyMgmt) {
  * SetGetProto
  */
 TEST_P(SupplicantStaNetworkHidlTest, SetGetProto) {
+    if (v1_3 != nullptr) {
+        GTEST_SKIP() << "Skipping test since HAL is 1.3 or higher";
+    }
     sta_network_->setProto(kTestProto, [](const SupplicantStatus& status) {
         EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
     });
@@ -262,6 +282,9 @@ TEST_P(SupplicantStaNetworkHidlTest, SetGetAuthAlg) {
  * SetGetGroupCipher
  */
 TEST_P(SupplicantStaNetworkHidlTest, SetGetGroupCipher) {
+    if (v1_3 != nullptr) {
+        GTEST_SKIP() << "Skipping test since HAL is 1.3 or higher";
+    }
     sta_network_->setGroupCipher(
         kTestGroupCipher, [](const SupplicantStatus& status) {
             EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
@@ -277,6 +300,9 @@ TEST_P(SupplicantStaNetworkHidlTest, SetGetGroupCipher) {
  * SetGetPairwiseCipher
  */
 TEST_P(SupplicantStaNetworkHidlTest, SetGetPairwiseCipher) {
+    if (v1_3 != nullptr) {
+        GTEST_SKIP() << "Skipping test since HAL is 1.3 or higher";
+    }
     sta_network_->setPairwiseCipher(
         kTestPairwiseCipher, [](const SupplicantStatus& status) {
             EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
@@ -627,6 +653,9 @@ TEST_P(SupplicantStaNetworkHidlTest, SetGetEapEngineID) {
  * Enable
  */
 TEST_P(SupplicantStaNetworkHidlTest, Enable) {
+    if (v1_3 != nullptr) {
+        GTEST_SKIP() << "Skipping test since HAL is 1.3 or higher";
+    }
     // wpa_supplicant doesn't perform any connection initiation
     // unless atleast the Ssid and Ket mgmt params are set.
     sta_network_->setSsid(ssid_, [](const SupplicantStatus& status) {
@@ -654,6 +683,9 @@ TEST_P(SupplicantStaNetworkHidlTest, Enable) {
  * Disable
  */
 TEST_P(SupplicantStaNetworkHidlTest, Disable) {
+    if (v1_3 != nullptr) {
+        GTEST_SKIP() << "Skipping test since HAL is 1.3 or higher";
+    }
     // wpa_supplicant doesn't perform any connection initiation
     // unless atleast the Ssid and Ket mgmt params are set.
     sta_network_->setSsid(ssid_, [](const SupplicantStatus& status) {
@@ -677,6 +709,9 @@ TEST_P(SupplicantStaNetworkHidlTest, Disable) {
  * Select.
  */
 TEST_P(SupplicantStaNetworkHidlTest, Select) {
+    if (v1_3 != nullptr) {
+        GTEST_SKIP() << "Skipping test since HAL is 1.3 or higher";
+    }
     // wpa_supplicant doesn't perform any connection initiation
     // unless atleast the Ssid and Ket mgmt params are set.
     sta_network_->setSsid(ssid_, [](const SupplicantStatus& status) {
@@ -788,6 +823,9 @@ TEST_P(SupplicantStaNetworkHidlTest, SetProactiveKeyCaching) {
  * GetWpsNfcConfigurationToken
  */
 TEST_P(SupplicantStaNetworkHidlTest, GetWpsNfcConfigurationToken) {
+    if (v1_3 != nullptr) {
+        GTEST_SKIP() << "Skipping test since HAL is 1.3 or higher";
+    }
     ASSERT_EQ(SupplicantStatusCode::SUCCESS,
               HIDL_INVOKE(sta_network_, setSsid, ssid_).code);
     ASSERT_EQ(SupplicantStatusCode::SUCCESS,
