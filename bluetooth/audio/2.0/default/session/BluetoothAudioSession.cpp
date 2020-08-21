@@ -90,16 +90,14 @@ void BluetoothAudioSession::OnSessionStarted(
 // bluetooth_audio outputs
 void BluetoothAudioSession::OnSessionEnded() {
   std::lock_guard<std::recursive_mutex> guard(mutex_);
-  bool toggled = IsSessionReady();
-  LOG(INFO) << __func__ << " - SessionType=" << toString(session_type_);
+  if (IsSessionReady()) {
+    ReportSessionStatus();
+  }
   audio_config_ = (session_type_ == SessionType::A2DP_HARDWARE_OFFLOAD_DATAPATH
                        ? kInvalidOffloadAudioConfiguration
                        : kInvalidSoftwareAudioConfiguration);
   stack_iface_ = nullptr;
   UpdateDataPath(nullptr);
-  if (toggled) {
-    ReportSessionStatus();
-  }
 }
 
 // invoking the registered session_changed_cb_
