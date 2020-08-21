@@ -58,7 +58,7 @@ using ::android::hardware::Void;
 class RadioHidlTest_v1_6;
 extern ::android::hardware::radio::V1_5::CardStatus cardStatus;
 
-/* Callback class for radio response v1_5 */
+/* Callback class for radio response v1_6 */
 class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioResponse {
   protected:
     RadioHidlTest_v1_6& parent_v1_6;
@@ -79,6 +79,9 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
     bool isModemEnabled;
     bool enableModemResponseToggle;
     bool isNRDualConnectivityEnabled;
+
+    // Pdu Session Id and Handover
+    int32_t allocatedPduSessionId;
 
     ::android::hardware::hidl_bitfield<::android::hardware::radio::V1_4::RadioAccessFamily>
             networkTypeBitmapResponse;
@@ -763,6 +766,9 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
             const SendSmsResult& sms);
 
+    Return<void> setSimCardPowerResponse_1_6(
+            const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
+
     Return<void> sendCdmaSmsExpectMoreResponse_1_6(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
             const SendSmsResult& sms);
@@ -771,6 +777,21 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
     Return<void> isNrDualConnectivityEnabledResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info, bool isEnabled);
+
+    Return<void> allocatePduSessionIdResponse(
+            const ::android::hardware::radio::V1_6::RadioResponseInfo& info, int32_t id);
+
+    Return<void> releasePduSessionIdResponse(
+            const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
+
+    Return<void> beginHandoverResponse(
+            const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
+
+    Return<void> cancelHandoverResponse(
+            const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
+
+    Return<void> setAllowedNetworkTypeBitmapResponse(
+            const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
 };
 
 /* Callback class for radio indication */
