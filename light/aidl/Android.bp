@@ -1,0 +1,19 @@
+aidl_interface {
+    name: "android.hardware.light",
+    vendor_available: true,
+    srcs: [
+        "android/hardware/light/*.aidl",
+    ],
+    stability: "vintf",
+    backend: {
+        java: {
+            sdk_version: "module_current",
+        },
+        ndk: {
+            vndk: {
+                enabled: true,
+            },
+        },
+    },
+    versions: ["1"],
+}

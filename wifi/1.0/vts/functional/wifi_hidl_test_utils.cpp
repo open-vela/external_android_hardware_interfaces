@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <VtsHalHidlTargetTestBase.h>
+#include <android/log.h>
 
 #include <wifi_system/interface_tool.h>
 
@@ -38,8 +38,6 @@ using ::android::sp;
 using ::android::hardware::hidl_string;
 using ::android::hardware::hidl_vec;
 using ::android::wifi_system::InterfaceTool;
-
-extern WifiHidlEnvironment* gEnv;
 
 namespace {
 constexpr uint32_t kHalStartRetryMaxCount = 5;
@@ -91,14 +89,12 @@ bool configureChipToSupportIfaceTypeInternal(const sp<IWifiChip>& wifi_chip,
 }
 }  // namespace
 
-sp<IWifi> getWifi() {
-    sp<IWifi> wifi = ::testing::VtsHalHidlTargetTestBase::getService<IWifi>(
-        gEnv->getServiceName<IWifi>());
-    return wifi;
+sp<IWifi> getWifi(const std::string& instance_name) {
+    return IWifi::getService(instance_name);
 }
 
-sp<IWifiChip> getWifiChip() {
-    sp<IWifi> wifi = getWifi();
+sp<IWifiChip> getWifiChip(const std::string& instance_name) {
+    sp<IWifi> wifi = getWifi(instance_name);
     if (!wifi.get()) {
         return nullptr;
     }
@@ -116,7 +112,7 @@ sp<IWifiChip> getWifiChip() {
     const auto& status_and_chip_ids = HIDL_INVOKE(wifi, getChipIds);
     const auto& chip_ids = status_and_chip_ids.second;
     if (status_and_chip_ids.first.code != WifiStatusCode::SUCCESS ||
-        chip_ids.size() != 1) {
+        chip_ids.size() < 1) {
         return nullptr;
     }
     const auto& status_and_chip = HIDL_INVOKE(wifi, getChip, chip_ids[0]);
@@ -136,8 +132,8 @@ void setIfaceUp(const sp<IWifiIface>& iface) {
     }
 }
 
-sp<IWifiApIface> getWifiApIface() {
-    sp<IWifiChip> wifi_chip = getWifiChip();
+sp<IWifiApIface> getWifiApIface(const std::string& instance_name) {
+    sp<IWifiChip> wifi_chip = getWifiChip(instance_name);
     if (!wifi_chip.get()) {
         return nullptr;
     }
@@ -152,8 +148,8 @@ sp<IWifiApIface> getWifiApIface() {
     return status_and_iface.second;
 }
 
-sp<IWifiNanIface> getWifiNanIface() {
-    sp<IWifiChip> wifi_chip = getWifiChip();
+sp<IWifiNanIface> getWifiNanIface(const std::string& instance_name) {
+    sp<IWifiChip> wifi_chip = getWifiChip(instance_name);
     if (!wifi_chip.get()) {
         return nullptr;
     }
@@ -168,8 +164,8 @@ sp<IWifiNanIface> getWifiNanIface() {
     return status_and_iface.second;
 }
 
-sp<IWifiP2pIface> getWifiP2pIface() {
-    sp<IWifiChip> wifi_chip = getWifiChip();
+sp<IWifiP2pIface> getWifiP2pIface(const std::string& instance_name) {
+    sp<IWifiChip> wifi_chip = getWifiChip(instance_name);
     if (!wifi_chip.get()) {
         return nullptr;
     }
@@ -184,8 +180,8 @@ sp<IWifiP2pIface> getWifiP2pIface() {
     return status_and_iface.second;
 }
 
-sp<IWifiStaIface> getWifiStaIface() {
-    sp<IWifiChip> wifi_chip = getWifiChip();
+sp<IWifiStaIface> getWifiStaIface(const std::string& instance_name) {
+    sp<IWifiChip> wifi_chip = getWifiChip(instance_name);
     if (!wifi_chip.get()) {
         return nullptr;
     }
@@ -200,23 +196,6 @@ sp<IWifiStaIface> getWifiStaIface() {
     return status_and_iface.second;
 }
 
-sp<IWifiRttController> getWifiRttController() {
-    sp<IWifiChip> wifi_chip = getWifiChip();
-    if (!wifi_chip.get()) {
-        return nullptr;
-    }
-    sp<IWifiStaIface> wifi_sta_iface = getWifiStaIface();
-    if (!wifi_sta_iface.get()) {
-        return nullptr;
-    }
-    const auto& status_and_controller =
-        HIDL_INVOKE(wifi_chip, createRttController, wifi_sta_iface);
-    if (status_and_controller.first.code != WifiStatusCode::SUCCESS) {
-        return nullptr;
-    }
-    return status_and_controller.second;
-}
-
 bool configureChipToSupportIfaceType(const sp<IWifiChip>& wifi_chip,
                                      IfaceType type,
                                      ChipModeId* configured_mode_id) {
@@ -224,8 +203,8 @@ bool configureChipToSupportIfaceType(const sp<IWifiChip>& wifi_chip,
                                                    configured_mode_id);
 }
 
-void stopWifi() {
-    sp<IWifi> wifi = getWifi();
+void stopWifi(const std::string& instance_name) {
+    sp<IWifi> wifi = IWifi::getService(instance_name);
     ASSERT_NE(wifi, nullptr);
     HIDL_INVOKE(wifi, stop);
 }
