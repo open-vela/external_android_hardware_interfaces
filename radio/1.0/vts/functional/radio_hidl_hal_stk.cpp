@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <android-base/logging.h>
 #include <radio_hidl_hal_utils_v1_0.h>
 
 using namespace ::android::hardware::radio::V1_0;
@@ -22,8 +21,7 @@ using namespace ::android::hardware::radio::V1_0;
 /*
  * Test IRadio.sendEnvelope() for the response returned.
  */
-TEST_P(RadioHidlTest, sendEnvelope) {
-    LOG(DEBUG) << "sendEnvelope";
+TEST_F(RadioHidlTest, sendEnvelope) {
     serial = GetRandomSerialNumber();
 
     // Test with sending empty string
@@ -41,14 +39,12 @@ TEST_P(RadioHidlTest, sendEnvelope) {
                                       RadioError::MODEM_ERR, RadioError::SIM_ABSENT},
                                      CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "sendEnvelope finished";
 }
 
 /*
  * Test IRadio.sendTerminalResponseToSim() for the response returned.
  */
-TEST_P(RadioHidlTest, sendTerminalResponseToSim) {
-    LOG(DEBUG) << "sendTerminalResponseToSim";
+TEST_F(RadioHidlTest, sendTerminalResponseToSim) {
     serial = GetRandomSerialNumber();
 
     // Test with sending empty string
@@ -66,14 +62,12 @@ TEST_P(RadioHidlTest, sendTerminalResponseToSim) {
             {RadioError::NONE, RadioError::INVALID_ARGUMENTS, RadioError::SIM_ABSENT},
             CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "sendTerminalResponseToSim finished";
 }
 
 /*
  * Test IRadio.handleStkCallSetupRequestFromSim() for the response returned.
  */
-TEST_P(RadioHidlTest, handleStkCallSetupRequestFromSim) {
-    LOG(DEBUG) << "handleStkCallSetupRequestFromSim";
+TEST_F(RadioHidlTest, handleStkCallSetupRequestFromSim) {
     serial = GetRandomSerialNumber();
     bool accept = false;
 
@@ -89,14 +83,12 @@ TEST_P(RadioHidlTest, handleStkCallSetupRequestFromSim) {
                                       RadioError::MODEM_ERR, RadioError::SIM_ABSENT},
                                      CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "handleStkCallSetupRequestFromSim finished";
 }
 
 /*
  * Test IRadio.reportStkServiceIsRunning() for the response returned.
  */
-TEST_P(RadioHidlTest, reportStkServiceIsRunning) {
-    LOG(DEBUG) << "reportStkServiceIsRunning";
+TEST_F(RadioHidlTest, reportStkServiceIsRunning) {
     serial = GetRandomSerialNumber();
 
     radio->reportStkServiceIsRunning(serial);
@@ -109,15 +101,13 @@ TEST_P(RadioHidlTest, reportStkServiceIsRunning) {
         ASSERT_TRUE(
             CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::NONE}, CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "reportStkServiceIsRunning finished";
 }
 
 /*
  * Test IRadio.sendEnvelopeWithStatus() for the response returned with empty
  * string.
  */
-TEST_P(RadioHidlTest, sendEnvelopeWithStatus) {
-    LOG(DEBUG) << "sendEnvelopeWithStatus";
+TEST_F(RadioHidlTest, sendEnvelopeWithStatus) {
     serial = GetRandomSerialNumber();
 
     // Test with sending empty string
@@ -135,5 +125,4 @@ TEST_P(RadioHidlTest, sendEnvelopeWithStatus) {
             {RadioError::INVALID_ARGUMENTS, RadioError::MODEM_ERR, RadioError::SIM_ABSENT},
             CHECK_GENERAL_ERROR));
     }
-    LOG(DEBUG) << "sendEnvelopeWithStatus finished";
 }
