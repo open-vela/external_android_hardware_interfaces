@@ -298,7 +298,6 @@ TEST_P(UsbHidlTest, switchDataRole) {
   }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UsbHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, UsbHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IUsb::descriptor)),
