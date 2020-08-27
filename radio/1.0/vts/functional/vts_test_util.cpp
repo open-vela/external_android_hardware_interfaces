@@ -17,7 +17,6 @@
 
 #include <vts_test_util.h>
 #include <iostream>
-#include "VtsCoreUtil.h"
 
 int GetRandomSerialNumber() {
     return rand();
@@ -79,24 +78,4 @@ bool deviceSupportsFeature(const char* feature) {
     __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Feature %s: %ssupported", feature,
                         hasFeature ? "" : "not ");
     return hasFeature;
-}
-
-bool isDsDsEnabled() {
-    return testing::checkSubstringInCommandOutput("getprop persist.radio.multisim.config", "dsds");
-}
-
-bool isTsTsEnabled() {
-    return testing::checkSubstringInCommandOutput("getprop persist.radio.multisim.config", "tsts");
-}
-
-bool isVoiceInService(RegState state) {
-    return ::android::hardware::radio::V1_0::RegState::REG_HOME == state ||
-           ::android::hardware::radio::V1_0::RegState::REG_ROAMING == state;
-}
-
-bool isVoiceEmergencyOnly(RegState state) {
-    return ::android::hardware::radio::V1_0::RegState::NOT_REG_MT_NOT_SEARCHING_OP_EM == state ||
-           ::android::hardware::radio::V1_0::RegState::NOT_REG_MT_SEARCHING_OP_EM == state ||
-           ::android::hardware::radio::V1_0::RegState::REG_DENIED_EM == state ||
-           ::android::hardware::radio::V1_0::RegState::UNKNOWN_EM == state;
 }
