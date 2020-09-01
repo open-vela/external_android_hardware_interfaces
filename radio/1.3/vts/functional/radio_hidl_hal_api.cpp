@@ -16,14 +16,24 @@
 
 #include <radio_hidl_hal_utils_v1_3.h>
 #include <vector>
+#include "VtsCoreUtil.h"
 
 #define ASSERT_OK(ret) ASSERT_TRUE(ret.isOk())
 
 /*
  * Test IRadio.enableMddem() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_3, enableModem) {
+TEST_P(RadioHidlTest_v1_3, enableModem) {
     serial = GetRandomSerialNumber();
+
+    bool isMultiSimEnabled =
+            testing::checkSubstringInCommandOutput("getprop persist.radio.multisim.config",
+                                                   "dsds") ||
+            testing::checkSubstringInCommandOutput("getprop persist.radio.multisim.config", "tsts");
+    if (!isMultiSimEnabled) {
+        ALOGI("enableModem, no need to test in single SIM mode");
+        return;
+    }
 
     bool responseToggle = radioRsp_v1_3->enableModemResponseToggle;
     Return<void> res = radio_v1_3->enableModem(serial, true);
@@ -61,7 +71,7 @@ TEST_F(RadioHidlTest_v1_3, enableModem) {
 /*
  * Test IRadio.getModemStackStatus() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_3, getModemStackStatus) {
+TEST_P(RadioHidlTest_v1_3, getModemStackStatus) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_3->getModemStackStatus(serial);
