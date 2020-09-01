@@ -16,13 +16,12 @@
 
 #include <android-base/logging.h>
 
-#include <VtsHalHidlTargetTestBase.h>
-
 #include <android/hardware/radio/1.0/types.h>
 #include <android/log.h>
 #include <gtest/gtest.h>
 
 using ::android::hardware::radio::V1_0::RadioError;
+using ::android::hardware::radio::V1_0::RegState;
 using ::android::hardware::radio::V1_0::SapResultCode;
 using namespace std;
 
@@ -57,3 +56,23 @@ int GetRandomSerialNumber();
  * Check if device supports feature.
  */
 bool deviceSupportsFeature(const char* feature);
+
+/*
+ * Check if device is in DSDS.
+ */
+bool isDsDsEnabled();
+
+/*
+ * Check if device is in TSTS.
+ */
+bool isTsTsEnabled();
+
+/*
+ * Check if voice status is in emergency only.
+ */
+bool isVoiceEmergencyOnly(RegState state);
+
+/*
+ * Check if voice status is in service.
+ */
+bool isVoiceInService(RegState state);
