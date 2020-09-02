@@ -89,12 +89,8 @@ bool configureChipToSupportIfaceTypeInternal(const sp<IWifiChip>& wifi_chip,
 }
 }  // namespace
 
-sp<IWifi> getWifi(const std::string& instance_name) {
-    return IWifi::getService(instance_name);
-}
-
 sp<IWifiChip> getWifiChip(const std::string& instance_name) {
-    sp<IWifi> wifi = getWifi(instance_name);
+    sp<IWifi> wifi = IWifi::getService(instance_name);
     if (!wifi.get()) {
         return nullptr;
     }
@@ -112,7 +108,7 @@ sp<IWifiChip> getWifiChip(const std::string& instance_name) {
     const auto& status_and_chip_ids = HIDL_INVOKE(wifi, getChipIds);
     const auto& chip_ids = status_and_chip_ids.second;
     if (status_and_chip_ids.first.code != WifiStatusCode::SUCCESS ||
-        chip_ids.size() < 1) {
+        chip_ids.size() != 1) {
         return nullptr;
     }
     const auto& status_and_chip = HIDL_INVOKE(wifi, getChip, chip_ids[0]);
