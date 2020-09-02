@@ -204,7 +204,6 @@ TEST_P(GraphicsMapperHidlTest, CreateDescriptor_2_1Negative) {
     });
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GraphicsMapperHidlTest);
 INSTANTIATE_TEST_CASE_P(
         PerInstance, GraphicsMapperHidlTest,
         testing::Combine(

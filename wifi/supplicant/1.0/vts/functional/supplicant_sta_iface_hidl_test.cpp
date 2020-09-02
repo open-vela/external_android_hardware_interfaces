@@ -72,13 +72,11 @@ class SupplicantStaIfaceHidlTest
     virtual void SetUp() override {
         wifi_instance_name_ = std::get<0>(GetParam());
         supplicant_instance_name_ = std::get<1>(GetParam());
-        isP2pOn_ =
-            testing::deviceSupportsFeature("android.hardware.wifi.direct");
-        // Stop Framework
-        std::system("/system/bin/stop");
         stopSupplicant(wifi_instance_name_);
         startSupplicantAndWaitForHidlService(wifi_instance_name_,
                                              supplicant_instance_name_);
+        isP2pOn_ =
+            testing::deviceSupportsFeature("android.hardware.wifi.direct");
         supplicant_ = getSupplicant(supplicant_instance_name_, isP2pOn_);
         EXPECT_TRUE(turnOnExcessiveLogging(supplicant_));
         sta_iface_ = getSupplicantStaIface(supplicant_);
@@ -87,11 +85,7 @@ class SupplicantStaIfaceHidlTest
         memcpy(mac_addr_.data(), kTestMacAddr, mac_addr_.size());
     }
 
-    virtual void TearDown() override {
-        stopSupplicant(wifi_instance_name_);
-        // Start Framework
-        std::system("/system/bin/start");
-    }
+    virtual void TearDown() override { stopSupplicant(wifi_instance_name_); }
 
    protected:
     bool isP2pOn_ = false;
