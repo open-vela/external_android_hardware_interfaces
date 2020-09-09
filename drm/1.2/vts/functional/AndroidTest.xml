@@ -16,8 +16,13 @@
 <configuration description="Runs VtsHalDrmV1_2TargetTest.">
     <option name="test-suite-tag" value="apct" />
     <option name="test-suite-tag" value="apct-native" />
+    <option name="not-shardable" value="true" />
 
     <target_preparer class="com.android.tradefed.targetprep.RootTargetPreparer"/>
+
+    <target_preparer class="com.android.tradefed.targetprep.WifiPreparer" >
+        <option name="verify-only" value="true" />
+    </target_preparer>
 
     <target_preparer class="com.android.tradefed.targetprep.PushFilePreparer">
         <option name="cleanup" value="true" />
