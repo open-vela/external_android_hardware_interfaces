@@ -80,7 +80,6 @@ int main(int /* argc */, char* /* argv */ []) {
     const std::vector<InterfacesList> optionalInterfaces = {
         {
             "Soundtrigger API",
-            "android.hardware.soundtrigger@2.3::ISoundTriggerHw",
             "android.hardware.soundtrigger@2.2::ISoundTriggerHw",
             "android.hardware.soundtrigger@2.1::ISoundTriggerHw",
             "android.hardware.soundtrigger@2.0::ISoundTriggerHw",
