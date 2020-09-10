@@ -1080,6 +1080,30 @@ const ConfigDeclaration kVehicleProperties[]{
                                 .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                         },
         },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::WATCHDOG_ALIVE),
+                                .access = VehiclePropertyAccess::WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::WATCHDOG_TERMINATED_PROCESS),
+                                .access = VehiclePropertyAccess::WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::VHAL_HEARTBEAT),
+                                .access = VehiclePropertyAccess::READ,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
 };
 
 }  // impl
