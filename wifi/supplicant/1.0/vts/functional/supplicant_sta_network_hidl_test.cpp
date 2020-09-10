@@ -85,13 +85,11 @@ class SupplicantStaNetworkHidlTest
     virtual void SetUp() override {
         wifi_instance_name_ = std::get<0>(GetParam());
         supplicant_instance_name_ = std::get<1>(GetParam());
-        isP2pOn_ =
-            testing::deviceSupportsFeature("android.hardware.wifi.direct");
-        // Stop Framework
-        std::system("/system/bin/stop");
         stopSupplicant(wifi_instance_name_);
         startSupplicantAndWaitForHidlService(wifi_instance_name_,
                                              supplicant_instance_name_);
+        isP2pOn_ =
+            testing::deviceSupportsFeature("android.hardware.wifi.direct");
         supplicant_ = getSupplicant(supplicant_instance_name_, isP2pOn_);
         EXPECT_TRUE(turnOnExcessiveLogging(supplicant_));
         sta_network_ = createSupplicantStaNetwork(supplicant_);
@@ -105,11 +103,7 @@ class SupplicantStaNetworkHidlTest
         ssid_.assign(kTestSsidStr, kTestSsidStr + strlen(kTestSsidStr));
     }
 
-    virtual void TearDown() override {
-        stopSupplicant(wifi_instance_name_);
-        // Start Framework
-        std::system("/system/bin/start");
-    }
+    virtual void TearDown() override { stopSupplicant(wifi_instance_name_); }
 
    protected:
     void removeNetwork() {
@@ -839,7 +833,6 @@ TEST_P(SupplicantStaNetworkHidlTest, GetWpsNfcConfigurationToken) {
     EXPECT_FALSE(0 == status_and_token.second.size());
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantStaNetworkHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantStaNetworkHidlTest,
     testing::Combine(
