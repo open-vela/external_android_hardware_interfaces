@@ -35,9 +35,9 @@ using ::android::hardware::wifi::supplicant::V1_0::IfaceType;
 using ::android::hardware::wifi::supplicant::V1_1::ISupplicant;
 using ::android::sp;
 
-class SupplicantHidlTest : public SupplicantHidlTestBaseV1_1 {
+class SupplicantHidlTest : public SupplicantHidlTestBase {
    public:
-    virtual void SetUp() override { SupplicantHidlTestBaseV1_1::SetUp(); }
+    virtual void SetUp() override { SupplicantHidlTestBase::SetUp(); }
 
    protected:
     std::string getWlan0IfaceName() {
