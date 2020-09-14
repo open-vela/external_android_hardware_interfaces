@@ -39,11 +39,10 @@ using ::android::hardware::wifi::supplicant::V1_1::ISupplicant;
 using ::android::hardware::wifi::supplicant::V1_1::ISupplicantStaIface;
 using ::android::hardware::wifi::supplicant::V1_1::ISupplicantStaIfaceCallback;
 
-class SupplicantStaIfaceHidlTest : public SupplicantHidlTestBase {
+class SupplicantStaIfaceHidlTest : public SupplicantHidlTestBaseV1_1 {
    public:
     virtual void SetUp() override {
-        SupplicantHidlTestBase::SetUp();
-        EXPECT_TRUE(turnOnExcessiveLogging(supplicant_));
+        SupplicantHidlTestBaseV1_1::SetUp();
         sta_iface_ = getSupplicantStaIface_1_1(supplicant_);
         ASSERT_NE(sta_iface_.get(), nullptr);
     }
@@ -140,6 +139,7 @@ TEST_P(SupplicantStaIfaceHidlTest, RegisterCallback_1_1) {
         });
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantStaIfaceHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantStaIfaceHidlTest,
     testing::Combine(

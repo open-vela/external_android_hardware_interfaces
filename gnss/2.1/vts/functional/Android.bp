@@ -18,7 +18,6 @@ cc_test {
     name: "VtsHalGnssV2_1TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
     srcs: [
-        "gnss_hal_test.cpp",
         "gnss_hal_test_cases.cpp",
         "VtsHalGnssV2_1TargetTest.cpp",
     ],
