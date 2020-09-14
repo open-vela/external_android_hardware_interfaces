@@ -23,7 +23,6 @@
 
 #include <android/hardware/wifi/1.0/IWifi.h>
 #include <android/hardware/wifi/hostapd/1.1/IHostapd.h>
-#include <android/hardware/wifi/hostapd/1.3/IHostapd.h>
 
 #include "hostapd_hidl_call_util.h"
 #include "hostapd_hidl_test_utils.h"
@@ -44,7 +43,6 @@ constexpr unsigned char kNwSsid[] = {'t', 'e', 's', 't', '1',
 constexpr char kNwPassphrase[] = "test12345";
 constexpr int kIfaceChannel = 6;
 constexpr int kIfaceInvalidChannel = 567;
-
 }  // namespace
 
 class HostapdHidlTest
@@ -60,10 +58,7 @@ class HostapdHidlTest
         ASSERT_NE(hostapd_.get(), nullptr);
     }
 
-    virtual void TearDown() override {
-        HIDL_INVOKE_VOID_WITHOUT_ARGUMENTS(hostapd_, terminate);
-        stopHostapd(wifi_instance_name_);
-    }
+    virtual void TearDown() override { stopHostapd(wifi_instance_name_); }
 
    protected:
     std::string getPrimaryWlanIfaceName() {
@@ -175,17 +170,10 @@ class IfaceCallback : public IHostapdCallback {
     }
 };
 
-bool is_1_3(const sp<IHostapd>& hostapd) {
-    sp<::android::hardware::wifi::hostapd::V1_3::IHostapd> hostapd_1_3 =
-        ::android::hardware::wifi::hostapd::V1_3::IHostapd::castFrom(hostapd);
-    return hostapd_1_3.get() != nullptr;
-}
-
 /*
  * RegisterCallback
  */
 TEST_P(HostapdHidlTest, registerCallback) {
-    if (is_1_3(hostapd_)) GTEST_SKIP() << "Ignore since current HIDL over 1.3";
     hostapd_->registerCallback(
         new IfaceCallback(), [](const HostapdStatus& status) {
             EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
@@ -321,7 +309,6 @@ TEST_P(HostapdHidlTest, AddInvalidPskAccessPointWithoutAcs) {
     EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(HostapdHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, HostapdHidlTest,
     testing::Combine(
