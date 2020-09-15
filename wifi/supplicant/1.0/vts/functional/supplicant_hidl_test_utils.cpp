@@ -52,26 +52,24 @@ namespace {
 // Helper function to initialize the driver and firmware to STA mode
 // using the vendor HAL HIDL interface.
 void initilializeDriverAndFirmware(const std::string& wifi_instance_name) {
-    // Skip if wifi instance is not set.
-    if (wifi_instance_name == "") {
-        return;
+    if (getWifi(wifi_instance_name) != nullptr) {
+        sp<IWifiChip> wifi_chip = getWifiChip(wifi_instance_name);
+        ChipModeId mode_id;
+        EXPECT_TRUE(configureChipToSupportIfaceType(
+            wifi_chip, ::android::hardware::wifi::V1_0::IfaceType::STA, &mode_id));
+    } else {
+        LOG(WARNING) << __func__ << ": Vendor HAL not supported";
     }
-
-    sp<IWifiChip> wifi_chip = getWifiChip(wifi_instance_name);
-    ChipModeId mode_id;
-    EXPECT_TRUE(configureChipToSupportIfaceType(
-        wifi_chip, ::android::hardware::wifi::V1_0::IfaceType::STA, &mode_id));
 }
 
 // Helper function to deinitialize the driver and firmware
 // using the vendor HAL HIDL interface.
 void deInitilializeDriverAndFirmware(const std::string& wifi_instance_name) {
-    // Skip if wifi instance is not set.
-    if (wifi_instance_name == "") {
-        return;
+    if (getWifi(wifi_instance_name) != nullptr) {
+        stopWifi(wifi_instance_name);
+    } else {
+        LOG(WARNING) << __func__ << ": Vendor HAL not supported";
     }
-
-    stopWifi(wifi_instance_name);
 }
 
 // Helper function to find any iface of the desired type exposed.
