@@ -675,7 +675,6 @@ TEST_P(OffloadControlHidlTest, RemoveDownstreamBogusPrefixFails) {
     }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OffloadControlHidlTestBase);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, OffloadControlHidlTestBase,
     testing::Combine(
@@ -685,7 +684,6 @@ INSTANTIATE_TEST_CASE_P(
             android::hardware::getAllHalInstanceNames(IOffloadControl::descriptor))),
     android::hardware::PrintInstanceTupleNameToString<>);
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OffloadControlHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, OffloadControlHidlTest,
     testing::Combine(
