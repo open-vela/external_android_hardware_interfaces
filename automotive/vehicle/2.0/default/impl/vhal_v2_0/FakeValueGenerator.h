@@ -19,8 +19,6 @@
 
 #include <android/hardware/automotive/vehicle/2.0/types.h>
 
-#include <chrono>
-
 namespace android {
 namespace hardware {
 namespace automotive {
