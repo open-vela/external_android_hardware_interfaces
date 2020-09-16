@@ -77,11 +77,13 @@ class SupplicantP2pIfaceHidlTest
     virtual void SetUp() override {
         wifi_instance_name_ = std::get<0>(GetParam());
         supplicant_instance_name_ = std::get<1>(GetParam());
+        isP2pOn_ =
+            testing::deviceSupportsFeature("android.hardware.wifi.direct");
+        // Stop Framework
+        std::system("/system/bin/stop");
         stopSupplicant(wifi_instance_name_);
         startSupplicantAndWaitForHidlService(wifi_instance_name_,
                                              supplicant_instance_name_);
-        isP2pOn_ =
-            testing::deviceSupportsFeature("android.hardware.wifi.direct");
         supplicant_ = getSupplicant(supplicant_instance_name_, isP2pOn_);
         EXPECT_TRUE(turnOnExcessiveLogging(supplicant_));
         p2p_iface_ = getSupplicantP2pIface(supplicant_);
@@ -91,7 +93,11 @@ class SupplicantP2pIfaceHidlTest
         memcpy(peer_mac_addr_.data(), kTestPeerMacAddr, peer_mac_addr_.size());
     }
 
-    virtual void TearDown() override { stopSupplicant(wifi_instance_name_); }
+    virtual void TearDown() override {
+        stopSupplicant(wifi_instance_name_);
+        // Start Framework
+        std::system("/system/bin/start");
+    }
 
    protected:
     bool isP2pOn_ = false;
@@ -641,7 +647,6 @@ TEST_P(SupplicantP2pIfaceHidlTest, SetWfdDeviceInfo) {
         HIDL_INVOKE(p2p_iface_, setWfdDeviceInfo, kTestWfdDeviceInfo).code);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantP2pIfaceHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantP2pIfaceHidlTest,
     testing::Combine(
