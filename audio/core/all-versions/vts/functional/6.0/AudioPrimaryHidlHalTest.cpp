@@ -152,7 +152,6 @@ TEST_P(DualMonoModeAccessorHidlTest, DualMonoModeTest) {
                             &IStreamOut::setDualMonoMode, &IStreamOut::getDualMonoMode);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(DualMonoModeAccessorHidlTest);
 INSTANTIATE_TEST_CASE_P(DualMonoModeHidl, DualMonoModeAccessorHidlTest,
                         ::testing::ValuesIn(getOutputDeviceConfigParameters()),
                         &DeviceConfigParameterToString);
@@ -167,7 +166,6 @@ TEST_P(AudioDescriptionMixLevelHidlTest, AudioDescriptionMixLevelTest) {
             {48.5f, 1000.0f, std::numeric_limits<float>::infinity()});
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(AudioDescriptionMixLevelHidlTest);
 INSTANTIATE_TEST_CASE_P(AudioDescriptionMixLevelHidl, AudioDescriptionMixLevelHidlTest,
                         ::testing::ValuesIn(getOutputDeviceConfigParameters()),
                         &DeviceConfigParameterToString);
@@ -202,7 +200,6 @@ TEST_P(PlaybackRateParametersHidlTest, PlaybackRateParametersTest) {
                           TimestretchFallbackMode::FAIL}});
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(PlaybackRateParametersHidlTest);
 INSTANTIATE_TEST_CASE_P(PlaybackRateParametersHidl, PlaybackRateParametersHidlTest,
                         ::testing::ValuesIn(getOutputDeviceConfigParameters()),
                         &DeviceConfigParameterToString);
