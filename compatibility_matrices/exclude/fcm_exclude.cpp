@@ -44,8 +44,6 @@ bool ShouldCheckMissingHalsInFcm(const std::string& package) {
 
     static std::vector<std::string> excluded_exact{
             // TODO(b/110261831): reduce items in this list
-            "android.hardware.media.bufferpool@1.0",
-            "android.hardware.media.bufferpool@2.0",
             "android.hardware.tv.cec@2.0",
             "android.hardware.tv.tuner@1.0",
 
@@ -53,9 +51,10 @@ bool ShouldCheckMissingHalsInFcm(const std::string& package) {
             // HIDL
             "android.hardware.cas.native@1.0",
             "android.hardware.gnss.visibility_control@1.0",
+            "android.hardware.media.bufferpool@1.0",
+            "android.hardware.media.bufferpool@2.0",
             "android.hardware.radio.config@1.2",
             // AIDL
-            "android.hardware.biometrics.common",
             "android.hardware.common",
             "android.hardware.graphics.common",
             "android.hardware.keymaster",
