@@ -1,7 +1,0 @@
-{
-  "presubmit": [
-    {
-      "name": "VtsHalTvTunerV1_1TargetTest"
-    }
-  ]
-}
