@@ -1,0 +1,180 @@
+/*
+ * Copyright 2020 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package android.hardware.tv.tuner@1.1;
+
+import @1.0::Constant;
+import @1.0::DemuxFilterMmtpRecordEvent;
+import @1.0::DemuxFilterTsRecordEvent;
+import @1.0::FrontendDvbcSpectralInversion;
+import @1.0::FrontendDvbtTransmissionMode;
+import android.hidl.safe_union@1.0;
+import android.hidl.safe_union@1.0::Monostate;
+
+@export
+enum Constant : @1.0::Constant {
+    /**
+     * An invalid mpuSequenceNumber in DemuxFilterMmtpRecordEvent.
+     */
+    INVALID_MMTP_RECORD_EVENT_MPT_SEQUENCE_NUM = 0xFFFFFFFF,
+    /**
+     * An invalid frenquency that can be used as the default value of the frontend setting.
+     */
+    INVALID_FRONTEND_SETTING_FREQUENCY = 0xFFFFFFFF,
+};
+
+@export
+enum Constant64Bit : uint64_t {
+    /**
+     * An invalid 64-bit Filter ID.
+     */
+    INVALID_FILTER_ID_64BIT = 0xFFFFFFFFFFFFFFFF,
+    /**
+     * An invalid 64-bit AV sync hardware ID.
+     */
+    INVALID_AV_SYNC_ID_64BIT = 0xFFFFFFFFFFFFFFFF,
+    /**
+     * An invalid pts in the DemuxFilterTsRecordEvent or DemuxFilterMmtpRecordEvent.
+     */
+    INVALID_PRESENTATION_TIME_STAMP = 0xFFFFFFFFFFFFFFFF,
+};
+
+/**
+ * Extended Demux Filter Record Event.
+ */
+struct DemuxFilterRecordEventExt {
+    /**
+     * The Presentation Time Stamp(PTS) for the audio or video frame. It is based on 90KHz
+     * and has the same format as the PTS in ISO/IEC 13818-1. It is used only for the SC and
+     * the SC_HEVC.
+     */
+    uint64_t pts;
+
+    /**
+     * MPU sequence number of the filtered data. This is only used for MMTP.
+     */
+    uint32_t mpuSequenceNumber;
+};
+
+/**
+ * Extended Demux Filter Event.
+ */
+struct DemuxFilterEventExt {
+    safe_union Event {
+        /**
+         * No extended record filter Event. This is used by the tsRecord or mmtpRecord filter event
+         * that does not contain the DemuxFilterRecordEventExt information.
+         */
+        Monostate noinit;
+
+        DemuxFilterRecordEventExt tsRecord;
+
+        DemuxFilterRecordEventExt mmtpRecord;
+    };
+
+    /**
+     * An array of events
+     */
+    vec<Event> events;
+};
+
+typedef FrontendDvbcSpectralInversion FrontendSpectralInversion;
+
+/**
+ *  Scan type for a DVBS Frontend.
+ */
+@export
+enum FrontendDvbsScanType : uint32_t {
+    UNDEFINED = 0,
+    DIRECT,
+    DISEQC,
+    UNICABLE,
+    JESS,
+};
+
+/**
+ *  Rotation status for a DVBT Frontend.
+ */
+@export
+enum FrontendDvbtRotation : uint32_t {
+    UNDEFINED,
+    NOT_ROTATED,
+    ROTATED,
+};
+
+/**
+ * AFT flag for an Analog Frontend.
+ */
+@export
+enum FrontendAnalogAftFlag : uint32_t {
+    UNDEFINED,
+    AFT_TRUE,
+    AFT_FALSE,
+};
+
+/**
+ *  Extended Transmission Mode for DVBT.
+ */
+@export
+enum FrontendDvbtTransmissionMode : @1.0::FrontendDvbtTransmissionMode {
+    MODE_8K_E = 1 << 7,
+
+    MODE_16K_E = 1 << 8,
+
+    MODE_32K_E = 1 << 9,
+};
+
+/**
+ *  Extended Signal Settings for a DVBS Frontend.
+ */
+struct FrontendDvbsSettingsExt {
+    FrontendDvbsScanType scanType;
+};
+
+/**
+ *  Extended Signal Settings for a DVBT Frontend.
+ */
+struct FrontendDvbtSettingsExt {
+    FrontendDvbtRotation rotation;
+
+    FrontendDvbtTransmissionMode transmissionMode;
+};
+
+/**
+ *  Extended Signal Settings for an Analog Frontend.
+ */
+struct FrontendAnalogSettingsExt {
+    FrontendAnalogAftFlag aftFlag;
+};
+
+/**
+ *  Extended Signal Settings for Frontend.
+ */
+struct FrontendSettingsExt {
+    uint32_t endFrequency;
+
+    FrontendSpectralInversion inversion;
+
+    safe_union SettingsExt {
+        Monostate noinit;
+
+        FrontendAnalogSettingsExt analog;
+
+        FrontendDvbsSettingsExt dvbs;
+
+        FrontendDvbtSettingsExt dvbt;
+    } settingExt;
+};
