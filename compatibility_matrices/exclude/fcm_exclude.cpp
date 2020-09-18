@@ -55,6 +55,7 @@ bool ShouldCheckMissingHalsInFcm(const std::string& package) {
             "android.hardware.media.bufferpool@2.0",
             "android.hardware.radio.config@1.2",
             // AIDL
+            "android.hardware.biometrics.common",
             "android.hardware.common",
             "android.hardware.graphics.common",
             "android.hardware.keymaster",
