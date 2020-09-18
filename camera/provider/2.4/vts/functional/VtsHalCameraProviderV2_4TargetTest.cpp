@@ -1670,7 +1670,7 @@ bool CameraHidlTest::isSecureOnly(sp<ICameraProvider> provider, const hidl_strin
     Return<void> ret;
     ::android::sp<ICameraDevice> device3_x;
     bool retVal = false;
-    if (getCameraDeviceVersion(name, mProviderType) == CAMERA_DEVICE_API_VERSION_1_0) {
+    if (getCameraDeviceVersion(mProviderType, name) == CAMERA_DEVICE_API_VERSION_1_0) {
         return false;
     }
     ret = provider->getCameraDeviceInterface_V3_x(name, [&](auto status, const auto& device) {
@@ -4453,9 +4453,12 @@ void CameraHidlTest::processCaptureRequestInternal(uint64_t bufferUsage,
                             nullptr};
         } else {
             allocateGraphicBuffer(testStream.width, testStream.height,
-                    android_convertGralloc1To0Usage(halStreamConfig.streams[0].producerUsage,
-                        halStreamConfig.streams[0].consumerUsage),
-                    halStreamConfig.streams[0].overrideFormat, &buffer_handle);
+                                  /* We don't look at halStreamConfig.streams[0].consumerUsage
+                                   * since that is 0 for output streams
+                                   */
+                                  android_convertGralloc1To0Usage(
+                                          halStreamConfig.streams[0].producerUsage, bufferUsage),
+                                  halStreamConfig.streams[0].overrideFormat, &buffer_handle);
             outputBuffer = {halStreamConfig.streams[0].id,
                             bufferId,
                             buffer_handle,
@@ -7584,6 +7587,7 @@ void CameraHidlTest::verifyRequestTemplate(const camera_metadata_t* metadata,
     }
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(CameraHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, CameraHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(ICameraProvider::descriptor)),
