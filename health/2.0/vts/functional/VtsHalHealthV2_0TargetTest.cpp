@@ -319,7 +319,6 @@ TEST_P(HealthHidlTest, getHealthInfo) {
     }));
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(HealthHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, HealthHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IHealth::descriptor)),
@@ -670,7 +669,6 @@ TEST_P(BatteryTest, ConnectedAgainstStatusInHealthInfo) {
             << "You may want to try again later when getHealthInfo becomes stable.";
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BatteryTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, BatteryTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IHealth::descriptor)),
