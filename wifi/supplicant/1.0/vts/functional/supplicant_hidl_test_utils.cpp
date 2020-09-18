@@ -52,10 +52,6 @@ namespace {
 // Helper function to initialize the driver and firmware to STA mode
 // using the vendor HAL HIDL interface.
 void initilializeDriverAndFirmware(const std::string& wifi_instance_name) {
-    // Skip if wifi instance is not set.
-    if (wifi_instance_name == "") {
-        return;
-    }
     if (getWifi(wifi_instance_name) != nullptr) {
         sp<IWifiChip> wifi_chip = getWifiChip(wifi_instance_name);
         ChipModeId mode_id;
@@ -69,10 +65,6 @@ void initilializeDriverAndFirmware(const std::string& wifi_instance_name) {
 // Helper function to deinitialize the driver and firmware
 // using the vendor HAL HIDL interface.
 void deInitilializeDriverAndFirmware(const std::string& wifi_instance_name) {
-    // Skip if wifi instance is not set.
-    if (wifi_instance_name == "") {
-        return;
-    }
     if (getWifi(wifi_instance_name) != nullptr) {
         stopWifi(wifi_instance_name);
     } else {
@@ -282,4 +274,18 @@ bool turnOnExcessiveLogging(const sp<ISupplicant>& supplicant) {
             }
         });
     return !operation_failed;
+}
+
+bool waitForFrameworkReady() {
+    int waitCount = 10;
+    do {
+        // Check whether package service is ready or not.
+        if (!testing::checkSubstringInCommandOutput(
+                "/system/bin/service check package", ": not found")) {
+            return true;
+        }
+        LOG(INFO) << "Framework is not ready";
+        sleep(1);
+    } while (waitCount-- > 0);
+    return false;
 }
