@@ -1209,12 +1209,7 @@ bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& r
             return notify;
         }
 
-        // Physical device results are only expected in the last/final
-        // partial result notification.
-        bool expectPhysicalResults = !(request->usePartialResult &&
-                (results.partialResult < request->numPartialResults));
-        if (expectPhysicalResults &&
-                (physicalCameraMetadata.size() != request->expectedPhysicalResults.size())) {
+        if (physicalCameraMetadata.size() != request->expectedPhysicalResults.size()) {
             ALOGE("%s: Frame %d: Returned physical metadata count %zu "
                     "must be equal to expected count %zu", __func__, frameNumber,
                     physicalCameraMetadata.size(), request->expectedPhysicalResults.size());
