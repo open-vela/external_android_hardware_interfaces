@@ -29,9 +29,36 @@ interface ISessionCallback {
 
     void onError(in Error error, in int vendorCode);
 
-    void onEnrollmentProgress(in int enrollmentId, int remaining, int vendorCode);
+    /**
+     * Used to notify the framework of enrollment progress. Enrollment completes when remaining==0,
+     *
+     * @param enrollmentId Unique stable identifier for the enrollment that's being added by this
+     *                     ISession#enroll invocation.
+     * @param remaining Remaining number of steps before enrollment is complete.
+     */
+    void onEnrollmentProgress(in int enrollmentId, int remaining);
 
-    void onAuthenticated(in int enrollmentId, in HardwareAuthToken hat);
+    /**
+     * Used to notify the framework upon successful authentication. Note that the authentication
+     * lifecycle ends when either 1) a fingerprint is accepted, or 2) an error such as
+     * Error::LOCKOUT occurred. The authentication lifecycle does NOT end when a fingerprint is
+     * rejected.
+     *
+     * @param enrollmentId Fingerprint that was accepted.
+     * @param hat If the sensor is configured as SensorStrength::STRONG, a non-null attestation that
+     *            a fingerprint was accepted. The HardwareAuthToken's "challenge" field must be set
+     *            with the operationId passed in during ISession#authenticate. If the sensor is NOT
+     *            SensorStrength::STRONG, the HardwareAuthToken MUST be null.
+     */
+    void onAuthenticationSucceeded(in int enrollmentId, in HardwareAuthToken hat);
+
+    /**
+     * Used to notify the framework upon rejected attempts. Note that the authentication
+     * lifecycle ends when either 1) a fingerprint is accepted, or 2) an error such as
+     * Error::LOCKOUT occurred. The authentication lifecycle does NOT end when a fingerprint is
+     * rejected.
+     */
+    void onAuthenticationFailed();
 
     void onInteractionDetected();
 
