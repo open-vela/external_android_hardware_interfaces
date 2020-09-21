@@ -38,10 +38,11 @@ constexpr char kTestPassphrase[] = "P2pWorld1234";
 constexpr uint8_t kTestZeroMacAddr[] = {[0 ... 5] = 0x0};
 }  // namespace
 
-class SupplicantP2pIfaceHidlTest : public SupplicantHidlTestBaseV1_2 {
+class SupplicantP2pIfaceHidlTest : public SupplicantHidlTestBase {
    public:
     virtual void SetUp() override {
-        SupplicantHidlTestBaseV1_2::SetUp();
+        SupplicantHidlTestBase::SetUp();
+        EXPECT_TRUE(turnOnExcessiveLogging(supplicant_));
         if (!isP2pOn_) {
             GTEST_SKIP() << "Wi-Fi Direct is not supported, skip this test.";
         }
@@ -161,7 +162,6 @@ TEST_P(SupplicantP2pIfaceHidlTest, EnableMacRandomization) {
     });
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantP2pIfaceHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantP2pIfaceHidlTest,
     testing::Combine(
