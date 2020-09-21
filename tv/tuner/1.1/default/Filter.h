@@ -23,7 +23,6 @@
 #include <inttypes.h>
 #include <ion/ion.h>
 #include <math.h>
-#include <sys/stat.h>
 #include <set>
 #include "Demux.h"
 #include "Dvr.h"
@@ -44,7 +43,6 @@ using ::android::hardware::MessageQueue;
 using ::android::hardware::MQDescriptorSync;
 
 using FilterMQ = MessageQueue<uint8_t, kSynchronizedReadWrite>;
-const uint32_t BUFFER_SIZE_16M = 0x1000000;
 
 class Demux;
 class Dvr;
@@ -78,10 +76,6 @@ class Filter : public V1_1::IFilter {
 
     virtual Return<Result> close() override;
 
-    virtual Return<Result> configureIpCid(uint32_t ipCid) override;
-
-    virtual Return<void> getAvSharedHandle(getAvSharedHandle_cb _hidl_cb) override;
-
     /**
      * To create a FilterMQ and its Event Flag.
      *
@@ -97,7 +91,6 @@ class Filter : public V1_1::IFilter {
     void attachFilterToRecord(const sp<Dvr> dvr);
     void detachFilterFromRecord();
     void freeAvHandle();
-    void freeSharedAvHandle();
     bool isMediaFilter() { return mIsMediaFilter; };
     bool isPcrFilter() { return mIsPcrFilter; };
     bool isRecordFilter() { return mIsRecordFilter; };
@@ -118,7 +111,6 @@ class Filter : public V1_1::IFilter {
     sp<V1_1::IFilterCallback> mCallback_1_1 = nullptr;
 
     uint64_t mFilterId;
-    uint32_t mCid = static_cast<uint32_t>(V1_1::Constant::INVALID_IP_FILTER_CONTEXT_ID);
     uint32_t mBufferSize;
     DemuxFilterType mType;
     bool mIsMediaFilter = false;
@@ -190,9 +182,6 @@ class Filter : public V1_1::IFilter {
     uint8_t* getIonBuffer(int fd, int size);
     native_handle_t* createNativeHandle(int fd);
     Result createMediaFilterEventWithIon(vector<uint8_t> output);
-    Result createIndependentMediaEvents(vector<uint8_t> output);
-    Result createShareMemMediaEvents(vector<uint8_t> output);
-    bool sameFile(int fd1, int fd2);
 
     /**
      * Lock to protect writes to the FMQs
@@ -220,11 +209,6 @@ class Filter : public V1_1::IFilter {
     std::map<uint64_t, int> mDataId2Avfd;
     uint64_t mLastUsedDataId = 1;
     int mAvBufferCopyCount = 0;
-
-    // Shared A/V memory handle
-    hidl_handle mSharedAvMemHandle;
-    bool mUsingSharedAvMem = true;
-    uint32_t mSharedAvMemOffset = 0;
 };
 
 }  // namespace implementation
