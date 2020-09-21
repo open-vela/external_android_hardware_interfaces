@@ -771,13 +771,7 @@ cd84ab19c590e0e73dd2307b591a3093ee18147ef95e6d5418644463a6620076 android.hardwar
 9625e85f56515ad2cf87b6a1847906db669f746ea4ab02cd3d4ca25abc9b0109 android.hardware.neuralnetworks@1.2::types
 9e758e208d14f7256e0885d6d8ad0b61121b21d8c313864f981727ae55bffd16 android.hardware.neuralnetworks@1.3::types
 7da2707d4cf93818eaf8038eb65e2180116a399c310e594a00935c5c981aa340 android.hardware.radio@1.0::types
-38d65fb20c60a5b823298560fc0825457ecdc49603a4b4e94bf81511790737da android.hardware.radio@1.4::types
-954c334efd80e8869b66d1ce5fe2755712d96ba4b3c38d415739c330af5fb4cb android.hardware.radio@1.5::types
 
 # HALs released in Android S
 # NOTE: waiting to freeze HALs until later in the release
 # NOTE: new HALs are recommended to be in AIDL
-57d183b10b13ec0a8e542c0b3d61991ae541c60e85dbbc5499bb21dfd068cbb8 android.hardware.wifi.supplicant@1.4::types
-17818b6b1952a75e4364ae82c534b9d2f5c0a9765a56256b16faa5a5cf45d3a8 android.hardware.wifi.supplicant@1.4::ISupplicant
-8342b5f6ec8f48ad2b741128aede010995d0b5709257b7ec09bb469b4f61ef1a android.hardware.wifi.supplicant@1.4::ISupplicantStaIface
-6f969b191f0b699ceab0573548f1ac505853e56e704711edc51b51976d4f87ad android.hardware.wifi.supplicant@1.4::ISupplicantStaNetwork
