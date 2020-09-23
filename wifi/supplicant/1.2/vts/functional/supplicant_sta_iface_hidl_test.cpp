@@ -53,11 +53,10 @@ using ::android::hardware::wifi::supplicant::V1_2::ISupplicantStaNetwork;
 #define TIMEOUT_PERIOD 60
 class IfaceDppCallback;
 
-class SupplicantStaIfaceHidlTest : public SupplicantHidlTestBase {
+class SupplicantStaIfaceHidlTest : public SupplicantHidlTestBaseV1_2 {
    public:
     virtual void SetUp() override {
-        SupplicantHidlTestBase::SetUp();
-        EXPECT_TRUE(turnOnExcessiveLogging(supplicant_));
+        SupplicantHidlTestBaseV1_2::SetUp();
         sta_iface_ = getSupplicantStaIface_1_2(supplicant_);
         ASSERT_NE(sta_iface_.get(), nullptr);
         count_ = 0;
@@ -302,7 +301,8 @@ TEST_P(SupplicantStaIfaceHidlTest, AddDppPeerUriAndRomveUri) {
     }
 
     hidl_string uri =
-        "DPP:C:81/1;M:48d6d5bd1de1;I:G1197843;K:MDkwEwYHKoZIzj0CAQYIKoZIzj"
+        "DPP:C:81/1,117/"
+        "40;M:48d6d5bd1de1;I:G1197843;K:MDkwEwYHKoZIzj0CAQYIKoZIzj"
         "0DAQcDIgAD0edY4X3N//HhMFYsZfMbQJTiNFtNIWF/cIwMB/gzqOM=;;";
     uint32_t peer_id = 0;
 
@@ -347,7 +347,8 @@ TEST_P(SupplicantStaIfaceHidlTest, StartDppEnrolleeInitiator) {
     }
 
     hidl_string uri =
-        "DPP:C:81/1;M:48d6d5bd1de1;I:G1197843;K:MDkwEwYHKoZIzj0CAQYIKoZIzj"
+        "DPP:C:81/1,117/"
+        "40;M:48d6d5bd1de1;I:G1197843;K:MDkwEwYHKoZIzj0CAQYIKoZIzj"
         "0DAQcDIgAD0edY4X3N//HhMFYsZfMbQJTiNFtNIWF/cIwMB/gzqOM=;;";
     uint32_t peer_id = 0;
 
@@ -413,7 +414,8 @@ TEST_P(SupplicantStaIfaceHidlTest, StartDppConfiguratorInitiator) {
     }
 
     hidl_string uri =
-        "DPP:C:81/1;M:48d6d5bd1de1;I:G1197843;K:MDkwEwYHKoZIzj0CAQYIKoZIzj"
+        "DPP:C:81/1,117/"
+        "40;M:48d6d5bd1de1;I:G1197843;K:MDkwEwYHKoZIzj0CAQYIKoZIzj"
         "0DAQcDIgAD0edY4X3N//HhMFYsZfMbQJTiNFtNIWF/cIwMB/gzqOM=;;";
     uint32_t peer_id = 0;
 
@@ -457,7 +459,6 @@ TEST_P(SupplicantStaIfaceHidlTest, StartDppConfiguratorInitiator) {
     });
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantStaIfaceHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantStaIfaceHidlTest,
     testing::Combine(
