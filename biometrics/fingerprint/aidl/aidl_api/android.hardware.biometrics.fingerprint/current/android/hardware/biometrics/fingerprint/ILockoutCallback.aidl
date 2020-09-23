@@ -16,15 +16,9 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.biometrics.fingerprint;
-@Backing(type="byte") @VintfStability
-enum Error {
-  HW_UNAVAILABLE = 0,
-  UNABLE_TO_PROCESS = 1,
-  TIMEOUT = 2,
-  NO_SPACE = 3,
-  CANCELED = 4,
-  UNABLE_TO_REMOVE = 5,
-  LOCKOUT = 6,
-  LOCKOUT_PERMANENT = 7,
-  VENDOR = 8,
+@VintfStability
+interface ILockoutCallback {
+  oneway void onLockoutTimed(in int sensorId, in int userId, in long durationMillis);
+  oneway void onLockoutPermanent(in int sensorId, in int userId);
+  oneway void onLockoutCleared(in int sensorId, in int userId);
 }
