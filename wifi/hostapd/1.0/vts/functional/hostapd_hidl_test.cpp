@@ -145,8 +145,8 @@ TEST_P(HostapdHidlTest, Create) {
     stopHostapd(wifi_instance_name_);
     startHostapdAndWaitForHidlService(wifi_instance_name_,
                                       hostapd_instance_name_);
-    hostapd_ = IHostapd::getService(hostapd_instance_name_);
-    EXPECT_NE(nullptr, hostapd_.get());
+    sp<IHostapd> hostapd = IHostapd::getService(hostapd_instance_name_);
+    EXPECT_NE(nullptr, hostapd.get());
 }
 
 /**
