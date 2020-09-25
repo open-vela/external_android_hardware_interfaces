@@ -53,10 +53,11 @@ using ::android::hardware::wifi::supplicant::V1_2::ISupplicantStaNetwork;
 #define TIMEOUT_PERIOD 60
 class IfaceDppCallback;
 
-class SupplicantStaIfaceHidlTest : public SupplicantHidlTestBaseV1_2 {
+class SupplicantStaIfaceHidlTest : public SupplicantHidlTestBase {
    public:
     virtual void SetUp() override {
-        SupplicantHidlTestBaseV1_2::SetUp();
+        SupplicantHidlTestBase::SetUp();
+        EXPECT_TRUE(turnOnExcessiveLogging(supplicant_));
         sta_iface_ = getSupplicantStaIface_1_2(supplicant_);
         ASSERT_NE(sta_iface_.get(), nullptr);
         count_ = 0;
