@@ -56,11 +56,14 @@ void initilializeDriverAndFirmware(const std::string& wifi_instance_name) {
     if (wifi_instance_name == "") {
         return;
     }
-
-    sp<IWifiChip> wifi_chip = getWifiChip(wifi_instance_name);
-    ChipModeId mode_id;
-    EXPECT_TRUE(configureChipToSupportIfaceType(
-        wifi_chip, ::android::hardware::wifi::V1_0::IfaceType::STA, &mode_id));
+    if (getWifi(wifi_instance_name) != nullptr) {
+        sp<IWifiChip> wifi_chip = getWifiChip(wifi_instance_name);
+        ChipModeId mode_id;
+        EXPECT_TRUE(configureChipToSupportIfaceType(
+            wifi_chip, ::android::hardware::wifi::V1_0::IfaceType::STA, &mode_id));
+    } else {
+        LOG(WARNING) << __func__ << ": Vendor HAL not supported";
+    }
 }
 
 // Helper function to deinitialize the driver and firmware
@@ -70,8 +73,11 @@ void deInitilializeDriverAndFirmware(const std::string& wifi_instance_name) {
     if (wifi_instance_name == "") {
         return;
     }
-
-    stopWifi(wifi_instance_name);
+    if (getWifi(wifi_instance_name) != nullptr) {
+        stopWifi(wifi_instance_name);
+    } else {
+        LOG(WARNING) << __func__ << ": Vendor HAL not supported";
+    }
 }
 
 // Helper function to find any iface of the desired type exposed.
@@ -276,4 +282,18 @@ bool turnOnExcessiveLogging(const sp<ISupplicant>& supplicant) {
             }
         });
     return !operation_failed;
+}
+
+bool waitForFrameworkReady() {
+    int waitCount = 10;
+    do {
+        // Check whether package service is ready or not.
+        if (!testing::checkSubstringInCommandOutput(
+                "/system/bin/service check package", ": not found")) {
+            return true;
+        }
+        LOG(INFO) << "Framework is not ready";
+        sleep(1);
+    } while (waitCount-- > 0);
+    return false;
 }
