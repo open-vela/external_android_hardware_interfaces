@@ -499,18 +499,6 @@ const ConfigDeclaration kVehicleProperties[]{
                  },
          .initialValue = {.int32Values = {0, 0, 0}}},
 
-        {.config =
-                 {
-                         .prop = toInt(VehicleProperty::HW_CUSTOM_INPUT),
-                         .access = VehiclePropertyAccess::READ,
-                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                         .configArray = {0, 0, 0, 3, 0, 0, 0, 0, 0},
-                 },
-         .initialValue =
-                 {
-                         .int32Values = {0, 0, 0},
-                 }},
-
         {.config = {.prop = toInt(VehicleProperty::HVAC_POWER_ON),
                     .access = VehiclePropertyAccess::READ_WRITE,
                     .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
@@ -1089,30 +1077,6 @@ const ConfigDeclaration kVehicleProperties[]{
                         {
                                 .prop = toInt(VehicleProperty::USER_IDENTIFICATION_ASSOCIATION),
                                 .access = VehiclePropertyAccess::READ_WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-        },
-        {
-                .config =
-                        {
-                                .prop = toInt(VehicleProperty::WATCHDOG_ALIVE),
-                                .access = VehiclePropertyAccess::WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-        },
-        {
-                .config =
-                        {
-                                .prop = toInt(VehicleProperty::WATCHDOG_TERMINATED_PROCESS),
-                                .access = VehiclePropertyAccess::WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-        },
-        {
-                .config =
-                        {
-                                .prop = toInt(VehicleProperty::VHAL_HEARTBEAT),
-                                .access = VehiclePropertyAccess::READ,
                                 .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                         },
         },
