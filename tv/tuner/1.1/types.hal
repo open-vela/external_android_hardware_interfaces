@@ -145,14 +145,14 @@ enum FrontendDvbtConstellation : @1.0::FrontendDvbtConstellation {
 /**
  *  Extended Signal Settings for a DVBS Frontend.
  */
-struct FrontendDvbsSettingsExt1_1 {
+struct FrontendDvbsSettingsExt {
     FrontendDvbsScanType scanType;
 };
 
 /**
  *  Extended Signal Settings for a DVBT Frontend.
  */
-struct FrontendDvbtSettingsExt1_1 {
+struct FrontendDvbtSettingsExt {
     FrontendDvbtConstellation constellation;
 
     FrontendDvbtTransmissionMode transmissionMode;
@@ -161,14 +161,14 @@ struct FrontendDvbtSettingsExt1_1 {
 /**
  *  Extended Signal Settings for an Analog Frontend.
  */
-struct FrontendAnalogSettingsExt1_1 {
+struct FrontendAnalogSettingsExt {
     FrontendAnalogAftFlag aftFlag;
 };
 
 /**
  *  Extended Signal Settings for Frontend.
  */
-struct FrontendSettingsExt1_1 {
+struct FrontendSettingsExt {
     uint32_t endFrequency;
 
     FrontendSpectralInversion inversion;
@@ -176,10 +176,10 @@ struct FrontendSettingsExt1_1 {
     safe_union SettingsExt {
         Monostate noinit;
 
-        FrontendAnalogSettingsExt1_1 analog;
+        FrontendAnalogSettingsExt analog;
 
-        FrontendDvbsSettingsExt1_1 dvbs;
+        FrontendDvbsSettingsExt dvbs;
 
-        FrontendDvbtSettingsExt1_1 dvbt;
+        FrontendDvbtSettingsExt dvbt;
     } settingExt;
 };
