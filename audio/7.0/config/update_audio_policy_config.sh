@@ -128,7 +128,6 @@ updateFile() {
 for F in $SOURCE_FILES; do
     updateFile ${F} "channelMasks" ","
     updateFile ${F} "samplingRates" ","
-    updateFile ${F} "flags" "|"
 done;
 
 updateIncludes() {
