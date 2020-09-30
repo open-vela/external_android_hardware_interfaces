@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2019 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,6 @@
 #include <hidl/ServiceManagement.h>
 
 #include <android/hardware/wifi/1.0/IWifi.h>
-#include <android/hardware/wifi/hostapd/1.2/IHostapd.h>
 #include <android/hardware/wifi/hostapd/1.3/IHostapd.h>
 
 #include "hostapd_hidl_call_util.h"
@@ -37,7 +36,7 @@ using ::android::hardware::Void;
 using ::android::hardware::wifi::hostapd::V1_2::DebugLevel;
 using ::android::hardware::wifi::hostapd::V1_2::HostapdStatusCode;
 using ::android::hardware::wifi::hostapd::V1_2::Ieee80211ReasonCode;
-using ::android::hardware::wifi::hostapd::V1_2::IHostapd;
+using ::android::hardware::wifi::hostapd::V1_3::IHostapd;
 using ::android::hardware::wifi::V1_0::IWifi;
 
 namespace {
@@ -65,6 +64,7 @@ class HostapdHidlTest
                                           hostapd_instance_name_);
         hostapd_ = IHostapd::getService(hostapd_instance_name_);
         ASSERT_NE(hostapd_.get(), nullptr);
+        HIDL_INVOKE(hostapd_, setDebugParams, DebugLevel::EXCESSIVE);
         isAcsSupport_ = testing::checkSubstringInCommandOutput(
             "/system/bin/cmd wifi get-softap-supported-features",
             "wifi_softap_acs_supported");
@@ -150,7 +150,9 @@ class HostapdHidlTest
     }
 
     IHostapd::NetworkParams getOpenNwParams() {
-        IHostapd::NetworkParams nw_params_1_2;
+        IHostapd::NetworkParams nw_params_1_3;
+        ::android::hardware::wifi::hostapd::V1_2::IHostapd::NetworkParams
+            nw_params_1_2;
         ::android::hardware::wifi::hostapd::V1_0::IHostapd::NetworkParams
             nw_params_1_0;
         nw_params_1_0.ssid =
@@ -158,51 +160,61 @@ class HostapdHidlTest
         nw_params_1_0.isHidden = false;
         nw_params_1_2.V1_0 = nw_params_1_0;
         nw_params_1_2.encryptionType = IHostapd::EncryptionType::NONE;
-        return nw_params_1_2;
+        nw_params_1_3.V1_2 = nw_params_1_2;
+        nw_params_1_3.isMetered = true;
+        return nw_params_1_3;
+    }
+
+    IHostapd::NetworkParams getPskNwParamsWithNonMetered() {
+        IHostapd::NetworkParams nw_params_1_3 = getOpenNwParams();
+        nw_params_1_3.V1_2.encryptionType = IHostapd::EncryptionType::WPA2;
+        nw_params_1_3.V1_2.passphrase = kNwPassphrase;
+        nw_params_1_3.isMetered = false;
+        return nw_params_1_3;
     }
 
     IHostapd::NetworkParams getPskNwParams() {
-        IHostapd::NetworkParams nw_params_1_2 = getOpenNwParams();
-        nw_params_1_2.encryptionType = IHostapd::EncryptionType::WPA2;
-        nw_params_1_2.passphrase = kNwPassphrase;
-        return nw_params_1_2;
+        IHostapd::NetworkParams nw_params_1_3 = getOpenNwParams();
+        nw_params_1_3.V1_2.encryptionType = IHostapd::EncryptionType::WPA2;
+        nw_params_1_3.V1_2.passphrase = kNwPassphrase;
+        return nw_params_1_3;
     }
 
     IHostapd::NetworkParams getInvalidPskNwParams() {
-        IHostapd::NetworkParams nw_params_1_2 = getOpenNwParams();
-        nw_params_1_2.encryptionType = IHostapd::EncryptionType::WPA2;
-        nw_params_1_2.passphrase = kInvalidMaxPskNwPassphrase;
+        IHostapd::NetworkParams nw_params_1_3 = getOpenNwParams();
+        nw_params_1_3.V1_2.encryptionType = IHostapd::EncryptionType::WPA2;
+        nw_params_1_3.V1_2.passphrase = kInvalidMaxPskNwPassphrase;
 
-        return nw_params_1_2;
+        return nw_params_1_3;
     }
 
     IHostapd::NetworkParams getSaeTransitionNwParams() {
-        IHostapd::NetworkParams nw_params_1_2 = getOpenNwParams();
-        nw_params_1_2.encryptionType =
+        IHostapd::NetworkParams nw_params_1_3 = getOpenNwParams();
+        nw_params_1_3.V1_2.encryptionType =
             IHostapd::EncryptionType::WPA3_SAE_TRANSITION;
-        nw_params_1_2.passphrase = kNwPassphrase;
-        return nw_params_1_2;
+        nw_params_1_3.V1_2.passphrase = kNwPassphrase;
+        return nw_params_1_3;
     }
 
     IHostapd::NetworkParams getInvalidSaeTransitionNwParams() {
-        IHostapd::NetworkParams nw_params_1_2 = getOpenNwParams();
-        nw_params_1_2.encryptionType = IHostapd::EncryptionType::WPA2;
-        nw_params_1_2.passphrase = kInvalidMinPskNwPassphrase;
-        return nw_params_1_2;
+        IHostapd::NetworkParams nw_params_1_3 = getOpenNwParams();
+        nw_params_1_3.V1_2.encryptionType = IHostapd::EncryptionType::WPA2;
+        nw_params_1_3.V1_2.passphrase = kInvalidMinPskNwPassphrase;
+        return nw_params_1_3;
     }
 
     IHostapd::NetworkParams getSaeNwParams() {
-        IHostapd::NetworkParams nw_params_1_2 = getOpenNwParams();
-        nw_params_1_2.encryptionType = IHostapd::EncryptionType::WPA3_SAE;
-        nw_params_1_2.passphrase = kNwPassphrase;
-        return nw_params_1_2;
+        IHostapd::NetworkParams nw_params_1_3 = getOpenNwParams();
+        nw_params_1_3.V1_2.encryptionType = IHostapd::EncryptionType::WPA3_SAE;
+        nw_params_1_3.V1_2.passphrase = kNwPassphrase;
+        return nw_params_1_3;
     }
 
     IHostapd::NetworkParams getInvalidSaeNwParams() {
-        IHostapd::NetworkParams nw_params_1_2 = getOpenNwParams();
-        nw_params_1_2.encryptionType = IHostapd::EncryptionType::WPA3_SAE;
-        nw_params_1_2.passphrase = "";
-        return nw_params_1_2;
+        IHostapd::NetworkParams nw_params_1_3 = getOpenNwParams();
+        nw_params_1_3.V1_2.encryptionType = IHostapd::EncryptionType::WPA3_SAE;
+        nw_params_1_3.V1_2.passphrase = "";
+        return nw_params_1_3;
     }
 
     IHostapd::IfaceParams getIfaceParamsWithInvalidChannel() {
@@ -217,21 +229,13 @@ class HostapdHidlTest
     std::string hostapd_instance_name_;
 };
 
-bool is_1_3(const sp<IHostapd>& hostapd) {
-    sp<::android::hardware::wifi::hostapd::V1_3::IHostapd> hostapd_1_3 =
-        ::android::hardware::wifi::hostapd::V1_3::IHostapd::castFrom(hostapd);
-    return hostapd_1_3.get() != nullptr;
-}
-
 /**
  * Adds an access point with PSK network config & ACS enabled.
  * Access point creation should pass.
  */
 TEST_P(HostapdHidlTest, AddPskAccessPointWithAcs) {
     if (!isAcsSupport_) GTEST_SKIP() << "Missing ACS support";
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
-    auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_2,
+    auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_3,
                               getIfaceParamsWithAcs(), getPskNwParams());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
@@ -242,10 +246,8 @@ TEST_P(HostapdHidlTest, AddPskAccessPointWithAcs) {
  */
 TEST_P(HostapdHidlTest, AddPskAccessPointWithAcsAndFreqRange) {
     if (!isAcsSupport_) GTEST_SKIP() << "Missing ACS support";
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
     auto status =
-        HIDL_INVOKE(hostapd_, addAccessPoint_1_2,
+        HIDL_INVOKE(hostapd_, addAccessPoint_1_3,
                     getIfaceParamsWithAcsAndFreqRange(), getPskNwParams());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
@@ -256,9 +258,7 @@ TEST_P(HostapdHidlTest, AddPskAccessPointWithAcsAndFreqRange) {
  */
 TEST_P(HostapdHidlTest, AddPskAccessPointWithAcsAndInvalidFreqRange) {
     if (!isAcsSupport_) GTEST_SKIP() << "Missing ACS support";
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
-    auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_2,
+    auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_3,
                               getIfaceParamsWithAcsAndInvalidFreqRange(),
                               getPskNwParams());
     EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
@@ -270,9 +270,7 @@ TEST_P(HostapdHidlTest, AddPskAccessPointWithAcsAndInvalidFreqRange) {
  */
 TEST_P(HostapdHidlTest, AddOpenAccessPointWithAcs) {
     if (!isAcsSupport_) GTEST_SKIP() << "Missing ACS support";
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
-    auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_2,
+    auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_3,
                               getIfaceParamsWithAcs(), getOpenNwParams());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
@@ -282,10 +280,19 @@ TEST_P(HostapdHidlTest, AddOpenAccessPointWithAcs) {
  * Access point creation should pass.
  */
 TEST_P(HostapdHidlTest, AddPskAccessPointWithoutAcs) {
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
-    auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_2,
+    auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_3,
                               getIfaceParamsWithoutAcs(), getPskNwParams());
+    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
+}
+
+/**
+ * Adds an access point with PSK network config, ACS disabled & Non metered.
+ * Access point creation should pass.
+ */
+TEST_P(HostapdHidlTest, AddPskAccessPointWithoutAcsAndNonMetered) {
+    auto status =
+        HIDL_INVOKE(hostapd_, addAccessPoint_1_3, getIfaceParamsWithoutAcs(),
+                    getPskNwParamsWithNonMetered());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
@@ -294,9 +301,7 @@ TEST_P(HostapdHidlTest, AddPskAccessPointWithoutAcs) {
  * Access point creation should pass.
  */
 TEST_P(HostapdHidlTest, AddOpenAccessPointWithoutAcs) {
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
-    auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_2,
+    auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_3,
                               getIfaceParamsWithoutAcs(), getOpenNwParams());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
@@ -307,10 +312,8 @@ TEST_P(HostapdHidlTest, AddOpenAccessPointWithoutAcs) {
  */
 TEST_P(HostapdHidlTest, AddSaeTransitionAccessPointWithoutAcs) {
     if (!isWpa3SaeSupport_) GTEST_SKIP() << "Missing SAE support";
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
     auto status =
-        HIDL_INVOKE(hostapd_, addAccessPoint_1_2, getIfaceParamsWithoutAcs(),
+        HIDL_INVOKE(hostapd_, addAccessPoint_1_3, getIfaceParamsWithoutAcs(),
                     getSaeTransitionNwParams());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
@@ -321,9 +324,7 @@ TEST_P(HostapdHidlTest, AddSaeTransitionAccessPointWithoutAcs) {
  */
 TEST_P(HostapdHidlTest, AddSAEAccessPointWithoutAcs) {
     if (!isWpa3SaeSupport_) GTEST_SKIP() << "Missing SAE support";
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
-    auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_2,
+    auto status = HIDL_INVOKE(hostapd_, addAccessPoint_1_3,
                               getIfaceParamsWithoutAcs(), getSaeNwParams());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
@@ -334,9 +335,7 @@ TEST_P(HostapdHidlTest, AddSAEAccessPointWithoutAcs) {
  */
 TEST_P(HostapdHidlTest, RemoveAccessPointWithAcs) {
     if (!isAcsSupport_) GTEST_SKIP() << "Missing ACS support";
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
-    auto status_1_2 = HIDL_INVOKE(hostapd_, addAccessPoint_1_2,
+    auto status_1_2 = HIDL_INVOKE(hostapd_, addAccessPoint_1_3,
                                   getIfaceParamsWithAcs(), getPskNwParams());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status_1_2.code);
     auto status =
@@ -351,9 +350,7 @@ TEST_P(HostapdHidlTest, RemoveAccessPointWithAcs) {
  * Access point creation & removal should pass.
  */
 TEST_P(HostapdHidlTest, RemoveAccessPointWithoutAcs) {
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
-    auto status_1_2 = HIDL_INVOKE(hostapd_, addAccessPoint_1_2,
+    auto status_1_2 = HIDL_INVOKE(hostapd_, addAccessPoint_1_3,
                                   getIfaceParamsWithoutAcs(), getPskNwParams());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status_1_2.code);
     auto status =
@@ -368,10 +365,8 @@ TEST_P(HostapdHidlTest, RemoveAccessPointWithoutAcs) {
  * Access point creation should fail.
  */
 TEST_P(HostapdHidlTest, AddPskAccessPointWithInvalidChannel) {
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
     auto status =
-        HIDL_INVOKE(hostapd_, addAccessPoint_1_2,
+        HIDL_INVOKE(hostapd_, addAccessPoint_1_3,
                     getIfaceParamsWithInvalidChannel(), getPskNwParams());
     EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
 }
@@ -381,10 +376,8 @@ TEST_P(HostapdHidlTest, AddPskAccessPointWithInvalidChannel) {
  * Access point creation should fail.
  */
 TEST_P(HostapdHidlTest, AddInvalidPskAccessPointWithoutAcs) {
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
     auto status =
-        HIDL_INVOKE(hostapd_, addAccessPoint_1_2, getIfaceParamsWithoutAcs(),
+        HIDL_INVOKE(hostapd_, addAccessPoint_1_3, getIfaceParamsWithoutAcs(),
                     getInvalidPskNwParams());
     EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
 }
@@ -395,10 +388,8 @@ TEST_P(HostapdHidlTest, AddInvalidPskAccessPointWithoutAcs) {
  */
 TEST_P(HostapdHidlTest, AddInvalidSaeTransitionAccessPointWithoutAcs) {
     if (!isWpa3SaeSupport_) GTEST_SKIP() << "Missing SAE support";
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
     auto status =
-        HIDL_INVOKE(hostapd_, addAccessPoint_1_2, getIfaceParamsWithoutAcs(),
+        HIDL_INVOKE(hostapd_, addAccessPoint_1_3, getIfaceParamsWithoutAcs(),
                     getInvalidSaeTransitionNwParams());
     EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
 }
@@ -409,23 +400,10 @@ TEST_P(HostapdHidlTest, AddInvalidSaeTransitionAccessPointWithoutAcs) {
  */
 TEST_P(HostapdHidlTest, AddInvalidSaeAccessPointWithoutAcs) {
     if (!isWpa3SaeSupport_) GTEST_SKIP() << "Missing SAE support";
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
     auto status =
-        HIDL_INVOKE(hostapd_, addAccessPoint_1_2, getIfaceParamsWithoutAcs(),
+        HIDL_INVOKE(hostapd_, addAccessPoint_1_3, getIfaceParamsWithoutAcs(),
                     getInvalidSaeNwParams());
     EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
-}
-
-/**
- * forceClientDisconnect should return FAILURE_IFACE_UNKNOWN
- * when hotspot interface doesn't init..
- */
-TEST_P(HostapdHidlTest, DisconnectClientWhenIfaceNotAvailable) {
-    auto status =
-        HIDL_INVOKE(hostapd_, forceClientDisconnect, getPrimaryWlanIfaceName(),
-                    kTestZeroMacAddr, kTestDisconnectReasonCode);
-    EXPECT_EQ(HostapdStatusCode::FAILURE_IFACE_UNKNOWN, status.code);
 }
 
 /**
@@ -433,10 +411,8 @@ TEST_P(HostapdHidlTest, DisconnectClientWhenIfaceNotAvailable) {
  * when hotspot interface available.
  */
 TEST_P(HostapdHidlTest, DisconnectClientWhenIfacAvailable) {
-    if (is_1_3(hostapd_))
-        GTEST_SKIP() << "Ignore addAccessPoint_1_2 on hostapd 1_3";
     auto status_1_2 =
-        HIDL_INVOKE(hostapd_, addAccessPoint_1_2, getIfaceParamsWithoutAcs(),
+        HIDL_INVOKE(hostapd_, addAccessPoint_1_3, getIfaceParamsWithoutAcs(),
                     getOpenNwParams());
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status_1_2.code);
 
@@ -444,14 +420,6 @@ TEST_P(HostapdHidlTest, DisconnectClientWhenIfacAvailable) {
         HIDL_INVOKE(hostapd_, forceClientDisconnect, getPrimaryWlanIfaceName(),
                     kTestZeroMacAddr, kTestDisconnectReasonCode);
     EXPECT_EQ(HostapdStatusCode::FAILURE_CLIENT_UNKNOWN, status_1_2.code);
-}
-
-/*
- * SetDebugParams
- */
-TEST_P(HostapdHidlTest, SetDebugParams) {
-    auto status = HIDL_INVOKE(hostapd_, setDebugParams, DebugLevel::EXCESSIVE);
-    EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(HostapdHidlTest);
