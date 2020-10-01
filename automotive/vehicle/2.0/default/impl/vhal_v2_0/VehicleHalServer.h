@@ -19,6 +19,7 @@
 #include <vhal_v2_0/VehicleObjectPool.h>
 #include <vhal_v2_0/VehicleServer.h>
 
+#include "EmulatedUserHal.h"
 #include "GeneratorHub.h"
 
 namespace android::hardware::automotive::vehicle::V2_0::impl {
@@ -37,6 +38,8 @@ class VehicleHalServer : public IVehicleServer {
     // Set the Property Value Pool used in this server
     void setValuePool(VehiclePropValuePool* valuePool);
 
+    EmulatedUserHal* getEmulatedUserHal();
+
   private:
     using VehiclePropValuePtr = recyclable_ptr<VehiclePropValue>;
 
@@ -52,6 +55,11 @@ class VehicleHalServer : public IVehicleServer {
 
     VehiclePropValuePtr createHwInputKeyProp(VehicleHwKeyInputAction action, int32_t keyCode,
                                              int32_t targetDisplay);
+
+    // data members
+
+  protected:
+    EmulatedUserHal mEmulatedUserHal;
 
   private:
     GeneratorHub mGeneratorHub{
