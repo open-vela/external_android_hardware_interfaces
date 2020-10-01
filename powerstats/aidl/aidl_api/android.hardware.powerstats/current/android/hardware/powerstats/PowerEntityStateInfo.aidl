@@ -17,7 +17,7 @@
 
 package android.hardware.powerstats;
 @VintfStability
-parcelable ChannelInfo {
-  int channelId;
-  String channelName;
+parcelable PowerEntityStateInfo {
+  int powerEntityStateId;
+  String powerEntityStateName;
 }

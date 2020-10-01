@@ -17,16 +17,19 @@
 package android.hardware.powerstats;
 
 @VintfStability
-parcelable ChannelInfo {
+parcelable EnergyData {
     /**
-     * Unique ID
+     * Index corresponding to the rail. This index matches
+     * the index returned in RailInfo
      */
-    int channelId;
+    int railIndex;
     /**
-     * Unique name of the ChannelInfo:
-     *
-     * Vendor/device specific. Opaque to framework
+     * Time since device boot(CLOCK_BOOTTIME) in milli-seconds
      */
-    String channelName;
+    long timestampMs;
+    /**
+     * Accumulated energy since device boot in microwatt-seconds (uWs)
+     */
+    long energyUWs;
 }
 
