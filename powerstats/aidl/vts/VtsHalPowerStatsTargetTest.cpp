@@ -21,12 +21,11 @@
 #include <android/binder_manager.h>
 #include <android/binder_process.h>
 
-using aidl::android::hardware::powerstats::ChannelInfo;
-using aidl::android::hardware::powerstats::EnergyMeasurement;
+using aidl::android::hardware::powerstats::EnergyData;
 using aidl::android::hardware::powerstats::IPowerStats;
 using aidl::android::hardware::powerstats::PowerEntityInfo;
-using aidl::android::hardware::powerstats::StateResidencyResult;
-
+using aidl::android::hardware::powerstats::PowerEntityStateResidencyResult;
+using aidl::android::hardware::powerstats::RailInfo;
 using ndk::SpAIBinder;
 
 class PowerStatsAidl : public testing::TestWithParam<std::string> {
@@ -40,9 +39,9 @@ class PowerStatsAidl : public testing::TestWithParam<std::string> {
     std::shared_ptr<IPowerStats> powerstats;
 };
 
-TEST_P(PowerStatsAidl, TestReadEnergyMeter) {
-    std::vector<EnergyMeasurement> data;
-    ASSERT_TRUE(powerstats->readEnergyMeters({}, &data).isOk());
+TEST_P(PowerStatsAidl, TestGetEnergyData) {
+    std::vector<EnergyData> data;
+    ASSERT_TRUE(powerstats->getEnergyData({}, &data).isOk());
 }
 
 // Each PowerEntity must have a valid name
@@ -84,7 +83,7 @@ TEST_P(PowerStatsAidl, ValidateStateNames) {
 
     for (auto info : infos) {
         for (auto state : info.states) {
-            EXPECT_NE(state.stateName, "");
+            EXPECT_NE(state.powerEntityStateName, "");
         }
     }
 }
@@ -97,7 +96,7 @@ TEST_P(PowerStatsAidl, ValidateStateUniqueNames) {
     for (auto info : infos) {
         std::set<std::string> stateNames;
         for (auto state : info.states) {
-            EXPECT_TRUE(stateNames.insert(state.stateName).second);
+            EXPECT_TRUE(stateNames.insert(state.powerEntityStateName).second);
         }
     }
 }
@@ -108,21 +107,21 @@ TEST_P(PowerStatsAidl, ValidateStateUniqueIds) {
     ASSERT_TRUE(powerstats->getPowerEntityInfo(&infos).isOk());
 
     for (auto info : infos) {
-        std::set<int32_t> stateIds;
+        std::set<uint32_t> stateIds;
         for (auto state : info.states) {
-            EXPECT_TRUE(stateIds.insert(state.stateId).second);
+            EXPECT_TRUE(stateIds.insert(state.powerEntityStateId).second);
         }
     }
 }
 
-TEST_P(PowerStatsAidl, TestGetStateResidencyData) {
-    std::vector<StateResidencyResult> data;
-    ASSERT_TRUE(powerstats->getPowerEntityStateResidency({}, &data).isOk());
+TEST_P(PowerStatsAidl, TestGetPowerEntityStateResidencyData) {
+    std::vector<PowerEntityStateResidencyResult> data;
+    ASSERT_TRUE(powerstats->getPowerEntityStateResidencyData({}, &data).isOk());
 }
 
-TEST_P(PowerStatsAidl, TestGetEnergyMeterInfo) {
-    std::vector<ChannelInfo> info;
-    ASSERT_TRUE(powerstats->getEnergyMeterInfo(&info).isOk());
+TEST_P(PowerStatsAidl, TestGetRailInfo) {
+    std::vector<RailInfo> info;
+    ASSERT_TRUE(powerstats->getRailInfo(&info).isOk());
 }
 
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(PowerStatsAidl);

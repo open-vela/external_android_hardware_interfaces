@@ -17,8 +17,22 @@
 package android.hardware.powerstats;
 
 @VintfStability
-@Backing(type="int")
-enum EnergyConsumerId {
-    DISPLAY = 0,
-    GPS = 1,
+parcelable RailInfo {
+    /**
+     * Index corresponding to the rail
+     */
+    int railIndex;
+    /**
+     * Name of the rail (opaque to the framework)
+     */
+    String railName;
+    /**
+     * Name of the subsystem to which this rail belongs (opaque to the framework)
+     */
+    String subsysName;
+    /**
+     * Hardware sampling rate in Hz
+     */
+    int samplingRateHz;
 }
+

@@ -17,8 +17,9 @@
 
 package android.hardware.powerstats;
 @VintfStability
-parcelable EnergyMeasurement {
-  int channelId;
-  long timestampMs;
-  long energyUWs;
+parcelable RailInfo {
+  int railIndex;
+  String railName;
+  String subsysName;
+  int samplingRateHz;
 }

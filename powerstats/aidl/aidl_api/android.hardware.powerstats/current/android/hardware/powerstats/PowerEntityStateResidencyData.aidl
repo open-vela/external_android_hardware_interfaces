@@ -17,8 +17,9 @@
 
 package android.hardware.powerstats;
 @VintfStability
-parcelable EnergyConsumerResult {
-  android.hardware.powerstats.EnergyConsumerId energyConsumerId;
-  long timestampMs;
-  long energyUWs;
+parcelable PowerEntityStateResidencyData {
+  int powerEntityStateId;
+  long totalTimeInStateMs;
+  long totalStateEntryCount;
+  long lastEntryTimestampMs;
 }
