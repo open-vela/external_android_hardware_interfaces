@@ -19,6 +19,6 @@ package android.hardware.powerstats;
 @VintfStability
 parcelable PowerEntityInfo {
   int powerEntityId;
-  @utf8InCpp String powerEntityName;
+  String powerEntityName;
   android.hardware.powerstats.StateInfo[] states;
 }

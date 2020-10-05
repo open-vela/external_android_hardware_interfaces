@@ -19,5 +19,5 @@ package android.hardware.powerstats;
 @VintfStability
 parcelable ChannelInfo {
   int channelId;
-  @utf8InCpp String channelName;
+  String channelName;
 }
