@@ -17,18 +17,16 @@
 package android.hardware.powerstats;
 
 @VintfStability
-parcelable EnergyMeasurement {
+parcelable ChannelInfo {
     /**
-     * ID of the Channel associated with this measurement
+     * Unique ID
      */
     int channelId;
     /**
-     * Time since boot in milliseconds
+     * Unique name of the ChannelInfo:
+     *
+     * Vendor/device specific. Opaque to framework
      */
-    long timestampMs;
-    /**
-     * Accumulated energy since boot in microwatt-seconds (uWs)
-     */
-    long energyUWs;
+    String channelName;
 }
 
