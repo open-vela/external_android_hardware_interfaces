@@ -13,10 +13,10 @@
 // limitations under the License.
 
 aidl_interface {
-    name: "android.hardware.power.stats",
+    name: "android.hardware.powerstats",
     vendor_available: true,
     srcs: [
-        "android/hardware/power/stats/*.aidl",
+        "android/hardware/powerstats/*.aidl",
     ],
     stability: "vintf",
     backend: {
