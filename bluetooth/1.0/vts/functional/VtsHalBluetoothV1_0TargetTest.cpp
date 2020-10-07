@@ -741,7 +741,6 @@ TEST_P(BluetoothHidlTest, LoopbackModeBandwidth) {
   }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BluetoothHidlTest);
 INSTANTIATE_TEST_SUITE_P(
     PerInstance, BluetoothHidlTest,
     testing::ValuesIn(
