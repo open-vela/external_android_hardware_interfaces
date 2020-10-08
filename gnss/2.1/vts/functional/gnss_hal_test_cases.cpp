@@ -256,10 +256,8 @@ TEST_P(GnssHalTest, TestGnssSvInfoFields) {
     ALOGD("Observed %d GnssSvStatus, while awaiting one location (%d received)",
           sv_info_list_cbq_size, location_called_count);
 
-    // Get the last sv_info_list
-    std::list<hidl_vec<IGnssCallback_2_1::GnssSvInfo>> sv_info_vec_list;
-    gnss_cb_->sv_info_list_cbq_.retrieve(sv_info_vec_list, sv_info_list_cbq_size, 1);
-    hidl_vec<IGnssCallback_2_1::GnssSvInfo> last_sv_info_list = sv_info_vec_list.back();
+    hidl_vec<IGnssCallback_2_1::GnssSvInfo> last_sv_info_list;
+    ASSERT_TRUE(gnss_cb_->sv_info_list_cbq_.retrieve(last_sv_info_list, 1));
 
     bool nonZeroCn0Found = false;
     for (auto sv_info : last_sv_info_list) {
@@ -372,12 +370,6 @@ IGnssConfiguration::BlacklistedSource FindStrongFrequentNonGpsSource(
  * formerly strongest satellite
  */
 TEST_P(GnssHalTest, BlacklistIndividualSatellites) {
-    if (!(gnss_cb_->last_capabilities_ & IGnssCallback_2_1::Capabilities::SATELLITE_BLACKLIST)) {
-        ALOGI("Test BlacklistIndividualSatellites skipped. SATELLITE_BLACKLIST capability not "
-              "supported.");
-        return;
-    }
-
     const int kLocationsToAwait = 3;
     const int kRetriesToUnBlacklist = 10;
 
@@ -519,12 +511,6 @@ TEST_P(GnssHalTest, BlacklistIndividualSatellites) {
  * 4a & b) Clean up by turning off location, and send in empty blacklist.
  */
 TEST_P(GnssHalTest, BlacklistConstellationLocationOff) {
-    if (!(gnss_cb_->last_capabilities_ & IGnssCallback_2_1::Capabilities::SATELLITE_BLACKLIST)) {
-        ALOGI("Test BlacklistConstellationLocationOff skipped. SATELLITE_BLACKLIST capability not "
-              "supported.");
-        return;
-    }
-
     const int kLocationsToAwait = 3;
     const int kGnssSvInfoListTimeout = 2;
 
@@ -601,12 +587,6 @@ TEST_P(GnssHalTest, BlacklistConstellationLocationOff) {
  * 4a & b) Clean up by turning off location, and send in empty blacklist.
  */
 TEST_P(GnssHalTest, BlacklistConstellationLocationOn) {
-    if (!(gnss_cb_->last_capabilities_ & IGnssCallback_2_1::Capabilities::SATELLITE_BLACKLIST)) {
-        ALOGI("Test BlacklistConstellationLocationOn skipped. SATELLITE_BLACKLIST capability not "
-              "supported.");
-        return;
-    }
-
     const int kLocationsToAwait = 3;
     const int kGnssSvInfoListTimeout = 2;
 
