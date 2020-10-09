@@ -81,15 +81,14 @@ class IScopedWakelockRefCounter : public RefBase {
  */
 class ScopedWakelock {
   public:
-    ScopedWakelock(ScopedWakelock&& other);
-    ScopedWakelock& operator=(ScopedWakelock&& other);
+    ScopedWakelock(ScopedWakelock&&) = default;
+    ScopedWakelock& operator=(ScopedWakelock&&) = default;
     virtual ~ScopedWakelock();
 
     bool isLocked() const { return mLocked; }
 
   private:
     friend class HalProxyCallbackBase;
-    friend class ScopedWakelockTest;
     IScopedWakelockRefCounter* mRefCounter;
     int64_t mCreatedAtTimeNs;
     bool mLocked;
