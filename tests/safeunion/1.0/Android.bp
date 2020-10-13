@@ -4,6 +4,7 @@ hidl_interface {
     name: "android.hardware.tests.safeunion@1.0",
     root: "android.hardware",
     srcs: [
+        "IOtherInterface.hal",
         "ISafeUnion.hal",
     ],
     interfaces: [
