@@ -17,9 +17,6 @@
 
 package android.hardware.biometrics.fingerprint;
 @VintfStability
-interface IFingerprint {
-  android.hardware.biometrics.fingerprint.SensorProps[] getSensorProps();
-  android.hardware.biometrics.fingerprint.ISession createSession(in int sensorId, in int userId, in android.hardware.biometrics.fingerprint.ISessionCallback cb);
-  void generateChallenge(in int sensorId, in int userId, in int timeoutSec, in android.hardware.biometrics.fingerprint.IGenerateChallengeCallback cb);
-  void revokeChallenge(in int sensorId, in int userId, in long challenge, in android.hardware.biometrics.fingerprint.IRevokeChallengeCallback cb);
+interface IRevokeChallengeCallback {
+  oneway void onChallengeRevoked(in int sensorId, in int userId, in long challenge);
 }

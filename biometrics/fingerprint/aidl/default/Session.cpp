@@ -27,14 +27,6 @@ class CancellationSignal : public common::BnCancellationSignal {
 
 Session::Session(std::shared_ptr<ISessionCallback> cb) : cb_(std::move(cb)) {}
 
-ndk::ScopedAStatus Session::generateChallenge(int32_t /*cookie*/, int32_t /*timeoutSec*/) {
-    return ndk::ScopedAStatus::ok();
-}
-
-ndk::ScopedAStatus Session::revokeChallenge(int32_t /*cookie*/, int64_t /*challenge*/) {
-    return ndk::ScopedAStatus::ok();
-}
-
 ndk::ScopedAStatus Session::enroll(int32_t /*cookie*/, const keymaster::HardwareAuthToken& /*hat*/,
                                    std::shared_ptr<common::ICancellationSignal>* /*return_val*/) {
     return ndk::ScopedAStatus::ok();
@@ -68,7 +60,7 @@ ndk::ScopedAStatus Session::getAuthenticatorId(int32_t /*cookie*/) {
 }
 
 ndk::ScopedAStatus Session::invalidateAuthenticatorId(int32_t /*cookie*/,
-                                                      const keymaster::HardwareAuthToken& /*hat*/) {
+                                        const keymaster::HardwareAuthToken& /*hat*/) {
     return ndk::ScopedAStatus::ok();
 }
 
@@ -89,4 +81,5 @@ ndk::ScopedAStatus Session::onPointerUp(int32_t /*pointerId*/) {
 ndk::ScopedAStatus Session::onUiReady() {
     return ndk::ScopedAStatus::ok();
 }
+
 }  // namespace aidl::android::hardware::biometrics::fingerprint
