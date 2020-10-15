@@ -1280,7 +1280,7 @@ bool convertHidlNanEnableRequestToLegacy(
 
 bool convertHidlNanEnableRequest_1_4ToLegacy(
     const V1_4::NanEnableRequest& hidl_request1,
-    const NanConfigRequestSupplemental& hidl_request2,
+    const V1_2::NanConfigRequestSupplemental& hidl_request2,
     legacy_hal::NanEnableRequest* legacy_request) {
     if (!legacy_request) {
         LOG(ERROR)
@@ -1295,60 +1295,14 @@ bool convertHidlNanEnableRequest_1_4ToLegacy(
 
     legacy_request->config_discovery_beacon_int = 1;
     legacy_request->discovery_beacon_interval =
-        hidl_request2.V1_2.discoveryBeaconIntervalMs;
+        hidl_request2.discoveryBeaconIntervalMs;
     legacy_request->config_nss = 1;
-    legacy_request->nss = hidl_request2.V1_2.numberOfSpatialStreamsInDiscovery;
+    legacy_request->nss = hidl_request2.numberOfSpatialStreamsInDiscovery;
     legacy_request->config_dw_early_termination = 1;
     legacy_request->enable_dw_termination =
-        hidl_request2.V1_2.enableDiscoveryWindowEarlyTermination;
+        hidl_request2.enableDiscoveryWindowEarlyTermination;
     legacy_request->config_enable_ranging = 1;
-    legacy_request->enable_ranging = hidl_request2.V1_2.enableRanging;
-
-    return true;
-}
-
-bool convertHidlNanEnableRequest_1_5ToLegacy(
-    const V1_4::NanEnableRequest& hidl_request1,
-    const NanConfigRequestSupplemental& hidl_request2,
-    legacy_hal::NanEnableRequest* legacy_request) {
-    if (!legacy_request) {
-        LOG(ERROR)
-            << "convertHidlNanEnableRequest_1_5ToLegacy: null legacy_request";
-        return false;
-    }
-
-    *legacy_request = {};
-    if (!convertHidlNanEnableRequest_1_4ToLegacy(hidl_request1, hidl_request2,
-                                                 legacy_request)) {
-        return false;
-    }
-
-    legacy_request->config_enable_instant_mode = 1;
-    legacy_request->enable_instant_mode =
-        hidl_request2.enableInstantCommunicationMode;
-
-    return true;
-}
-
-bool convertHidlNanConfigRequest_1_5ToLegacy(
-    const V1_4::NanConfigRequest& hidl_request1,
-    const NanConfigRequestSupplemental& hidl_request2,
-    legacy_hal::NanConfigRequest* legacy_request) {
-    if (!legacy_request) {
-        LOG(ERROR)
-            << "convertHidlNanConfigRequest_1_5ToLegacy: null legacy_request";
-        return false;
-    }
-
-    *legacy_request = {};
-    if (!convertHidlNanConfigRequest_1_4ToLegacy(hidl_request1, hidl_request2,
-                                                 legacy_request)) {
-        return false;
-    }
-
-    legacy_request->config_enable_instant_mode = 1;
-    legacy_request->enable_instant_mode =
-        hidl_request2.enableInstantCommunicationMode;
+    legacy_request->enable_ranging = hidl_request2.enableRanging;
 
     return true;
 }
@@ -1840,7 +1794,7 @@ bool convertHidlNanConfigRequestToLegacy(
 
 bool convertHidlNanConfigRequest_1_4ToLegacy(
     const V1_4::NanConfigRequest& hidl_request1,
-    const NanConfigRequestSupplemental& hidl_request2,
+    const V1_2::NanConfigRequestSupplemental& hidl_request2,
     legacy_hal::NanConfigRequest* legacy_request) {
     if (!legacy_request) {
         LOG(ERROR) << "convertHidlNanConfigRequest_1_4ToLegacy: legacy_request "
@@ -1855,14 +1809,14 @@ bool convertHidlNanConfigRequest_1_4ToLegacy(
 
     legacy_request->config_discovery_beacon_int = 1;
     legacy_request->discovery_beacon_interval =
-        hidl_request2.V1_2.discoveryBeaconIntervalMs;
+        hidl_request2.discoveryBeaconIntervalMs;
     legacy_request->config_nss = 1;
-    legacy_request->nss = hidl_request2.V1_2.numberOfSpatialStreamsInDiscovery;
+    legacy_request->nss = hidl_request2.numberOfSpatialStreamsInDiscovery;
     legacy_request->config_dw_early_termination = 1;
     legacy_request->enable_dw_termination =
-        hidl_request2.V1_2.enableDiscoveryWindowEarlyTermination;
+        hidl_request2.enableDiscoveryWindowEarlyTermination;
     legacy_request->config_enable_ranging = 1;
-    legacy_request->enable_ranging = hidl_request2.V1_2.enableRanging;
+    legacy_request->enable_ranging = hidl_request2.enableRanging;
 
     return true;
 }
@@ -2069,31 +2023,27 @@ bool convertLegacyNanCapabilitiesResponseToHidl(
     }
     *hidl_response = {};
 
-    hidl_response->V1_0.maxConcurrentClusters =
+    hidl_response->maxConcurrentClusters =
         legacy_response.max_concurrent_nan_clusters;
-    hidl_response->V1_0.maxPublishes = legacy_response.max_publishes;
-    hidl_response->V1_0.maxSubscribes = legacy_response.max_subscribes;
-    hidl_response->V1_0.maxServiceNameLen =
-        legacy_response.max_service_name_len;
-    hidl_response->V1_0.maxMatchFilterLen =
-        legacy_response.max_match_filter_len;
-    hidl_response->V1_0.maxTotalMatchFilterLen =
+    hidl_response->maxPublishes = legacy_response.max_publishes;
+    hidl_response->maxSubscribes = legacy_response.max_subscribes;
+    hidl_response->maxServiceNameLen = legacy_response.max_service_name_len;
+    hidl_response->maxMatchFilterLen = legacy_response.max_match_filter_len;
+    hidl_response->maxTotalMatchFilterLen =
         legacy_response.max_total_match_filter_len;
-    hidl_response->V1_0.maxServiceSpecificInfoLen =
+    hidl_response->maxServiceSpecificInfoLen =
         legacy_response.max_service_specific_info_len;
-    hidl_response->V1_0.maxExtendedServiceSpecificInfoLen =
+    hidl_response->maxExtendedServiceSpecificInfoLen =
         legacy_response.max_sdea_service_specific_info_len;
-    hidl_response->V1_0.maxNdiInterfaces = legacy_response.max_ndi_interfaces;
-    hidl_response->V1_0.maxNdpSessions = legacy_response.max_ndp_sessions;
-    hidl_response->V1_0.maxAppInfoLen = legacy_response.max_app_info_len;
-    hidl_response->V1_0.maxQueuedTransmitFollowupMsgs =
+    hidl_response->maxNdiInterfaces = legacy_response.max_ndi_interfaces;
+    hidl_response->maxNdpSessions = legacy_response.max_ndp_sessions;
+    hidl_response->maxAppInfoLen = legacy_response.max_app_info_len;
+    hidl_response->maxQueuedTransmitFollowupMsgs =
         legacy_response.max_queued_transmit_followup_msgs;
-    hidl_response->V1_0.maxSubscribeInterfaceAddresses =
+    hidl_response->maxSubscribeInterfaceAddresses =
         legacy_response.max_subscribe_address;
-    hidl_response->V1_0.supportedCipherSuites =
+    hidl_response->supportedCipherSuites =
         legacy_response.cipher_suites_supported;
-    hidl_response->instantCommunicationModeSupportFlag =
-        legacy_response.is_instant_mode_supported;
 
     return true;
 }
