@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package android.hardware.common;
+package android.hardware.common.fmq;
 
 /*
  * For use with android.hardware.common.MQDescriptor to specify which type of

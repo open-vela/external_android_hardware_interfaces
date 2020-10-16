@@ -15,11 +15,14 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.common;
-@VintfStability
-parcelable MQDescriptor {
-  android.hardware.common.GrantorDescriptor[] grantors;
-  ParcelFileDescriptor fileDescriptor;
-  int quantum;
-  int flags;
+package android.hardware.biometrics.face;
+@Backing(type="byte") @VintfStability
+enum Error {
+  HW_UNAVAILABLE = 1,
+  UNABLE_TO_PROCESS = 2,
+  TIMEOUT = 3,
+  NO_SPACE = 4,
+  CANCELED = 5,
+  UNABLE_TO_REMOVE = 6,
+  VENDOR = 8,
 }
