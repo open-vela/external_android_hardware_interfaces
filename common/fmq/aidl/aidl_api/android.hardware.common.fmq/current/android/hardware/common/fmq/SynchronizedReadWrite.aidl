@@ -15,8 +15,8 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.common;
+package android.hardware.common.fmq;
 @VintfStability
-enum UnsynchronizedWrite {
+enum SynchronizedReadWrite {
   EMPTY = 0,
 }
