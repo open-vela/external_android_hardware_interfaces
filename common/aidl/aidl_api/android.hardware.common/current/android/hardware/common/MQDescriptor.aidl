@@ -15,10 +15,10 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.common.fmq;
+package android.hardware.common;
 @VintfStability
 parcelable MQDescriptor {
-  android.hardware.common.fmq.GrantorDescriptor[] grantors;
+  android.hardware.common.GrantorDescriptor[] grantors;
   ParcelFileDescriptor fileDescriptor;
   int quantum;
   int flags;

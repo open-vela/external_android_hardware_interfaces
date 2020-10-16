@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package android.hardware.common.fmq;
+package android.hardware.common;
 
 /*
  * For use with android.hardware.common.MQDescriptor to specify which type of
- * queue to use. SynchronizedReadWrite is single reader, single writer, with no
- * overflow. All messages written need to be read.
+ * queue to use. UnsynchronizedWrite is single writer, multiple reader, with
+ * overflow. If messages are not read fast enough, they can be overwritten.
  */
 @VintfStability
-enum SynchronizedReadWrite {
+enum UnsynchronizedWrite {
     EMPTY,
 }

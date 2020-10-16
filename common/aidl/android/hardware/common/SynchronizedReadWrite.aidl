@@ -14,19 +14,14 @@
  * limitations under the License.
  */
 
-package android.hardware.common.fmq;
+package android.hardware.common;
 
 /*
- * Included in MQDescriptor, for use with libfmq.
+ * For use with android.hardware.common.MQDescriptor to specify which type of
+ * queue to use. SynchronizedReadWrite is single reader, single writer, with no
+ * overflow. All messages written need to be read.
  */
 @VintfStability
-parcelable GrantorDescriptor {
-    /*
-     * The offset of this descriptor in the shared memory in bytes.
-     */
-    int offset;
-    /*
-     * The size of this descriptor in bytes.
-     */
-    long extent;
+enum SynchronizedReadWrite {
+    EMPTY,
 }

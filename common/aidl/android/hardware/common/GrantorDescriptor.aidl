@@ -14,14 +14,19 @@
  * limitations under the License.
  */
 
-package android.hardware.common.fmq;
+package android.hardware.common;
 
 /*
- * For use with android.hardware.common.MQDescriptor to specify which type of
- * queue to use. UnsynchronizedWrite is single writer, multiple reader, with
- * overflow. If messages are not read fast enough, they can be overwritten.
+ * Included in MQDescriptor, for use with libfmq.
  */
 @VintfStability
-enum UnsynchronizedWrite {
-    EMPTY,
+parcelable GrantorDescriptor {
+    /*
+     * The offset of this descriptor in the shared memory in bytes.
+     */
+    int offset;
+    /*
+     * The size of this descriptor in bytes.
+     */
+    long extent;
 }
