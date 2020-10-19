@@ -50,7 +50,6 @@ using android::hardware::tv::tuner::V1_0::DemuxFilterSectionEvent;
 using android::hardware::tv::tuner::V1_0::DemuxFilterSectionSettings;
 using android::hardware::tv::tuner::V1_0::DemuxFilterSettings;
 using android::hardware::tv::tuner::V1_0::DemuxFilterStatus;
-using android::hardware::tv::tuner::V1_0::DemuxFilterTsRecordEvent;
 using android::hardware::tv::tuner::V1_0::DemuxFilterType;
 using android::hardware::tv::tuner::V1_0::DemuxQueueNotifyBits;
 using android::hardware::tv::tuner::V1_0::DemuxTsFilterSettings;
@@ -116,7 +115,6 @@ class FilterCallback : public IFilterCallback {
     void updateGoldenOutputMap(string goldenOutputFile);
     bool readFilterEventData();
     bool dumpAvData(DemuxFilterMediaEvent event);
-    bool readRecordData(DemuxFilterTsRecordEvent event);
 
   private:
     struct FilterThreadArgs {
