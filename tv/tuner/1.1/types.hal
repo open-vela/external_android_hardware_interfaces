@@ -19,7 +19,6 @@ package android.hardware.tv.tuner@1.1;
 import @1.0::Constant;
 import @1.0::DemuxFilterMmtpRecordEvent;
 import @1.0::DemuxFilterTsRecordEvent;
-import @1.0::DemuxScIndex;
 import @1.0::FrontendAtsc3Bandwidth;
 import @1.0::FrontendAtsc3Modulation;
 import @1.0::FrontendAtsc3TimeInterleaveMode;
@@ -47,13 +46,9 @@ import android.hidl.safe_union@1.0::Monostate;
 @export
 enum Constant : @1.0::Constant {
     /**
-     * An invalid mpuSequenceNumber in DemuxFilterRecordEventExt.
+     * An invalid mpuSequenceNumber in DemuxFilterMmtpRecordEvent.
      */
     INVALID_MMTP_RECORD_EVENT_MPT_SEQUENCE_NUM = 0xFFFFFFFF,
-    /**
-     * An invalid first macroblock address in DemuxFilterRecordEventExt.
-     */
-    INVALID_FIRST_MACROBLOCK_IN_SLICE = 0xFFFFFFFF,
     /**
      * An invalid frenquency that can be used as the default value of the frontend setting.
      */
@@ -81,7 +76,7 @@ enum Constant64Bit : uint64_t {
      */
     INVALID_AV_SYNC_ID_64BIT = 0xFFFFFFFFFFFFFFFF,
     /**
-     * An invalid pts.
+     * An invalid pts in the DemuxFilterTsRecordEvent or DemuxFilterMmtpRecordEvent.
      */
     INVALID_PRESENTATION_TIME_STAMP = 0xFFFFFFFFFFFFFFFF,
 };
@@ -100,11 +95,6 @@ struct DemuxFilterRecordEventExt {
      * MPU sequence number of the filtered data. This is only used for MMTP.
      */
     uint32_t mpuSequenceNumber;
-
-    /**
-     * Specifies the address of the first macroblock in the slice defined in ITU-T Rec. H.264.
-     */
-    uint32_t firstMbInSlice;
 };
 
 /**
@@ -222,8 +212,6 @@ struct FrontendAnalogSettingsExt1_1 {
  */
 struct FrontendDvbcSettingsExt1_1 {
     FrontendCableTimeInterleaveMode interleaveMode;
-
-    FrontendDvbcBandwidth bandwidth;
 };
 
 /**
@@ -258,18 +246,6 @@ enum FrontendType : @1.0::FrontendType {
      * DTMB (Digital Terrestrial Multimedia Broadcast) standard.
      */
     DTMB,
-};
-
-/**
- *  Bandwidth Type for Cable Frontend.
- */
-@export
-enum FrontendDvbcBandwidth : uint32_t {
-    UNDEFINED = 0,
-    BANDWIDTH_5MHZ = 1 << 0,
-    BANDWIDTH_6MHZ = 1 << 1,
-    BANDWIDTH_7MHZ = 1 << 2,
-    BANDWIDTH_8MHZ = 1 << 3,
 };
 
 /**
@@ -451,8 +427,6 @@ enum FrontendInnerFec : @1.0::FrontendInnerFec {
 
 safe_union FrontendBandwidth {
     @1.0::FrontendAtsc3Bandwidth atsc3;
-
-    FrontendDvbcBandwidth dvbc;
 
     @1.0::FrontendDvbtBandwidth dvbt;
 
@@ -720,31 +694,4 @@ safe_union AvStreamType {
     VideoStreamType video;
 
     AudioStreamType audio;
-};
-
-/**
- * Indexes can be tagged by start point of slice groups according to ISO/IEC 14496-10.
- */
-@export
-enum DemuxScIndex : @1.0::DemuxScIndex {
-    /**
-     * All blocks are coded as I blocks.
-     */
-    I_SLICE = 1 << 4,
-    /**
-     * Blocks are coded as I or P blocks.
-     */
-    P_SLICE = 1 << 5,
-    /**
-     * Blocks are coded as I, P or B blocks.
-     */
-    B_SLICE = 1 << 6,
-    /**
-     * A so-called switching I slice that is coded.
-     */
-    SI_SLICE = 1 << 7,
-    /**
-     * A so-called switching P slice that is coded.
-     */
-    SP_SLICE = 1 << 8,
 };

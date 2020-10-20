@@ -47,14 +47,8 @@ void FilterCallback::readFilterEventData() {
         auto eventExt = mFilterEventExt.events[i];
         switch (eventExt.getDiscriminator()) {
             case DemuxFilterEventExt::Event::hidl_discriminator::tsRecord:
-                ALOGD("[vts] Extended TS record filter event, pts=%" PRIu64 ", firstMbInSlice=%d",
-                      eventExt.tsRecord().pts, eventExt.tsRecord().firstMbInSlice);
-                break;
-            case DemuxFilterEventExt::Event::hidl_discriminator::mmtpRecord:
-                ALOGD("[vts] Extended MMTP record filter event, pts=%" PRIu64
-                      ", firstMbInSlice=%d, mpuSequenceNumber=%d",
-                      eventExt.mmtpRecord().pts, eventExt.mmtpRecord().firstMbInSlice,
-                      eventExt.mmtpRecord().mpuSequenceNumber);
+                ALOGD("[vts] Extended TS record filter event, pts=%" PRIu64 ".",
+                      eventExt.tsRecord().pts);
                 break;
             default:
                 break;
