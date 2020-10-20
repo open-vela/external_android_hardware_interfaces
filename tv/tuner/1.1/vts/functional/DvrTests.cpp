@@ -192,10 +192,9 @@ void DvrCallback::recordThreadLoop(RecordSettings* /*recordSettings*/, bool* kee
 bool DvrCallback::readRecordFMQ() {
     android::Mutex::Autolock autoLock(mMsgLock);
     bool result = false;
-    int readSize = mRecordMQ->availableToRead();
     mDataOutputBuffer.clear();
-    mDataOutputBuffer.resize(readSize);
-    result = mRecordMQ->read(mDataOutputBuffer.data(), readSize);
+    mDataOutputBuffer.resize(mRecordMQ->availableToRead());
+    result = mRecordMQ->read(mDataOutputBuffer.data(), mRecordMQ->availableToRead());
     EXPECT_TRUE(result) << "can't read from Record MQ";
     mMsgCondition.signal();
     return result;
