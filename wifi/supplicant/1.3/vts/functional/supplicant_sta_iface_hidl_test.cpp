@@ -330,7 +330,11 @@ TEST_P(SupplicantStaIfaceHidlTest, GetConnectionCapabilities) {
     sta_iface_->getConnectionCapabilities(
         [&](const SupplicantStatus& status,
             ConnectionCapabilities /* capabilities */) {
-            EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
+            // Since getConnectionCapabilities() is overridden by an
+            // upgraded API in newer HAL versions, allow for FAILURE_UNKNOWN
+            if (status.code != SupplicantStatusCode::FAILURE_UNKNOWN) {
+                EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
+            }
         });
 }
 
@@ -554,6 +558,7 @@ TEST_P(SupplicantStaIfaceHidlTest, FilsHlpFlushRequest) {
         EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
     });
 }
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantStaIfaceHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantStaIfaceHidlTest,
     testing::Combine(
