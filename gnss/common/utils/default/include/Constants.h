@@ -24,9 +24,6 @@ namespace hardware {
 namespace gnss {
 namespace common {
 
-const float kMockLatitudeDegrees = 37.4219999;
-const float kMockLongitudeDegrees = -122.0840575;
-const float kMockAltitudeMeters = 1.60062531;
 const float kMockSpeedMetersPerSec = 0;
 const float kMockBearingDegrees = 0;
 const float kMockHorizontalAccuracyMeters = 5;
