@@ -766,9 +766,6 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
             const SendSmsResult& sms);
 
-    Return<void> setSimCardPowerResponse_1_6(
-            const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
-
     Return<void> sendCdmaSmsExpectMoreResponse_1_6(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
             const SendSmsResult& sms);
