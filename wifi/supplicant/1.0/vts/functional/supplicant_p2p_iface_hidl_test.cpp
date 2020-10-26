@@ -282,17 +282,8 @@ TEST_P(SupplicantP2pIfaceHidlTest, Connect) {
         mac_addr_, ISupplicantP2pIface::WpsProvisionMethod::PBC,
         kTestConnectPin, false, false, kTestConnectGoIntent,
         [](const SupplicantStatus& status, const hidl_string& /* pin */) {
-            /*
-             * Before R, auto-join is not enabled and it is not going to work
-             * with fake values. After enabling auto-join, it will succeed
-             * always.
-             */
-            LOG(INFO) << "ISupplicantP2pIface::connect() ret: "
-                      << toString(status);
-            if (SupplicantStatusCode::FAILURE_UNKNOWN != status.code &&
-                SupplicantStatusCode::SUCCESS != status.code) {
-                FAIL();
-            }
+            // After enabling auto-join, it will succeed always.
+            EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
         });
 }
 
@@ -304,26 +295,12 @@ TEST_P(SupplicantP2pIfaceHidlTest, CancelConnect) {
         mac_addr_, ISupplicantP2pIface::WpsProvisionMethod::PBC,
         kTestConnectPin, false, false, kTestConnectGoIntent,
         [](const SupplicantStatus& status, const hidl_string& /* pin */) {
-            /*
-             * Before R, auto-join is not enabled and it is not going to work
-             * with fake values. After enabling auto-join, it will succeed
-             * always.
-             */
-            LOG(INFO) << "ISupplicantP2pIface::connect() ret: "
-                      << toString(status);
-            if (SupplicantStatusCode::FAILURE_UNKNOWN != status.code &&
-                SupplicantStatusCode::SUCCESS != status.code) {
-                FAIL();
-            }
+            // After enabling auto-join, it will succeed always.
+            EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
         });
 
     p2p_iface_->cancelConnect([](const SupplicantStatus& status) {
-        LOG(INFO) << "ISupplicantP2pIface::cancelConnect() ret: "
-                  << toString(status);
-        if (SupplicantStatusCode::FAILURE_UNKNOWN != status.code &&
-            SupplicantStatusCode::SUCCESS != status.code) {
-            FAIL();
-        }
+        EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
     });
 }
 
@@ -651,7 +628,6 @@ TEST_P(SupplicantP2pIfaceHidlTest, SetWfdDeviceInfo) {
         HIDL_INVOKE(p2p_iface_, setWfdDeviceInfo, kTestWfdDeviceInfo).code);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantP2pIfaceHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantP2pIfaceHidlTest,
     testing::Combine(
