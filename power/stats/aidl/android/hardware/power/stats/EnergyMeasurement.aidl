@@ -23,15 +23,11 @@ parcelable EnergyMeasurement {
      */
     int channelId;
     /**
-     * Approximate time of data capture in millseconds since boot
+     * Time since boot in milliseconds
      */
     long timestampMs;
     /**
-     * Duration in milliseconds that energy has been accumulated
-     */
-    long durationMs;
-    /**
-     * Accumulated energy in microwatt-seconds (uWs)
+     * Accumulated energy since boot in microwatt-seconds (uWs)
      */
     long energyUWs;
 }
