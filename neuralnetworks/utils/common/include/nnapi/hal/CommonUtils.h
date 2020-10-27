@@ -17,8 +17,11 @@
 #ifndef ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_UTILS_COMMON_COMMON_UTILS_H
 #define ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_UTILS_COMMON_COMMON_UTILS_H
 
+#include <cutils/native_handle.h>
+#include <hidl/HidlSupport.h>
 #include <nnapi/Result.h>
 #include <nnapi/Types.h>
+#include <functional>
 #include <vector>
 
 // Shorthand
@@ -42,17 +45,26 @@ bool hasNoPointerData(const nn::Model& model);
 bool hasNoPointerData(const nn::Request& request);
 
 // Relocate pointer-based data to shared memory.
-nn::Result<nn::Model> flushDataFromPointerToShared(const nn::Model& model);
-nn::Result<nn::Request> flushDataFromPointerToShared(const nn::Request& request);
+nn::GeneralResult<std::reference_wrapper<const nn::Model>> flushDataFromPointerToShared(
+        const nn::Model* model, std::optional<nn::Model>* maybeModelInSharedOut);
+nn::GeneralResult<std::reference_wrapper<const nn::Request>> flushDataFromPointerToShared(
+        const nn::Request* request, std::optional<nn::Request>* maybeRequestInSharedOut);
 
 // Undoes `flushDataFromPointerToShared` on a Request object. More specifically,
 // `unflushDataFromSharedToPointer` copies the output shared memory data from the transformed
 // Request object back to the output pointer-based memory in the original Request object.
-nn::Result<void> unflushDataFromSharedToPointer(const nn::Request& request,
-                                                const nn::Request& requestInShared);
+nn::GeneralResult<void> unflushDataFromSharedToPointer(
+        const nn::Request& request, const std::optional<nn::Request>& maybeRequestInShared);
 
 std::vector<uint32_t> countNumberOfConsumers(size_t numberOfOperands,
                                              const std::vector<nn::Operation>& operations);
+
+nn::GeneralResult<nn::Memory> createSharedMemoryFromHidlMemory(const hidl_memory& memory);
+
+nn::GeneralResult<hidl_handle> hidlHandleFromSharedHandle(const nn::SharedHandle& handle);
+nn::GeneralResult<nn::SharedHandle> sharedHandleFromNativeHandle(const native_handle_t* handle);
+nn::GeneralResult<hidl_vec<hidl_handle>> convertSyncFences(
+        const std::vector<nn::SyncFence>& fences);
 
 }  // namespace android::hardware::neuralnetworks::utils
 

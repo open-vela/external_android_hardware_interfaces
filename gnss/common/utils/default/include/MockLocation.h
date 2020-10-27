@@ -27,8 +27,6 @@ namespace common {
 extern float gMockLatitudeDegrees;
 extern float gMockLongitudeDegrees;
 extern float gMockAltitudeMeters;
-extern float gMockBearingDegrees;
-extern float gMockSpeedMetersPerSec;
 
 }  // namespace common
 }  // namespace gnss
