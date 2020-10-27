@@ -355,3 +355,17 @@ struct PlaybackRate {
      */
     TimestretchFallbackMode fallbackMode;
 };
+
+/**
+ * The audio flags serve two purposes:
+ *
+ *  - when a stream is created they indicate its attributes;
+ *
+ *  - when present in a profile descriptor listed for a particular audio
+ *    hardware module, they indicate that a stream can be opened that
+ *    supports the attributes indicated by the flags.
+ *
+ * See 'audioIoFlag' in audio_policy_configuration.xsd for the
+ * list of allowed values.
+ */
+typedef string AudioInOutFlag;
