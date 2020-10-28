@@ -16,6 +16,8 @@
 
 package android.hardware.radio@1.6;
 
+import @1.0::RadioError;
+import @1.0::RadioResponseType;
 import @1.5::SetupDataCallResult;
 
 import android.hidl.safe_union@1.0::Monostate;
@@ -96,6 +98,44 @@ enum QosFilterDirection : int32_t {
 enum QosPortRange : int32_t {
     MIN = 20,
     MAX = 65535
+};
+
+enum RadioError : @1.0::RadioError {
+    /** 1X voice and SMS are not allowed simulteneously. */
+    SIMULTANEOUS_SMS_AND_CALL_NOT_ALLOWED = 67,
+
+    /** Access is barred. */
+    ACCESS_BARRED = 68,
+
+    /**
+     * SMS is blocked due to call control, e.g., resource unavailable
+     * in the SMR entity.
+     */
+    BLOCKED_DUE_TO_CALL = 69,
+
+    /**
+     * Returned from setRadioPowerResponse when detecting RF HW issues. Some RF
+     * Front-End(RFFE) components like antenna are considered critical for modem
+     * to provide telephony service. This RadioError is used when modem detect
+     * such RFFE problem.
+     */
+    RF_HARDWARE_ISSUE = 70,
+
+    /**
+     * Returned from setRadioPowerResponse when detecting no RF calibration
+     * issue. Unlike RF_HARDWARE_ISSUE, this is a SW problem and no HW repair is
+     * needed.
+     */
+    NO_RF_CALIBRATION_INFO = 71,
+};
+
+/**
+ * Overwritten from @1.0::RadioResponseInfo in order to update the RadioError to 1.6 version.
+ */
+struct RadioResponseInfo {
+    RadioResponseType type;               // Response type
+    int32_t serial;                       // Serial number of the request
+    RadioError error;                     // Response error
 };
 
 /**
@@ -214,4 +254,25 @@ struct SetupDataCallResult {
 
     /** Specifies the fallback mode on an IWLAN handover failure. */
     HandoverFailureMode handoverFailureMode;
+};
+
+/**
+ * NR Dual connectivity state
+ */
+enum NrDualConnectivityState: int32_t {
+    /**
+     * Enable NR dual connectivity. Enabled state does not mean dual connectivity
+     * is active. It means device is allowed to connect to both primary and secondary.
+     */
+    ENABLE = 1,
+    /**
+     * Disable NR dual connectivity. Disabled state does not mean secondary cell is released.
+     * Modem will release it only if current bearer is released to avoid radio link failure.
+     */
+    DISABLE = 2,
+    /**
+     * Disable NR dual connectivity and force secondary cell to be released if dual connectivity
+     * was active. This may result in radio link failure.
+     */
+    DISABLE_IMMEDIATE= 3,
 };

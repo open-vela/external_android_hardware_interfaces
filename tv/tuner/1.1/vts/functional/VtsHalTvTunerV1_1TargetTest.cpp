@@ -22,6 +22,10 @@ AssertionResult TunerBroadcastHidlTest::filterDataOutputTest() {
     return filterDataOutputTestBase(mFilterTests);
 }
 
+AssertionResult TunerRecordHidlTest::filterDataOutputTest() {
+    return filterDataOutputTestBase(mFilterTests);
+}
+
 void TunerFilterHidlTest::configSingleFilterInDemuxTest(FilterConfig filterConf,
                                                         FrontendConfig frontendConf) {
     uint32_t feId;
@@ -41,6 +45,9 @@ void TunerFilterHidlTest::configSingleFilterInDemuxTest(FilterConfig filterConf,
     ASSERT_TRUE(mFilterTests.configFilter(filterConf.settings, filterId));
     if (filterConf.type.mainType == DemuxFilterMainType::IP) {
         ASSERT_TRUE(mFilterTests.configIpFilterCid(filterConf.ipCid, filterId));
+    }
+    if (filterConf.statuses > 0) {
+        ASSERT_TRUE(mFilterTests.configureScramblingEvent(filterId, filterConf.statuses));
     }
     ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId));
     ASSERT_TRUE(mFilterTests.startFilter(filterId));
@@ -69,6 +76,7 @@ void TunerBroadcastHidlTest::mediaFilterUsingSharedMemoryTest(FilterConfig filte
     ASSERT_TRUE(mFilterTests.getNewlyOpenedFilterId_64bit(filterId));
     ASSERT_TRUE(mFilterTests.getSharedAvMemoryHandle(filterId));
     ASSERT_TRUE(mFilterTests.configFilter(filterConf.settings, filterId));
+    ASSERT_TRUE(mFilterTests.configAvFilterStreamType(filterConf.streamType, filterId));
     ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId));
     ASSERT_TRUE(mFilterTests.startFilter(filterId));
     // tune test
@@ -114,6 +122,7 @@ void TunerRecordHidlTest::recordSingleFilterTest(FilterConfig filterConf,
     ASSERT_TRUE(mFilterTests.startFilter(filterId));
     ASSERT_TRUE(mFrontendTests.tuneFrontend(frontendConf, true /*testWithDemux*/));
     mDvrTests.testRecordOutput();
+    ASSERT_TRUE(filterDataOutputTest());
     mDvrTests.stopRecordThread();
     ASSERT_TRUE(mFrontendTests.stopTuneFrontend(true /*testWithDemux*/));
     ASSERT_TRUE(mFilterTests.stopFilter(filterId));
@@ -142,19 +151,24 @@ TEST_P(TunerRecordHidlTest, RecordDataFlowWithTsRecordFilterTest) {
     recordSingleFilterTest(filterArray[TS_RECORD0], frontendArray[DVBT], dvrArray[DVR_RECORD0]);
 }
 
-TEST_P(TunerFrontendHidlTest, TuneFrontendWithFrontendSettingsExt) {
-    description("Tune one Frontend with specific setting and check Lock event");
+TEST_P(TunerFrontendHidlTest, TuneFrontendWithFrontendSettingsExt1_1) {
+    description("Tune one Frontend with v1_1 extended setting and check Lock event");
     mFrontendTests.tuneTest(frontendArray[DVBT]);
 }
 
 TEST_P(TunerFrontendHidlTest, BlindScanFrontendWithEndFrequency) {
-    description("Run an blind frontend scan with specific setting and check lock scanMessage");
+    description("Run an blind frontend scan with v1_1 extended setting and check lock scanMessage");
     mFrontendTests.scanTest(frontendScanArray[SCAN_DVBT], FrontendScanType::SCAN_BLIND);
 }
 
 TEST_P(TunerBroadcastHidlTest, MediaFilterWithSharedMemoryHandle) {
     description("Test the Media Filter with shared memory handle");
     mediaFilterUsingSharedMemoryTest(filterArray[TS_VIDEO0], frontendArray[DVBT]);
+}
+
+TEST_P(TunerFrontendHidlTest, GetFrontendDtmbCaps) {
+    description("Test to query Dtmb frontend caps if exists");
+    mFrontendTests.getFrontendDtmbCapsTest();
 }
 
 INSTANTIATE_TEST_SUITE_P(

@@ -54,6 +54,7 @@ using android::hardware::tv::tuner::V1_0::DemuxTsFilterType;
 using android::hardware::tv::tuner::V1_0::IDemux;
 using android::hardware::tv::tuner::V1_0::IFilter;
 using android::hardware::tv::tuner::V1_0::Result;
+using android::hardware::tv::tuner::V1_1::AvStreamType;
 using android::hardware::tv::tuner::V1_1::DemuxFilterEventExt;
 using android::hardware::tv::tuner::V1_1::IFilterCallback;
 using android::hardware::tv::tuner::V1_1::ITuner;
@@ -116,6 +117,7 @@ class FilterCallback : public IFilterCallback {
     void setMemSize(uint64_t size) { mAvSharedMemSize = size; }
 
     void testFilterDataOutput();
+    void testFilterScramblingEvent();
 
     void readFilterEventData();
     bool dumpAvData(DemuxFilterMediaEvent event);
@@ -135,6 +137,7 @@ class FilterCallback : public IFilterCallback {
     android::Condition mMsgCondition;
 
     int mPidFilterOutputCount = 0;
+    int mScramblingStatusEvent = 0;
 };
 
 class FilterTests {
@@ -150,7 +153,9 @@ class FilterTests {
     AssertionResult getSharedAvMemoryHandle(uint64_t filterId);
     AssertionResult releaseShareAvHandle(uint64_t filterId);
     AssertionResult configFilter(DemuxFilterSettings setting, uint64_t filterId);
+    AssertionResult configAvFilterStreamType(AvStreamType type, uint64_t filterId);
     AssertionResult configIpFilterCid(uint32_t ipCid, uint64_t filterId);
+    AssertionResult configureScramblingEvent(uint64_t filterId, uint32_t statuses);
     AssertionResult getFilterMQDescriptor(uint64_t filterId);
     AssertionResult startFilter(uint64_t filterId);
     AssertionResult stopFilter(uint64_t filterId);

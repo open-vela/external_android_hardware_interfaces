@@ -17,7 +17,7 @@
 #define LOG_TAG "android.hardware.tv.tuner@1.1-Frontend"
 
 #include "Frontend.h"
-#include <android/hardware/tv/tuner/1.0/IFrontendCallback.h>
+#include <android/hardware/tv/tuner/1.1/IFrontendCallback.h>
 #include <utils/Log.h>
 
 namespace android {
@@ -72,7 +72,7 @@ Return<Result> Frontend::tune(const FrontendSettings& /* settings */) {
 }
 
 Return<Result> Frontend::tune_1_1(const FrontendSettings& settings,
-                                  const V1_1::FrontendSettingsExt& /*settingsExt*/) {
+                                  const V1_1::FrontendSettingsExt1_1& /*settingsExt1_1*/) {
     ALOGV("%s", __FUNCTION__);
     return tune(settings);
 }
@@ -118,11 +118,25 @@ Return<Result> Frontend::scan(const FrontendSettings& settings, FrontendScanType
     mCallback->onScanMessage(FrontendScanMessageType::LOCKED, msg);
     mIsLocked = true;
 
+    sp<V1_1::IFrontendCallback> frontendCallback_v1_1 =
+            V1_1::IFrontendCallback::castFrom(mCallback);
+    if (frontendCallback_v1_1 != NULL) {
+        V1_1::FrontendScanMessageExt1_1 msg;
+        msg.modulation().dvbc(FrontendDvbcModulation::MOD_16QAM);
+        frontendCallback_v1_1->onScanMessageExt1_1(V1_1::FrontendScanMessageTypeExt1_1::MODULATION,
+                                                   msg);
+        msg.isHighPriority(true);
+        frontendCallback_v1_1->onScanMessageExt1_1(
+                V1_1::FrontendScanMessageTypeExt1_1::HIGH_PRIORITY, msg);
+    } else {
+        ALOGD("[Filter] Couldn't cast to V1_1 IFrontendCallback");
+    }
+
     return Result::SUCCESS;
 }
 
 Return<Result> Frontend::scan_1_1(const FrontendSettings& settings, FrontendScanType type,
-                                  const V1_1::FrontendSettingsExt& /*settingsExt*/) {
+                                  const V1_1::FrontendSettingsExt1_1& /*settingsExt1_1*/) {
     ALOGV("%s", __FUNCTION__);
     return scan(settings, type);
 }
@@ -259,6 +273,107 @@ Return<void> Frontend::getStatus(const hidl_vec<FrontendStatusType>& statusTypes
     return Void();
 }
 
+Return<void> Frontend::getStatusExt1_1(const hidl_vec<V1_1::FrontendStatusTypeExt1_1>& statusTypes,
+                                       V1_1::IFrontend::getStatusExt1_1_cb _hidl_cb) {
+    ALOGV("%s", __FUNCTION__);
+
+    vector<V1_1::FrontendStatusExt1_1> statuses;
+    for (int i = 0; i < statusTypes.size(); i++) {
+        V1_1::FrontendStatusTypeExt1_1 type = statusTypes[i];
+        V1_1::FrontendStatusExt1_1 status;
+        // assign randomly selected values for testing.
+        switch (type) {
+            case V1_1::FrontendStatusTypeExt1_1::MODULATIONS: {
+                vector<V1_1::FrontendModulation> modulations;
+                V1_1::FrontendModulation modulation;
+                modulation.isdbt(FrontendIsdbtModulation::MOD_16QAM);  // value = 1 << 3
+                modulations.push_back(modulation);
+                status.modulations(modulations);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::BERS: {
+                vector<uint32_t> bers = {1};
+                status.bers(bers);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::CODERATES: {
+                // value = 1 << 39
+                vector<V1_1::FrontendInnerFec> codeRates = {V1_1::FrontendInnerFec::FEC_6_15};
+                status.codeRates(codeRates);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::BANDWIDTH: {
+                V1_1::FrontendBandwidth bandwidth;
+                bandwidth.dvbt(FrontendDvbtBandwidth::BANDWIDTH_8MHZ);
+                status.bandwidth(bandwidth);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::GUARD_INTERVAL: {
+                V1_1::FrontendGuardInterval interval;
+                interval.dvbt(FrontendDvbtGuardInterval::INTERVAL_1_32);  // value = 1 << 1
+                status.interval(interval);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::TRANSMISSION_MODE: {
+                V1_1::FrontendTransmissionMode transMode;
+                transMode.dvbt(V1_1::FrontendDvbtTransmissionMode::AUTO);  // value = 1 << 0
+                status.transmissionMode(transMode);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::UEC: {
+                status.uec(4);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::T2_SYSTEM_ID: {
+                status.systemId(5);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::INTERLEAVINGS: {
+                V1_1::FrontendInterleaveMode interleave;
+                interleave.atsc3(FrontendAtsc3TimeInterleaveMode::AUTO);
+                vector<V1_1::FrontendInterleaveMode> interleaving = {interleave};
+                status.interleaving(interleaving);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::ISDBT_SEGMENTS: {
+                vector<uint8_t> segments = {2, 3};
+                status.isdbtSegment(segments);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::TS_DATA_RATES: {
+                vector<uint32_t> dataRates = {4, 5};
+                status.tsDataRate(dataRates);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::ROLL_OFF: {
+                V1_1::FrontendRollOff rollOff;
+                rollOff.dvbs(FrontendDvbsRolloff::ROLLOFF_0_35);
+                status.rollOff(rollOff);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::IS_MISO: {
+                status.isMiso(true);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::IS_LINEAR: {
+                status.isLinear(true);
+                break;
+            }
+            case V1_1::FrontendStatusTypeExt1_1::IS_SHORT_FRAMES: {
+                status.isShortFrames(true);
+                break;
+            }
+            default: {
+                continue;
+            }
+        }
+        statuses.push_back(status);
+    }
+    _hidl_cb(Result::SUCCESS, statuses);
+
+    return Void();
+}
+
 Return<Result> Frontend::setLna(bool /* bEnable */) {
     ALOGV("%s", __FUNCTION__);
 
@@ -273,10 +388,19 @@ Return<Result> Frontend::setLnb(uint32_t /* lnb */) {
     return Result::SUCCESS;
 }
 
-Return<Result> Frontend::linkCiCam(uint32_t ciCamId) {
+Return<void> Frontend::linkCiCam(uint32_t ciCamId, linkCiCam_cb _hidl_cb) {
     ALOGV("%s", __FUNCTION__);
 
     mCiCamId = ciCamId;
+    _hidl_cb(Result::SUCCESS, 0 /*ltsId*/);
+
+    return Void();
+}
+
+Return<Result> Frontend::unlinkCiCam(uint32_t /*ciCamId*/) {
+    ALOGV("%s", __FUNCTION__);
+
+    mCiCamId = -1;
 
     return Result::SUCCESS;
 }

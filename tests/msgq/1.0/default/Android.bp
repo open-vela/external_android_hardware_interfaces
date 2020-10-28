@@ -79,7 +79,11 @@ cc_test {
             suffix: "64",
         },
     },
-    test_suites: ["device-tests"],
+    test_suites: [
+        "general-tests",
+        "vts",
+    ],
+    auto_gen_config: false,
 
     // Allow dlsym'ing self for statically linked passthrough implementations
     ldflags: ["-rdynamic"],
@@ -89,7 +93,7 @@ cc_test {
     static_libs: [
         "android.hardware.tests.msgq@1.0",
         "android.fmq.test-ndk_platform",
-        "android.hardware.common-unstable-ndk_platform",
+        "android.hardware.common.fmq-unstable-ndk_platform",
     ],
     whole_static_libs: [
         "android.hardware.tests.msgq@1.0-impl",
