@@ -23,6 +23,7 @@ cc_test {
         "radio_response.cpp",
         "radio_indication.cpp",
         "VtsHalRadioV1_6TargetTest.cpp",
+        "vts_test_util_v1_6.cpp",
     ],
     static_libs: [
         "RadioVtsTestUtilBase",
@@ -37,5 +38,8 @@ cc_test {
         "android.hardware.radio.config@1.1",
     ],
     header_libs: ["radio.util.header@1.0"],
-    test_suites: ["general-tests", "vts"]
+    test_suites: [
+        "general-tests",
+        "vts",
+    ],
 }

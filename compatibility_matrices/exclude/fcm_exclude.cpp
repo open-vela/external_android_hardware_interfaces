@@ -53,12 +53,26 @@ bool ShouldCheckMissingHalsInFcm(const std::string& package) {
             // AIDL
             "android.hardware.biometrics.common",
             "android.hardware.common",
+            "android.hardware.common.fmq",
             "android.hardware.graphics.common",
             "android.hardware.keymaster",
 
             // Fastboot HAL is only used by recovery. Recovery is owned by OEM. Framework
             // does not depend on this HAL, hence it is not declared in any manifests or matrices.
             "android.hardware.fastboot@1.0",
+            "android.hardware.fastboot@1.1",
+
+            // Deprecated HALs.
+            // HIDL
+            // TODO(b/171260360) Remove when HAL definition is removed
+            "android.hardware.audio.effect@2.0",
+            "android.hardware.audio@2.0",
+            // TODO(b/171260613) Remove when HAL definition is removed
+            "android.hardware.health@1.0",
+            // TODO(b/171260670) Remove when HAL definition is removed
+            "android.hardware.nfc@1.0",
+            // TODO(b/171260715) Remove when HAL definition is removed
+            "android.hardware.radio.deprecated@1.0",
     };
 
     auto package_has_prefix = [&](const std::string& prefix) {

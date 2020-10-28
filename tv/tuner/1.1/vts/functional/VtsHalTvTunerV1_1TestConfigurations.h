@@ -43,12 +43,15 @@ using android::hardware::tv::tuner::V1_0::FrontendDvbtSettings;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtStandard;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtTransmissionMode;
 using android::hardware::tv::tuner::V1_0::FrontendSettings;
-using android::hardware::tv::tuner::V1_0::FrontendStatus;
-using android::hardware::tv::tuner::V1_0::FrontendStatusType;
 using android::hardware::tv::tuner::V1_0::FrontendType;
 using android::hardware::tv::tuner::V1_0::PlaybackSettings;
 using android::hardware::tv::tuner::V1_0::RecordSettings;
-using android::hardware::tv::tuner::V1_1::FrontendSettingsExt;
+using android::hardware::tv::tuner::V1_1::AudioStreamType;
+using android::hardware::tv::tuner::V1_1::AvStreamType;
+using android::hardware::tv::tuner::V1_1::FrontendSettingsExt1_1;
+using android::hardware::tv::tuner::V1_1::FrontendStatusExt1_1;
+using android::hardware::tv::tuner::V1_1::FrontendStatusTypeExt1_1;
+using android::hardware::tv::tuner::V1_1::VideoStreamType;
 
 using namespace std;
 
@@ -91,7 +94,9 @@ struct FilterConfig {
     uint32_t bufferSize;
     DemuxFilterType type;
     DemuxFilterSettings settings;
+    AvStreamType streamType;
     uint32_t ipCid;
+    uint32_t statuses;
 
     bool operator<(const FilterConfig& /*c*/) const { return false; }
 };
@@ -100,9 +105,9 @@ struct FrontendConfig {
     bool isSoftwareFe;
     FrontendType type;
     FrontendSettings settings;
-    FrontendSettingsExt settingsExt;
-    vector<FrontendStatusType> tuneStatusTypes;
-    vector<FrontendStatus> expectTuneStatuses;
+    FrontendSettingsExt1_1 settingsExt1_1;
+    vector<FrontendStatusTypeExt1_1> tuneStatusTypes;
+    vector<FrontendStatusExt1_1> expectTuneStatuses;
 };
 
 struct DvrConfig {
@@ -132,16 +137,20 @@ inline void initFrontendConfig() {
             .standard = FrontendDvbtStandard::T,
     };
     frontendArray[DVBT].type = FrontendType::DVBT, frontendArray[DVBT].settings.dvbt(dvbtSettings);
-    vector<FrontendStatusType> types;
-    types.push_back(FrontendStatusType::DEMOD_LOCK);
-    FrontendStatus status;
-    status.isDemodLocked(true);
-    vector<FrontendStatus> statuses;
+    vector<FrontendStatusTypeExt1_1> types;
+    types.push_back(FrontendStatusTypeExt1_1::UEC);
+    types.push_back(FrontendStatusTypeExt1_1::IS_MISO);
+    vector<FrontendStatusExt1_1> statuses;
+    FrontendStatusExt1_1 status;
+    status.uec(4);
     statuses.push_back(status);
+    status.isMiso(true);
+    statuses.push_back(status);
+
     frontendArray[DVBT].tuneStatusTypes = types;
     frontendArray[DVBT].expectTuneStatuses = statuses;
     frontendArray[DVBT].isSoftwareFe = true;
-    frontendArray[DVBT].settingsExt.settingExt.dvbt({
+    frontendArray[DVBT].settingsExt1_1.settingExt.dvbt({
             .transmissionMode =
                     android::hardware::tv::tuner::V1_1::FrontendDvbtTransmissionMode::MODE_8K_E,
     });
@@ -164,8 +173,8 @@ inline void initFrontendScanConfig() {
             .isHighPriority = true,
             .standard = FrontendDvbtStandard::T,
     });
-    frontendScanArray[SCAN_DVBT].settingsExt.endFrequency = 800000;
-    frontendScanArray[SCAN_DVBT].settingsExt.settingExt.dvbt({
+    frontendScanArray[SCAN_DVBT].settingsExt1_1.endFrequency = 800000;
+    frontendScanArray[SCAN_DVBT].settingsExt1_1.settingExt.dvbt({
             .transmissionMode =
                     android::hardware::tv::tuner::V1_1::FrontendDvbtTransmissionMode::MODE_8K_E,
     });
@@ -179,11 +188,13 @@ inline void initFilterConfig() {
     filterArray[TS_VIDEO0].bufferSize = FMQ_SIZE_16M;
     filterArray[TS_VIDEO0].settings.ts().tpid = 256;
     filterArray[TS_VIDEO0].settings.ts().filterSettings.av({.isPassthrough = false});
+    filterArray[TS_VIDEO0].statuses = 1;
     filterArray[TS_VIDEO1].type.mainType = DemuxFilterMainType::TS;
     filterArray[TS_VIDEO1].type.subType.tsFilterType(DemuxTsFilterType::VIDEO);
     filterArray[TS_VIDEO1].bufferSize = FMQ_SIZE_16M;
     filterArray[TS_VIDEO1].settings.ts().tpid = 256;
     filterArray[TS_VIDEO1].settings.ts().filterSettings.av({.isPassthrough = false});
+    filterArray[TS_VIDEO1].streamType.video(VideoStreamType::MPEG1);
     // TS AUDIO filter setting
     filterArray[TS_AUDIO0].type.mainType = DemuxFilterMainType::TS;
     filterArray[TS_AUDIO0].type.subType.tsFilterType(DemuxTsFilterType::AUDIO);
@@ -195,6 +206,7 @@ inline void initFilterConfig() {
     filterArray[TS_AUDIO1].bufferSize = FMQ_SIZE_16M;
     filterArray[TS_AUDIO1].settings.ts().tpid = 257;
     filterArray[TS_AUDIO1].settings.ts().filterSettings.av({.isPassthrough = false});
+    filterArray[TS_VIDEO1].streamType.audio(AudioStreamType::MP3);
     // TS PES filter setting
     filterArray[TS_PES0].type.mainType = DemuxFilterMainType::TS;
     filterArray[TS_PES0].type.subType.tsFilterType(DemuxTsFilterType::PES);

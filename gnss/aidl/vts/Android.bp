@@ -18,14 +18,25 @@ cc_test {
         "VtsHalTargetTestDefaults",
         "use_libaidlvintf_gtest_helper_static",
     ],
-    srcs: ["VtsHalGnssTargetTest.cpp"],
+    srcs: [
+        "gnss_hal_test.cpp",
+        "gnss_hal_test_cases.cpp",
+        "GnssCallbackAidl.cpp",
+        "VtsHalGnssTargetTest.cpp",
+    ],
     shared_libs: [
+        "android.hardware.gnss@2.1",
+        "android.hardware.gnss@2.0",
+        "android.hardware.gnss@1.1",
+        "android.hardware.gnss@1.0",
         "libbinder",
     ],
     static_libs: [
         "android.hardware.gnss-cpp",
+        "android.hardware.gnss@common-vts-lib",
     ],
     test_suites: [
+        "general-tests",
         "vts",
     ],
 }

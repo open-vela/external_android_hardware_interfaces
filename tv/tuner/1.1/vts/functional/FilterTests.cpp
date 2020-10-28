@@ -28,6 +28,18 @@ void FilterCallback::testFilterDataOutput() {
     ALOGW("[vts] pass and stop");
 }
 
+void FilterCallback::testFilterScramblingEvent() {
+    android::Mutex::Autolock autoLock(mMsgLock);
+    while (mScramblingStatusEvent < 1) {
+        if (-ETIMEDOUT == mMsgCondition.waitRelative(mMsgLock, WAIT_TIMEOUT)) {
+            EXPECT_TRUE(false) << "scrambling event does not output within timeout";
+            return;
+        }
+    }
+    mScramblingStatusEvent = 0;
+    ALOGW("[vts] pass and stop");
+}
+
 void FilterCallback::readFilterEventData() {
     ALOGW("[vts] reading filter event");
     // todo separate filter handlers
@@ -47,8 +59,17 @@ void FilterCallback::readFilterEventData() {
         auto eventExt = mFilterEventExt.events[i];
         switch (eventExt.getDiscriminator()) {
             case DemuxFilterEventExt::Event::hidl_discriminator::tsRecord:
-                ALOGD("[vts] Extended TS record filter event, pts=%" PRIu64 ".",
-                      eventExt.tsRecord().pts);
+                ALOGD("[vts] Extended TS record filter event, pts=%" PRIu64 ", firstMbInSlice=%d",
+                      eventExt.tsRecord().pts, eventExt.tsRecord().firstMbInSlice);
+                break;
+            case DemuxFilterEventExt::Event::hidl_discriminator::mmtpRecord:
+                ALOGD("[vts] Extended MMTP record filter event, pts=%" PRIu64
+                      ", firstMbInSlice=%d, mpuSequenceNumber=%d",
+                      eventExt.mmtpRecord().pts, eventExt.mmtpRecord().firstMbInSlice,
+                      eventExt.mmtpRecord().mpuSequenceNumber);
+                break;
+            case DemuxFilterEventExt::Event::hidl_discriminator::scramblingStatus:
+                mScramblingStatusEvent++;
                 break;
             default:
                 break;
@@ -164,6 +185,20 @@ AssertionResult FilterTests::configFilter(DemuxFilterSettings setting, uint64_t 
     return AssertionResult(status == Result::SUCCESS);
 }
 
+AssertionResult FilterTests::configAvFilterStreamType(AvStreamType type, uint64_t filterId) {
+    Result status;
+    EXPECT_TRUE(mFilters[filterId]) << "Test with getNewlyOpenedFilterId first.";
+    sp<android::hardware::tv::tuner::V1_1::IFilter> filter_v1_1 =
+            android::hardware::tv::tuner::V1_1::IFilter::castFrom(mFilters[filterId]);
+    if (filter_v1_1 != NULL) {
+        status = filter_v1_1->configureAvStreamType(type);
+    } else {
+        ALOGW("[vts] Can't cast IFilter into v1_1.");
+        return failure();
+    }
+    return AssertionResult(status == Result::SUCCESS);
+}
+
 AssertionResult FilterTests::configIpFilterCid(uint32_t ipCid, uint64_t filterId) {
     Result status;
     EXPECT_TRUE(mFilters[filterId]) << "Open Ip filter first.";
@@ -217,6 +252,22 @@ AssertionResult FilterTests::closeFilter(uint64_t filterId) {
         }
         mFilterCallbacks.erase(filterId);
         mFilters.erase(filterId);
+    }
+    return AssertionResult(status == Result::SUCCESS);
+}
+
+AssertionResult FilterTests::configureScramblingEvent(uint64_t filterId, uint32_t statuses) {
+    EXPECT_TRUE(mFilters[filterId]) << "Test with getNewlyOpenedFilterId first.";
+    Result status;
+
+    sp<android::hardware::tv::tuner::V1_1::IFilter> filter_v1_1 =
+            android::hardware::tv::tuner::V1_1::IFilter::castFrom(mFilters[filterId]);
+    if (filter_v1_1 != NULL) {
+        status = filter_v1_1->configureScramblingEvent(statuses);
+        mFilterCallbacks[filterId]->testFilterScramblingEvent();
+    } else {
+        ALOGW("[vts] Can't cast IFilter into v1_1.");
+        return failure();
     }
     return AssertionResult(status == Result::SUCCESS);
 }

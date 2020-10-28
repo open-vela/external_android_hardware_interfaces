@@ -33,7 +33,7 @@ ifndef DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE
 LOCAL_SRC_FILES := compatibility_matrix.empty.xml
 else
 
-# DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE specify an absolute path
+# DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE specifies absolute paths
 LOCAL_GENERATED_SOURCES := $(DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE)
 
 # Enforce that DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE does not specify required HALs
@@ -77,7 +77,7 @@ LOCAL_PRODUCT_MODULE := true
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_RELATIVE_PATH := vintf
 
-# DEVICE_PRODUCT_COMPATIBILITY_MATRIX_FILE specify an absolute path
+# DEVICE_PRODUCT_COMPATIBILITY_MATRIX_FILE specifies absolute paths
 LOCAL_GENERATED_SOURCES := $(DEVICE_PRODUCT_COMPATIBILITY_MATRIX_FILE)
 
 # Enforce that DEVICE_PRODUCT_COMPATIBILITY_MATRIX_FILE does not specify required HALs
@@ -92,9 +92,6 @@ include $(BUILD_FRAMEWORK_COMPATIBILITY_MATRIX)
 endif # DEVICE_PRODUCT_COMPATIBILITY_MATRIX_FILE
 
 my_system_matrix_deps := \
-    framework_compatibility_matrix.legacy.xml \
-    framework_compatibility_matrix.1.xml \
-    framework_compatibility_matrix.2.xml \
     framework_compatibility_matrix.3.xml \
     framework_compatibility_matrix.4.xml \
     framework_compatibility_matrix.5.xml \
