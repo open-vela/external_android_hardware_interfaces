@@ -25,28 +25,45 @@
 #include <utils/Errors.h>
 #include <utils/StrongPointer.h>
 
-#include <android/hardware/automotive/audiocontrol/1.0/IAudioControl.h>
 #include <android/hardware/automotive/audiocontrol/1.0/types.h>
+#include <android/hardware/automotive/audiocontrol/1.0/IAudioControl.h>
 #include <android/log.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+
+#include <VtsHalHidlTargetTestBase.h>
 
 using namespace ::android::hardware::automotive::audiocontrol::V1_0;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
-using ::android::hardware::hidl_enum_range;
+using ::android::hardware::hidl_enum_iterator;
 using ::android::hardware::hidl_handle;
 using ::android::hardware::hidl_string;
 using ::android::hardware::hidl_vec;
 using ::android::sp;
 
+
+// Boiler plate for test harness
+class CarAudioControlHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static CarAudioControlHidlEnvironment* Instance() {
+        static CarAudioControlHidlEnvironment* instance = new CarAudioControlHidlEnvironment;
+        return instance;
+    }
+
+    virtual void registerTestServices() override { registerTestService<IAudioControl>(); }
+   private:
+    CarAudioControlHidlEnvironment() {}
+};
+
+
 // The main test class for the automotive AudioControl HAL
-class CarAudioControlHidlTest : public ::testing::TestWithParam<std::string> {
-  public:
+class CarAudioControlHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+public:
     virtual void SetUp() override {
         // Make sure we can connect to the driver
-        pAudioControl = IAudioControl::getService(GetParam());
+        pAudioControl = ::testing::VtsHalHidlTargetTestBase::getService<IAudioControl>(
+                                    CarAudioControlHidlEnvironment::Instance()->
+                                    getServiceName<IAudioControl>());
         ASSERT_NE(pAudioControl.get(), nullptr);
     }
 
@@ -65,7 +82,7 @@ class CarAudioControlHidlTest : public ::testing::TestWithParam<std::string> {
  * fader actually works.  The only thing we can do is exercise the HAL and if the HAL crashes,
  * we _might_ get a test failure if that breaks the connection to the driver.
  */
-TEST_P(CarAudioControlHidlTest, FaderExercise) {
+TEST_F(CarAudioControlHidlTest, FaderExercise) {
     ALOGI("Fader exercise test (silent)");
 
     // Set the fader all the way to the back
@@ -87,7 +104,7 @@ TEST_P(CarAudioControlHidlTest, FaderExercise) {
 /*
  * Balance exercise test.
  */
-TEST_P(CarAudioControlHidlTest, BalanceExercise) {
+TEST_F(CarAudioControlHidlTest, BalanceExercise) {
     ALOGI("Balance exercise test (silent)");
 
     // Set the balance all the way to the left
@@ -109,13 +126,13 @@ TEST_P(CarAudioControlHidlTest, BalanceExercise) {
 /*
  * Context mapping test.
  */
-TEST_P(CarAudioControlHidlTest, ContextMapping) {
+TEST_F(CarAudioControlHidlTest, ContextMapping) {
     ALOGI("Context mapping test");
 
     int bus = -1;
 
     // For each defined context, query the driver for the BUS on which it should be delivered
-    for (const auto& ctxt : hidl_enum_range<ContextNumber>()) {
+    for (const auto& ctxt : hidl_enum_iterator<ContextNumber>()) {
          bus = pAudioControl->getBusForContext(ctxt);
 
          if (ctxt == ContextNumber::INVALID) {
@@ -130,8 +147,8 @@ TEST_P(CarAudioControlHidlTest, ContextMapping) {
     }
 
     // Try asking about an invalid context one beyond the last defined to see that it gets back a -1
-    int contextRange = std::distance(hidl_enum_range<ContextNumber>().begin(),
-                                     hidl_enum_range<ContextNumber>().end());
+    int contextRange = std::distance(hidl_enum_iterator<ContextNumber>().begin(),
+                                     hidl_enum_iterator<ContextNumber>().end());
     bus = pAudioControl->getBusForContext((ContextNumber)contextRange);
     EXPECT_EQ(bus, -1);
 
@@ -139,9 +156,3 @@ TEST_P(CarAudioControlHidlTest, ContextMapping) {
     bus = pAudioControl->getBusForContext((ContextNumber)~0);
     EXPECT_EQ(bus, -1);
 }
-
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(CarAudioControlHidlTest);
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, CarAudioControlHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IAudioControl::descriptor)),
-        android::hardware::PrintInstanceNameToString);

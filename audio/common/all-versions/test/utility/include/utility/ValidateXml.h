@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2017 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,10 @@ namespace utility {
 ::testing::AssertionResult validateXml(const char* xmlFilePathExpr, const char* xsdFilePathExpr,
                                        const char* xmlFilePath, const char* xsdFilePath);
 
+std::vector<std::string> findValidXmlFiles(const char* xsdFilePathExpr,
+        const char* xmlFileName, std::vector<const char*> xmlFileLocations, const char* xsdFilePath,
+        std::vector<std::string>* errors = nullptr);
+
 /** Helper gtest ASSERT to test XML validity against an XSD. */
 #define ASSERT_VALID_XML(xmlFilePath, xsdFilePath)                                      \
     ASSERT_PRED_FORMAT2(::android::hardware::audio::common::test::utility::validateXml, \
@@ -51,31 +55,8 @@ namespace utility {
  */
 template <bool atLeastOneRequired = true>
 ::testing::AssertionResult validateXmlMultipleLocations(
-        const char* xmlFileNameExpr, const char* xmlFileLocationsExpr, const char* xsdFilePathExpr,
-        const char* xmlFileName, const std::vector<std::string>& xmlFileLocations,
-        const char* xsdFilePath);
-template <bool atLeastOneRequired = true>
-::testing::AssertionResult validateXmlMultipleLocations(
-        const char* xmlFileNameExpr, const char* xmlFileLocationsExpr, const char* xsdFilePathExpr,
-        const char* xmlFileName, std::initializer_list<const char*> xmlFileLocations,
-        const char* xsdFilePath) {
-    return validateXmlMultipleLocations<atLeastOneRequired>(
-            xmlFileNameExpr, xmlFileLocationsExpr, xsdFilePathExpr, xmlFileName,
-            std::vector<std::string>(xmlFileLocations.begin(), xmlFileLocations.end()),
-            xsdFilePath);
-}
-template <bool atLeastOneRequired = true>
-::testing::AssertionResult validateXmlMultipleLocations(const char* xmlFileNameExpr,
-                                                        const char* xmlFileLocationsExpr,
-                                                        const char* xsdFilePathExpr,
-                                                        const char* xmlFileName,
-                                                        std::vector<const char*> xmlFileLocations,
-                                                        const char* xsdFilePath) {
-    return validateXmlMultipleLocations<atLeastOneRequired>(
-            xmlFileNameExpr, xmlFileLocationsExpr, xsdFilePathExpr, xmlFileName,
-            std::vector<std::string>(xmlFileLocations.begin(), xmlFileLocations.end()),
-            xsdFilePath);
-}
+    const char* xmlFileNameExpr, const char* xmlFileLocationsExpr, const char* xsdFilePathExpr,
+    const char* xmlFileName, std::vector<const char*> xmlFileLocations, const char* xsdFilePath);
 
 /** ASSERT that all found XML are valid according to an xsd. */
 #define ASSERT_VALID_XML_MULTIPLE_LOCATIONS(xmlFileName, xmlFileLocations, xsdFilePath)         \
@@ -100,6 +81,9 @@ template <bool atLeastOneRequired = true>
     EXPECT_PRED_FORMAT3(                                                                       \
         ::android::hardware::audio::common::test::utility::validateXmlMultipleLocations<true>, \
         xmlFileName, xmlFileLocations, xsdFilePath)
+
+::testing::AssertionResult isNonEmptyXpath(
+        const char* xmlFilePath, const char* xpathQuery, bool* result);
 
 }  // namespace utility
 }  // namespace test
