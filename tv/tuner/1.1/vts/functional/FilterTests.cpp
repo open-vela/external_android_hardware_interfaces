@@ -64,9 +64,9 @@ void FilterCallback::readFilterEventData() {
                 break;
             case DemuxFilterEventExt::Event::hidl_discriminator::mmtpRecord:
                 ALOGD("[vts] Extended MMTP record filter event, pts=%" PRIu64
-                      ", firstMbInSlice=%d, mpuSequenceNumber=%d, tsIndexMask=%d",
+                      ", firstMbInSlice=%d, mpuSequenceNumber=%d",
                       eventExt.mmtpRecord().pts, eventExt.mmtpRecord().firstMbInSlice,
-                      eventExt.mmtpRecord().mpuSequenceNumber, eventExt.mmtpRecord().tsIndexMask);
+                      eventExt.mmtpRecord().mpuSequenceNumber);
                 break;
             case DemuxFilterEventExt::Event::hidl_discriminator::scramblingStatus:
                 mScramblingStatusEvent++;
