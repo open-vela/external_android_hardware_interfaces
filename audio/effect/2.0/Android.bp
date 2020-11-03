@@ -3,9 +3,8 @@
 hidl_interface {
     name: "android.hardware.audio.effect@2.0",
     root: "android.hardware",
-    vndk: {
-        enabled: true,
-    },
+    // TODO(b/153609531): remove when no longer needed.
+    native_bridge_supported: true,
     srcs: [
         "types.hal",
         "IAcousticEchoCancelerEffect.hal",
@@ -30,4 +29,3 @@ hidl_interface {
     gen_java: false,
     gen_java_constants: true,
 }
-
