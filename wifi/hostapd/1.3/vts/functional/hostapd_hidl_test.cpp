@@ -95,16 +95,7 @@ class HostapdHidlTest
             iface_params;
         ::android::hardware::wifi::hostapd::V1_1::IHostapd::IfaceParams
             iface_params_1_1;
-        ::android::hardware::wifi::hostapd::V1_2::IHostapd::IfaceParams
-            iface_params_1_2;
-        IHostapd::IfaceParams iface_params_1_3;
-
-        std::vector<
-            ::android::hardware::wifi::hostapd::V1_3::IHostapd::ChannelParams>
-            vec_channelParams;
-
-        ::android::hardware::wifi::hostapd::V1_3::IHostapd::ChannelParams
-            channelParams_1_3;
+        IHostapd::IfaceParams iface_params_1_2;
 
         iface_params.ifaceName = getPrimaryWlanIfaceName();
         iface_params.hwModeParams.enable80211N = true;
@@ -120,39 +111,23 @@ class HostapdHidlTest
         iface_params_1_2.channelParams.bandMask = 0;
         iface_params_1_2.channelParams.bandMask |=
             IHostapd::BandMask::BAND_2_GHZ;
-
-        // Newly added attributes in V1_3
-        channelParams_1_3.channel = iface_params.channelParams.channel;
-        channelParams_1_3.enableAcs = iface_params.channelParams.enableAcs;
-        channelParams_1_3.V1_2 = iface_params_1_2.channelParams;
-
-        vec_channelParams.push_back(channelParams_1_3);
-        iface_params_1_3.V1_2 = iface_params_1_2;
-        iface_params_1_3.channelParamsList = vec_channelParams;
-        return iface_params_1_3;
+        return iface_params_1_2;
     }
 
     IHostapd::IfaceParams getIfaceParamsWithAcs() {
         // First get the settings for WithoutAcs and then make changes
-        IHostapd::IfaceParams iface_params_1_3 = getIfaceParamsWithoutAcs();
-        iface_params_1_3.V1_2.V1_1.V1_0.channelParams.enableAcs = true;
-        iface_params_1_3.V1_2.V1_1.V1_0.channelParams.acsShouldExcludeDfs =
-            true;
-        iface_params_1_3.V1_2.V1_1.V1_0.channelParams.channel = 0;
-        iface_params_1_3.V1_2.channelParams.bandMask |=
+        IHostapd::IfaceParams iface_params_1_2 = getIfaceParamsWithoutAcs();
+        iface_params_1_2.V1_1.V1_0.channelParams.enableAcs = true;
+        iface_params_1_2.V1_1.V1_0.channelParams.acsShouldExcludeDfs = true;
+        iface_params_1_2.V1_1.V1_0.channelParams.channel = 0;
+        iface_params_1_2.channelParams.bandMask |=
             IHostapd::BandMask::BAND_5_GHZ;
-        iface_params_1_3.channelParamsList[0].channel =
-            iface_params_1_3.V1_2.V1_1.V1_0.channelParams.channel;
-        iface_params_1_3.channelParamsList[0].enableAcs =
-            iface_params_1_3.V1_2.V1_1.V1_0.channelParams.enableAcs;
-        iface_params_1_3.channelParamsList[0].V1_2 =
-            iface_params_1_3.V1_2.channelParams;
 
-        return iface_params_1_3;
+        return iface_params_1_2;
     }
 
     IHostapd::IfaceParams getIfaceParamsWithAcsAndFreqRange() {
-        IHostapd::IfaceParams iface_params_1_3 = getIfaceParamsWithAcs();
+        IHostapd::IfaceParams iface_params_1_2 = getIfaceParamsWithAcs();
         ::android::hardware::wifi::hostapd::V1_2::IHostapd::AcsFrequencyRange
             acsFrequencyRange;
         acsFrequencyRange.start = 2412;
@@ -161,23 +136,17 @@ class HostapdHidlTest
                         AcsFrequencyRange>
             vec_acsFrequencyRange;
         vec_acsFrequencyRange.push_back(acsFrequencyRange);
-        iface_params_1_3.V1_2.channelParams.acsChannelFreqRangesMhz =
+        iface_params_1_2.channelParams.acsChannelFreqRangesMhz =
             vec_acsFrequencyRange;
-        iface_params_1_3.channelParamsList[0].V1_2 =
-            iface_params_1_3.V1_2.channelParams;
-        return iface_params_1_3;
+        return iface_params_1_2;
     }
 
     IHostapd::IfaceParams getIfaceParamsWithAcsAndInvalidFreqRange() {
-        IHostapd::IfaceParams iface_params_1_3 =
+        IHostapd::IfaceParams iface_params_1_2 =
             getIfaceParamsWithAcsAndFreqRange();
-        iface_params_1_3.V1_2.channelParams.acsChannelFreqRangesMhz[0].start =
-            222;
-        iface_params_1_3.V1_2.channelParams.acsChannelFreqRangesMhz[0].end =
-            999;
-        iface_params_1_3.channelParamsList[0].V1_2 =
-            iface_params_1_3.V1_2.channelParams;
-        return iface_params_1_3;
+        iface_params_1_2.channelParams.acsChannelFreqRangesMhz[0].start = 222;
+        iface_params_1_2.channelParams.acsChannelFreqRangesMhz[0].end = 999;
+        return iface_params_1_2;
     }
 
     IHostapd::NetworkParams getOpenNwParams() {
@@ -249,12 +218,9 @@ class HostapdHidlTest
     }
 
     IHostapd::IfaceParams getIfaceParamsWithInvalidChannel() {
-        IHostapd::IfaceParams iface_params_1_3 = getIfaceParamsWithoutAcs();
-        iface_params_1_3.V1_2.V1_1.V1_0.channelParams.channel =
-            kIfaceInvalidChannel;
-        iface_params_1_3.channelParamsList[0].channel =
-            iface_params_1_3.V1_2.V1_1.V1_0.channelParams.channel;
-        return iface_params_1_3;
+        IHostapd::IfaceParams iface_params_1_2 = getIfaceParamsWithoutAcs();
+        iface_params_1_2.V1_1.V1_0.channelParams.channel = kIfaceInvalidChannel;
+        return iface_params_1_2;
     }
 
     // IHostapd object used for all tests in this fixture.
@@ -455,11 +421,6 @@ TEST_P(HostapdHidlTest, DisconnectClientWhenIfacAvailable) {
                     kTestZeroMacAddr, kTestDisconnectReasonCode);
     EXPECT_EQ(HostapdStatusCode::FAILURE_CLIENT_UNKNOWN, status_1_2.code);
 }
-
-/**
- * AddAccessPointWithDualBandConfig should pass
- */
-// TODO: Add it after VendorHal ready & add feature support check.
 
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(HostapdHidlTest);
 INSTANTIATE_TEST_CASE_P(
