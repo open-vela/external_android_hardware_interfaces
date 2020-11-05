@@ -225,7 +225,7 @@ interface IRadioResponse extends @1.5::IRadioResponse {
      *   RadioError:RADIO_NOT_AVAILABLE
      *   RadioError:INTERNAL_ERR
      */
-    oneway setNrDualConnectivityStateResponse(RadioResponseInfo info);
+    oneway enableNrDualConnectivityResponse(RadioResponseInfo info);
 
     /**
      * @param info Response info struct containing response type, serial no. and error
