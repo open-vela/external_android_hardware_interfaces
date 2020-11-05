@@ -773,7 +773,7 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
             const SendSmsResult& sms);
 
-    Return<void> setNrDualConnectivityStateResponse(
+    Return<void> enableNrDualConnectivityResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
     Return<void> isNrDualConnectivityEnabledResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info, bool isEnabled);
@@ -807,6 +807,9 @@ class RadioIndication_v1_6 : public ::android::hardware::radio::V1_6::IRadioIndi
     Return<void> dataCallListChanged_1_6(
             RadioIndicationType type,
             const hidl_vec<::android::hardware::radio::V1_6::SetupDataCallResult>& dcList);
+
+    Return<void> unthrottleApn(RadioIndicationType type,
+                               const ::android::hardware::hidl_string& apn);
 
     /* 1.5 Api */
     Return<void> uiccApplicationsEnablementChanged(RadioIndicationType type, bool enabled);
