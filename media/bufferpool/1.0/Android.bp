@@ -3,9 +3,6 @@
 hidl_interface {
     name: "android.hardware.media.bufferpool@1.0",
     root: "android.hardware",
-    vndk: {
-        enabled: true,
-    },
     srcs: [
         "types.hal",
         "IAccessor.hal",
@@ -15,12 +12,5 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
-    types: [
-        "Buffer",
-        "BufferStatus",
-        "BufferStatusMessage",
-        "ResultStatus",
-    ],
     gen_java: false,
 }
-
