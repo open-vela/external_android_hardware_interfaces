@@ -303,7 +303,7 @@ TEST_P(RadioHidlTest_v1_6, setDataThrottling) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_6->setDataThrottling(
-            serial, DataThrottlingAction::THROTTLE_SECONDARY_CARRIER, 60000);
+            serial, DataThrottlingAction::THROTTLE_SECONDARY_CARRIER, 60);
     ASSERT_OK(res);
 
     EXPECT_EQ(std::cv_status::no_timeout, wait());
@@ -318,8 +318,7 @@ TEST_P(RadioHidlTest_v1_6, setDataThrottling) {
 
     serial = GetRandomSerialNumber();
 
-    res = radio_v1_6->setDataThrottling(serial, DataThrottlingAction::THROTTLE_ANCHOR_CARRIER,
-                                        60000);
+    res = radio_v1_6->setDataThrottling(serial, DataThrottlingAction::THROTTLE_ANCHOR_CARRIER, 60);
     ASSERT_OK(res);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
@@ -333,7 +332,7 @@ TEST_P(RadioHidlTest_v1_6, setDataThrottling) {
 
     serial = GetRandomSerialNumber();
 
-    res = radio_v1_6->setDataThrottling(serial, DataThrottlingAction::HOLD, 60000);
+    res = radio_v1_6->setDataThrottling(serial, DataThrottlingAction::HOLD, 60);
     ASSERT_OK(res);
 
     EXPECT_EQ(std::cv_status::no_timeout, wait());
@@ -348,7 +347,7 @@ TEST_P(RadioHidlTest_v1_6, setDataThrottling) {
 
     serial = GetRandomSerialNumber();
 
-    res = radio_v1_6->setDataThrottling(serial, DataThrottlingAction::NO_DATA_THROTTLING, 60000);
+    res = radio_v1_6->setDataThrottling(serial, DataThrottlingAction::NO_DATA_THROTTLING, 60);
     ASSERT_OK(res);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
