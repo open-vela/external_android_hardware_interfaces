@@ -325,13 +325,10 @@ class IfaceBssTmHandlingDoneCallback : public IfaceCallback {
  * RegisterCallback_1_3
  */
 TEST_P(SupplicantStaIfaceHidlTest, RegisterCallback_1_3) {
-    SupplicantStatusCode expectedCode =
-        (nullptr != sta_iface_v1_4_) ? SupplicantStatusCode::FAILURE_UNKNOWN
-                                     : SupplicantStatusCode::SUCCESS;
-    sta_iface_->registerCallback_1_3(new IfaceCallback(),
-                                     [&](const SupplicantStatus& status) {
-                                         EXPECT_EQ(expectedCode, status.code);
-                                     });
+    sta_iface_->registerCallback_1_3(
+        new IfaceCallback(), [](const SupplicantStatus& status) {
+            EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
+        });
 }
 
 /*
@@ -431,11 +428,6 @@ TEST_P(SupplicantStaIfaceHidlTest, StartDppEnrolleeInitiator) {
         return;
     }
 
-    if (sta_iface_v1_4_ != nullptr) {
-        GTEST_SKIP() << "Test not supported with this HAL version";
-        return;
-    }
-
     hidl_string uri =
         "DPP:C:81/1,117/"
         "40;M:48d6d5bd1de1;I:G1197843;K:MDkwEwYHKoZIzj0CAQYIKoZIzj"
@@ -485,11 +477,6 @@ TEST_P(SupplicantStaIfaceHidlTest, StartDppConfiguratorInitiator) {
     // If DPP is not supported, we just pass the test.
     if (!isDppSupported()) {
         // DPP not supported
-        return;
-    }
-
-    if (sta_iface_v1_4_ != nullptr) {
-        GTEST_SKIP() << "Test not supported with this HAL version";
         return;
     }
 
