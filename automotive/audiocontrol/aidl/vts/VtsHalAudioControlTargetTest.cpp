@@ -33,10 +33,10 @@ using android::hardware::automotive::audiocontrol::AudioFocusChange;
 using android::hardware::automotive::audiocontrol::BnFocusListener;
 using android::hardware::automotive::audiocontrol::IAudioControl;
 
-#include "android_audio_policy_configuration_V7_0.h"
+#include "audio_policy_configuration_V7_0.h"
 
 namespace xsd {
-using namespace android::audio::policy::configuration::V7_0;
+using namespace audio::policy::configuration::V7_0;
 }
 
 class AudioControlAidl : public testing::TestWithParam<std::string> {
