@@ -26,6 +26,7 @@
 #include <getopt.h>
 
 #include <VtsHalHidlTargetTestEnvBase.h>
+
 // Used to stop the android wifi framework before every test.
 void stopWifiFramework();
 void startWifiFramework();

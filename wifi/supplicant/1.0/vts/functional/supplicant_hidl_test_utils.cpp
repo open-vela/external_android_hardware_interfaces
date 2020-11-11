@@ -57,15 +57,25 @@ namespace {
 // Helper function to initialize the driver and firmware to STA mode
 // using the vendor HAL HIDL interface.
 void initilializeDriverAndFirmware() {
-    sp<IWifiChip> wifi_chip = getWifiChip();
-    ChipModeId mode_id;
-    EXPECT_TRUE(configureChipToSupportIfaceType(
-        wifi_chip, ::android::hardware::wifi::V1_0::IfaceType::STA, &mode_id));
+    if (getWifi() != nullptr) {
+        sp<IWifiChip> wifi_chip = getWifiChip();
+        ChipModeId mode_id;
+        EXPECT_TRUE(configureChipToSupportIfaceType(
+            wifi_chip, ::android::hardware::wifi::V1_0::IfaceType::STA, &mode_id));
+    } else {
+        LOG(WARNING) << __func__ << ": Vendor HAL not supported";
+    }
 }
 
 // Helper function to deinitialize the driver and firmware
 // using the vendor HAL HIDL interface.
-void deInitilializeDriverAndFirmware() { stopWifi(); }
+void deInitilializeDriverAndFirmware() {
+    if (getWifi() != nullptr) {
+        stopWifi();
+    } else {
+        LOG(WARNING) << __func__ << ": Vendor HAL not supported";
+    }
+}
 
 // Helper function to find any iface of the desired type exposed.
 bool findIfaceOfType(sp<ISupplicant> supplicant, IfaceType desired_type,
@@ -175,7 +185,7 @@ void startSupplicantAndWaitForHidlService() {
     ASSERT_TRUE(supplicant_manager.StartSupplicant());
     ASSERT_TRUE(supplicant_manager.IsSupplicantRunning());
 
-    ASSERT_TRUE(notification_listener->waitForHidlService(200, service_name));
+    ASSERT_TRUE(notification_listener->waitForHidlService(500, service_name));
 }
 
 bool is_1_1(const sp<ISupplicant>& supplicant) {
@@ -225,7 +235,6 @@ sp<ISupplicant> getSupplicant() {
     // For 1.1 supplicant, we need to add interfaces at initialization.
     if (is_1_1(supplicant)) {
         addSupplicantStaIface_1_1(supplicant);
-
         if (gEnv->isP2pOn) {
             addSupplicantP2pIface_1_1(supplicant);
         }
