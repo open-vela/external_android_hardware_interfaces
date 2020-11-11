@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.drm@1.1",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "ICryptoFactory.hal",
@@ -13,5 +16,13 @@ hidl_interface {
         "android.hardware.drm@1.0",
         "android.hidl.base@1.0",
     ],
+    types: [
+        "DrmMetricGroup",
+        "HdcpLevel",
+        "KeyRequestType",
+        "SecureStopRelease",
+        "SecurityLevel",
+    ],
     gen_java: false,
 }
+

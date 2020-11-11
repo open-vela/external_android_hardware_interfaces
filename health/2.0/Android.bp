@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.health@2.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IHealth.hal",
@@ -12,5 +15,13 @@ hidl_interface {
         "android.hardware.health@1.0",
         "android.hidl.base@1.0",
     ],
+    types: [
+        "DiskStats",
+        "HealthInfo",
+        "Result",
+        "StorageAttribute",
+        "StorageInfo",
+    ],
     gen_java: true,
 }
+
