@@ -19,6 +19,7 @@
 #include "core/default/Stream.h"
 #include "common/all-versions/HidlSupport.h"
 #include "common/all-versions/default/EffectMap.h"
+#include "core/default/Conversions.h"
 #include "core/default/Util.h"
 
 #include <inttypes.h>
@@ -29,7 +30,6 @@
 #include <hardware/audio_effect.h>
 #include <media/AudioContainers.h>
 #include <media/TypeConverter.h>
-#include <util/CoreUtils.h>
 
 namespace android {
 namespace hardware {
@@ -278,36 +278,23 @@ Return<void> Stream::getAudioProperties(getAudioProperties_cb _hidl_cb) {
     return Void();
 }
 
-Return<Result> Stream::setAudioProperties(const AudioConfigBaseOptional& config) {
-    audio_config_base_t halConfigBase = AUDIO_CONFIG_BASE_INITIALIZER;
-    bool formatSpecified, sRateSpecified, channelMaskSpecified;
-    status_t status = HidlUtils::audioConfigBaseOptionalToHal(
-            config, &halConfigBase, &formatSpecified, &sRateSpecified, &channelMaskSpecified);
+Return<Result> Stream::setAudioProperties(const AudioConfigBase& config) {
+    audio_config_base_t halConfigBase = {};
+    status_t status = HidlUtils::audioConfigBaseToHal(config, &halConfigBase);
     if (status != NO_ERROR) {
         return Stream::analyzeStatus("set_audio_properties", status);
     }
-    if (sRateSpecified) {
-        if (Result result = setParam(AudioParameter::keySamplingRate,
-                                     static_cast<int>(halConfigBase.sample_rate));
-            result != Result::OK) {
-            return result;
-        }
+    if (Result result = setParam(AudioParameter::keySamplingRate,
+                                 static_cast<int>(halConfigBase.sample_rate));
+        result != Result::OK) {
+        return result;
     }
-    if (channelMaskSpecified) {
-        if (Result result = setParam(AudioParameter::keyChannels,
-                                     static_cast<int>(halConfigBase.channel_mask));
-            result != Result::OK) {
-            return result;
-        }
+    if (Result result =
+                setParam(AudioParameter::keyChannels, static_cast<int>(halConfigBase.channel_mask));
+        result != Result::OK) {
+        return result;
     }
-    if (formatSpecified) {
-        if (Result result =
-                    setParam(AudioParameter::keyFormat, static_cast<int>(halConfigBase.format));
-            result != Result::OK) {
-            return result;
-        }
-    }
-    return Result::OK;
+    return setParam(AudioParameter::keyFormat, static_cast<int>(halConfigBase.format));
 }
 
 #endif  // MAJOR_VERSION <= 6
@@ -373,10 +360,9 @@ Return<void> Stream::getDevices(getDevices_cb _hidl_cb) {
     hidl_vec<DeviceAddress> devices;
     if (retval == Result::OK) {
         devices.resize(1);
-        retval = Stream::analyzeStatus(
-                "get_devices",
-                CoreUtils::deviceAddressFromHal(static_cast<audio_devices_t>(halDevice), nullptr,
-                                                &devices[0]));
+        retval = Stream::analyzeStatus("get_devices",
+                                       deviceAddressFromHal(static_cast<audio_devices_t>(halDevice),
+                                                            nullptr, &devices[0]));
     }
     _hidl_cb(retval, devices);
     return Void();
