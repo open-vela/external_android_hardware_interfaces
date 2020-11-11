@@ -1010,10 +1010,10 @@ optional<vector<vector<uint8_t>>> createAttestation(
     //
     ::keymaster::PureSoftKeymasterContext context(KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT);
 
-    error = generate_attestation_from_EVP_with_subject_name(
-            key, swEnforced, hwEnforced, auth_set, context, ::keymaster::kCurrentKeymasterVersion,
-            *attestation_chain, *attestation_signing_key, "Android Identity Credential Key",
-            &cert_chain_out);
+    error = generate_attestation_from_EVP(key, swEnforced, hwEnforced, auth_set, context,
+                                          ::keymaster::kCurrentKeymasterVersion, *attestation_chain,
+                                          *attestation_signing_key,
+                                          "Android Identity Credential Key", &cert_chain_out);
 
     if (KM_ERROR_OK != error || !cert_chain_out) {
         LOG(ERROR) << "Error generate attestation from EVP key" << error;
@@ -1611,6 +1611,12 @@ optional<vector<uint8_t>> certificateChainGetTopMostKey(const vector<uint8_t>& c
         return {};
     }
 
+    int algoId = OBJ_obj2nid(certs[0]->cert_info->key->algor->algorithm);
+    if (algoId != NID_X9_62_id_ecPublicKey) {
+        LOG(ERROR) << "Expected NID_X9_62_id_ecPublicKey, got " << OBJ_nid2ln(algoId);
+        return {};
+    }
+
     auto pkey = EVP_PKEY_Ptr(X509_get_pubkey(certs[0].get()));
     if (pkey.get() == nullptr) {
         LOG(ERROR) << "No public key";
@@ -1864,11 +1870,11 @@ bool ecdsaSignatureDerToCose(const vector<uint8_t>& ecdsaDerSignature,
 
     ecdsaCoseSignature.clear();
     ecdsaCoseSignature.resize(64);
-    if (BN_bn2binpad(ECDSA_SIG_get0_r(sig), ecdsaCoseSignature.data(), 32) != 32) {
+    if (BN_bn2binpad(sig->r, ecdsaCoseSignature.data(), 32) != 32) {
         LOG(ERROR) << "Error encoding r";
         return false;
     }
-    if (BN_bn2binpad(ECDSA_SIG_get0_s(sig), ecdsaCoseSignature.data() + 32, 32) != 32) {
+    if (BN_bn2binpad(sig->s, ecdsaCoseSignature.data() + 32, 32) != 32) {
         LOG(ERROR) << "Error encoding s";
         return false;
     }
