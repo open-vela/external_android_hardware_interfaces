@@ -1209,12 +1209,7 @@ bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& r
             return notify;
         }
 
-        // Physical device results are only expected in the last/final
-        // partial result notification.
-        bool expectPhysicalResults = !(request->usePartialResult &&
-                (results.partialResult < request->numPartialResults));
-        if (expectPhysicalResults &&
-                (physicalCameraMetadata.size() != request->expectedPhysicalResults.size())) {
+        if (physicalCameraMetadata.size() != request->expectedPhysicalResults.size()) {
             ALOGE("%s: Frame %d: Returned physical metadata count %zu "
                     "must be equal to expected count %zu", __func__, frameNumber,
                     physicalCameraMetadata.size(), request->expectedPhysicalResults.size());
@@ -7592,6 +7587,7 @@ void CameraHidlTest::verifyRequestTemplate(const camera_metadata_t* metadata,
     }
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(CameraHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, CameraHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(ICameraProvider::descriptor)),
