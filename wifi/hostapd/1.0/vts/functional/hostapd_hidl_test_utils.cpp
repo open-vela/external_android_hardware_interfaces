@@ -23,24 +23,26 @@
 
 #include <wifi_system/hostapd_manager.h>
 #include <wifi_system/interface_tool.h>
+#include <wifi_system/supplicant_manager.h>
 
 #include "hostapd_hidl_test_utils.h"
 #include "wifi_hidl_test_utils.h"
 
 using ::android::sp;
 using ::android::hardware::configureRpcThreadpool;
-using ::android::hardware::joinRpcThreadpool;
 using ::android::hardware::hidl_string;
 using ::android::hardware::hidl_vec;
+using ::android::hardware::joinRpcThreadpool;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
-using ::android::hardware::wifi::V1_0::ChipModeId;
-using ::android::hardware::wifi::V1_0::IWifiChip;
-using ::android::hardware::wifi::hostapd::V1_0::IHostapd;
 using ::android::hardware::wifi::hostapd::V1_0::HostapdStatus;
 using ::android::hardware::wifi::hostapd::V1_0::HostapdStatusCode;
+using ::android::hardware::wifi::hostapd::V1_0::IHostapd;
+using ::android::hardware::wifi::V1_0::ChipModeId;
+using ::android::hardware::wifi::V1_0::IWifiChip;
 using ::android::hidl::manager::V1_0::IServiceNotification;
 using ::android::wifi_system::HostapdManager;
+using ::android::wifi_system::SupplicantManager;
 
 extern WifiHostapdHidlEnvironment* gEnv;
 
@@ -48,15 +50,25 @@ namespace {
 // Helper function to initialize the driver and firmware to AP mode
 // using the vendor HAL HIDL interface.
 void initilializeDriverAndFirmware() {
-    sp<IWifiChip> wifi_chip = getWifiChip();
-    ChipModeId mode_id;
-    EXPECT_TRUE(configureChipToSupportIfaceType(
-        wifi_chip, ::android::hardware::wifi::V1_0::IfaceType::AP, &mode_id));
+    if (getWifi() != nullptr) {
+        sp<IWifiChip> wifi_chip = getWifiChip();
+        ChipModeId mode_id;
+        EXPECT_TRUE(configureChipToSupportIfaceType(
+            wifi_chip, ::android::hardware::wifi::V1_0::IfaceType::AP, &mode_id));
+    } else {
+        LOG(WARNING) << __func__ << ": Vendor HAL not supported";
+    }
 }
 
 // Helper function to deinitialize the driver and firmware
 // using the vendor HAL HIDL interface.
-void deInitilializeDriverAndFirmware() { stopWifi(); }
+void deInitilializeDriverAndFirmware() {
+    if (getWifi() != nullptr) {
+        stopWifi();
+    } else {
+        LOG(WARNING) << __func__ << ": Vendor HAL not supported";
+    }
+}
 }  // namespace
 
 // Utility class to wait for wpa_hostapd's HIDL service registration.
@@ -108,6 +120,16 @@ class ServiceNotificationListener : public IServiceNotification {
     std::condition_variable condition_;
 };
 
+void stopSupplicantIfNeeded() {
+    SupplicantManager supplicant_manager;
+    if (supplicant_manager.IsSupplicantRunning()) {
+        LOG(INFO) << "Supplicant is running, stop supplicant first.";
+        ASSERT_TRUE(supplicant_manager.StopSupplicant());
+        deInitilializeDriverAndFirmware();
+        ASSERT_FALSE(supplicant_manager.IsSupplicantRunning());
+    }
+}
+
 void stopHostapd() {
     HostapdManager hostapd_manager;
 
@@ -127,7 +149,13 @@ void startHostapdAndWaitForHidlService() {
     HostapdManager hostapd_manager;
     ASSERT_TRUE(hostapd_manager.StartHostapd());
 
-    ASSERT_TRUE(notification_listener->waitForHidlService(200, service_name));
+    ASSERT_TRUE(notification_listener->waitForHidlService(500, service_name));
+}
+
+bool is_1_1(const sp<IHostapd>& hostapd) {
+    sp<::android::hardware::wifi::hostapd::V1_1::IHostapd> hostapd_1_1 =
+        ::android::hardware::wifi::hostapd::V1_1::IHostapd::castFrom(hostapd);
+    return hostapd_1_1.get() != nullptr;
 }
 
 sp<IHostapd> getHostapd() {
