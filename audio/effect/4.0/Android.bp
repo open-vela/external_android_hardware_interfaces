@@ -3,8 +3,9 @@
 hidl_interface {
     name: "android.hardware.audio.effect@4.0",
     root: "android.hardware",
-    // TODO(b/153609531): remove when no longer needed.
-    native_bridge_supported: true,
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IAcousticEchoCancelerEffect.hal",
@@ -26,6 +27,21 @@ hidl_interface {
         "android.hardware.audio.common@4.0",
         "android.hidl.base@1.0",
     ],
+    types: [
+        "AudioBuffer",
+        "EffectAuxChannelsConfig",
+        "EffectBufferAccess",
+        "EffectBufferConfig",
+        "EffectConfig",
+        "EffectConfigParameters",
+        "EffectDescriptor",
+        "EffectFeature",
+        "EffectFlags",
+        "EffectOffloadParameter",
+        "MessageQueueFlagBits",
+        "Result",
+    ],
     gen_java: false,
     gen_java_constants: true,
 }
+
