@@ -58,8 +58,7 @@ class TunerFilterHidlTest : public testing::TestWithParam<std::string> {
     }
 
     void configSingleFilterInDemuxTest(FilterConfig filterConf, FrontendConfig frontendConf);
-    void reconfigSingleFilterInDemuxTest(FilterConfig filterConf, FilterConfig filterReconf,
-                                         FrontendConfig frontendConf);
+
     sp<ITuner> mService;
     FrontendTests mFrontendTests;
     DemuxTests mDemuxTests;

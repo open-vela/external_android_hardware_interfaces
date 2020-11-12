@@ -118,7 +118,6 @@ class FilterCallback : public IFilterCallback {
 
     void testFilterDataOutput();
     void testFilterScramblingEvent();
-    void testStartIdAfterReconfigure();
 
     void readFilterEventData();
     bool dumpAvData(DemuxFilterMediaEvent event);
@@ -139,7 +138,6 @@ class FilterCallback : public IFilterCallback {
 
     int mPidFilterOutputCount = 0;
     int mScramblingStatusEvent = 0;
-    bool mStartIdReceived = false;
 };
 
 class FilterTests {
@@ -162,7 +160,6 @@ class FilterTests {
     AssertionResult startFilter(uint64_t filterId);
     AssertionResult stopFilter(uint64_t filterId);
     AssertionResult closeFilter(uint64_t filterId);
-    AssertionResult startIdTest(uint64_t filterId);
 
     FilterEventType getFilterEventType(DemuxFilterType type) {
         FilterEventType eventType = FilterEventType::UNDEFINED;
