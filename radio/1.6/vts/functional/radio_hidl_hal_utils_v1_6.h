@@ -792,9 +792,6 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
 
     Return<void> setAllowedNetworkTypeBitmapResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
-
-    Return<void> setDataThrottlingResponse(
-            const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
 };
 
 /* Callback class for radio indication */
@@ -867,10 +864,6 @@ class RadioIndication_v1_6 : public ::android::hardware::radio::V1_6::IRadioIndi
     Return<void> currentLinkCapacityEstimate(
             RadioIndicationType type,
             const ::android::hardware::radio::V1_2::LinkCapacityEstimate& lce);
-
-    Return<void> currentLinkCapacityEstimate_1_6(
-            RadioIndicationType type,
-            const ::android::hardware::radio::V1_6::LinkCapacityEstimate& lce);
 
     Return<void> currentPhysicalChannelConfigs(
             RadioIndicationType type,
