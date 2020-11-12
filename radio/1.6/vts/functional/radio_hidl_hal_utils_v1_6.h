@@ -865,10 +865,6 @@ class RadioIndication_v1_6 : public ::android::hardware::radio::V1_6::IRadioIndi
             RadioIndicationType type,
             const ::android::hardware::radio::V1_2::LinkCapacityEstimate& lce);
 
-    Return<void> currentLinkCapacityEstimate_1_6(
-            RadioIndicationType type,
-            const ::android::hardware::radio::V1_6::LinkCapacityEstimate& lce);
-
     Return<void> currentPhysicalChannelConfigs(
             RadioIndicationType type,
             const ::android::hardware::hidl_vec<
