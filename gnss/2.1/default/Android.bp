@@ -21,12 +21,6 @@ cc_binary {
     vendor: true,
     vintf_fragments: ["android.hardware.gnss@2.1-service.xml"],
     srcs: [
-        "Gnss.cpp",
-        "GnssAntennaInfo.cpp",
-        "GnssDebug.cpp",
-        "GnssMeasurement.cpp",
-        "GnssMeasurementCorrections.cpp",
-        "GnssConfiguration.cpp",
         "service.cpp",
     ],
     shared_libs: [
