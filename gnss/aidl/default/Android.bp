@@ -47,7 +47,6 @@ cc_binary {
     srcs: [
         "Gnss.cpp",
         "GnssHidlHal.cpp",
-        "GnssPowerIndication.cpp",
         "GnssPsds.cpp",
         "GnssConfiguration.cpp",
         "service.cpp",

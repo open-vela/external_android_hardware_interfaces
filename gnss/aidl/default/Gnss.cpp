@@ -19,7 +19,6 @@
 #include "Gnss.h"
 #include <log/log.h>
 #include "GnssConfiguration.h"
-#include "GnssPowerIndication.h"
 #include "GnssPsds.h"
 
 namespace aidl::android::hardware::gnss {
@@ -63,14 +62,6 @@ ndk::ScopedAStatus Gnss::getExtensionGnssConfiguration(
         mGnssConfiguration = SharedRefBase::make<GnssConfiguration>();
     }
     *iGnssConfiguration = mGnssConfiguration;
-    return ndk::ScopedAStatus::ok();
-}
-
-ndk::ScopedAStatus Gnss::getExtensionGnssPowerIndication(
-        std::shared_ptr<IGnssPowerIndication>* iGnssPowerIndication) {
-    ALOGD("Gnss::getExtensionGnssPowerIndication");
-
-    *iGnssPowerIndication = SharedRefBase::make<GnssPowerIndication>();
     return ndk::ScopedAStatus::ok();
 }
 
