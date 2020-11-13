@@ -22,7 +22,6 @@ cc_test {
         "gnss_hal_test.cpp",
         "gnss_hal_test_cases.cpp",
         "GnssCallbackAidl.cpp",
-        "GnssPowerIndicationCallback.cpp",
         "VtsHalGnssTargetTest.cpp",
     ],
     shared_libs: [
