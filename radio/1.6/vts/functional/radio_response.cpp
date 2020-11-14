@@ -1136,7 +1136,7 @@ Return<void> RadioResponse_v1_6::releasePduSessionIdResponse(
     return Void();
 }
 
-Return<void> RadioResponse_v1_6::startHandoverResponse(
+Return<void> RadioResponse_v1_6::beginHandoverResponse(
         const ::android::hardware::radio::V1_6::RadioResponseInfo& info) {
     rspInfo = info;
     parent_v1_6.notify(info.serial);
