@@ -38,12 +38,11 @@ constexpr char kTestPassphrase[] = "P2pWorld1234";
 constexpr uint8_t kTestZeroMacAddr[] = {[0 ... 5] = 0x0};
 }  // namespace
 
-class SupplicantP2pIfaceHidlTest : public SupplicantHidlTestBase {
+class SupplicantP2pIfaceHidlTest : public SupplicantHidlTestBaseV1_2 {
    public:
     virtual void SetUp() override {
-        SupplicantHidlTestBase::SetUp();
-        EXPECT_TRUE(turnOnExcessiveLogging(supplicant_));
-        if (!::testing::deviceSupportsFeature("android.hardware.wifi.direct")) {
+        SupplicantHidlTestBaseV1_2::SetUp();
+        if (!isP2pOn_) {
             GTEST_SKIP() << "Wi-Fi Direct is not supported, skip this test.";
         }
         p2p_iface_ = getSupplicantP2pIface_1_2(supplicant_);
