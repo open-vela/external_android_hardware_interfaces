@@ -16,8 +16,6 @@
 
 #include "CommonUtils.h"
 
-#include "HandleError.h"
-
 #include <android-base/logging.h>
 #include <nnapi/Result.h>
 #include <nnapi/SharedMemory.h>
@@ -27,7 +25,6 @@
 
 #include <algorithm>
 #include <any>
-#include <functional>
 #include <optional>
 #include <variant>
 #include <vector>
@@ -114,18 +111,8 @@ bool hasNoPointerData(const nn::Request& request) {
     return hasNoPointerData(request.inputs) && hasNoPointerData(request.outputs);
 }
 
-nn::GeneralResult<std::reference_wrapper<const nn::Model>> flushDataFromPointerToShared(
-        const nn::Model* model, std::optional<nn::Model>* maybeModelInSharedOut) {
-    CHECK(model != nullptr);
-    CHECK(maybeModelInSharedOut != nullptr);
-
-    if (hasNoPointerData(*model)) {
-        return *model;
-    }
-
-    // Make a copy of the model in order to make modifications. The modified model is returned to
-    // the caller through `maybeModelInSharedOut` if the function succeeds.
-    nn::Model modelInShared = *model;
+nn::Result<nn::Model> flushDataFromPointerToShared(const nn::Model& model) {
+    auto modelInShared = model;
 
     nn::ConstantMemoryBuilder memoryBuilder(modelInShared.pools.size());
     copyPointersToSharedMemory(&modelInShared.main, &memoryBuilder);
@@ -139,22 +126,11 @@ nn::GeneralResult<std::reference_wrapper<const nn::Model>> flushDataFromPointerT
         modelInShared.pools.push_back(std::move(memory));
     }
 
-    *maybeModelInSharedOut = modelInShared;
-    return **maybeModelInSharedOut;
+    return modelInShared;
 }
 
-nn::GeneralResult<std::reference_wrapper<const nn::Request>> flushDataFromPointerToShared(
-        const nn::Request* request, std::optional<nn::Request>* maybeRequestInSharedOut) {
-    CHECK(request != nullptr);
-    CHECK(maybeRequestInSharedOut != nullptr);
-
-    if (hasNoPointerData(*request)) {
-        return *request;
-    }
-
-    // Make a copy of the request in order to make modifications. The modified request is returned
-    // to the caller through `maybeRequestInSharedOut` if the function succeeds.
-    nn::Request requestInShared = *request;
+nn::Result<nn::Request> flushDataFromPointerToShared(const nn::Request& request) {
+    auto requestInShared = request;
 
     // Change input pointers to shared memory.
     nn::ConstantMemoryBuilder inputBuilder(requestInShared.pools.size());
@@ -195,17 +171,15 @@ nn::GeneralResult<std::reference_wrapper<const nn::Request>> flushDataFromPointe
         requestInShared.pools.push_back(std::move(memory));
     }
 
-    *maybeRequestInSharedOut = requestInShared;
-    return **maybeRequestInSharedOut;
+    return requestInShared;
 }
 
-nn::GeneralResult<void> unflushDataFromSharedToPointer(
-        const nn::Request& request, const std::optional<nn::Request>& maybeRequestInShared) {
-    if (!maybeRequestInShared.has_value() || maybeRequestInShared->pools.empty() ||
-        !std::holds_alternative<nn::Memory>(maybeRequestInShared->pools.back())) {
+nn::Result<void> unflushDataFromSharedToPointer(const nn::Request& request,
+                                                const nn::Request& requestInShared) {
+    if (requestInShared.pools.empty() ||
+        !std::holds_alternative<nn::Memory>(requestInShared.pools.back())) {
         return {};
     }
-    const auto& requestInShared = *maybeRequestInShared;
 
     // Map the memory.
     const auto& outputMemory = std::get<nn::Memory>(requestInShared.pools.back());
