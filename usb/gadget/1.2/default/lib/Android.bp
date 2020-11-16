@@ -14,18 +14,28 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_1_2_UTILS_SERVICE_H
-#define ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_1_2_UTILS_SERVICE_H
+cc_library_static {
+    name: "libusbconfigfs-2",
+    vendor_available: true,
+    export_include_dirs: ["include"],
 
-#include <nnapi/IDevice.h>
-#include <nnapi/Result.h>
-#include <nnapi/Types.h>
-#include <string>
+    srcs: [
+        "UsbGadgetUtils.cpp",
+        "MonitorFfs.cpp",
+    ],
 
-namespace android::hardware::neuralnetworks::V1_2::utils {
+    cflags: [
+        "-Wall",
+        "-Werror",
+    ],
 
-nn::GeneralResult<nn::SharedDevice> getDevice(const std::string& name);
-
-}  // namespace android::hardware::neuralnetworks::V1_2::utils
-
-#endif  // ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_1_2_UTILS_SERVICE_H
+    shared_libs: [
+        "android.hardware.usb.gadget@1.0",
+        "android.hardware.usb.gadget@1.1",
+        "android.hardware.usb.gadget@1.2",
+        "libbase",
+        "libcutils",
+        "libhidlbase",
+        "libutils",
+    ],
+}

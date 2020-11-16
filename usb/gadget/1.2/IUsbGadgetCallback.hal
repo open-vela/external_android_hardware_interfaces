@@ -14,18 +14,20 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_1_0_UTILS_SERVICE_H
-#define ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_1_0_UTILS_SERVICE_H
+package android.hardware.usb.gadget@1.2;
 
-#include <nnapi/IDevice.h>
-#include <nnapi/Result.h>
-#include <nnapi/Types.h>
-#include <string>
+import UsbSpeed;
+import android.hardware.usb.gadget@1.0::IUsbGadgetCallback;
 
-namespace android::hardware::neuralnetworks::V1_0::utils {
+interface IUsbGadgetCallback extends @1.0::IUsbGadgetCallback {
+    /**
+     * Used to convey the current USB speed to the caller.
+     * Must be called either when USB state changes due to USB enumeration or
+     * when caller requested for USB speed through getUsbSpeed.
+     *
+     * @param speed USB Speed defined by UsbSpeed showed current USB
+     *              connection speed.
+     */
+    oneway getUsbSpeedCb(UsbSpeed speed);
+};
 
-nn::GeneralResult<nn::SharedDevice> getDevice(const std::string& name);
-
-}  // namespace android::hardware::neuralnetworks::V1_0::utils
-
-#endif  // ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_1_0_UTILS_SERVICE_H

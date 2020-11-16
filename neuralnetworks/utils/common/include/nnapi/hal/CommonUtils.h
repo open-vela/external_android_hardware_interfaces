@@ -19,7 +19,6 @@
 
 #include <nnapi/Result.h>
 #include <nnapi/Types.h>
-#include <functional>
 #include <vector>
 
 // Shorthand
@@ -43,16 +42,14 @@ bool hasNoPointerData(const nn::Model& model);
 bool hasNoPointerData(const nn::Request& request);
 
 // Relocate pointer-based data to shared memory.
-nn::GeneralResult<std::reference_wrapper<const nn::Model>> flushDataFromPointerToShared(
-        const nn::Model* model, std::optional<nn::Model>* maybeModelInSharedOut);
-nn::GeneralResult<std::reference_wrapper<const nn::Request>> flushDataFromPointerToShared(
-        const nn::Request* request, std::optional<nn::Request>* maybeRequestInSharedOut);
+nn::Result<nn::Model> flushDataFromPointerToShared(const nn::Model& model);
+nn::Result<nn::Request> flushDataFromPointerToShared(const nn::Request& request);
 
 // Undoes `flushDataFromPointerToShared` on a Request object. More specifically,
 // `unflushDataFromSharedToPointer` copies the output shared memory data from the transformed
 // Request object back to the output pointer-based memory in the original Request object.
-nn::GeneralResult<void> unflushDataFromSharedToPointer(
-        const nn::Request& request, const std::optional<nn::Request>& maybeRequestInShared);
+nn::Result<void> unflushDataFromSharedToPointer(const nn::Request& request,
+                                                const nn::Request& requestInShared);
 
 std::vector<uint32_t> countNumberOfConsumers(size_t numberOfOperands,
                                              const std::vector<nn::Operation>& operations);
