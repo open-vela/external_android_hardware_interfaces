@@ -16,10 +16,7 @@
 
 #include "CommonUtils.h"
 
-#include "HandleError.h"
-
 #include <android-base/logging.h>
-#include <android-base/unique_fd.h>
 #include <nnapi/Result.h>
 #include <nnapi/SharedMemory.h>
 #include <nnapi/TypeUtils.h>
@@ -28,7 +25,6 @@
 
 #include <algorithm>
 #include <any>
-#include <functional>
 #include <optional>
 #include <variant>
 #include <vector>
@@ -115,18 +111,8 @@ bool hasNoPointerData(const nn::Request& request) {
     return hasNoPointerData(request.inputs) && hasNoPointerData(request.outputs);
 }
 
-nn::GeneralResult<std::reference_wrapper<const nn::Model>> flushDataFromPointerToShared(
-        const nn::Model* model, std::optional<nn::Model>* maybeModelInSharedOut) {
-    CHECK(model != nullptr);
-    CHECK(maybeModelInSharedOut != nullptr);
-
-    if (hasNoPointerData(*model)) {
-        return *model;
-    }
-
-    // Make a copy of the model in order to make modifications. The modified model is returned to
-    // the caller through `maybeModelInSharedOut` if the function succeeds.
-    nn::Model modelInShared = *model;
+nn::Result<nn::Model> flushDataFromPointerToShared(const nn::Model& model) {
+    auto modelInShared = model;
 
     nn::ConstantMemoryBuilder memoryBuilder(modelInShared.pools.size());
     copyPointersToSharedMemory(&modelInShared.main, &memoryBuilder);
@@ -140,22 +126,11 @@ nn::GeneralResult<std::reference_wrapper<const nn::Model>> flushDataFromPointerT
         modelInShared.pools.push_back(std::move(memory));
     }
 
-    *maybeModelInSharedOut = modelInShared;
-    return **maybeModelInSharedOut;
+    return modelInShared;
 }
 
-nn::GeneralResult<std::reference_wrapper<const nn::Request>> flushDataFromPointerToShared(
-        const nn::Request* request, std::optional<nn::Request>* maybeRequestInSharedOut) {
-    CHECK(request != nullptr);
-    CHECK(maybeRequestInSharedOut != nullptr);
-
-    if (hasNoPointerData(*request)) {
-        return *request;
-    }
-
-    // Make a copy of the request in order to make modifications. The modified request is returned
-    // to the caller through `maybeRequestInSharedOut` if the function succeeds.
-    nn::Request requestInShared = *request;
+nn::Result<nn::Request> flushDataFromPointerToShared(const nn::Request& request) {
+    auto requestInShared = request;
 
     // Change input pointers to shared memory.
     nn::ConstantMemoryBuilder inputBuilder(requestInShared.pools.size());
@@ -196,17 +171,15 @@ nn::GeneralResult<std::reference_wrapper<const nn::Request>> flushDataFromPointe
         requestInShared.pools.push_back(std::move(memory));
     }
 
-    *maybeRequestInSharedOut = requestInShared;
-    return **maybeRequestInSharedOut;
+    return requestInShared;
 }
 
-nn::GeneralResult<void> unflushDataFromSharedToPointer(
-        const nn::Request& request, const std::optional<nn::Request>& maybeRequestInShared) {
-    if (!maybeRequestInShared.has_value() || maybeRequestInShared->pools.empty() ||
-        !std::holds_alternative<nn::Memory>(maybeRequestInShared->pools.back())) {
+nn::Result<void> unflushDataFromSharedToPointer(const nn::Request& request,
+                                                const nn::Request& requestInShared) {
+    if (requestInShared.pools.empty() ||
+        !std::holds_alternative<nn::Memory>(requestInShared.pools.back())) {
         return {};
     }
-    const auto& requestInShared = *maybeRequestInShared;
 
     // Map the memory.
     const auto& outputMemory = std::get<nn::Memory>(requestInShared.pools.back());
@@ -246,69 +219,6 @@ nn::GeneralResult<void> unflushDataFromSharedToPointer(
 std::vector<uint32_t> countNumberOfConsumers(size_t numberOfOperands,
                                              const std::vector<nn::Operation>& operations) {
     return nn::countNumberOfConsumers(numberOfOperands, operations);
-}
-
-nn::GeneralResult<hidl_handle> hidlHandleFromSharedHandle(const nn::SharedHandle& handle) {
-    if (handle == nullptr) {
-        return {};
-    }
-
-    std::vector<base::unique_fd> fds;
-    fds.reserve(handle->fds.size());
-    for (const auto& fd : handle->fds) {
-        int dupFd = dup(fd);
-        if (dupFd == -1) {
-            return NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE) << "Failed to dup the fd";
-        }
-        fds.emplace_back(dupFd);
-    }
-
-    native_handle_t* nativeHandle = native_handle_create(handle->fds.size(), handle->ints.size());
-    if (nativeHandle == nullptr) {
-        return NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE) << "Failed to create native_handle";
-    }
-    for (size_t i = 0; i < fds.size(); ++i) {
-        nativeHandle->data[i] = fds[i].release();
-    }
-    std::copy(handle->ints.begin(), handle->ints.end(), &nativeHandle->data[nativeHandle->numFds]);
-
-    hidl_handle hidlHandle;
-    hidlHandle.setTo(nativeHandle, /*shouldOwn=*/true);
-    return hidlHandle;
-}
-
-nn::GeneralResult<nn::SharedHandle> sharedHandleFromNativeHandle(const native_handle_t* handle) {
-    if (handle == nullptr) {
-        return nullptr;
-    }
-
-    std::vector<base::unique_fd> fds;
-    fds.reserve(handle->numFds);
-    for (int i = 0; i < handle->numFds; ++i) {
-        int dupFd = dup(handle->data[i]);
-        if (dupFd == -1) {
-            return NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE) << "Failed to dup the fd";
-        }
-        fds.emplace_back(dupFd);
-    }
-
-    std::vector<int> ints(&handle->data[handle->numFds],
-                          &handle->data[handle->numFds + handle->numInts]);
-
-    return std::make_shared<const nn::Handle>(nn::Handle{
-            .fds = std::move(fds),
-            .ints = std::move(ints),
-    });
-}
-
-nn::GeneralResult<hidl_vec<hidl_handle>> convertSyncFences(
-        const std::vector<nn::SyncFence>& syncFences) {
-    hidl_vec<hidl_handle> handles(syncFences.size());
-    for (size_t i = 0; i < syncFences.size(); ++i) {
-        handles[i] =
-                NN_TRY(hal::utils::hidlHandleFromSharedHandle(syncFences[i].getSharedHandle()));
-    }
-    return handles;
 }
 
 }  // namespace android::hardware::neuralnetworks::utils
