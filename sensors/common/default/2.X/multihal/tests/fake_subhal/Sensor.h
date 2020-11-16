@@ -49,7 +49,7 @@ class Sensor {
     virtual ~Sensor();
 
     const SensorInfo& getSensorInfo() const;
-    void batch(int64_t samplingPeriodNs);
+    void batch(int32_t samplingPeriodNs);
     virtual void activate(bool enable);
     Result flush();
 
@@ -112,6 +112,11 @@ class GyroSensor : public ContinuousSensor {
 
   protected:
     std::vector<Event> readEvents() override;
+};
+
+class DeviceTempSensor : public ContinuousSensor {
+  public:
+    DeviceTempSensor(int32_t sensorHandle, ISensorsEventCallback* callback);
 };
 
 class PressureSensor : public ContinuousSensor {
