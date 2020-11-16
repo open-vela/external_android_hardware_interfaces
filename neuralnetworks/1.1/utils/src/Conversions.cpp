@@ -42,7 +42,7 @@ template <typename Input>
 using convertOutput = std::decay_t<decltype(convert(std::declval<Input>()).value())>;
 
 template <typename Type>
-GeneralResult<std::vector<convertOutput<Type>>> convert(const hidl_vec<Type>& arguments) {
+Result<std::vector<convertOutput<Type>>> convert(const hidl_vec<Type>& arguments) {
     std::vector<convertOutput<Type>> canonical;
     canonical.reserve(arguments.size());
     for (const auto& argument : arguments) {
@@ -53,11 +53,11 @@ GeneralResult<std::vector<convertOutput<Type>>> convert(const hidl_vec<Type>& ar
 
 }  // anonymous namespace
 
-GeneralResult<OperationType> convert(const hal::V1_1::OperationType& operationType) {
+Result<OperationType> convert(const hal::V1_1::OperationType& operationType) {
     return static_cast<OperationType>(operationType);
 }
 
-GeneralResult<Capabilities> convert(const hal::V1_1::Capabilities& capabilities) {
+Result<Capabilities> convert(const hal::V1_1::Capabilities& capabilities) {
     const auto quantized8Performance = NN_TRY(convert(capabilities.quantized8Performance));
     const auto float32Performance = NN_TRY(convert(capabilities.float32Performance));
     const auto relaxedFloat32toFloat16Performance =
@@ -73,7 +73,7 @@ GeneralResult<Capabilities> convert(const hal::V1_1::Capabilities& capabilities)
     };
 }
 
-GeneralResult<Operation> convert(const hal::V1_1::Operation& operation) {
+Result<Operation> convert(const hal::V1_1::Operation& operation) {
     return Operation{
             .type = NN_TRY(convert(operation.type)),
             .inputs = operation.inputs,
@@ -81,7 +81,7 @@ GeneralResult<Operation> convert(const hal::V1_1::Operation& operation) {
     };
 }
 
-GeneralResult<Model> convert(const hal::V1_1::Model& model) {
+Result<Model> convert(const hal::V1_1::Model& model) {
     auto operations = NN_TRY(convert(model.operations));
 
     // Verify number of consumers.
@@ -90,9 +90,9 @@ GeneralResult<Model> convert(const hal::V1_1::Model& model) {
     CHECK(model.operands.size() == numberOfConsumers.size());
     for (size_t i = 0; i < model.operands.size(); ++i) {
         if (model.operands[i].numberOfConsumers != numberOfConsumers[i]) {
-            return NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE)
-                   << "Invalid numberOfConsumers for operand " << i << ", expected "
-                   << numberOfConsumers[i] << " but found " << model.operands[i].numberOfConsumers;
+            return NN_ERROR() << "Invalid numberOfConsumers for operand " << i << ", expected "
+                              << numberOfConsumers[i] << " but found "
+                              << model.operands[i].numberOfConsumers;
         }
     }
 
@@ -111,8 +111,7 @@ GeneralResult<Model> convert(const hal::V1_1::Model& model) {
     };
 }
 
-GeneralResult<ExecutionPreference> convert(
-        const hal::V1_1::ExecutionPreference& executionPreference) {
+Result<ExecutionPreference> convert(const hal::V1_1::ExecutionPreference& executionPreference) {
     return static_cast<ExecutionPreference>(executionPreference);
 }
 
@@ -123,20 +122,20 @@ namespace {
 
 using utils::convert;
 
-nn::GeneralResult<V1_0::PerformanceInfo> convert(
+nn::Result<V1_0::PerformanceInfo> convert(
         const nn::Capabilities::PerformanceInfo& performanceInfo) {
     return V1_0::utils::convert(performanceInfo);
 }
 
-nn::GeneralResult<V1_0::Operand> convert(const nn::Operand& operand) {
+nn::Result<V1_0::Operand> convert(const nn::Operand& operand) {
     return V1_0::utils::convert(operand);
 }
 
-nn::GeneralResult<hidl_vec<uint8_t>> convert(const nn::Model::OperandValues& operandValues) {
+nn::Result<hidl_vec<uint8_t>> convert(const nn::Model::OperandValues& operandValues) {
     return V1_0::utils::convert(operandValues);
 }
 
-nn::GeneralResult<hidl_memory> convert(const nn::Memory& memory) {
+nn::Result<hidl_memory> convert(const nn::Memory& memory) {
     return V1_0::utils::convert(memory);
 }
 
@@ -144,7 +143,7 @@ template <typename Input>
 using convertOutput = std::decay_t<decltype(convert(std::declval<Input>()).value())>;
 
 template <typename Type>
-nn::GeneralResult<hidl_vec<convertOutput<Type>>> convert(const std::vector<Type>& arguments) {
+nn::Result<hidl_vec<convertOutput<Type>>> convert(const std::vector<Type>& arguments) {
     hidl_vec<convertOutput<Type>> halObject(arguments.size());
     for (size_t i = 0; i < arguments.size(); ++i) {
         halObject[i] = NN_TRY(convert(arguments[i]));
@@ -154,11 +153,11 @@ nn::GeneralResult<hidl_vec<convertOutput<Type>>> convert(const std::vector<Type>
 
 }  // anonymous namespace
 
-nn::GeneralResult<OperationType> convert(const nn::OperationType& operationType) {
+nn::Result<OperationType> convert(const nn::OperationType& operationType) {
     return static_cast<OperationType>(operationType);
 }
 
-nn::GeneralResult<Capabilities> convert(const nn::Capabilities& capabilities) {
+nn::Result<Capabilities> convert(const nn::Capabilities& capabilities) {
     return Capabilities{
             .float32Performance = NN_TRY(convert(
                     capabilities.operandPerformance.lookup(nn::OperandType::TENSOR_FLOAT32))),
@@ -169,7 +168,7 @@ nn::GeneralResult<Capabilities> convert(const nn::Capabilities& capabilities) {
     };
 }
 
-nn::GeneralResult<Operation> convert(const nn::Operation& operation) {
+nn::Result<Operation> convert(const nn::Operation& operation) {
     return Operation{
             .type = NN_TRY(convert(operation.type)),
             .inputs = operation.inputs,
@@ -177,10 +176,9 @@ nn::GeneralResult<Operation> convert(const nn::Operation& operation) {
     };
 }
 
-nn::GeneralResult<Model> convert(const nn::Model& model) {
+nn::Result<Model> convert(const nn::Model& model) {
     if (!hal::utils::hasNoPointerData(model)) {
-        return NN_ERROR(nn::ErrorStatus::INVALID_ARGUMENT)
-               << "Mdoel cannot be converted because it contains pointer-based memory";
+        return NN_ERROR() << "Mdoel cannot be converted because it contains pointer-based memory";
     }
 
     auto operands = NN_TRY(convert(model.main.operands));
@@ -204,7 +202,7 @@ nn::GeneralResult<Model> convert(const nn::Model& model) {
     };
 }
 
-nn::GeneralResult<ExecutionPreference> convert(const nn::ExecutionPreference& executionPreference) {
+nn::Result<ExecutionPreference> convert(const nn::ExecutionPreference& executionPreference) {
     return static_cast<ExecutionPreference>(executionPreference);
 }
 
