@@ -773,7 +773,7 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
             const SendSmsResult& sms);
 
-    Return<void> enableNrDualConnectivityResponse(
+    Return<void> setNrDualConnectivityStateResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
     Return<void> isNrDualConnectivityEnabledResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info, bool isEnabled);
@@ -864,6 +864,10 @@ class RadioIndication_v1_6 : public ::android::hardware::radio::V1_6::IRadioIndi
     Return<void> currentLinkCapacityEstimate(
             RadioIndicationType type,
             const ::android::hardware::radio::V1_2::LinkCapacityEstimate& lce);
+
+    Return<void> currentLinkCapacityEstimate_1_6(
+            RadioIndicationType type,
+            const ::android::hardware::radio::V1_6::LinkCapacityEstimate& lce);
 
     Return<void> currentPhysicalChannelConfigs(
             RadioIndicationType type,
