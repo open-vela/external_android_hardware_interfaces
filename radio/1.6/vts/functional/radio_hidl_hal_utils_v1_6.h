@@ -784,13 +784,16 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
     Return<void> releasePduSessionIdResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
 
-    Return<void> beginHandoverResponse(
+    Return<void> startHandoverResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
 
     Return<void> cancelHandoverResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
 
     Return<void> setAllowedNetworkTypeBitmapResponse(
+            const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
+
+    Return<void> setDataThrottlingResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
 };
 
