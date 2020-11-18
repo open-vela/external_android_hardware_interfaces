@@ -72,7 +72,10 @@ class HostapdHidlTest
             "wifi_softap_wpa3_sae_supported");
     }
 
-    virtual void TearDown() override { stopHostapd(hostapd_instance_name_); }
+    virtual void TearDown() override {
+        HIDL_INVOKE_VOID_WITHOUT_ARGUMENTS(hostapd_, terminate);
+        stopHostapd(wifi_instance_name_);
+    }
 
    protected:
     bool isWpa3SaeSupport_ = false;
@@ -414,6 +417,7 @@ TEST_P(HostapdHidlTest, SetDebugParams) {
     EXPECT_EQ(HostapdStatusCode::SUCCESS, status.code);
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(HostapdHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, HostapdHidlTest,
     testing::Combine(
