@@ -437,6 +437,7 @@ TEST_P(RadioHidlTest_v1_5, togglingUiccApplicationsSimAbsent) {
 TEST_P(RadioHidlTest_v1_5, togglingUiccApplicationsSimPresent) {
     // This test case only test SIM ABSENT case.
     if (cardStatus.base.base.base.cardState != CardState::PRESENT) return;
+    if (cardStatus.applications.size() == 0) return;
 
     // Disable Uicc applications.
     serial = GetRandomSerialNumber();
@@ -1265,7 +1266,7 @@ TEST_P(RadioHidlTest_v1_5, getBarringInfo) {
                      info.serviceType <= BarringInfo::ServiceType::OPERATOR_32));
         reportedServices.insert(info.serviceType);
 
-        // Any type that is "conditional" must have sane values for conditional barring
+        // Any type that is "conditional" must have valid values for conditional barring
         // factor and time.
         switch (info.barringType) {
             case BarringInfo::BarringType::NONE:  // fall through
@@ -1284,7 +1285,7 @@ TEST_P(RadioHidlTest_v1_5, getBarringInfo) {
 
     // Certain types of barring are relevant for certain RANs. Ensure that only the right
     // types are reported. Note that no types are required, simply that for a given technology
-    // only certain types are valid. This is one way to sanity check that implementations are
+    // only certain types are valid. This is one way to check that implementations are
     // not providing information that they don't have.
     static const std::set<BarringInfo::ServiceType> UTRA_SERVICES{
             BarringInfo::ServiceType::CS_SERVICE, BarringInfo::ServiceType::PS_SERVICE,
