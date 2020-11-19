@@ -290,8 +290,10 @@ nn::GeneralResult<hidl_vec<uint8_t>> convert(const nn::Model::OperandValues& ope
 }
 
 nn::GeneralResult<hidl_memory> convert(const nn::Memory& memory) {
-    return hidl_memory(memory.name, NN_TRY(hal::utils::hidlHandleFromSharedHandle(memory.handle)),
-                       memory.size);
+    const auto hidlMemory = hidl_memory(memory.name, memory.handle->handle(), memory.size);
+    // Copy memory to force the native_handle_t to be copied.
+    auto copiedMemory = hidlMemory;
+    return copiedMemory;
 }
 
 nn::GeneralResult<Model> convert(const nn::Model& model) {
