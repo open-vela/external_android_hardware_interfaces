@@ -78,6 +78,7 @@ typedef string AudioSource;
  */
 typedef int32_t AudioSession;
 
+@export(name="", value_prefix="HAL_AUDIO_SESSION_")
 enum AudioSessionConsts : int32_t {
     /**
      * Session for effects attached to a particular sink or source audio device
@@ -106,25 +107,38 @@ typedef string AudioFormat;
 
 /**
  * Audio channel mask indicates presence of particular channels.
+ * Note that every value is already a mask comprised of individual
+ * channels.
  * See 'audioChannelMask' in audio_policy_configuration.xsd for the
  * list of allowed values.
  */
 typedef string AudioChannelMask;
 
 /**
- * Basic configuration applicable to any stream of audio.
+ * Base configuration attributes applicable to any stream of audio.
  */
-struct AudioBasicConfig {
+struct AudioConfigBase {
+    AudioFormat format;                 // 'DEFAULT' means 'unspecified'
     uint32_t sampleRateHz;              // 0 means 'unspecified'
     vec<AudioChannelMask> channelMask;  // empty means 'unspecified'
-    AudioFormat format;                 // 'DEFAULT' means 'unspecified'
+};
+
+/**
+ * Configurations supported for a certain audio format.
+ */
+struct AudioProfile {
+    AudioFormat format;
+    /** List of the sample rates (in Hz) supported by the profile. */
+    vec<uint32_t> sampleRates;
+    /** List of channel masks supported by the profile. */
+    vec<AudioChannelMask> channelMasks;
 };
 
 /**
  * Major modes for a mobile device. The current mode setting affects audio
  * routing.
  */
-@export(name="audio_mode_t", value_prefix="AUDIO_MODE_")
+@export(name="", value_prefix="HAL_AUDIO_MODE_")
 enum AudioMode : int32_t {
     NORMAL           = 0,
     RINGTONE         = 1,
@@ -137,17 +151,20 @@ enum AudioMode : int32_t {
 };
 
 /**
+ * Audio device specifies type (or category) of audio I/O device
+ * (e.g. speaker or headphones).
+ * See 'audioDevice' in audio_policy_configuration.xsd for the
+ * list of allowed values.
+ */
+typedef string AudioDevice;
+
+/**
  * Specifies a device address in case when several devices of the same type
  * can be connected (e.g. BT A2DP, USB).
  */
 struct DeviceAddress {
-    /**
-     * Audio device specifies type (or category) of audio I/O device
-     * (e.g. speaker or headphones).
-     * See 'audioDevice' in audio_policy_configuration.xsd for the
-     * list of allowed values.
-     */
-    string deviceType;
+    /** The type of the device. */
+    AudioDevice deviceType;
     safe_union Address {
         /**
          * The address may be left unspecified if 'device' specifies
@@ -206,10 +223,31 @@ enum AudioEncapsulationMode : int32_t {
 };
 
 /**
+ * Enumeration of metadata types permitted for use by
+ * encapsulation mode audio streams.
+ */
+@export(name="audio_encapsulation_metadata_type_t", value_prefix="AUDIO_ENCAPSULATION_METADATA_TYPE_")
+enum AudioEncapsulationMetadataType : int32_t {
+    /**
+     * No metadata.
+     */
+    NONE              = 0,
+    /**
+     * Encapsulation metadata type for framework tuner information.
+     */
+    FRAMEWORK_TUNER   = 1,
+    /**
+     * Encapsulation metadata type for DVB AD descriptor.
+     * This metadata is formatted per ETSI TS 101 154 Table E.1: AD_descriptor.
+     */
+    DVB_AD_DESCRIPTOR = 2,
+};
+
+/**
  * Additional information about the stream passed to hardware decoders.
  */
 struct AudioOffloadInfo {
-    AudioBasicConfig base;
+    AudioConfigBase base;
     AudioStreamType streamType;
     uint32_t bitRatePerSecond;
     int64_t durationMicroseconds;  // -1 if unknown
@@ -227,7 +265,7 @@ struct AudioOffloadInfo {
  * Commonly used audio stream configuration parameters.
  */
 struct AudioConfig {
-    AudioBasicConfig base;
+    AudioConfigBase base;
     AudioOffloadInfo offloadInfo;
     uint64_t frameCount;
 };
@@ -280,21 +318,18 @@ struct SinkMetadata {
 
 /**
  * Type of gain control exposed by an audio port.
+ * See 'audioGainMode' in audio_policy_configuration.xsd for the
+ * list of allowed values.
  */
-@export(name="", value_prefix="AUDIO_GAIN_MODE_")
-enum AudioGainMode : uint32_t {
-    JOINT = 0x1,    // supports joint channel gain control
-    CHANNELS = 0x2, // supports separate channel gain control
-    RAMP = 0x4      // supports gain ramps
-};
+typedef string AudioGainMode;
 
 /**
  * An audio_gain struct is a representation of a gain stage.
  * A gain stage is always attached to an audio port.
  */
 struct AudioGain {
-    bitfield<AudioGainMode> mode;
-    vec<AudioChannelMask> channelMask; // channels which gain an be controlled
+    vec<AudioGainMode> mode; // modes of operation
+    AudioChannelMask channelMask; // channels which gain can be controlled
     int32_t minValue;     // minimum gain value in millibels
     int32_t maxValue;     // maximum gain value in millibels
     int32_t defaultValue; // default gain value in millibels
@@ -309,8 +344,8 @@ struct AudioGain {
  */
 struct AudioGainConfig {
     int32_t index;  // index of the corresponding AudioGain in AudioPort.gains
-    AudioGainMode mode;
-    vec<AudioChannelMask> channelMask;  // channels which gain value follows
+    vec<AudioGainMode> mode; // modes of operation
+    AudioChannelMask channelMask;  // channels which gain value follows
     /**
      * Gain values in millibels for each channel ordered from LSb to MSb in
      * channel mask. The number of values is 1 in joint mode or
@@ -372,9 +407,9 @@ struct AudioPortConfig {
     /**
      * Basic parameters: sampling rate, format, channel mask. Only some of the
      * parameters (or none) may be set. See the documentation of the
-     * AudioBasicConfig struct.
+     * AudioConfigBase struct.
      */
-    AudioBasicConfig config;
+    AudioConfigBase config;
     /** Associated gain control. */
     safe_union OptionalGain {
         Monostate unspecified;
@@ -401,13 +436,6 @@ struct AudioPort {
      */
     string name;
     /** List of audio profiles supported by the port. */
-    struct AudioProfile {
-        AudioFormat format;
-        /** List of the sample rates supported by the profile. */
-        vec<uint32_t> sampleRates;
-        /** List of channel masks supported by the profile. */
-        vec<AudioChannelMask> channelMasks;
-    };
     vec<AudioProfile> profiles;
     /** List of gain controls attached to the port. */
     vec<AudioGain> gains;
