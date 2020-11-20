@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#pragma once
-
 // Code in this file uses 'getCachedPolicyConfig'
 #ifndef AUDIO_PRIMARY_HIDL_HAL_TEST
 #error Must be included from AudioPrimaryHidlTest.h
@@ -48,32 +46,32 @@ struct ConfigHelper {
     }
 
     // Cache result ?
-    static const std::vector<AudioConfig> getRequiredSupportPlaybackAudioConfig() {
+    static const vector<AudioConfig> getRequiredSupportPlaybackAudioConfig() {
         return combineAudioConfig({AudioChannelMask::OUT_STEREO, AudioChannelMask::OUT_MONO},
                                   {8000, 11025, 16000, 22050, 32000, 44100},
                                   {AudioFormat::PCM_16_BIT});
     }
 
-    static const std::vector<AudioConfig> getRecommendedSupportPlaybackAudioConfig() {
+    static const vector<AudioConfig> getRecommendedSupportPlaybackAudioConfig() {
         return combineAudioConfig({AudioChannelMask::OUT_STEREO, AudioChannelMask::OUT_MONO},
                                   {24000, 48000}, {AudioFormat::PCM_16_BIT});
     }
 
-    static const std::vector<AudioConfig> getRequiredSupportCaptureAudioConfig() {
+    static const vector<AudioConfig> getRequiredSupportCaptureAudioConfig() {
         if (!primaryHasMic()) return {};
         return combineAudioConfig({AudioChannelMask::IN_MONO}, {8000, 11025, 16000, 44100},
                                   {AudioFormat::PCM_16_BIT});
     }
-    static const std::vector<AudioConfig> getRecommendedSupportCaptureAudioConfig() {
+    static const vector<AudioConfig> getRecommendedSupportCaptureAudioConfig() {
         if (!primaryHasMic()) return {};
         return combineAudioConfig({AudioChannelMask::IN_STEREO}, {22050, 48000},
                                   {AudioFormat::PCM_16_BIT});
     }
 
-    static std::vector<AudioConfig> combineAudioConfig(
-            std::vector<audio_channel_mask_t> channelMasks, std::vector<uint32_t> sampleRates,
-            audio_format_t format) {
-        std::vector<AudioConfig> configs;
+    static vector<AudioConfig> combineAudioConfig(vector<audio_channel_mask_t> channelMasks,
+                                                  vector<uint32_t> sampleRates,
+                                                  audio_format_t format) {
+        vector<AudioConfig> configs;
         configs.reserve(channelMasks.size() * sampleRates.size());
         for (auto channelMask : channelMasks) {
             for (auto sampleRate : sampleRates) {
@@ -88,10 +86,10 @@ struct ConfigHelper {
         return configs;
     }
 
-    static std::vector<AudioConfig> combineAudioConfig(std::vector<AudioChannelMask> channelMasks,
-                                                       std::vector<uint32_t> sampleRates,
-                                                       std::vector<AudioFormat> formats) {
-        std::vector<AudioConfig> configs;
+    static vector<AudioConfig> combineAudioConfig(vector<AudioChannelMask> channelMasks,
+                                                  vector<uint32_t> sampleRates,
+                                                  vector<AudioFormat> formats) {
+        vector<AudioConfig> configs;
         configs.reserve(channelMasks.size() * sampleRates.size() * formats.size());
         for (auto channelMask : channelMasks) {
             for (auto sampleRate : sampleRates) {
