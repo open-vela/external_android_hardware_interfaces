@@ -55,17 +55,12 @@ Return<void> BluetoothAudioProvider::startSession(
     const V2_0::AudioConfiguration& audioConfig, startSession_cb _hidl_cb) {
   AudioConfiguration audioConfig_2_1;
 
-  if (audioConfig.getDiscriminator() ==
-      V2_0::AudioConfiguration::hidl_discriminator::pcmConfig) {
-    audioConfig_2_1.pcmConfig() = {
-        .sampleRate =
-            static_cast<SampleRate>(audioConfig.pcmConfig().sampleRate),
-        .channelMode = audioConfig.pcmConfig().channelMode,
-        .bitsPerSample = audioConfig.pcmConfig().bitsPerSample,
-        .dataIntervalUs = 0};
-  } else {
-    audioConfig_2_1.codecConfig() = audioConfig.codecConfig();
-  }
+  audioConfig_2_1.codecConfig() = audioConfig.codecConfig();
+  audioConfig_2_1.pcmConfig() = {
+      .sampleRate = static_cast<SampleRate>(audioConfig.pcmConfig().sampleRate),
+      .channelMode = audioConfig.pcmConfig().channelMode,
+      .bitsPerSample = audioConfig.pcmConfig().bitsPerSample,
+      .dataIntervalUs = 0};
 
   return startSession_2_1(hostIf, audioConfig_2_1, _hidl_cb);
 }
