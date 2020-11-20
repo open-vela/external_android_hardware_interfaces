@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.radio@1.5",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IRadio.hal",
@@ -19,5 +22,4 @@ hidl_interface {
         "android.hidl.safe_union@1.0",
     ],
     gen_java: true,
-    system_ext_specific: true,
 }
