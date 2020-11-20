@@ -44,42 +44,111 @@ interface IStream {
     getBufferSize() generates (uint64_t bufferSize);
 
     /**
-     * Return supported audio profiles for this particular stream. This method
-     * is normally called for streams opened on devices that use dynamic
-     * profiles, e.g. HDMI and USB interfaces. Please note that supported
-     * profiles of the stream may differ from the capabilities of the connected
-     * physical device.
+     * Return the sampling rate in Hz.
      *
-     * For devices with fixed configurations, e.g. built-in audio devices, all
-     * the profiles are specified in the audio_policy_configuration.xml
-     * file. For such devices, this method must return the configuration from
-     * the config file, or NOT_SUPPORTED retval.
+     * @return sampleRateHz sample rate in Hz.
+     */
+    getSampleRate() generates (uint32_t sampleRateHz);
+
+    /**
+     * Return supported native sampling rates of the stream for a given format.
+     * A supported native sample rate is a sample rate that can be efficiently
+     * played by the hardware (typically without sample-rate conversions).
      *
+     * This function is only called for dynamic profile. If called for
+     * non-dynamic profile is should return NOT_SUPPORTED or the same list
+     * as in audio_policy_configuration.xml.
+     *
+     * Calling this method is equivalent to getting
+     * AUDIO_PARAMETER_STREAM_SUP_SAMPLING_RATES on the legacy HAL.
+     *
+     *
+     * @param format audio format for which the sample rates are supported.
      * @return retval operation completion status.
-     * @return formats supported audio profiles.
-     *                 Must be non empty if retval is OK.
+     *                Must be OK if the format is supported.
+     * @return sampleRateHz supported sample rates.
      */
-    getSupportedProfiles()
-            generates (Result retval, vec<AudioProfile> profiles);
+    getSupportedSampleRates(AudioFormat format)
+            generates (Result retval, vec<uint32_t> sampleRates);
 
     /**
-     * Retrieves basic stream configuration: sample rate, audio format,
-     * channel mask.
-     *
-     * @return config basic stream configuration.
-     */
-    getAudioProperties() generates (AudioConfigBase config);
-
-    /**
-     * Sets stream parameters. Only sets parameters that are specified.
-     * See the description of AudioConfigBase for the details.
-     *
+     * Sets the sampling rate of the stream. Calling this method is equivalent
+     * to setting AUDIO_PARAMETER_STREAM_SAMPLING_RATE on the legacy HAL.
      * Optional method. If implemented, only called on a stopped stream.
      *
-     * @param config basic stream configuration.
+     * @param sampleRateHz sample rate in Hz.
      * @return retval operation completion status.
      */
-    setAudioProperties(AudioConfigBase config) generates (Result retval);
+    setSampleRate(uint32_t sampleRateHz) generates (Result retval);
+
+    /**
+     * Return the channel mask of the stream.
+     *
+     * @return mask channel mask.
+     */
+    getChannelMask() generates (bitfield<AudioChannelMask> mask);
+
+    /**
+     * Return supported channel masks of the stream. Calling this method is
+     * equivalent to getting AUDIO_PARAMETER_STREAM_SUP_CHANNELS on the legacy
+     * HAL.
+     *
+     * @param format audio format for which the channel masks are supported.
+     * @return retval operation completion status.
+     *                Must be OK if the format is supported.
+     * @return masks supported audio masks.
+     */
+    getSupportedChannelMasks(AudioFormat format)
+            generates (Result retval, vec<bitfield<AudioChannelMask>> masks);
+
+    /**
+     * Sets the channel mask of the stream. Calling this method is equivalent to
+     * setting AUDIO_PARAMETER_STREAM_CHANNELS on the legacy HAL.
+     * Optional method
+     *
+     * @param format audio format.
+     * @return retval operation completion status.
+     */
+    setChannelMask(bitfield<AudioChannelMask> mask) generates (Result retval);
+
+    /**
+     * Return the audio format of the stream.
+     *
+     * @return format audio format.
+     */
+    getFormat() generates (AudioFormat format);
+
+    /**
+     * Return supported audio formats of the stream. Calling this method is
+     * equivalent to getting AUDIO_PARAMETER_STREAM_SUP_FORMATS on the legacy
+     * HAL.
+     *
+     * @return retval operation completion status.
+     * @return formats supported audio formats.
+     *                 Must be non empty if retval is OK.
+     */
+    getSupportedFormats() generates (Result retval, vec<AudioFormat> formats);
+
+    /**
+     * Sets the audio format of the stream. Calling this method is equivalent to
+     * setting AUDIO_PARAMETER_STREAM_FORMAT on the legacy HAL.
+     * Optional method
+     *
+     * @param format audio format.
+     * @return retval operation completion status.
+     */
+    setFormat(AudioFormat format) generates (Result retval);
+
+    /**
+     * Convenience method for retrieving several stream parameters in
+     * one transaction.
+     *
+     * @return sampleRateHz sample rate in Hz.
+     * @return mask channel mask.
+     * @return format audio format.
+     */
+    getAudioProperties() generates (
+            uint32_t sampleRateHz, bitfield<AudioChannelMask> mask, AudioFormat format);
 
     /**
      * Applies audio effect to the stream.
@@ -243,5 +312,6 @@ interface IStream {
      *                              output stream interface.
      *                INVALID_STATE if the stream was already closed.
      */
+    @exit
     close() generates (Result retval);
 };

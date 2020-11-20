@@ -30,6 +30,7 @@ enum Result : int32_t {
     NOT_SUPPORTED
 };
 
+@export(name="audio_drain_type_t", value_prefix="AUDIO_DRAIN_")
 enum AudioDrain : int32_t {
     /** drain() returns when all data has been played. */
     ALL,
@@ -126,18 +127,16 @@ struct AudioMicrophoneCoordinate {
  * process (e.g. High Pass Filtering, dynamic compression)
  * Simple processing as constant gain adjustment must be DIRECT.
  */
-@export(name="audio_microphone_channel_mapping_t", value_prefix="AUDIO_MICROPHONE_CHANNEL_MAPPING_")
 enum AudioMicrophoneChannelMapping : uint32_t {
     UNUSED      = 0, /* Channel not used */
     DIRECT      = 1, /* Channel used and signal not processed */
-    PROCESSED   = 2, /* Channel used and signal has some processing */
+    PROCESSED   = 2, /* Channel used and signal has some process */
 };
 
 /**
  * Enum to identify locations of microphones in regards to the body of the
  * android device.
  */
-@export(name="audio_microphone_location_t", value_prefix="AUDIO_MICROPHONE_LOCATION_")
 enum AudioMicrophoneLocation : uint32_t {
     UNKNOWN             = 0,
     MAINBODY            = 1,
@@ -154,7 +153,6 @@ typedef int32_t AudioMicrophoneGroup;
 /**
  * Enum with standard polar patterns of microphones
  */
-@export(name="audio_microphone_directionality_t", value_prefix="AUDIO_MICROPHONE_DIRECTIONALITY_")
 enum AudioMicrophoneDirectionality : uint32_t {
     UNKNOWN         = 0,
     OMNI            = 1,
@@ -179,8 +177,7 @@ struct AudioFrequencyResponsePoint {
  * Used by StreamIn and Device
  */
 struct MicrophoneInfo {
-    /**
-     * Unique alphanumeric id for microphone. Guaranteed to be the same
+    /** Unique alphanumeric id for microphone. Guaranteed to be the same
      * even after rebooting.
      */
     string                                  deviceId;
@@ -188,21 +185,18 @@ struct MicrophoneInfo {
      * Device specific information
      */
     DeviceAddress                           deviceAddress;
-    /**
-     * Each element of the vector must describe the channel with the same
-     * index.
+    /** Each element of the vector must describe the channel with the same
+     *  index.
      */
     vec<AudioMicrophoneChannelMapping>      channelMapping;
     /** Location of the microphone in regard to the body of the device */
     AudioMicrophoneLocation                 location;
-    /**
-     * Identifier to help group related microphones together
-     * e.g. microphone arrays should belong to the same group
+    /** Identifier to help group related microphones together
+     *  e.g. microphone arrays should belong to the same group
      */
     AudioMicrophoneGroup                    group;
-    /**
-     * Index of this microphone within the group.
-     * (group, index) must be unique within the same device.
+    /** Index of this microphone within the group.
+     *  (group, index) must be unique within the same device.
      */
     uint32_t                                indexInTheGroup;
     /** Level in dBFS produced by a 1000 Hz tone at 94 dB SPL */
@@ -213,20 +207,17 @@ struct MicrophoneInfo {
     float                                   minSpl;
     /** Standard polar pattern of the microphone */
     AudioMicrophoneDirectionality           directionality;
-    /**
-     * Vector with ordered frequency responses (from low to high frequencies)
-     * with the frequency response of the microphone.
-     * Levels are in dB, relative to level at 1000 Hz
+    /** Vector with ordered frequency responses (from low to high frequencies)
+     *  with the frequency response of the microphone.
+     *  Levels are in dB, relative to level at 1000 Hz
      */
     vec<AudioFrequencyResponsePoint>        frequencyResponse;
-    /**
-     * Position of the microphone's capsule in meters, from the
-     * bottom-left-back corner of the bounding box of device.
+    /** Position of the microphone's capsule in meters, from the
+     *  bottom-left-back corner of the bounding box of device.
      */
     AudioMicrophoneCoordinate               position;
-    /**
-     * Normalized point to signal the main orientation of the microphone's
-     * capsule. sqrt(x^2 + y^2 + z^2) = 1
+    /** Normalized point to signal the main orientation of the microphone's
+     *  capsule. sqrt(x^2 + y^2 + z^2) = 1
      */
     AudioMicrophoneCoordinate               orientation;
 };
@@ -324,7 +315,7 @@ enum TimestretchMode : int32_t {
  * Behavior when the values for speed and / or pitch are out
  * of applicable range.
  */
-@export(name="", value_prefix="HAL_AUDIO_TIMESTRETCH_FALLBACK_")
+@export(name="audio_timestretch_fallback_mode_t", value_prefix="AUDIO_TIMESTRETCH_FALLBACK_")
 enum TimestretchFallbackMode : int32_t {
     // Need to be in sync with AUDIO_FALLBACK_MODE_* constants in
     // frameworks/base/media/java/android/media/PlaybackParams.java
@@ -364,17 +355,3 @@ struct PlaybackRate {
      */
     TimestretchFallbackMode fallbackMode;
 };
-
-/**
- * The audio flags serve two purposes:
- *
- *  - when a stream is created they indicate its attributes;
- *
- *  - when present in a profile descriptor listed for a particular audio
- *    hardware module, they indicate that a stream can be opened that
- *    supports the attributes indicated by the flags.
- *
- * See 'audioIoFlag' in audio_policy_configuration.xsd for the
- * list of allowed values.
- */
-typedef string AudioInOutFlag;
