@@ -1136,7 +1136,7 @@ Return<void> RadioResponse_v1_6::releasePduSessionIdResponse(
     return Void();
 }
 
-Return<void> RadioResponse_v1_6::beginHandoverResponse(
+Return<void> RadioResponse_v1_6::startHandoverResponse(
         const ::android::hardware::radio::V1_6::RadioResponseInfo& info) {
     rspInfo = info;
     parent_v1_6.notify(info.serial);
@@ -1151,6 +1151,20 @@ Return<void> RadioResponse_v1_6::cancelHandoverResponse(
 }
 
 Return<void> RadioResponse_v1_6::setAllowedNetworkTypeBitmapResponse(
+        const ::android::hardware::radio::V1_6::RadioResponseInfo& info) {
+    rspInfo = info;
+    parent_v1_6.notify(info.serial);
+    return Void();
+}
+
+Return<void> RadioResponse_v1_6::setDataThrottlingResponse(
+        const ::android::hardware::radio::V1_6::RadioResponseInfo& info) {
+    rspInfo = info;
+    parent_v1_6.notify(info.serial);
+    return Void();
+}
+
+Return<void> RadioResponse_v1_6::getSystemSelectionChannelsResponse(
         const ::android::hardware::radio::V1_6::RadioResponseInfo& info) {
     rspInfo = info;
     parent_v1_6.notify(info.serial);

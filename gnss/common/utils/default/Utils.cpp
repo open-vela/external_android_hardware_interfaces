@@ -15,6 +15,7 @@
  */
 
 #include <Constants.h>
+#include <MockLocation.h>
 #include <Utils.h>
 #include <utils/SystemClock.h>
 
@@ -141,11 +142,11 @@ V2_0::GnssLocation Utils::getMockLocationV2_0() {
 V1_0::GnssLocation Utils::getMockLocationV1_0() {
     V1_0::GnssLocation location = {
             .gnssLocationFlags = 0xFF,
-            .latitudeDegrees = kMockLatitudeDegrees,
-            .longitudeDegrees = kMockLongitudeDegrees,
-            .altitudeMeters = kMockAltitudeMeters,
-            .speedMetersPerSec = kMockSpeedMetersPerSec,
-            .bearingDegrees = kMockBearingDegrees,
+            .latitudeDegrees = gMockLatitudeDegrees,
+            .longitudeDegrees = gMockLongitudeDegrees,
+            .altitudeMeters = gMockAltitudeMeters,
+            .speedMetersPerSec = gMockSpeedMetersPerSec,
+            .bearingDegrees = gMockBearingDegrees,
             .horizontalAccuracyMeters = kMockHorizontalAccuracyMeters,
             .verticalAccuracyMeters = kMockVerticalAccuracyMeters,
             .speedAccuracyMetersPerSecond = kMockSpeedAccuracyMetersPerSecond,
