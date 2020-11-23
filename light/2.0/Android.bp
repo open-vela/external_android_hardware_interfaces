@@ -3,9 +3,6 @@
 hidl_interface {
     name: "android.hardware.light@2.0",
     root: "android.hardware",
-    vndk: {
-        enabled: true,
-    },
     srcs: [
         "types.hal",
         "ILight.hal",
@@ -13,13 +10,5 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
-    types: [
-        "Brightness",
-        "Flash",
-        "LightState",
-        "Status",
-        "Type",
-    ],
     gen_java: true,
 }
-

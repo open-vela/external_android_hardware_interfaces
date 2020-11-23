@@ -34,7 +34,8 @@ size_t H4Protocol::Send(uint8_t type, const uint8_t* data, size_t length) {
                         {const_cast<uint8_t*>(data), length}};
   ssize_t ret = 0;
   do {
-    ret = TEMP_FAILURE_RETRY(writev(uart_fd_, iov, sizeof(iov) / sizeof(iov[0])));
+    ret =
+        TEMP_FAILURE_RETRY(writev(uart_fd_, iov, sizeof(iov) / sizeof(iov[0])));
   } while (-1 == ret && EAGAIN == errno);
 
   if (ret == -1) {
@@ -56,6 +57,9 @@ void H4Protocol::OnPacketReady() {
       break;
     case HCI_PACKET_TYPE_SCO_DATA:
       sco_cb_(hci_packetizer_.GetPacket());
+      break;
+    case HCI_PACKET_TYPE_ISO_DATA:
+      iso_cb_(hci_packetizer_.GetPacket());
       break;
     default:
       LOG_ALWAYS_FATAL("%s: Unimplemented packet type %d", __func__,
@@ -86,6 +90,7 @@ void H4Protocol::OnDataReady(int fd) {
     hci_packet_type_ = static_cast<HciPacketType>(buffer[0]);
     if (hci_packet_type_ != HCI_PACKET_TYPE_ACL_DATA &&
         hci_packet_type_ != HCI_PACKET_TYPE_SCO_DATA &&
+        hci_packet_type_ != HCI_PACKET_TYPE_ISO_DATA &&
         hci_packet_type_ != HCI_PACKET_TYPE_EVENT) {
       LOG_ALWAYS_FATAL("%s: Unimplemented packet type %d", __func__,
                        static_cast<int>(hci_packet_type_));

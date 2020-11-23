@@ -3,9 +3,6 @@
 hidl_interface {
     name: "android.hardware.neuralnetworks@1.0",
     root: "android.hardware",
-    vndk: {
-        enabled: true,
-    },
     srcs: [
         "types.hal",
         "IDevice.hal",
@@ -16,22 +13,5 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
-    types: [
-        "Capabilities",
-        "DataLocation",
-        "DeviceStatus",
-        "ErrorStatus",
-        "FusedActivationFunc",
-        "Model",
-        "Operand",
-        "OperandLifeTime",
-        "OperandType",
-        "Operation",
-        "OperationType",
-        "PerformanceInfo",
-        "Request",
-        "RequestArgument",
-    ],
     gen_java: false,
 }
-

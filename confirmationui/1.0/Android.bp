@@ -3,9 +3,6 @@
 hidl_interface {
     name: "android.hardware.confirmationui@1.0",
     root: "android.hardware",
-    vndk: {
-        enabled: true,
-    },
     srcs: [
         "types.hal",
         "IConfirmationResultCallback.hal",
@@ -15,13 +12,5 @@ hidl_interface {
         "android.hardware.keymaster@4.0",
         "android.hidl.base@1.0",
     ],
-    types: [
-        "MessageSize",
-        "ResponseCode",
-        "TestKeyBits",
-        "TestModeCommands",
-        "UIOption",
-    ],
     gen_java: false,
 }
-
