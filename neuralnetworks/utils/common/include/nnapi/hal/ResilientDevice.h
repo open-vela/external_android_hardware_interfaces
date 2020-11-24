@@ -45,9 +45,8 @@ class ResilientDevice final : public nn::IDevice,
                              std::string versionString, std::vector<nn::Extension> extensions,
                              nn::Capabilities capabilities, nn::SharedDevice device);
 
-    nn::SharedDevice getDevice() const EXCLUDES(mMutex);
-    nn::SharedDevice recover(const nn::IDevice* failingDevice, bool blocking) const
-            EXCLUDES(mMutex);
+    nn::SharedDevice getDevice() const;
+    nn::SharedDevice recover(const nn::IDevice* failingDevice, bool blocking) const;
 
     const std::string& getName() const override;
     const std::string& getVersionString() const override;
@@ -79,7 +78,6 @@ class ResilientDevice final : public nn::IDevice,
             const std::vector<nn::BufferRole>& outputRoles) const override;
 
   private:
-    bool isValidInternal() const EXCLUDES(mMutex);
     nn::GeneralResult<nn::SharedPreparedModel> prepareModelInternal(
             bool blocking, const nn::Model& model, nn::ExecutionPreference preference,
             nn::Priority priority, nn::OptionalTimePoint deadline,
@@ -102,7 +100,6 @@ class ResilientDevice final : public nn::IDevice,
     const nn::Capabilities kCapabilities;
     mutable std::mutex mMutex;
     mutable nn::SharedDevice mDevice GUARDED_BY(mMutex);
-    mutable bool mIsValid GUARDED_BY(mMutex) = true;
 };
 
 }  // namespace android::hardware::neuralnetworks::utils
