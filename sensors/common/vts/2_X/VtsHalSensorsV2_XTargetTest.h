@@ -366,7 +366,7 @@ int32_t SensorsHidlTest::getInvalidSensorHandle() {
     for (const SensorInfoType& sensor : getSensorsList()) {
         maxHandle = std::max(maxHandle, sensor.sensorHandle);
     }
-    return maxHandle + 42;
+    return maxHandle + 1;
 }
 
 // Test if sensor list returned is valid
@@ -845,11 +845,7 @@ void SensorsHidlTest::verifyRegisterDirectChannel(
         std::shared_ptr<SensorsTestSharedMemory<SensorTypeVersion, EventType>> mem,
         int32_t* directChannelHandle, bool supportsSharedMemType, bool supportsAnyDirectChannel) {
     char* buffer = mem->getBuffer();
-    size_t size = mem->getSize();
-
-    if (supportsSharedMemType) {
-        memset(buffer, 0xff, size);
-    }
+    memset(buffer, 0xff, mem->getSize());
 
     registerDirectChannel(mem->getSharedMemInfo(), [&](Result result, int32_t channelHandle) {
         if (supportsSharedMemType) {

@@ -251,18 +251,15 @@ struct Operand {
     /**
      * Quantized scale of the operand.
      *
-     * Must be 0 when not applicable to an operand type.
-     *
-     * See {@link OperandType}.
+     * Only applicable if the operand is of type TENSOR_QUANT8_ASYMM or
+     * TENSOR_INT32.
      */
     float scale;
 
     /**
      * Quantized zero-point offset of the operand.
      *
-     * Must be 0 when not applicable to an operand type.
-     *
-     * See {@link OperandType}.
+     * Only applicable if the operand is of type TENSOR_QUANT8_ASYMM.
      */
     int32_t zeroPoint;
 
