@@ -1209,7 +1209,12 @@ bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& r
             return notify;
         }
 
-        if (physicalCameraMetadata.size() != request->expectedPhysicalResults.size()) {
+        // Physical device results are only expected in the last/final
+        // partial result notification.
+        bool expectPhysicalResults = !(request->usePartialResult &&
+                (results.partialResult < request->numPartialResults));
+        if (expectPhysicalResults &&
+                (physicalCameraMetadata.size() != request->expectedPhysicalResults.size())) {
             ALOGE("%s: Frame %d: Returned physical metadata count %zu "
                     "must be equal to expected count %zu", __func__, frameNumber,
                     physicalCameraMetadata.size(), request->expectedPhysicalResults.size());
@@ -1260,9 +1265,27 @@ bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& r
             ADD_FAILURE();
             return notify;
         }
-        request->collectedResult.append(
-                reinterpret_cast<const camera_metadata_t*>(
-                    resultMetadata.data()));
+
+        // Verify no duplicate tags between partial results
+        const camera_metadata_t* partialMetadata =
+                reinterpret_cast<const camera_metadata_t*>(resultMetadata.data());
+        const camera_metadata_t* collectedMetadata = request->collectedResult.getAndLock();
+        camera_metadata_ro_entry_t searchEntry, foundEntry;
+        for (size_t i = 0; i < get_camera_metadata_size(partialMetadata); i++) {
+            if (0 != get_camera_metadata_ro_entry(partialMetadata, i, &searchEntry)) {
+                ADD_FAILURE();
+                request->collectedResult.unlock(collectedMetadata);
+                return notify;
+            }
+            if (-ENOENT !=
+                find_camera_metadata_ro_entry(collectedMetadata, searchEntry.tag, &foundEntry)) {
+                ADD_FAILURE();
+                request->collectedResult.unlock(collectedMetadata);
+                return notify;
+            }
+        }
+        request->collectedResult.unlock(collectedMetadata);
+        request->collectedResult.append(partialMetadata);
 
         isPartialResult =
             (results.partialResult < request->numPartialResults);
@@ -1670,7 +1693,7 @@ bool CameraHidlTest::isSecureOnly(sp<ICameraProvider> provider, const hidl_strin
     Return<void> ret;
     ::android::sp<ICameraDevice> device3_x;
     bool retVal = false;
-    if (getCameraDeviceVersion(mProviderType, name) == CAMERA_DEVICE_API_VERSION_1_0) {
+    if (getCameraDeviceVersion(name, mProviderType) == CAMERA_DEVICE_API_VERSION_1_0) {
         return false;
     }
     ret = provider->getCameraDeviceInterface_V3_x(name, [&](auto status, const auto& device) {
@@ -7587,6 +7610,7 @@ void CameraHidlTest::verifyRequestTemplate(const camera_metadata_t* metadata,
     }
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(CameraHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, CameraHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(ICameraProvider::descriptor)),
