@@ -4,7 +4,7 @@ cc_library_static {
     recovery_available: true,
     srcs: ["convert.cpp"],
     include_dirs: [
-        "system/libbase/include",
+        "system/core/base/include",
     ],
     header_libs: ["libhealthd_headers"],
     export_header_lib_headers: ["libhealthd_headers"],
@@ -50,12 +50,6 @@ cc_library_shared {
         "android.hardware.health@1.0-impl-helper",
         "android.hardware.health@1.0-convert",
         "libhealthd.default",
-    ],
-
-    shared_libs: [
-        "libhidlbase",
-        "libutils",
-        "android.hardware.health@1.0",
     ],
 }
 
