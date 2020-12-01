@@ -894,14 +894,7 @@ WifiStatus WifiChip::createVirtualApInterface(const std::string& apVirtIf) {
 }
 
 sp<WifiApIface> WifiChip::newWifiApIface(std::string& ifname) {
-    std::vector<std::string> ap_instances;
-    for (auto const& it : br_ifaces_ap_instances_) {
-        if (it.first == ifname) {
-            ap_instances = it.second;
-        }
-    }
-    sp<WifiApIface> iface =
-        new WifiApIface(ifname, ap_instances, legacy_hal_, iface_util_);
+    sp<WifiApIface> iface = new WifiApIface(ifname, legacy_hal_, iface_util_);
     ap_ifaces_.push_back(iface);
     for (const auto& callback : event_cb_handler_.getCallbacks()) {
         if (!callback->onIfaceAdded(IfaceType::AP, ifname).isOk()) {
@@ -912,8 +905,7 @@ sp<WifiApIface> WifiChip::newWifiApIface(std::string& ifname) {
     return iface;
 }
 
-std::pair<WifiStatus, sp<V1_5::IWifiApIface>>
-WifiChip::createApIfaceInternal() {
+std::pair<WifiStatus, sp<IWifiApIface>> WifiChip::createApIfaceInternal() {
     if (!canCurrentModeSupportIfaceOfTypeWithCurrentIfaces(IfaceType::AP)) {
         return {createWifiStatus(WifiStatusCode::ERROR_NOT_AVAILABLE), {}};
     }
@@ -926,7 +918,7 @@ WifiChip::createApIfaceInternal() {
     return {createWifiStatus(WifiStatusCode::SUCCESS), iface};
 }
 
-std::pair<WifiStatus, sp<V1_5::IWifiApIface>>
+std::pair<WifiStatus, sp<IWifiApIface>>
 WifiChip::createBridgedApIfaceInternal() {
     if (!canCurrentModeSupportIfaceOfTypeWithCurrentIfaces(IfaceType::AP)) {
         return {createWifiStatus(WifiStatusCode::ERROR_NOT_AVAILABLE), {}};
@@ -975,7 +967,7 @@ WifiChip::getApIfaceNamesInternal() {
     return {createWifiStatus(WifiStatusCode::SUCCESS), getNames(ap_ifaces_)};
 }
 
-std::pair<WifiStatus, sp<V1_5::IWifiApIface>> WifiChip::getApIfaceInternal(
+std::pair<WifiStatus, sp<IWifiApIface>> WifiChip::getApIfaceInternal(
     const std::string& ifname) {
     const auto iface = findUsingName(ap_ifaces_, ifname);
     if (!iface.get()) {
