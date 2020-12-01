@@ -21,7 +21,6 @@
 #include <thread>
 
 #include <android-base/logging.h>
-#include <android-base/properties.h>
 #include <android/hardware/graphics/mapper/2.0/IMapper.h>
 #include <composer-command-buffer/2.4/ComposerCommandBuffer.h>
 #include <composer-vts/2.4/ComposerVts.h>
@@ -684,15 +683,3 @@ TEST_P(GraphicsComposerHidlCommandTest, getLayerGenericMetadataKeys) {
 }  // namespace graphics
 }  // namespace hardware
 }  // namespace android
-
-int main(int argc, char** argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-
-    using namespace std::chrono_literals;
-    if (!android::base::WaitForProperty("init.svc.surfaceflinger", "stopped", 10s)) {
-        ALOGE("Failed to stop init.svc.surfaceflinger");
-        return -1;
-    }
-
-    return RUN_ALL_TESTS();
-}
