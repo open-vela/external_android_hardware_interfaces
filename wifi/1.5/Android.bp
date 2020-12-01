@@ -7,7 +7,6 @@ hidl_interface {
         "types.hal",
         "IWifi.hal",
         "IWifiChip.hal",
-        "IWifiApIface.hal",
         "IWifiNanIface.hal",
         "IWifiNanIfaceEventCallback.hal",
         "IWifiStaIface.hal",
