@@ -58,10 +58,7 @@ class HostapdHidlTest
         ASSERT_NE(hostapd_.get(), nullptr);
     }
 
-    virtual void TearDown() override {
-        HIDL_INVOKE_VOID_WITHOUT_ARGUMENTS(hostapd_, terminate);
-        stopHostapd(wifi_instance_name_);
-    }
+    virtual void TearDown() override { stopHostapd(wifi_instance_name_); }
 
    protected:
     std::string getPrimaryWlanIfaceName() {
@@ -312,7 +309,6 @@ TEST_P(HostapdHidlTest, AddInvalidPskAccessPointWithoutAcs) {
     EXPECT_NE(HostapdStatusCode::SUCCESS, status.code);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(HostapdHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, HostapdHidlTest,
     testing::Combine(
