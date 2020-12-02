@@ -165,9 +165,8 @@ Return<Result> Filter::flush() {
 Return<Result> Filter::releaseAvHandle(const hidl_handle& avMemory, uint64_t avDataId) {
     ALOGV("%s", __FUNCTION__);
 
-    if (mSharedAvMemHandle != NULL && avMemory != NULL &&
+    if ((avMemory.getNativeHandle()->numFds > 0) &&
         (mSharedAvMemHandle.getNativeHandle()->numFds > 0) &&
-        (avMemory.getNativeHandle()->numFds > 0) &&
         (sameFile(avMemory.getNativeHandle()->data[0],
                   mSharedAvMemHandle.getNativeHandle()->data[0]))) {
         freeSharedAvHandle();
