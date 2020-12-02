@@ -38,18 +38,27 @@ class SupplicantHidlTest
     : public ::testing::TestWithParam<std::tuple<std::string, std::string>> {
    public:
     virtual void SetUp() override {
+        // Stop Wi-Fi
+        ASSERT_TRUE(stopWifiFramework());  // stop & wait for wifi to shutdown.
+
         wifi_instance_name_ = std::get<0>(GetParam());
         supplicant_instance_name_ = std::get<1>(GetParam());
+        std::system("/system/bin/start");
+        ASSERT_TRUE(waitForFrameworkReady());
+        isP2pOn_ =
+            testing::deviceSupportsFeature("android.hardware.wifi.direct");
         stopSupplicant(wifi_instance_name_);
         startSupplicantAndWaitForHidlService(wifi_instance_name_,
                                              supplicant_instance_name_);
-        isP2pOn_ =
-            testing::deviceSupportsFeature("android.hardware.wifi.direct");
         supplicant_ = getSupplicant(supplicant_instance_name_, isP2pOn_);
         ASSERT_NE(supplicant_.get(), nullptr);
     }
 
-    virtual void TearDown() override { stopSupplicant(wifi_instance_name_); }
+    virtual void TearDown() override {
+        stopSupplicant(wifi_instance_name_);
+        // Start Wi-Fi
+        startWifiFramework();
+    }
 
    protected:
     // ISupplicant object used for all tests in this fixture.
@@ -206,7 +215,6 @@ TEST_P(SupplicantHidlTest, SetConcurrencyPriority) {
     }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantHidlTest,
     testing::Combine(
