@@ -46,8 +46,8 @@ class ResilientDevice final : public nn::IDevice,
                              nn::Capabilities capabilities, nn::SharedDevice device);
 
     nn::SharedDevice getDevice() const EXCLUDES(mMutex);
-    nn::GeneralResult<nn::SharedDevice> recover(const nn::IDevice* failingDevice,
-                                                bool blocking) const EXCLUDES(mMutex);
+    nn::SharedDevice recover(const nn::IDevice* failingDevice, bool blocking) const
+            EXCLUDES(mMutex);
 
     const std::string& getName() const override;
     const std::string& getVersionString() const override;
@@ -81,14 +81,17 @@ class ResilientDevice final : public nn::IDevice,
   private:
     bool isValidInternal() const EXCLUDES(mMutex);
     nn::GeneralResult<nn::SharedPreparedModel> prepareModelInternal(
-            const nn::Model& model, nn::ExecutionPreference preference, nn::Priority priority,
-            nn::OptionalTimePoint deadline, const std::vector<nn::SharedHandle>& modelCache,
+            bool blocking, const nn::Model& model, nn::ExecutionPreference preference,
+            nn::Priority priority, nn::OptionalTimePoint deadline,
+            const std::vector<nn::SharedHandle>& modelCache,
             const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token) const;
     nn::GeneralResult<nn::SharedPreparedModel> prepareModelFromCacheInternal(
-            nn::OptionalTimePoint deadline, const std::vector<nn::SharedHandle>& modelCache,
+            bool blocking, nn::OptionalTimePoint deadline,
+            const std::vector<nn::SharedHandle>& modelCache,
             const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token) const;
     nn::GeneralResult<nn::SharedBuffer> allocateInternal(
-            const nn::BufferDesc& desc, const std::vector<nn::SharedPreparedModel>& preparedModels,
+            bool blocking, const nn::BufferDesc& desc,
+            const std::vector<nn::SharedPreparedModel>& preparedModels,
             const std::vector<nn::BufferRole>& inputRoles,
             const std::vector<nn::BufferRole>& outputRoles) const;
 

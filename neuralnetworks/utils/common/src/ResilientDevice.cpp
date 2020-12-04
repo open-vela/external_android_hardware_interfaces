@@ -49,17 +49,7 @@ auto protect(const ResilientDevice& resilientDevice, const FnType& fn, bool bloc
         return result;
     }
 
-    // Attempt recovery and return if it fails.
-    auto maybeDevice = resilientDevice.recover(device.get(), blocking);
-    if (!maybeDevice.has_value()) {
-        const auto& [resultErrorMessage, resultErrorCode] = result.error();
-        const auto& [recoveryErrorMessage, recoveryErrorCode] = maybeDevice.error();
-        return nn::error(resultErrorCode)
-               << resultErrorMessage << ", and failed to recover dead device with error "
-               << recoveryErrorCode << ": " << recoveryErrorMessage;
-    }
-    device = std::move(maybeDevice).value();
-
+    device = resilientDevice.recover(device.get(), blocking);
     return fn(*device);
 }
 
@@ -104,8 +94,7 @@ nn::SharedDevice ResilientDevice::getDevice() const {
     return mDevice;
 }
 
-nn::GeneralResult<nn::SharedDevice> ResilientDevice::recover(const nn::IDevice* failingDevice,
-                                                             bool blocking) const {
+nn::SharedDevice ResilientDevice::recover(const nn::IDevice* failingDevice, bool blocking) const {
     std::lock_guard guard(mMutex);
 
     // Another caller updated the failing device.
@@ -113,7 +102,13 @@ nn::GeneralResult<nn::SharedDevice> ResilientDevice::recover(const nn::IDevice* 
         return mDevice;
     }
 
-    auto device = NN_TRY(kMakeDevice(blocking));
+    auto maybeDevice = kMakeDevice(blocking);
+    if (!maybeDevice.has_value()) {
+        const auto& [message, code] = maybeDevice.error();
+        LOG(ERROR) << "Failed to recover dead device with error " << code << ": " << message;
+        return mDevice;
+    }
+    auto device = std::move(maybeDevice).value();
 
     // If recovered device has different metadata than what is cached (i.e., because it was
     // updated), mark the device as invalid and preserve the cached data.
@@ -181,11 +176,11 @@ nn::GeneralResult<nn::SharedPreparedModel> ResilientDevice::prepareModel(
         nn::OptionalTimePoint deadline, const std::vector<nn::SharedHandle>& modelCache,
         const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token) const {
     auto self = shared_from_this();
-    ResilientPreparedModel::Factory makePreparedModel = [device = std::move(self), model,
-                                                         preference, priority, deadline, modelCache,
-                                                         dataCache, token] {
-        return device->prepareModelInternal(model, preference, priority, deadline, modelCache,
-                                            dataCache, token);
+    ResilientPreparedModel::Factory makePreparedModel =
+            [device = std::move(self), model, preference, priority, deadline, modelCache, dataCache,
+             token](bool blocking) -> nn::GeneralResult<nn::SharedPreparedModel> {
+        return device->prepareModelInternal(blocking, model, preference, priority, deadline,
+                                            modelCache, dataCache, token);
     };
     return ResilientPreparedModel::create(std::move(makePreparedModel));
 }
@@ -194,9 +189,11 @@ nn::GeneralResult<nn::SharedPreparedModel> ResilientDevice::prepareModelFromCach
         nn::OptionalTimePoint deadline, const std::vector<nn::SharedHandle>& modelCache,
         const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token) const {
     auto self = shared_from_this();
-    ResilientPreparedModel::Factory makePreparedModel = [device = std::move(self), deadline,
-                                                         modelCache, dataCache, token] {
-        return device->prepareModelFromCacheInternal(deadline, modelCache, dataCache, token);
+    ResilientPreparedModel::Factory makePreparedModel =
+            [device = std::move(self), deadline, modelCache, dataCache,
+             token](bool blocking) -> nn::GeneralResult<nn::SharedPreparedModel> {
+        return device->prepareModelFromCacheInternal(blocking, deadline, modelCache, dataCache,
+                                                     token);
     };
     return ResilientPreparedModel::create(std::move(makePreparedModel));
 }
@@ -206,9 +203,10 @@ nn::GeneralResult<nn::SharedBuffer> ResilientDevice::allocate(
         const std::vector<nn::BufferRole>& inputRoles,
         const std::vector<nn::BufferRole>& outputRoles) const {
     auto self = shared_from_this();
-    ResilientBuffer::Factory makeBuffer = [device = std::move(self), desc, preparedModels,
-                                           inputRoles, outputRoles] {
-        return device->allocateInternal(desc, preparedModels, inputRoles, outputRoles);
+    ResilientBuffer::Factory makeBuffer =
+            [device = std::move(self), desc, preparedModels, inputRoles,
+             outputRoles](bool blocking) -> nn::GeneralResult<nn::SharedBuffer> {
+        return device->allocateInternal(blocking, desc, preparedModels, inputRoles, outputRoles);
     };
     return ResilientBuffer::create(std::move(makeBuffer));
 }
@@ -219,8 +217,9 @@ bool ResilientDevice::isValidInternal() const {
 }
 
 nn::GeneralResult<nn::SharedPreparedModel> ResilientDevice::prepareModelInternal(
-        const nn::Model& model, nn::ExecutionPreference preference, nn::Priority priority,
-        nn::OptionalTimePoint deadline, const std::vector<nn::SharedHandle>& modelCache,
+        bool blocking, const nn::Model& model, nn::ExecutionPreference preference,
+        nn::Priority priority, nn::OptionalTimePoint deadline,
+        const std::vector<nn::SharedHandle>& modelCache,
         const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token) const {
     if (!isValidInternal()) {
         return std::make_shared<const InvalidPreparedModel>();
@@ -230,11 +229,12 @@ nn::GeneralResult<nn::SharedPreparedModel> ResilientDevice::prepareModelInternal
         return device.prepareModel(model, preference, priority, deadline, modelCache, dataCache,
                                    token);
     };
-    return protect(*this, fn, /*blocking=*/false);
+    return protect(*this, fn, blocking);
 }
 
 nn::GeneralResult<nn::SharedPreparedModel> ResilientDevice::prepareModelFromCacheInternal(
-        nn::OptionalTimePoint deadline, const std::vector<nn::SharedHandle>& modelCache,
+        bool blocking, nn::OptionalTimePoint deadline,
+        const std::vector<nn::SharedHandle>& modelCache,
         const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token) const {
     if (!isValidInternal()) {
         return std::make_shared<const InvalidPreparedModel>();
@@ -242,11 +242,12 @@ nn::GeneralResult<nn::SharedPreparedModel> ResilientDevice::prepareModelFromCach
     const auto fn = [deadline, &modelCache, &dataCache, token](const nn::IDevice& device) {
         return device.prepareModelFromCache(deadline, modelCache, dataCache, token);
     };
-    return protect(*this, fn, /*blocking=*/false);
+    return protect(*this, fn, blocking);
 }
 
 nn::GeneralResult<nn::SharedBuffer> ResilientDevice::allocateInternal(
-        const nn::BufferDesc& desc, const std::vector<nn::SharedPreparedModel>& preparedModels,
+        bool blocking, const nn::BufferDesc& desc,
+        const std::vector<nn::SharedPreparedModel>& preparedModels,
         const std::vector<nn::BufferRole>& inputRoles,
         const std::vector<nn::BufferRole>& outputRoles) const {
     if (!isValidInternal()) {
@@ -255,7 +256,7 @@ nn::GeneralResult<nn::SharedBuffer> ResilientDevice::allocateInternal(
     const auto fn = [&desc, &preparedModels, &inputRoles, &outputRoles](const nn::IDevice& device) {
         return device.allocate(desc, preparedModels, inputRoles, outputRoles);
     };
-    return protect(*this, fn, /*blocking=*/false);
+    return protect(*this, fn, blocking);
 }
 
 }  // namespace android::hardware::neuralnetworks::utils
