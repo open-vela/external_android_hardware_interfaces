@@ -19,7 +19,6 @@
 #include "Gnss.h"
 #include <log/log.h>
 #include "GnssConfiguration.h"
-#include "GnssMeasurementInterface.h"
 #include "GnssPowerIndication.h"
 #include "GnssPsds.h"
 
@@ -72,14 +71,6 @@ ndk::ScopedAStatus Gnss::getExtensionGnssPowerIndication(
     ALOGD("Gnss::getExtensionGnssPowerIndication");
 
     *iGnssPowerIndication = SharedRefBase::make<GnssPowerIndication>();
-    return ndk::ScopedAStatus::ok();
-}
-
-ndk::ScopedAStatus Gnss::getExtensionGnssMeasurement(
-        std::shared_ptr<IGnssMeasurementInterface>* iGnssMeasurement) {
-    ALOGD("Gnss::getExtensionGnssMeasurement");
-
-    *iGnssMeasurement = SharedRefBase::make<GnssMeasurementInterface>();
     return ndk::ScopedAStatus::ok();
 }
 

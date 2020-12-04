@@ -17,10 +17,9 @@
 package android.hardware.gnss;
 
 import android.hardware.gnss.IGnssCallback;
-import android.hardware.gnss.IGnssConfiguration;
-import android.hardware.gnss.IGnssMeasurementInterface;
 import android.hardware.gnss.IGnssPowerIndication;
 import android.hardware.gnss.IGnssPsds;
+import android.hardware.gnss.IGnssConfiguration;
 
 /**
  * Represents the standard GNSS (Global Navigation Satellite System) interface.
@@ -33,6 +32,14 @@ interface IGnss {
      * codes.
      */
     const int ERROR_INVALID_ARGUMENT = 1;
+
+    /** Bit mask indicating a valid timestampNs is stored in the ElapsedRealtime parcelable. */
+    const int ELAPSED_REALTIME_HAS_TIMESTAMP_NS = 1 << 0;
+
+    /**
+     * Bit mask indicating a valid timeUncertaintyNs is stored in the ElapsedRealtime parcelable.
+     */
+    const int ELAPSED_REALTIME_HAS_TIME_UNCERTAINTY_NS = 1 << 1;
 
     /**
      * Opens the interface and provides the callback routines to the implementation of this
@@ -67,8 +74,6 @@ interface IGnss {
     /**
      * This method returns the IGnssPsds interface.
      *
-     * This method must return non-null.
-     *
      * @return Handle to the IGnssPsds interface.
      */
     IGnssPsds getExtensionPsds();
@@ -76,25 +81,12 @@ interface IGnss {
     /**
      * This method returns the IGnssConfiguration interface.
      *
-     * This method must return non-null.
-     *
      * @return Handle to the IGnssConfiguration interface.
      */
     IGnssConfiguration getExtensionGnssConfiguration();
 
     /**
-     * This methods returns the IGnssMeasurementInterface interface.
-     *
-     * This method must return non-null.
-     *
-     * @return Handle to the IGnssMeasurementInterface interface.
-     */
-    IGnssMeasurementInterface getExtensionGnssMeasurement();
-
-    /**
      * This method returns the IGnssPowerIndication interface.
-     *
-     * This method must return non-null.
      *
      * @return Handle to the IGnssPowerIndication interface.
      */

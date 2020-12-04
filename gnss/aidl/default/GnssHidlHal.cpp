@@ -17,10 +17,11 @@
 #define LOG_TAG "GnssHidlHal"
 
 #include "GnssHidlHal.h"
+//#include <android/hardware/gnss/1.0/IGnssCallback.h>
 
 namespace aidl::android::hardware::gnss {
 
-using GnssSvInfo = ::android::hardware::gnss::V2_1::IGnssCallback::GnssSvInfo;
+namespace V1_0 = ::android::hardware::gnss::V1_0;
 
 GnssHidlHal::GnssHidlHal(const std::shared_ptr<Gnss>& gnssAidl) : mGnssAidl(gnssAidl) {
     Gnss* iGnss = mGnssAidl.get();
@@ -44,8 +45,8 @@ hidl_vec<GnssSvInfo> GnssHidlHal::filterBlocklistedSatellitesV2_1(
         if (mGnssConfigurationAidl->isBlocklistedV2_1(gnssSvInfoList[i])) {
             ALOGD("Blocklisted constellation: %d, svid: %d",
                   (int)gnssSvInfoList[i].v2_0.constellation, gnssSvInfoList[i].v2_0.v1_0.svid);
-            gnssSvInfoList[i].v2_0.v1_0.svFlag &= ~static_cast<uint8_t>(
-                    ::android::hardware::gnss::V1_0::IGnssCallback::GnssSvFlags::USED_IN_FIX);
+            gnssSvInfoList[i].v2_0.v1_0.svFlag &=
+                    ~static_cast<uint8_t>(V1_0::IGnssCallback::GnssSvFlags::USED_IN_FIX);
         }
     }
     return gnssSvInfoList;

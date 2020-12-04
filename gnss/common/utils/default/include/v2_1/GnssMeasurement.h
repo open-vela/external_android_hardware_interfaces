@@ -25,6 +25,17 @@
 
 namespace android::hardware::gnss::V2_1::implementation {
 
+using GnssDataV2_1 = V2_1::IGnssMeasurementCallback::GnssData;
+using GnssDataV2_0 = V2_0::IGnssMeasurementCallback::GnssData;
+
+using ::android::sp;
+using ::android::hardware::hidl_array;
+using ::android::hardware::hidl_memory;
+using ::android::hardware::hidl_string;
+using ::android::hardware::hidl_vec;
+using ::android::hardware::Return;
+using ::android::hardware::Void;
+
 struct GnssMeasurement : public IGnssMeasurement {
     GnssMeasurement();
     ~GnssMeasurement();
@@ -48,8 +59,8 @@ struct GnssMeasurement : public IGnssMeasurement {
   private:
     void start();
     void stop();
-    void reportMeasurement(const V2_0::IGnssMeasurementCallback::GnssData&);
-    void reportMeasurement(const V2_1::IGnssMeasurementCallback::GnssData&);
+    void reportMeasurement(const GnssDataV2_0&);
+    void reportMeasurement(const GnssDataV2_1&);
 
     // Guarded by mMutex
     static sp<V2_1::IGnssMeasurementCallback> sCallback_2_1;
