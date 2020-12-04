@@ -17,7 +17,7 @@
 #include "AudioPrimaryHidlHalTest.h"
 
 #if MAJOR_VERSION >= 7
-#include <audio_policy_configuration_V7_0.h>
+#include <android_audio_policy_configuration_V7_0.h>
 #include <xsdc/XsdcSupport.h>
 
 using android::xsdc_enum_range;
@@ -67,8 +67,7 @@ TEST_P(AudioHidlDeviceTest, GetMicrophonesTest) {
         auto flags = hidl_bitfield<AudioInputFlag>(AudioInputFlag::NONE);
         const SinkMetadata initMetadata = {{{.source = AudioSource::MIC, .gain = 1}}};
 #elif MAJOR_VERSION >= 7
-        config.base.channelMask.resize(1);
-        config.base.channelMask[0] = toString(xsd::AudioChannelMask::AUDIO_CHANNEL_IN_MONO);
+        config.base.channelMask = toString(xsd::AudioChannelMask::AUDIO_CHANNEL_IN_MONO);
         config.base.sampleRateHz = 8000;
         config.base.format = toString(xsd::AudioFormat::AUDIO_FORMAT_PCM_16_BIT);
         hidl_vec<hidl_string> flags;
@@ -236,7 +235,7 @@ TEST_P(InputStreamTest, updateSinkMetadata) {
 #if MAJOR_VERSION <= 6
     hidl_enum_range<AudioSource> range;
 #elif MAJOR_VERSION >= 7
-    xsdc_enum_range<audio::policy::configuration::V7_0::AudioSource> range;
+    xsdc_enum_range<android::audio::policy::configuration::V7_0::AudioSource> range;
 #endif
     // Test all possible track configuration
     for (auto source : range) {
@@ -272,8 +271,8 @@ TEST_P(OutputStreamTest, updateSourceMetadata) {
     hidl_enum_range<AudioUsage> usageRange;
     hidl_enum_range<AudioContentType> contentRange;
 #elif MAJOR_VERSION >= 7
-    xsdc_enum_range<audio::policy::configuration::V7_0::AudioUsage> usageRange;
-    xsdc_enum_range<audio::policy::configuration::V7_0::AudioContentType> contentRange;
+    xsdc_enum_range<android::audio::policy::configuration::V7_0::AudioUsage> usageRange;
+    xsdc_enum_range<android::audio::policy::configuration::V7_0::AudioContentType> contentRange;
 #endif
     // Test all possible track configuration
     for (auto usage : usageRange) {
