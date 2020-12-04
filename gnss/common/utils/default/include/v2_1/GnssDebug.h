@@ -21,8 +21,15 @@
 
 namespace android::hardware::gnss::V1_1::implementation {
 
+using ::android::sp;
+using ::android::hardware::hidl_string;
+using ::android::hardware::hidl_vec;
+using ::android::hardware::Return;
+using ::android::hardware::Void;
+using V1_0::IGnssDebug;
+
 /* Interface for GNSS Debug support. */
-struct GnssDebug : public V1_0::IGnssDebug {
+struct GnssDebug : public IGnssDebug {
     /*
      * Methods from ::android::hardware::gnss::V1_0::IGnssDebug follow.
      * These declarations were generated from IGnssDebug.hal.

@@ -50,7 +50,6 @@ cc_binary {
         "GnssPowerIndication.cpp",
         "GnssPsds.cpp",
         "GnssConfiguration.cpp",
-        "GnssMeasurementInterface.cpp",
         "service.cpp",
     ],
     static_libs: [
