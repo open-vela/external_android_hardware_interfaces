@@ -42,7 +42,8 @@ namespace {
 
 nn::GeneralResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>>
 convertExecutionResultsHelper(const hidl_vec<OutputShape>& outputShapes, const Timing& timing) {
-    return std::make_pair(NN_TRY(nn::convert(outputShapes)), NN_TRY(nn::convert(timing)));
+    return std::make_pair(NN_TRY(validatedConvertToCanonical(outputShapes)),
+                          NN_TRY(validatedConvertToCanonical(timing)));
 }
 
 nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> convertExecutionResults(
@@ -75,7 +76,8 @@ PreparedModel::executeSynchronously(const V1_0::Request& request, MeasureTiming 
     const auto cb = [&result](V1_0::ErrorStatus status, const hidl_vec<OutputShape>& outputShapes,
                               const Timing& timing) {
         if (status != V1_0::ErrorStatus::NONE) {
-            const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+            const auto canonical =
+                    validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
             result = NN_ERROR(canonical) << "executeSynchronously failed with " << toString(status);
         } else {
             result = convertExecutionResults(outputShapes, timing);
@@ -97,7 +99,8 @@ PreparedModel::executeAsynchronously(const V1_0::Request& request, MeasureTiming
     const auto status =
             NN_TRY(hal::utils::makeExecutionFailure(hal::utils::handleTransportError(ret)));
     if (status != V1_0::ErrorStatus::NONE) {
-        const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+        const auto canonical =
+                validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         return NN_ERROR(canonical) << "execute failed with " << toString(status);
     }
 

@@ -48,10 +48,11 @@ nn::GeneralResult<nn::Capabilities> initCapabilities(V1_0::IDevice* device) {
                                                  << "uninitialized";
     const auto cb = [&result](ErrorStatus status, const Capabilities& capabilities) {
         if (status != ErrorStatus::NONE) {
-            const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+            const auto canonical =
+                    validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
             result = NN_ERROR(canonical) << "getCapabilities failed with " << toString(status);
         } else {
-            result = nn::convert(capabilities);
+            result = validatedConvertToCanonical(capabilities);
         }
     };
 
@@ -134,7 +135,8 @@ nn::GeneralResult<std::vector<bool>> Device::getSupportedOperations(const nn::Mo
                                                   << "uninitialized";
     auto cb = [&result, &model](ErrorStatus status, const hidl_vec<bool>& supportedOperations) {
         if (status != ErrorStatus::NONE) {
-            const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+            const auto canonical =
+                    validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
             result = NN_ERROR(canonical)
                      << "getSupportedOperations failed with " << toString(status);
         } else if (supportedOperations.size() != model.main.operations.size()) {
@@ -170,7 +172,8 @@ nn::GeneralResult<nn::SharedPreparedModel> Device::prepareModel(
     const auto ret = kDevice->prepareModel(hidlModel, cb);
     const auto status = NN_TRY(hal::utils::handleTransportError(ret));
     if (status != ErrorStatus::NONE) {
-        const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+        const auto canonical =
+                validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         return NN_ERROR(canonical) << "prepareModel failed with " << toString(status);
     }
 

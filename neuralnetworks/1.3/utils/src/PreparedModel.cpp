@@ -27,7 +27,6 @@
 #include <android/hardware/neuralnetworks/1.3/types.h>
 #include <nnapi/IPreparedModel.h>
 #include <nnapi/Result.h>
-#include <nnapi/TypeUtils.h>
 #include <nnapi/Types.h>
 #include <nnapi/hal/1.2/Conversions.h>
 #include <nnapi/hal/CommonUtils.h>
@@ -45,7 +44,8 @@ namespace {
 nn::GeneralResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>>
 convertExecutionResultsHelper(const hidl_vec<V1_2::OutputShape>& outputShapes,
                               const V1_2::Timing& timing) {
-    return std::make_pair(NN_TRY(nn::convert(outputShapes)), NN_TRY(nn::convert(timing)));
+    return std::make_pair(NN_TRY(validatedConvertToCanonical(outputShapes)),
+                          NN_TRY(validatedConvertToCanonical(timing)));
 }
 
 nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> convertExecutionResults(
@@ -55,7 +55,8 @@ nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> convert
 
 nn::GeneralResult<std::pair<nn::Timing, nn::Timing>> convertFencedExecutionCallbackResults(
         const V1_2::Timing& timingLaunched, const V1_2::Timing& timingFenced) {
-    return std::make_pair(NN_TRY(nn::convert(timingLaunched)), NN_TRY(nn::convert(timingFenced)));
+    return std::make_pair(NN_TRY(validatedConvertToCanonical(timingLaunched)),
+                          NN_TRY(validatedConvertToCanonical(timingFenced)));
 }
 
 nn::GeneralResult<std::pair<nn::SyncFence, nn::ExecuteFencedInfoCallback>>
@@ -63,9 +64,9 @@ convertExecuteFencedResults(const hidl_handle& syncFence,
                             const sp<IFencedExecutionCallback>& callback) {
     auto resultSyncFence = nn::SyncFence::createAsSignaled();
     if (syncFence.getNativeHandle() != nullptr) {
-        auto sharedHandle = NN_TRY(nn::convert(syncFence));
+        auto nativeHandle = NN_TRY(validatedConvertToCanonical(syncFence));
         resultSyncFence = NN_TRY(hal::utils::makeGeneralFailure(
-                nn::SyncFence::create(std::move(sharedHandle)), nn::ErrorStatus::GENERAL_FAILURE));
+                nn::SyncFence::create(std::move(nativeHandle)), nn::ErrorStatus::GENERAL_FAILURE));
     }
 
     if (callback == nullptr) {
@@ -80,8 +81,8 @@ convertExecuteFencedResults(const hidl_handle& syncFence,
         auto cb = [&result](ErrorStatus status, const V1_2::Timing& timingLaunched,
                             const V1_2::Timing& timingFenced) {
             if (status != ErrorStatus::NONE) {
-                const auto canonical =
-                        nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+                const auto canonical = validatedConvertToCanonical(status).value_or(
+                        nn::ErrorStatus::GENERAL_FAILURE);
                 result = NN_ERROR(canonical) << "getExecutionInfo failed with " << toString(status);
             } else {
                 result = convertFencedExecutionCallbackResults(timingLaunched, timingFenced);
@@ -124,7 +125,8 @@ PreparedModel::executeSynchronously(const Request& request, V1_2::MeasureTiming 
     const auto cb = [&result](ErrorStatus status, const hidl_vec<V1_2::OutputShape>& outputShapes,
                               const V1_2::Timing& timing) {
         if (status != ErrorStatus::NONE) {
-            const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+            const auto canonical =
+                    validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
             result = NN_ERROR(canonical) << "executeSynchronously failed with " << toString(status);
         } else {
             result = convertExecutionResults(outputShapes, timing);
@@ -150,7 +152,8 @@ PreparedModel::executeAsynchronously(const Request& request, V1_2::MeasureTiming
     const auto status =
             NN_TRY(hal::utils::makeExecutionFailure(hal::utils::handleTransportError(ret)));
     if (status != ErrorStatus::NONE) {
-        const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+        const auto canonical =
+                validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         return NN_ERROR(canonical) << "executeAsynchronously failed with " << toString(status);
     }
 
@@ -220,7 +223,8 @@ PreparedModel::executeFenced(const nn::Request& request, const std::vector<nn::S
     auto cb = [&result](ErrorStatus status, const hidl_handle& syncFence,
                         const sp<IFencedExecutionCallback>& callback) {
         if (status != ErrorStatus::NONE) {
-            const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+            const auto canonical =
+                    validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
             result = NN_ERROR(canonical) << "executeFenced failed with " << toString(status);
         } else {
             result = convertExecuteFencedResults(syncFence, callback);
