@@ -45,7 +45,8 @@ nn::GeneralResult<nn::SharedPreparedModel> convertPreparedModel(
 Return<void> PreparedModelCallback::notify(ErrorStatus status,
                                            const sp<IPreparedModel>& preparedModel) {
     if (status != ErrorStatus::NONE) {
-        const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+        const auto canonical =
+                validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         notifyInternal(NN_ERROR(canonical) << "preparedModel failed with " << toString(status));
     } else if (preparedModel == nullptr) {
         notifyInternal(NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE)
@@ -72,7 +73,8 @@ void PreparedModelCallback::notifyInternal(PreparedModelCallback::Data result) {
 
 Return<void> ExecutionCallback::notify(ErrorStatus status) {
     if (status != ErrorStatus::NONE) {
-        const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+        const auto canonical =
+                validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         notifyInternal(NN_ERROR(canonical) << "execute failed with " << toString(status));
     } else {
         notifyInternal({});

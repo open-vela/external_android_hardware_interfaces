@@ -51,10 +51,11 @@ nn::GeneralResult<nn::Capabilities> initCapabilities(V1_2::IDevice* device) {
                                                  << "uninitialized";
     const auto cb = [&result](V1_0::ErrorStatus status, const Capabilities& capabilities) {
         if (status != V1_0::ErrorStatus::NONE) {
-            const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+            const auto canonical =
+                    validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
             result = NN_ERROR(canonical) << "getCapabilities_1_2 failed with " << toString(status);
         } else {
-            result = nn::convert(capabilities);
+            result = validatedConvertToCanonical(capabilities);
         }
     };
 
@@ -73,7 +74,8 @@ nn::GeneralResult<std::string> initVersionString(V1_2::IDevice* device) {
                                             << "uninitialized";
     const auto cb = [&result](V1_0::ErrorStatus status, const hidl_string& versionString) {
         if (status != V1_0::ErrorStatus::NONE) {
-            const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+            const auto canonical =
+                    validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
             result = NN_ERROR(canonical) << "getVersionString failed with " << toString(status);
         } else {
             result = versionString;
@@ -93,7 +95,8 @@ nn::GeneralResult<nn::DeviceType> initDeviceType(V1_2::IDevice* device) {
                                                << "uninitialized";
     const auto cb = [&result](V1_0::ErrorStatus status, DeviceType deviceType) {
         if (status != V1_0::ErrorStatus::NONE) {
-            const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+            const auto canonical =
+                    validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
             result = NN_ERROR(canonical) << "getDeviceType failed with " << toString(status);
         } else {
             result = nn::convert(deviceType);
@@ -113,7 +116,8 @@ nn::GeneralResult<std::vector<nn::Extension>> initExtensions(V1_2::IDevice* devi
             NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE) << "uninitialized";
     const auto cb = [&result](V1_0::ErrorStatus status, const hidl_vec<Extension>& extensions) {
         if (status != V1_0::ErrorStatus::NONE) {
-            const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+            const auto canonical =
+                    validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
             result = NN_ERROR(canonical) << "getExtensions failed with " << toString(status);
         } else {
             result = nn::convert(extensions);
@@ -135,7 +139,8 @@ nn::GeneralResult<std::pair<uint32_t, uint32_t>> initNumberOfCacheFilesNeeded(
     const auto cb = [&result](V1_0::ErrorStatus status, uint32_t numModelCache,
                               uint32_t numDataCache) {
         if (status != V1_0::ErrorStatus::NONE) {
-            const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+            const auto canonical =
+                    validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
             result = NN_ERROR(canonical)
                      << "getNumberOfCacheFilesNeeded failed with " << toString(status);
         } else {
@@ -233,7 +238,8 @@ nn::GeneralResult<std::vector<bool>> Device::getSupportedOperations(const nn::Mo
     auto cb = [&result, &model](V1_0::ErrorStatus status,
                                 const hidl_vec<bool>& supportedOperations) {
         if (status != V1_0::ErrorStatus::NONE) {
-            const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+            const auto canonical =
+                    validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
             result = NN_ERROR(canonical)
                      << "getSupportedOperations_1_2 failed with " << toString(status);
         } else if (supportedOperations.size() != model.main.operations.size()) {
@@ -274,7 +280,8 @@ nn::GeneralResult<nn::SharedPreparedModel> Device::prepareModel(
                                                hidlDataCache, hidlToken, cb);
     const auto status = NN_TRY(hal::utils::handleTransportError(ret));
     if (status != V1_0::ErrorStatus::NONE) {
-        const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+        const auto canonical =
+                validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         return NN_ERROR(canonical) << "prepareModel_1_2 failed with " << toString(status);
     }
 
@@ -294,7 +301,8 @@ nn::GeneralResult<nn::SharedPreparedModel> Device::prepareModelFromCache(
     const auto ret = kDevice->prepareModelFromCache(hidlModelCache, hidlDataCache, hidlToken, cb);
     const auto status = NN_TRY(hal::utils::handleTransportError(ret));
     if (status != V1_0::ErrorStatus::NONE) {
-        const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+        const auto canonical =
+                validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         return NN_ERROR(canonical) << "prepareModelFromCache failed with " << toString(status);
     }
 

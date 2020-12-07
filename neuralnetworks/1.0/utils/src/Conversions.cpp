@@ -22,9 +22,7 @@
 #include <nnapi/OperationTypes.h>
 #include <nnapi/Result.h>
 #include <nnapi/SharedMemory.h>
-#include <nnapi/TypeUtils.h>
 #include <nnapi/Types.h>
-#include <nnapi/Validation.h>
 #include <nnapi/hal/CommonUtils.h>
 
 #include <algorithm>
@@ -42,8 +40,6 @@ constexpr std::underlying_type_t<Type> underlyingType(Type value) {
     return static_cast<std::underlying_type_t<Type>>(value);
 }
 
-constexpr auto kVersion = android::nn::Version::ANDROID_OC_MR1;
-
 }  // namespace
 
 namespace android::nn {
@@ -53,53 +49,37 @@ using hardware::hidl_memory;
 using hardware::hidl_vec;
 
 template <typename Input>
-using unvalidatedConvertOutput =
-        std::decay_t<decltype(unvalidatedConvert(std::declval<Input>()).value())>;
+using ConvertOutput = std::decay_t<decltype(convert(std::declval<Input>()).value())>;
 
 template <typename Type>
-GeneralResult<std::vector<unvalidatedConvertOutput<Type>>> unvalidatedConvert(
-        const hidl_vec<Type>& arguments) {
-    std::vector<unvalidatedConvertOutput<Type>> canonical;
+GeneralResult<std::vector<ConvertOutput<Type>>> convert(const hidl_vec<Type>& arguments) {
+    std::vector<ConvertOutput<Type>> canonical;
     canonical.reserve(arguments.size());
     for (const auto& argument : arguments) {
-        canonical.push_back(NN_TRY(nn::unvalidatedConvert(argument)));
-    }
-    return canonical;
-}
-
-template <typename Type>
-decltype(nn::unvalidatedConvert(std::declval<Type>())) validatedConvert(const Type& halObject) {
-    auto canonical = NN_TRY(nn::unvalidatedConvert(halObject));
-    const auto maybeVersion = validate(canonical);
-    if (!maybeVersion.has_value()) {
-        return error() << maybeVersion.error();
-    }
-    const auto version = maybeVersion.value();
-    if (version > kVersion) {
-        return NN_ERROR() << "Insufficient version: " << version << " vs required " << kVersion;
+        canonical.push_back(NN_TRY(nn::convert(argument)));
     }
     return canonical;
 }
 
 }  // anonymous namespace
 
-GeneralResult<OperandType> unvalidatedConvert(const hal::V1_0::OperandType& operandType) {
+GeneralResult<OperandType> convert(const hal::V1_0::OperandType& operandType) {
     return static_cast<OperandType>(operandType);
 }
 
-GeneralResult<OperationType> unvalidatedConvert(const hal::V1_0::OperationType& operationType) {
+GeneralResult<OperationType> convert(const hal::V1_0::OperationType& operationType) {
     return static_cast<OperationType>(operationType);
 }
 
-GeneralResult<Operand::LifeTime> unvalidatedConvert(const hal::V1_0::OperandLifeTime& lifetime) {
+GeneralResult<Operand::LifeTime> convert(const hal::V1_0::OperandLifeTime& lifetime) {
     return static_cast<Operand::LifeTime>(lifetime);
 }
 
-GeneralResult<DeviceStatus> unvalidatedConvert(const hal::V1_0::DeviceStatus& deviceStatus) {
+GeneralResult<DeviceStatus> convert(const hal::V1_0::DeviceStatus& deviceStatus) {
     return static_cast<DeviceStatus>(deviceStatus);
 }
 
-GeneralResult<Capabilities::PerformanceInfo> unvalidatedConvert(
+GeneralResult<Capabilities::PerformanceInfo> convert(
         const hal::V1_0::PerformanceInfo& performanceInfo) {
     return Capabilities::PerformanceInfo{
             .execTime = performanceInfo.execTime,
@@ -107,10 +87,9 @@ GeneralResult<Capabilities::PerformanceInfo> unvalidatedConvert(
     };
 }
 
-GeneralResult<Capabilities> unvalidatedConvert(const hal::V1_0::Capabilities& capabilities) {
-    const auto quantized8Performance =
-            NN_TRY(unvalidatedConvert(capabilities.quantized8Performance));
-    const auto float32Performance = NN_TRY(unvalidatedConvert(capabilities.float32Performance));
+GeneralResult<Capabilities> convert(const hal::V1_0::Capabilities& capabilities) {
+    const auto quantized8Performance = NN_TRY(convert(capabilities.quantized8Performance));
+    const auto float32Performance = NN_TRY(convert(capabilities.float32Performance));
 
     auto table = hal::utils::makeQuantized8PerformanceConsistentWithP(float32Performance,
                                                                       quantized8Performance);
@@ -122,7 +101,7 @@ GeneralResult<Capabilities> unvalidatedConvert(const hal::V1_0::Capabilities& ca
     };
 }
 
-GeneralResult<DataLocation> unvalidatedConvert(const hal::V1_0::DataLocation& location) {
+GeneralResult<DataLocation> convert(const hal::V1_0::DataLocation& location) {
     return DataLocation{
             .poolIndex = location.poolIndex,
             .offset = location.offset,
@@ -130,35 +109,35 @@ GeneralResult<DataLocation> unvalidatedConvert(const hal::V1_0::DataLocation& lo
     };
 }
 
-GeneralResult<Operand> unvalidatedConvert(const hal::V1_0::Operand& operand) {
+GeneralResult<Operand> convert(const hal::V1_0::Operand& operand) {
     return Operand{
-            .type = NN_TRY(unvalidatedConvert(operand.type)),
+            .type = NN_TRY(convert(operand.type)),
             .dimensions = operand.dimensions,
             .scale = operand.scale,
             .zeroPoint = operand.zeroPoint,
-            .lifetime = NN_TRY(unvalidatedConvert(operand.lifetime)),
-            .location = NN_TRY(unvalidatedConvert(operand.location)),
+            .lifetime = NN_TRY(convert(operand.lifetime)),
+            .location = NN_TRY(convert(operand.location)),
     };
 }
 
-GeneralResult<Operation> unvalidatedConvert(const hal::V1_0::Operation& operation) {
+GeneralResult<Operation> convert(const hal::V1_0::Operation& operation) {
     return Operation{
-            .type = NN_TRY(unvalidatedConvert(operation.type)),
+            .type = NN_TRY(convert(operation.type)),
             .inputs = operation.inputs,
             .outputs = operation.outputs,
     };
 }
 
-GeneralResult<Model::OperandValues> unvalidatedConvert(const hidl_vec<uint8_t>& operandValues) {
+GeneralResult<Model::OperandValues> convert(const hidl_vec<uint8_t>& operandValues) {
     return Model::OperandValues(operandValues.data(), operandValues.size());
 }
 
-GeneralResult<Memory> unvalidatedConvert(const hidl_memory& memory) {
+GeneralResult<Memory> convert(const hidl_memory& memory) {
     return createSharedMemoryFromHidlMemory(memory);
 }
 
-GeneralResult<Model> unvalidatedConvert(const hal::V1_0::Model& model) {
-    auto operations = NN_TRY(unvalidatedConvert(model.operations));
+GeneralResult<Model> convert(const hal::V1_0::Model& model) {
+    auto operations = NN_TRY(convert(model.operations));
 
     // Verify number of consumers.
     const auto numberOfConsumers =
@@ -173,7 +152,7 @@ GeneralResult<Model> unvalidatedConvert(const hal::V1_0::Model& model) {
     }
 
     auto main = Model::Subgraph{
-            .operands = NN_TRY(unvalidatedConvert(model.operands)),
+            .operands = NN_TRY(convert(model.operands)),
             .operations = std::move(operations),
             .inputIndexes = model.inputIndexes,
             .outputIndexes = model.outputIndexes,
@@ -181,35 +160,35 @@ GeneralResult<Model> unvalidatedConvert(const hal::V1_0::Model& model) {
 
     return Model{
             .main = std::move(main),
-            .operandValues = NN_TRY(unvalidatedConvert(model.operandValues)),
-            .pools = NN_TRY(unvalidatedConvert(model.pools)),
+            .operandValues = NN_TRY(convert(model.operandValues)),
+            .pools = NN_TRY(convert(model.pools)),
     };
 }
 
-GeneralResult<Request::Argument> unvalidatedConvert(const hal::V1_0::RequestArgument& argument) {
+GeneralResult<Request::Argument> convert(const hal::V1_0::RequestArgument& argument) {
     const auto lifetime = argument.hasNoValue ? Request::Argument::LifeTime::NO_VALUE
                                               : Request::Argument::LifeTime::POOL;
     return Request::Argument{
             .lifetime = lifetime,
-            .location = NN_TRY(unvalidatedConvert(argument.location)),
+            .location = NN_TRY(convert(argument.location)),
             .dimensions = argument.dimensions,
     };
 }
 
-GeneralResult<Request> unvalidatedConvert(const hal::V1_0::Request& request) {
-    auto memories = NN_TRY(unvalidatedConvert(request.pools));
+GeneralResult<Request> convert(const hal::V1_0::Request& request) {
+    auto memories = NN_TRY(convert(request.pools));
     std::vector<Request::MemoryPool> pools;
     pools.reserve(memories.size());
     std::move(memories.begin(), memories.end(), std::back_inserter(pools));
 
     return Request{
-            .inputs = NN_TRY(unvalidatedConvert(request.inputs)),
-            .outputs = NN_TRY(unvalidatedConvert(request.outputs)),
+            .inputs = NN_TRY(convert(request.inputs)),
+            .outputs = NN_TRY(convert(request.outputs)),
             .pools = std::move(pools),
     };
 }
 
-GeneralResult<ErrorStatus> unvalidatedConvert(const hal::V1_0::ErrorStatus& status) {
+GeneralResult<ErrorStatus> convert(const hal::V1_0::ErrorStatus& status) {
     switch (status) {
         case hal::V1_0::ErrorStatus::NONE:
         case hal::V1_0::ErrorStatus::DEVICE_UNAVAILABLE:
@@ -222,81 +201,46 @@ GeneralResult<ErrorStatus> unvalidatedConvert(const hal::V1_0::ErrorStatus& stat
            << "Invalid ErrorStatus " << underlyingType(status);
 }
 
-GeneralResult<DeviceStatus> convert(const hal::V1_0::DeviceStatus& deviceStatus) {
-    return validatedConvert(deviceStatus);
-}
-
-GeneralResult<Capabilities> convert(const hal::V1_0::Capabilities& capabilities) {
-    return validatedConvert(capabilities);
-}
-
-GeneralResult<Model> convert(const hal::V1_0::Model& model) {
-    return validatedConvert(model);
-}
-
-GeneralResult<Request> convert(const hal::V1_0::Request& request) {
-    return validatedConvert(request);
-}
-
-GeneralResult<ErrorStatus> convert(const hal::V1_0::ErrorStatus& status) {
-    return validatedConvert(status);
-}
-
 }  // namespace android::nn
 
 namespace android::hardware::neuralnetworks::V1_0::utils {
 namespace {
 
 template <typename Input>
-using unvalidatedConvertOutput =
-        std::decay_t<decltype(unvalidatedConvert(std::declval<Input>()).value())>;
+using ConvertOutput = std::decay_t<decltype(convert(std::declval<Input>()).value())>;
 
 template <typename Type>
-nn::GeneralResult<hidl_vec<unvalidatedConvertOutput<Type>>> unvalidatedConvert(
-        const std::vector<Type>& arguments) {
-    hidl_vec<unvalidatedConvertOutput<Type>> halObject(arguments.size());
+nn::GeneralResult<hidl_vec<ConvertOutput<Type>>> convert(const std::vector<Type>& arguments) {
+    hidl_vec<ConvertOutput<Type>> halObject(arguments.size());
     for (size_t i = 0; i < arguments.size(); ++i) {
-        halObject[i] = NN_TRY(utils::unvalidatedConvert(arguments[i]));
+        halObject[i] = NN_TRY(utils::convert(arguments[i]));
     }
     return halObject;
 }
 
-template <typename Type>
-decltype(utils::unvalidatedConvert(std::declval<Type>())) validatedConvert(const Type& canonical) {
-    const auto maybeVersion = nn::validate(canonical);
-    if (!maybeVersion.has_value()) {
-        return nn::error() << maybeVersion.error();
-    }
-    const auto version = maybeVersion.value();
-    if (version > kVersion) {
-        return NN_ERROR() << "Insufficient version: " << version << " vs required " << kVersion;
-    }
-    return utils::unvalidatedConvert(canonical);
-}
-
 }  // anonymous namespace
 
-nn::GeneralResult<OperandType> unvalidatedConvert(const nn::OperandType& operandType) {
+nn::GeneralResult<OperandType> convert(const nn::OperandType& operandType) {
     return static_cast<OperandType>(operandType);
 }
 
-nn::GeneralResult<OperationType> unvalidatedConvert(const nn::OperationType& operationType) {
+nn::GeneralResult<OperationType> convert(const nn::OperationType& operationType) {
     return static_cast<OperationType>(operationType);
 }
 
-nn::GeneralResult<OperandLifeTime> unvalidatedConvert(const nn::Operand::LifeTime& lifetime) {
+nn::GeneralResult<OperandLifeTime> convert(const nn::Operand::LifeTime& lifetime) {
     if (lifetime == nn::Operand::LifeTime::POINTER) {
         return NN_ERROR(nn::ErrorStatus::INVALID_ARGUMENT)
-               << "Model cannot be unvalidatedConverted because it contains pointer-based memory";
+               << "Model cannot be converted because it contains pointer-based memory";
     }
     return static_cast<OperandLifeTime>(lifetime);
 }
 
-nn::GeneralResult<DeviceStatus> unvalidatedConvert(const nn::DeviceStatus& deviceStatus) {
+nn::GeneralResult<DeviceStatus> convert(const nn::DeviceStatus& deviceStatus) {
     return static_cast<DeviceStatus>(deviceStatus);
 }
 
-nn::GeneralResult<PerformanceInfo> unvalidatedConvert(
+nn::GeneralResult<PerformanceInfo> convert(
         const nn::Capabilities::PerformanceInfo& performanceInfo) {
     return PerformanceInfo{
             .execTime = performanceInfo.execTime,
@@ -304,16 +248,16 @@ nn::GeneralResult<PerformanceInfo> unvalidatedConvert(
     };
 }
 
-nn::GeneralResult<Capabilities> unvalidatedConvert(const nn::Capabilities& capabilities) {
+nn::GeneralResult<Capabilities> convert(const nn::Capabilities& capabilities) {
     return Capabilities{
-            .float32Performance = NN_TRY(unvalidatedConvert(
+            .float32Performance = NN_TRY(convert(
                     capabilities.operandPerformance.lookup(nn::OperandType::TENSOR_FLOAT32))),
-            .quantized8Performance = NN_TRY(unvalidatedConvert(
+            .quantized8Performance = NN_TRY(convert(
                     capabilities.operandPerformance.lookup(nn::OperandType::TENSOR_QUANT8_ASYMM))),
     };
 }
 
-nn::GeneralResult<DataLocation> unvalidatedConvert(const nn::DataLocation& location) {
+nn::GeneralResult<DataLocation> convert(const nn::DataLocation& location) {
     return DataLocation{
             .poolIndex = location.poolIndex,
             .offset = location.offset,
@@ -321,43 +265,42 @@ nn::GeneralResult<DataLocation> unvalidatedConvert(const nn::DataLocation& locat
     };
 }
 
-nn::GeneralResult<Operand> unvalidatedConvert(const nn::Operand& operand) {
+nn::GeneralResult<Operand> convert(const nn::Operand& operand) {
     return Operand{
-            .type = NN_TRY(unvalidatedConvert(operand.type)),
+            .type = NN_TRY(convert(operand.type)),
             .dimensions = operand.dimensions,
             .numberOfConsumers = 0,
             .scale = operand.scale,
             .zeroPoint = operand.zeroPoint,
-            .lifetime = NN_TRY(unvalidatedConvert(operand.lifetime)),
-            .location = NN_TRY(unvalidatedConvert(operand.location)),
+            .lifetime = NN_TRY(convert(operand.lifetime)),
+            .location = NN_TRY(convert(operand.location)),
     };
 }
 
-nn::GeneralResult<Operation> unvalidatedConvert(const nn::Operation& operation) {
+nn::GeneralResult<Operation> convert(const nn::Operation& operation) {
     return Operation{
-            .type = NN_TRY(unvalidatedConvert(operation.type)),
+            .type = NN_TRY(convert(operation.type)),
             .inputs = operation.inputs,
             .outputs = operation.outputs,
     };
 }
 
-nn::GeneralResult<hidl_vec<uint8_t>> unvalidatedConvert(
-        const nn::Model::OperandValues& operandValues) {
+nn::GeneralResult<hidl_vec<uint8_t>> convert(const nn::Model::OperandValues& operandValues) {
     return hidl_vec<uint8_t>(operandValues.data(), operandValues.data() + operandValues.size());
 }
 
-nn::GeneralResult<hidl_memory> unvalidatedConvert(const nn::Memory& memory) {
+nn::GeneralResult<hidl_memory> convert(const nn::Memory& memory) {
     return hidl_memory(memory.name, NN_TRY(hal::utils::hidlHandleFromSharedHandle(memory.handle)),
                        memory.size);
 }
 
-nn::GeneralResult<Model> unvalidatedConvert(const nn::Model& model) {
+nn::GeneralResult<Model> convert(const nn::Model& model) {
     if (!hal::utils::hasNoPointerData(model)) {
         return NN_ERROR(nn::ErrorStatus::INVALID_ARGUMENT)
-               << "Mdoel cannot be unvalidatedConverted because it contains pointer-based memory";
+               << "Mdoel cannot be converted because it contains pointer-based memory";
     }
 
-    auto operands = NN_TRY(unvalidatedConvert(model.main.operands));
+    auto operands = NN_TRY(convert(model.main.operands));
 
     // Update number of consumers.
     const auto numberOfConsumers =
@@ -369,46 +312,45 @@ nn::GeneralResult<Model> unvalidatedConvert(const nn::Model& model) {
 
     return Model{
             .operands = std::move(operands),
-            .operations = NN_TRY(unvalidatedConvert(model.main.operations)),
+            .operations = NN_TRY(convert(model.main.operations)),
             .inputIndexes = model.main.inputIndexes,
             .outputIndexes = model.main.outputIndexes,
-            .operandValues = NN_TRY(unvalidatedConvert(model.operandValues)),
-            .pools = NN_TRY(unvalidatedConvert(model.pools)),
+            .operandValues = NN_TRY(convert(model.operandValues)),
+            .pools = NN_TRY(convert(model.pools)),
     };
 }
 
-nn::GeneralResult<RequestArgument> unvalidatedConvert(
-        const nn::Request::Argument& requestArgument) {
+nn::GeneralResult<RequestArgument> convert(const nn::Request::Argument& requestArgument) {
     if (requestArgument.lifetime == nn::Request::Argument::LifeTime::POINTER) {
         return NN_ERROR(nn::ErrorStatus::INVALID_ARGUMENT)
-               << "Request cannot be unvalidatedConverted because it contains pointer-based memory";
+               << "Request cannot be converted because it contains pointer-based memory";
     }
     const bool hasNoValue = requestArgument.lifetime == nn::Request::Argument::LifeTime::NO_VALUE;
     return RequestArgument{
             .hasNoValue = hasNoValue,
-            .location = NN_TRY(unvalidatedConvert(requestArgument.location)),
+            .location = NN_TRY(convert(requestArgument.location)),
             .dimensions = requestArgument.dimensions,
     };
 }
 
-nn::GeneralResult<hidl_memory> unvalidatedConvert(const nn::Request::MemoryPool& memoryPool) {
-    return unvalidatedConvert(std::get<nn::Memory>(memoryPool));
+nn::GeneralResult<hidl_memory> convert(const nn::Request::MemoryPool& memoryPool) {
+    return convert(std::get<nn::Memory>(memoryPool));
 }
 
-nn::GeneralResult<Request> unvalidatedConvert(const nn::Request& request) {
+nn::GeneralResult<Request> convert(const nn::Request& request) {
     if (!hal::utils::hasNoPointerData(request)) {
         return NN_ERROR(nn::ErrorStatus::INVALID_ARGUMENT)
-               << "Request cannot be unvalidatedConverted because it contains pointer-based memory";
+               << "Request cannot be converted because it contains pointer-based memory";
     }
 
     return Request{
-            .inputs = NN_TRY(unvalidatedConvert(request.inputs)),
-            .outputs = NN_TRY(unvalidatedConvert(request.outputs)),
-            .pools = NN_TRY(unvalidatedConvert(request.pools)),
+            .inputs = NN_TRY(convert(request.inputs)),
+            .outputs = NN_TRY(convert(request.outputs)),
+            .pools = NN_TRY(convert(request.pools)),
     };
 }
 
-nn::GeneralResult<ErrorStatus> unvalidatedConvert(const nn::ErrorStatus& status) {
+nn::GeneralResult<ErrorStatus> convert(const nn::ErrorStatus& status) {
     switch (status) {
         case nn::ErrorStatus::NONE:
         case nn::ErrorStatus::DEVICE_UNAVAILABLE:
@@ -419,26 +361,6 @@ nn::GeneralResult<ErrorStatus> unvalidatedConvert(const nn::ErrorStatus& status)
         default:
             return ErrorStatus::GENERAL_FAILURE;
     }
-}
-
-nn::GeneralResult<DeviceStatus> convert(const nn::DeviceStatus& deviceStatus) {
-    return validatedConvert(deviceStatus);
-}
-
-nn::GeneralResult<Capabilities> convert(const nn::Capabilities& capabilities) {
-    return validatedConvert(capabilities);
-}
-
-nn::GeneralResult<Model> convert(const nn::Model& model) {
-    return validatedConvert(model);
-}
-
-nn::GeneralResult<Request> convert(const nn::Request& request) {
-    return validatedConvert(request);
-}
-
-nn::GeneralResult<ErrorStatus> convert(const nn::ErrorStatus& status) {
-    return validatedConvert(status);
 }
 
 }  // namespace android::hardware::neuralnetworks::V1_0::utils

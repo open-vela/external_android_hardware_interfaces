@@ -60,7 +60,8 @@ nn::GeneralResult<nn::SharedPreparedModel> convertPreparedModel(
 nn::GeneralResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>>
 convertExecutionGeneralResultsHelper(const hidl_vec<V1_2::OutputShape>& outputShapes,
                                      const V1_2::Timing& timing) {
-    return std::make_pair(NN_TRY(nn::convert(outputShapes)), NN_TRY(nn::convert(timing)));
+    return std::make_pair(NN_TRY(validatedConvertToCanonical(outputShapes)),
+                          NN_TRY(validatedConvertToCanonical(timing)));
 }
 
 nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>>
@@ -75,7 +76,8 @@ convertExecutionGeneralResults(const hidl_vec<V1_2::OutputShape>& outputShapes,
 Return<void> PreparedModelCallback::notify(V1_0::ErrorStatus status,
                                            const sp<V1_0::IPreparedModel>& preparedModel) {
     if (status != V1_0::ErrorStatus::NONE) {
-        const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+        const auto canonical =
+                validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         notifyInternal(NN_ERROR(canonical) << "preparedModel failed with " << toString(status));
     } else if (preparedModel == nullptr) {
         notifyInternal(NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE)
@@ -89,7 +91,8 @@ Return<void> PreparedModelCallback::notify(V1_0::ErrorStatus status,
 Return<void> PreparedModelCallback::notify_1_2(V1_0::ErrorStatus status,
                                                const sp<V1_2::IPreparedModel>& preparedModel) {
     if (status != V1_0::ErrorStatus::NONE) {
-        const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+        const auto canonical =
+                validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         notifyInternal(NN_ERROR(canonical) << "preparedModel failed with " << toString(status));
     } else if (preparedModel == nullptr) {
         notifyInternal(NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE)
@@ -103,7 +106,8 @@ Return<void> PreparedModelCallback::notify_1_2(V1_0::ErrorStatus status,
 Return<void> PreparedModelCallback::notify_1_3(ErrorStatus status,
                                                const sp<IPreparedModel>& preparedModel) {
     if (status != ErrorStatus::NONE) {
-        const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+        const auto canonical =
+                validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         notifyInternal(NN_ERROR(canonical) << "preparedModel failed with " << toString(status));
     } else if (preparedModel == nullptr) {
         notifyInternal(NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE)
@@ -130,7 +134,8 @@ void PreparedModelCallback::notifyInternal(PreparedModelCallback::Data result) {
 
 Return<void> ExecutionCallback::notify(V1_0::ErrorStatus status) {
     if (status != V1_0::ErrorStatus::NONE) {
-        const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+        const auto canonical =
+                validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         notifyInternal(NN_ERROR(canonical) << "execute failed with " << toString(status));
     } else {
         notifyInternal({});
@@ -142,7 +147,8 @@ Return<void> ExecutionCallback::notify_1_2(V1_0::ErrorStatus status,
                                            const hidl_vec<V1_2::OutputShape>& outputShapes,
                                            const V1_2::Timing& timing) {
     if (status != V1_0::ErrorStatus::NONE) {
-        const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+        const auto canonical =
+                validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         notifyInternal(NN_ERROR(canonical) << "execute failed with " << toString(status));
     } else {
         notifyInternal(convertExecutionGeneralResults(outputShapes, timing));
@@ -154,7 +160,8 @@ Return<void> ExecutionCallback::notify_1_3(ErrorStatus status,
                                            const hidl_vec<V1_2::OutputShape>& outputShapes,
                                            const V1_2::Timing& timing) {
     if (status != ErrorStatus::NONE) {
-        const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
+        const auto canonical =
+                validatedConvertToCanonical(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         notifyInternal(NN_ERROR(canonical) << "execute failed with " << toString(status));
     } else {
         notifyInternal(convertExecutionGeneralResults(outputShapes, timing));
