@@ -56,7 +56,7 @@ nn::GeneralResult<nn::Capabilities> initCapabilities(V1_0::IDevice* device) {
     };
 
     const auto ret = device->getCapabilities(cb);
-    HANDLE_TRANSPORT_FAILURE(ret);
+    NN_TRY(hal::utils::handleTransportError(ret));
 
     return result;
 }
@@ -119,8 +119,7 @@ std::pair<uint32_t, uint32_t> Device::getNumberOfCacheFilesNeeded() const {
 
 nn::GeneralResult<void> Device::wait() const {
     const auto ret = kDevice->ping();
-    HANDLE_TRANSPORT_FAILURE(ret);
-    return {};
+    return hal::utils::handleTransportError(ret);
 }
 
 nn::GeneralResult<std::vector<bool>> Device::getSupportedOperations(const nn::Model& model) const {
@@ -149,7 +148,7 @@ nn::GeneralResult<std::vector<bool>> Device::getSupportedOperations(const nn::Mo
     };
 
     const auto ret = kDevice->getSupportedOperations(hidlModel, cb);
-    HANDLE_TRANSPORT_FAILURE(ret);
+    NN_TRY(hal::utils::handleTransportError(ret));
 
     return result;
 }
@@ -169,7 +168,7 @@ nn::GeneralResult<nn::SharedPreparedModel> Device::prepareModel(
     const auto scoped = kDeathHandler.protectCallback(cb.get());
 
     const auto ret = kDevice->prepareModel(hidlModel, cb);
-    const auto status = HANDLE_TRANSPORT_FAILURE(ret);
+    const auto status = NN_TRY(hal::utils::handleTransportError(ret));
     if (status != ErrorStatus::NONE) {
         const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         return NN_ERROR(canonical) << "prepareModel failed with " << toString(status);

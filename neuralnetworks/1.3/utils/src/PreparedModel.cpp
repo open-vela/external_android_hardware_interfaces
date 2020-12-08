@@ -89,7 +89,7 @@ convertExecuteFencedResults(const hidl_handle& syncFence,
         };
 
         const auto ret = callback->getExecutionInfo(cb);
-        HANDLE_TRANSPORT_FAILURE(ret);
+        NN_TRY(hal::utils::handleTransportError(ret));
 
         return result;
     };
@@ -133,7 +133,7 @@ PreparedModel::executeSynchronously(const Request& request, V1_2::MeasureTiming 
 
     const auto ret = kPreparedModel->executeSynchronously_1_3(request, measure, deadline,
                                                               loopTimeoutDuration, cb);
-    HANDLE_TRANSPORT_FAILURE(ret);
+    NN_TRY(hal::utils::makeExecutionFailure(hal::utils::handleTransportError(ret)));
 
     return result;
 }
@@ -147,7 +147,8 @@ PreparedModel::executeAsynchronously(const Request& request, V1_2::MeasureTiming
 
     const auto ret =
             kPreparedModel->execute_1_3(request, measure, deadline, loopTimeoutDuration, cb);
-    const auto status = HANDLE_TRANSPORT_FAILURE(ret);
+    const auto status =
+            NN_TRY(hal::utils::makeExecutionFailure(hal::utils::handleTransportError(ret)));
     if (status != ErrorStatus::NONE) {
         const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         return NN_ERROR(canonical) << "executeAsynchronously failed with " << toString(status);
@@ -229,7 +230,7 @@ PreparedModel::executeFenced(const nn::Request& request, const std::vector<nn::S
     const auto ret = kPreparedModel->executeFenced(hidlRequest, hidlWaitFor, hidlMeasure,
                                                    hidlDeadline, hidlLoopTimeoutDuration,
                                                    hidlTimeoutDurationAfterFence, cb);
-    HANDLE_TRANSPORT_FAILURE(ret);
+    NN_TRY(hal::utils::handleTransportError(ret));
     auto [syncFence, callback] = NN_TRY(std::move(result));
 
     // If executeFenced required the request memory to be moved into shared memory, block here until
