@@ -19,46 +19,65 @@
 #include <nnapi/Result.h>
 #include <nnapi/Types.h>
 
-#include <type_traits>
-
 namespace android::hardware::neuralnetworks::utils {
 
 template <typename Type>
 nn::GeneralResult<Type> handleTransportError(const hardware::Return<Type>& ret) {
     if (ret.isDeadObject()) {
-        return nn::error(nn::ErrorStatus::DEAD_OBJECT)
+        return NN_ERROR(nn::ErrorStatus::DEAD_OBJECT)
                << "Return<>::isDeadObject returned true: " << ret.description();
     }
     if (!ret.isOk()) {
-        return nn::error(nn::ErrorStatus::GENERAL_FAILURE)
+        return NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE)
                << "Return<>::isOk returned false: " << ret.description();
     }
-    if constexpr (!std::is_same_v<Type, void>) {
-        return static_cast<Type>(ret);
-    } else {
-        return {};
-    }
+    return ret;
 }
 
-#define HANDLE_TRANSPORT_FAILURE(ret)                                                        \
-    ({                                                                                       \
-        auto result = ::android::hardware::neuralnetworks::utils::handleTransportError(ret); \
-        if (!result.has_value()) {                                                           \
-            return NN_ERROR(result.error().code) << result.error().message;                  \
-        }                                                                                    \
-        std::move(result).value();                                                           \
-    })
+template <>
+inline nn::GeneralResult<void> handleTransportError(const hardware::Return<void>& ret) {
+    if (ret.isDeadObject()) {
+        return NN_ERROR(nn::ErrorStatus::DEAD_OBJECT)
+               << "Return<>::isDeadObject returned true: " << ret.description();
+    }
+    if (!ret.isOk()) {
+        return NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE)
+               << "Return<>::isOk returned false: " << ret.description();
+    }
+    return {};
+}
 
 template <typename Type>
 nn::GeneralResult<Type> makeGeneralFailure(nn::Result<Type> result, nn::ErrorStatus status) {
     if (!result.has_value()) {
         return nn::error(status) << std::move(result).error();
     }
-    if constexpr (!std::is_same_v<Type, void>) {
-        return std::move(result).value();
-    } else {
-        return {};
+    return std::move(result).value();
+}
+
+template <>
+inline nn::GeneralResult<void> makeGeneralFailure(nn::Result<void> result, nn::ErrorStatus status) {
+    if (!result.has_value()) {
+        return nn::error(status) << std::move(result).error();
     }
+    return {};
+}
+
+template <typename Type>
+nn::ExecutionResult<Type> makeExecutionFailure(nn::Result<Type> result, nn::ErrorStatus status) {
+    if (!result.has_value()) {
+        return nn::error(status) << std::move(result).error();
+    }
+    return std::move(result).value();
+}
+
+template <>
+inline nn::ExecutionResult<void> makeExecutionFailure(nn::Result<void> result,
+                                                      nn::ErrorStatus status) {
+    if (!result.has_value()) {
+        return nn::error(status) << std::move(result).error();
+    }
+    return {};
 }
 
 template <typename Type>
@@ -67,16 +86,16 @@ nn::ExecutionResult<Type> makeExecutionFailure(nn::GeneralResult<Type> result) {
         const auto [message, status] = std::move(result).error();
         return nn::error(status) << message;
     }
-    if constexpr (!std::is_same_v<Type, void>) {
-        return std::move(result).value();
-    } else {
-        return {};
-    }
+    return std::move(result).value();
 }
 
-template <typename Type>
-nn::ExecutionResult<Type> makeExecutionFailure(nn::Result<Type> result, nn::ErrorStatus status) {
-    return makeExecutionFailure(makeGeneralFailure(result, status));
+template <>
+inline nn::ExecutionResult<void> makeExecutionFailure(nn::GeneralResult<void> result) {
+    if (!result.has_value()) {
+        const auto [message, status] = std::move(result).error();
+        return nn::error(status) << message;
+    }
+    return {};
 }
 
 }  // namespace android::hardware::neuralnetworks::utils
