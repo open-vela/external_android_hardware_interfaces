@@ -86,7 +86,7 @@ nn::GeneralResult<nn::Capabilities> initCapabilities(V1_3::IDevice* device) {
     };
 
     const auto ret = device->getCapabilities_1_3(cb);
-    HANDLE_TRANSPORT_FAILURE(ret);
+    NN_TRY(hal::utils::handleTransportError(ret));
 
     return result;
 }
@@ -162,8 +162,7 @@ std::pair<uint32_t, uint32_t> Device::getNumberOfCacheFilesNeeded() const {
 
 nn::GeneralResult<void> Device::wait() const {
     const auto ret = kDevice->ping();
-    HANDLE_TRANSPORT_FAILURE(ret);
-    return {};
+    return hal::utils::handleTransportError(ret);
 }
 
 nn::GeneralResult<std::vector<bool>> Device::getSupportedOperations(const nn::Model& model) const {
@@ -192,7 +191,7 @@ nn::GeneralResult<std::vector<bool>> Device::getSupportedOperations(const nn::Mo
     };
 
     const auto ret = kDevice->getSupportedOperations_1_3(hidlModel, cb);
-    HANDLE_TRANSPORT_FAILURE(ret);
+    NN_TRY(hal::utils::handleTransportError(ret));
 
     return result;
 }
@@ -220,7 +219,7 @@ nn::GeneralResult<nn::SharedPreparedModel> Device::prepareModel(
     const auto ret =
             kDevice->prepareModel_1_3(hidlModel, hidlPreference, hidlPriority, hidlDeadline,
                                       hidlModelCache, hidlDataCache, hidlToken, cb);
-    const auto status = HANDLE_TRANSPORT_FAILURE(ret);
+    const auto status = NN_TRY(hal::utils::handleTransportError(ret));
     if (status != ErrorStatus::NONE) {
         const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         return NN_ERROR(canonical) << "prepareModel_1_3 failed with " << toString(status);
@@ -242,7 +241,7 @@ nn::GeneralResult<nn::SharedPreparedModel> Device::prepareModelFromCache(
 
     const auto ret = kDevice->prepareModelFromCache_1_3(hidlDeadline, hidlModelCache, hidlDataCache,
                                                         hidlToken, cb);
-    const auto status = HANDLE_TRANSPORT_FAILURE(ret);
+    const auto status = NN_TRY(hal::utils::handleTransportError(ret));
     if (status != ErrorStatus::NONE) {
         const auto canonical = nn::convert(status).value_or(nn::ErrorStatus::GENERAL_FAILURE);
         return NN_ERROR(canonical) << "prepareModelFromCache_1_3 failed with " << toString(status);
@@ -278,7 +277,7 @@ nn::GeneralResult<nn::SharedBuffer> Device::allocate(
 
     const auto ret =
             kDevice->allocate(hidlDesc, hidlPreparedModels, hidlInputRoles, hidlOutputRoles, cb);
-    HANDLE_TRANSPORT_FAILURE(ret);
+    NN_TRY(hal::utils::handleTransportError(ret));
 
     return result;
 }
