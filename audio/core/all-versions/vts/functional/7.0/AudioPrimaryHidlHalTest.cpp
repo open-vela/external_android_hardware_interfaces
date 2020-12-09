@@ -26,7 +26,8 @@ static std::vector<AudioConfig> combineAudioConfig(std::vector<xsd::AudioChannel
         for (auto sampleRate : sampleRates) {
             AudioConfig config{};
             // leave offloadInfo to 0
-            config.base.channelMask = toString(channelMask);
+            config.base.channelMask.resize(1);
+            config.base.channelMask[0] = toString(channelMask);
             config.base.sampleRateHz = sampleRate;
             config.base.format = format;
             configs.push_back(config);
