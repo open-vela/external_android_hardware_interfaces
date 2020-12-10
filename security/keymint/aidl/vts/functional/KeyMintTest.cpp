@@ -56,16 +56,18 @@ using namespace aidl::android::hardware::security::keymint;
 template <>
 struct std::equal_to<KeyCharacteristics> {
     bool operator()(const KeyCharacteristics& a, const KeyCharacteristics& b) const {
-        if (a.securityLevel != b.securityLevel) return false;
+        // This isn't very efficient. Oh, well.
+        AuthorizationSet a_sw(a.softwareEnforced);
+        AuthorizationSet b_sw(b.softwareEnforced);
+        AuthorizationSet a_tee(b.hardwareEnforced);
+        AuthorizationSet b_tee(b.hardwareEnforced);
 
-        // this isn't very efficient. Oh, well.
-        AuthorizationSet a_auths(a.authorizations);
-        AuthorizationSet b_auths(b.authorizations);
+        a_sw.Sort();
+        b_sw.Sort();
+        a_tee.Sort();
+        b_tee.Sort();
 
-        a_auths.Sort();
-        b_auths.Sort();
-
-        return a_auths == b_auths;
+        return ((a_sw == b_sw) && (a_tee == b_tee));
     }
 };
 
@@ -227,20 +229,19 @@ class AidlBuf : public vector<uint8_t> {
 
 class NewKeyGenerationTest : public KeyMintAidlTestBase {
   protected:
-    void CheckBaseParams(const vector<KeyCharacteristics>& keyCharacteristics) {
+    void CheckBaseParams(const KeyCharacteristics& keyCharacteristics) {
         // TODO(swillden): Distinguish which params should be in which auth list.
 
-        AuthorizationSet auths;
-        for (auto& entry : keyCharacteristics) {
-            auths.push_back(AuthorizationSet(entry.authorizations));
-        }
+        AuthorizationSet auths(keyCharacteristics.hardwareEnforced);
+        auths.push_back(AuthorizationSet(keyCharacteristics.softwareEnforced));
 
         EXPECT_TRUE(auths.Contains(TAG_ORIGIN, KeyOrigin::GENERATED));
         EXPECT_TRUE(auths.Contains(TAG_PURPOSE, KeyPurpose::SIGN));
         EXPECT_TRUE(auths.Contains(TAG_PURPOSE, KeyPurpose::VERIFY));
 
-        // Verify that App data and ROT are NOT included.
+        // Verify that App ID, App data and ROT are NOT included.
         EXPECT_FALSE(auths.Contains(TAG_ROOT_OF_TRUST));
+        EXPECT_FALSE(auths.Contains(TAG_APPLICATION_ID));
         EXPECT_FALSE(auths.Contains(TAG_APPLICATION_DATA));
 
         // Check that some unexpected tags/values are NOT present.
@@ -248,13 +249,15 @@ class NewKeyGenerationTest : public KeyMintAidlTestBase {
         EXPECT_FALSE(auths.Contains(TAG_PURPOSE, KeyPurpose::DECRYPT));
         EXPECT_FALSE(auths.Contains(TAG_AUTH_TIMEOUT, 301U));
 
-        auto os_ver = auths.GetTagValue(TAG_OS_VERSION);
-        ASSERT_TRUE(os_ver);
-        EXPECT_EQ(*os_ver, os_version());
+        // Now check that unspecified, defaulted tags are correct.
+        EXPECT_TRUE(auths.Contains(TAG_CREATION_DATETIME));
 
-        auto os_pl = auths.GetTagValue(TAG_OS_PATCHLEVEL);
-        ASSERT_TRUE(os_pl);
-        EXPECT_EQ(*os_pl, os_patch_level());
+        EXPECT_TRUE(auths.Contains(TAG_OS_VERSION, os_version()))
+                << "OS version is " << os_version() << " key reported "
+                << auths.GetTagValue(TAG_OS_VERSION)->get();
+        EXPECT_TRUE(auths.Contains(TAG_OS_PATCHLEVEL, os_patch_level()))
+                << "OS patch level is " << os_patch_level() << " key reported "
+                << auths.GetTagValue(TAG_OS_PATCHLEVEL)->get();
     }
 };
 
@@ -267,7 +270,7 @@ class NewKeyGenerationTest : public KeyMintAidlTestBase {
 TEST_P(NewKeyGenerationTest, Rsa) {
     for (auto key_size : ValidKeySizes(Algorithm::RSA)) {
         vector<uint8_t> key_blob;
-        vector<KeyCharacteristics> key_characteristics;
+        KeyCharacteristics key_characteristics;
         ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                      .RsaSigningKey(key_size, 65537)
                                                      .Digest(Digest::NONE)
@@ -277,7 +280,12 @@ TEST_P(NewKeyGenerationTest, Rsa) {
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
 
-        AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
+        AuthorizationSet crypto_params;
+        if (IsSecure()) {
+            crypto_params = key_characteristics.hardwareEnforced;
+        } else {
+            crypto_params = key_characteristics.softwareEnforced;
+        }
 
         EXPECT_TRUE(crypto_params.Contains(TAG_ALGORITHM, Algorithm::RSA));
         EXPECT_TRUE(crypto_params.Contains(TAG_KEY_SIZE, key_size))
@@ -296,7 +304,7 @@ TEST_P(NewKeyGenerationTest, Rsa) {
 TEST_P(NewKeyGenerationTest, NoInvalidRsaSizes) {
     for (auto key_size : InvalidKeySizes(Algorithm::RSA)) {
         vector<uint8_t> key_blob;
-        vector<KeyCharacteristics> key_characteristics;
+        KeyCharacteristics key_characteristics;
         ASSERT_EQ(ErrorCode::UNSUPPORTED_KEY_SIZE,
                   GenerateKey(AuthorizationSetBuilder()
                                       .RsaSigningKey(key_size, 65537)
@@ -329,7 +337,7 @@ TEST_P(NewKeyGenerationTest, RsaNoDefaultSize) {
 TEST_P(NewKeyGenerationTest, Ecdsa) {
     for (auto key_size : ValidKeySizes(Algorithm::EC)) {
         vector<uint8_t> key_blob;
-        vector<KeyCharacteristics> key_characteristics;
+        KeyCharacteristics key_characteristics;
         ASSERT_EQ(ErrorCode::OK,
                   GenerateKey(
                           AuthorizationSetBuilder().EcdsaSigningKey(key_size).Digest(Digest::NONE),
@@ -337,7 +345,12 @@ TEST_P(NewKeyGenerationTest, Ecdsa) {
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
 
-        AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
+        AuthorizationSet crypto_params;
+        if (IsSecure()) {
+            crypto_params = key_characteristics.hardwareEnforced;
+        } else {
+            crypto_params = key_characteristics.softwareEnforced;
+        }
 
         EXPECT_TRUE(crypto_params.Contains(TAG_ALGORITHM, Algorithm::EC));
         EXPECT_TRUE(crypto_params.Contains(TAG_KEY_SIZE, key_size))
@@ -370,7 +383,7 @@ TEST_P(NewKeyGenerationTest, EcdsaDefaultSize) {
 TEST_P(NewKeyGenerationTest, EcdsaInvalidSize) {
     for (auto key_size : InvalidKeySizes(Algorithm::EC)) {
         vector<uint8_t> key_blob;
-        vector<KeyCharacteristics> key_characteristics;
+        KeyCharacteristics key_characteristics;
         ASSERT_EQ(ErrorCode::UNSUPPORTED_KEY_SIZE,
                   GenerateKey(
                           AuthorizationSetBuilder().EcdsaSigningKey(key_size).Digest(Digest::NONE),
@@ -441,7 +454,7 @@ TEST_P(NewKeyGenerationTest, EcdsaAllValidCurves) {
 TEST_P(NewKeyGenerationTest, Hmac) {
     for (auto digest : ValidDigests(false /* withNone */, true /* withMD5 */)) {
         vector<uint8_t> key_blob;
-        vector<KeyCharacteristics> key_characteristics;
+        KeyCharacteristics key_characteristics;
         constexpr size_t key_size = 128;
         ASSERT_EQ(ErrorCode::OK,
                   GenerateKey(
@@ -452,10 +465,17 @@ TEST_P(NewKeyGenerationTest, Hmac) {
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
 
-        AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
-        EXPECT_TRUE(crypto_params.Contains(TAG_ALGORITHM, Algorithm::HMAC));
-        EXPECT_TRUE(crypto_params.Contains(TAG_KEY_SIZE, key_size))
-                << "Key size " << key_size << "missing";
+        AuthorizationSet hardwareEnforced = key_characteristics.hardwareEnforced;
+        AuthorizationSet softwareEnforced = key_characteristics.softwareEnforced;
+        if (IsSecure()) {
+            EXPECT_TRUE(hardwareEnforced.Contains(TAG_ALGORITHM, Algorithm::HMAC));
+            EXPECT_TRUE(hardwareEnforced.Contains(TAG_KEY_SIZE, key_size))
+                    << "Key size " << key_size << "missing";
+        } else {
+            EXPECT_TRUE(softwareEnforced.Contains(TAG_ALGORITHM, Algorithm::HMAC));
+            EXPECT_TRUE(softwareEnforced.Contains(TAG_KEY_SIZE, key_size))
+                    << "Key size " << key_size << "missing";
+        }
 
         CheckedDeleteKey(&key_blob);
     }
@@ -580,7 +600,7 @@ TEST_P(SigningOperationsTest, RsaSuccess) {
 /*
  * SigningOperationsTest.RsaUseRequiresCorrectAppIdAppData
  *
- * Verifies that using an RSA key requires the correct app data.
+ * Verifies that using an RSA key requires the correct app ID/data.
  */
 TEST_P(SigningOperationsTest, RsaUseRequiresCorrectAppIdAppData) {
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
@@ -1392,7 +1412,7 @@ TEST_P(VerificationOperationsTest, HmacSigningKeyCannotVerify) {
     string key_material = "HelloThisIsAKey";
 
     vector<uint8_t> signing_key, verification_key;
-    vector<KeyCharacteristics> signing_key_chars, verification_key_chars;
+    KeyCharacteristics signing_key_chars, verification_key_chars;
     EXPECT_EQ(ErrorCode::OK,
               ImportKey(AuthorizationSetBuilder()
                                 .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -1446,22 +1466,28 @@ class ImportKeyTest : public KeyMintAidlTestBase {
     template <TagType tag_type, Tag tag, typename ValueT>
     void CheckCryptoParam(TypedTag<tag_type, tag> ttag, ValueT expected) {
         SCOPED_TRACE("CheckCryptoParam");
-        for (auto& entry : key_characteristics_) {
-            if (entry.securityLevel == SecLevel()) {
-                EXPECT_TRUE(contains(entry.authorizations, ttag, expected))
-                        << "Tag " << tag << " with value " << expected
-                        << " not found at security level" << entry.securityLevel;
-            } else {
-                EXPECT_FALSE(contains(entry.authorizations, ttag, expected))
-                        << "Tag " << tag << " found at security level " << entry.securityLevel;
-            }
+        if (IsSecure()) {
+            EXPECT_TRUE(contains(key_characteristics_.hardwareEnforced, ttag, expected))
+                    << "Tag " << tag << " with value " << expected << " not found";
+            EXPECT_FALSE(contains(key_characteristics_.softwareEnforced, ttag))
+                    << "Tag " << tag << " found";
+        } else {
+            EXPECT_TRUE(contains(key_characteristics_.softwareEnforced, ttag, expected))
+                    << "Tag " << tag << " with value " << expected << " not found";
+            EXPECT_FALSE(contains(key_characteristics_.hardwareEnforced, ttag))
+                    << "Tag " << tag << " found";
         }
     }
 
     void CheckOrigin() {
         SCOPED_TRACE("CheckOrigin");
-        // Origin isn't a crypto param, but it always lives with them.
-        return CheckCryptoParam(TAG_ORIGIN, KeyOrigin::IMPORTED);
+        if (IsSecure()) {
+            EXPECT_TRUE(contains(key_characteristics_.hardwareEnforced, TAG_ORIGIN,
+                                 KeyOrigin::IMPORTED));
+        } else {
+            EXPECT_TRUE(contains(key_characteristics_.softwareEnforced, TAG_ORIGIN,
+                                 KeyOrigin::IMPORTED));
+        }
     }
 };
 
@@ -3924,7 +3950,7 @@ TEST_P(KeyDeletionTest, DeleteKey) {
 
     // Delete must work if rollback protection is implemented
     if (error == ErrorCode::OK) {
-        AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
+        AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
         ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
 
         ASSERT_EQ(ErrorCode::OK, DeleteKey(true /* keep key blob */));
@@ -3957,8 +3983,8 @@ TEST_P(KeyDeletionTest, DeleteInvalidKey) {
 
     // Delete must work if rollback protection is implemented
     if (error == ErrorCode::OK) {
-        AuthorizationSet enforced(SecLevelAuthorizations());
-        ASSERT_TRUE(enforced.Contains(TAG_ROLLBACK_RESISTANCE));
+        AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
+        ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
 
         // Delete the key we don't care about the result at this point.
         DeleteKey();
@@ -3993,7 +4019,7 @@ TEST_P(KeyDeletionTest, DeleteAllKeys) {
 
     // Delete must work if rollback protection is implemented
     if (error == ErrorCode::OK) {
-        AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
+        AuthorizationSet hardwareEnforced(key_characteristics_.hardwareEnforced);
         ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
 
         ASSERT_EQ(ErrorCode::OK, DeleteAllKeys());
