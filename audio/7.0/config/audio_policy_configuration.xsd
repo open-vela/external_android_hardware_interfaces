@@ -181,7 +181,6 @@
             <xs:enumeration value="AUDIO_OUTPUT_FLAG_MMAP_NOIRQ" />
             <xs:enumeration value="AUDIO_OUTPUT_FLAG_VOIP_RX" />
             <xs:enumeration value="AUDIO_OUTPUT_FLAG_INCALL_MUSIC" />
-            <xs:enumeration value="AUDIO_OUTPUT_FLAG_GAPLESS_OFFLOAD" />
             <xs:enumeration value="AUDIO_INPUT_FLAG_NONE" />
             <xs:enumeration value="AUDIO_INPUT_FLAG_FAST" />
             <xs:enumeration value="AUDIO_INPUT_FLAG_HW_HOTWORD" />
@@ -775,13 +774,13 @@
         </xs:sequence>
     </xs:complexType>
     <xs:simpleType name="audioFormatsList">
-        <xs:list itemType="extendableAudioFormat" />
+        <xs:list itemType="audioFormat" />
     </xs:simpleType>
     <xs:complexType name="surroundFormats">
         <xs:sequence>
             <xs:element name="format" minOccurs="0" maxOccurs="unbounded">
                 <xs:complexType>
-                    <xs:attribute name="name" type="extendableAudioFormat" use="required"/>
+                    <xs:attribute name="name" type="audioFormat" use="required"/>
                     <xs:attribute name="subformats" type="audioFormatsList" />
                 </xs:complexType>
             </xs:element>
