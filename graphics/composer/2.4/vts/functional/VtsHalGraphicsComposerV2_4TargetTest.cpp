@@ -657,6 +657,7 @@ TEST_P(GraphicsComposerHidlTest, setGameContentType) {
     Test_setContentType(ContentType::GAME, "GAME");
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GraphicsComposerHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, GraphicsComposerHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IComposer::descriptor)),
