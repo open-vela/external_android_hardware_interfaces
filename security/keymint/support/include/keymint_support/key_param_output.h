@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef HARDWARE_INTERFACES_KEYMINT_SUPPORT_INCLUDE_KEY_PARAM_OUTPUT_H_
+#define HARDWARE_INTERFACES_KEYMINT_SUPPORT_INCLUDE_KEY_PARAM_OUTPUT_H_
 
 #include <iostream>
 #include <vector>
@@ -97,3 +98,5 @@ inline ::std::ostream& operator<<(::std::ostream& os, Tag tag) {
 }
 
 }  // namespace android::hardware::security::keymint
+
+#endif  // HARDWARE_INTERFACES_KEYMINT_SUPPORT_INCLUDE_KEY_PARAM_OUTPUT_H_
