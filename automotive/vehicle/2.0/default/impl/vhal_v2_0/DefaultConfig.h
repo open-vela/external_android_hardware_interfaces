@@ -308,19 +308,6 @@ const ConfigDeclaration kVehicleProperties[]{
 
         {.config =
                  {
-                         .prop = toInt(VehicleProperty::SEAT_OCCUPANCY),
-                         .access = VehiclePropertyAccess::READ,
-                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                         .areaConfigs = {VehicleAreaConfig{.areaId = (SEAT_1_LEFT)},
-                                         VehicleAreaConfig{.areaId = (SEAT_1_RIGHT)}},
-                 },
-         .initialAreaValues = {{SEAT_1_LEFT,
-                                {.int32Values = {(int)VehicleSeatOccupancyState::VACANT}}},
-                               {SEAT_1_RIGHT,
-                                {.int32Values = {(int)VehicleSeatOccupancyState::VACANT}}}}},
-
-        {.config =
-                 {
                          .prop = toInt(VehicleProperty::INFO_DRIVER_SEAT),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::STATIC,
@@ -430,7 +417,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .minSampleRate = 1.0f,
                          .maxSampleRate = 2.0f,
                  },
-         .initialValue = {.floatValues = {50000.0f}}},  // units in meters
+         .initialValue = {.floatValues = {100.0f}}},  // units in meters
 
         {.config =
                  {
@@ -511,18 +498,6 @@ const ConfigDeclaration kVehicleProperties[]{
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                  },
          .initialValue = {.int32Values = {0, 0, 0}}},
-
-        {.config =
-                 {
-                         .prop = toInt(VehicleProperty::HW_CUSTOM_INPUT),
-                         .access = VehiclePropertyAccess::READ,
-                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                         .configArray = {0, 0, 0, 3, 0, 0, 0, 0, 0},
-                 },
-         .initialValue =
-                 {
-                         .int32Values = {0, 0, 0},
-                 }},
 
         {.config = {.prop = toInt(VehicleProperty::HVAC_POWER_ON),
                     .access = VehiclePropertyAccess::READ_WRITE,
@@ -1102,54 +1077,6 @@ const ConfigDeclaration kVehicleProperties[]{
                         {
                                 .prop = toInt(VehicleProperty::USER_IDENTIFICATION_ASSOCIATION),
                                 .access = VehiclePropertyAccess::READ_WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-        },
-        {
-                .config =
-                        {
-                                .prop = toInt(VehicleProperty::POWER_POLICY_REQ),
-                                .access = VehiclePropertyAccess::READ,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-        },
-        {
-                .config =
-                        {
-                                .prop = toInt(VehicleProperty::POWER_POLICY_GROUP_REQ),
-                                .access = VehiclePropertyAccess::READ,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-        },
-        {
-                .config =
-                        {
-                                .prop = toInt(VehicleProperty::CURRENT_POWER_POLICY),
-                                .access = VehiclePropertyAccess::READ_WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-        },
-        {
-                .config =
-                        {
-                                .prop = toInt(VehicleProperty::WATCHDOG_ALIVE),
-                                .access = VehiclePropertyAccess::WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-        },
-        {
-                .config =
-                        {
-                                .prop = toInt(VehicleProperty::WATCHDOG_TERMINATED_PROCESS),
-                                .access = VehiclePropertyAccess::WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-        },
-        {
-                .config =
-                        {
-                                .prop = toInt(VehicleProperty::VHAL_HEARTBEAT),
-                                .access = VehiclePropertyAccess::READ,
                                 .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                         },
         },
