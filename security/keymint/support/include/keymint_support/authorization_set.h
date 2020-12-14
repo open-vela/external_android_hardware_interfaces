@@ -32,8 +32,9 @@ using std::vector;
 class AuthorizationSetBuilder;
 
 /**
- * A collection of KeyParameters. It provides memory ownership and some convenient functionality for
- * sorting, deduplicating, joining, and subtracting sets of KeyParameters.
+ * An ordered collection of KeyParameters. It provides memory ownership and some convenient
+ * functionality for sorting, deduplicating, joining, and subtracting sets of KeyParameters.
+ * For serialization, wrap the backing store of this structure in a vector<KeyParameter>.
  */
 class AuthorizationSet {
   public:
@@ -217,6 +218,9 @@ class AuthorizationSet {
         vector<KeyParameter> result(begin(), end());
         return result;
     }
+
+    void Serialize(std::ostream* out) const;
+    void Deserialize(std::istream* in);
 
   private:
     NullOr<const KeyParameter&> GetEntry(Tag tag) const;
