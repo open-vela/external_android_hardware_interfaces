@@ -17,7 +17,6 @@
 #include "AudioControl.h"
 
 #include <aidl/android/hardware/automotive/audiocontrol/AudioFocusChange.h>
-#include <aidl/android/hardware/automotive/audiocontrol/DuckingInfo.h>
 #include <aidl/android/hardware/automotive/audiocontrol/IFocusListener.h>
 
 #include <android-base/logging.h>
@@ -100,27 +99,6 @@ ndk::ScopedAStatus AudioControl::onAudioFocusChange(const string& in_usage, int3
                                                     AudioFocusChange in_focusChange) {
     LOG(INFO) << "Focus changed: " << toString(in_focusChange).c_str() << " for usage "
               << in_usage.c_str() << " in zone " << in_zoneId;
-    return ndk::ScopedAStatus::ok();
-}
-
-ndk::ScopedAStatus AudioControl::onDevicesToDuckChange(
-        const std::vector<DuckingInfo>& in_duckingInfos) {
-    LOG(INFO) << "AudioControl::onDevicesToDuckChange";
-    for (const DuckingInfo& duckingInfo : in_duckingInfos) {
-        LOG(INFO) << "zone: " << duckingInfo.zoneId;
-        LOG(INFO) << "Devices to duck:";
-        for (auto& addressToDuck : duckingInfo.deviceAddressesToDuck) {
-            LOG(INFO) << addressToDuck;
-        }
-        LOG(INFO) << "Devices to unduck:";
-        for (auto& addressToUnduck : duckingInfo.deviceAddressesToUnduck) {
-            LOG(INFO) << addressToUnduck;
-        }
-        LOG(INFO) << "Usages holding focus:";
-        for (auto& usage : duckingInfo.usagesHoldingFocus) {
-            LOG(INFO) << usage;
-        }
-    }
     return ndk::ScopedAStatus::ok();
 }
 
