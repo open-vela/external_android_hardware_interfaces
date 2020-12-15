@@ -32,6 +32,7 @@ parcelable GnssMeasurement {
   int accumulatedDeltaRangeState;
   double accumulatedDeltaRangeM;
   double accumulatedDeltaRangeUncertaintyM;
+  float carrierFrequencyHz;
   long carrierCycles;
   double carrierPhase;
   double carrierPhaseUncertainty;
