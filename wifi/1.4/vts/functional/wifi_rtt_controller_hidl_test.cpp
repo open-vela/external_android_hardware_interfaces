@@ -191,8 +191,6 @@ TEST_P(WifiRttControllerHidlTest, Request2SidedRangeMeasurement) {
     const auto& status =
         HIDL_INVOKE(wifi_rtt_controller_, rangeRequest_1_4, cmdId, configs);
     EXPECT_EQ(WifiStatusCode::SUCCESS, status.code);
-    // sleep for 2 seconds to wait for driver/firmware to complete RTT
-    sleep(2);
 }
 /*
  * rangeRequest_1_4
@@ -244,8 +242,6 @@ TEST_P(WifiRttControllerHidlTest, RangeRequest_1_4) {
     const auto& status =
         HIDL_INVOKE(wifi_rtt_controller_, rangeRequest_1_4, cmdId, configs);
     EXPECT_EQ(WifiStatusCode::SUCCESS, status.code);
-    // sleep for 2 seconds to wait for driver/firmware to complete RTT
-    sleep(2);
 }
 
 /*
