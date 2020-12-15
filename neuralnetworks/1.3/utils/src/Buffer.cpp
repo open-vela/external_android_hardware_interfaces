@@ -33,9 +33,6 @@
 #include <memory>
 #include <utility>
 
-// See hardware/interfaces/neuralnetworks/utils/README.md for more information on HIDL interface
-// lifetimes across processes.
-
 namespace android::hardware::neuralnetworks::V1_3::utils {
 
 nn::GeneralResult<std::shared_ptr<const Buffer>> Buffer::create(

@@ -82,9 +82,7 @@ sp<IEffect> EffectsFactory::dispatchEffectInstanceCreation(const effect_descript
     } else if (memcmp(halUuid, SL_IID_VISUALIZATION, sizeof(effect_uuid_t)) == 0) {
         return new VisualizerEffect(handle);
     }
-    const bool isInput =
-            (halDescriptor.flags & EFFECT_FLAG_TYPE_PRE_PROC) == EFFECT_FLAG_TYPE_PRE_PROC;
-    return new Effect(isInput, handle);
+    return new Effect(handle);
 }
 
 // Methods from ::android::hardware::audio::effect::CPP_VERSION::IEffectsFactory follow.
