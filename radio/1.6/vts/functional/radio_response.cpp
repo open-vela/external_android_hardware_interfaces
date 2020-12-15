@@ -1157,6 +1157,14 @@ Return<void> RadioResponse_v1_6::setAllowedNetworkTypeBitmapResponse(
     return Void();
 }
 
+Return<void> RadioResponse_v1_6::getAllowedNetworkTypeBitmapResponse(
+        const ::android::hardware::radio::V1_6::RadioResponseInfo& /*info*/,
+        const ::android::hardware::hidl_bitfield<
+                ::android::hardware::radio::V1_4::RadioAccessFamily>
+        /*networkTypeBitmap*/) {
+    return Void();
+}
+
 Return<void> RadioResponse_v1_6::setDataThrottlingResponse(
         const ::android::hardware::radio::V1_6::RadioResponseInfo& info) {
     rspInfo = info;
@@ -1195,6 +1203,14 @@ Return<void> RadioResponse_v1_6::getVoiceRegistrationStateResponse_1_6(
 Return<void> RadioResponse_v1_6::getDataRegistrationStateResponse_1_6(
         const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
         const ::android::hardware::radio::V1_6::RegStateResult& /*regResponse*/) {
+    rspInfo = info;
+    parent_v1_6.notify(info.serial);
+    return Void();
+}
+
+Return<void> RadioResponse_v1_6::getCurrentCallsResponse_1_6(
+        const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
+        const ::android::hardware::hidl_vec<::android::hardware::radio::V1_6::Call>& /*calls*/) {
     rspInfo = info;
     parent_v1_6.notify(info.serial);
     return Void();
