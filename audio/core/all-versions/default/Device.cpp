@@ -150,76 +150,63 @@ Return<void> Device::getInputBufferSize(const AudioConfig& config, getInputBuffe
 std::tuple<Result, sp<IStreamOut>> Device::openOutputStreamImpl(int32_t ioHandle,
                                                                 const DeviceAddress& device,
                                                                 const AudioConfig& config,
-                                                                const AudioOutputFlags& flags,
+                                                                AudioOutputFlagBitfield flags,
                                                                 AudioConfig* suggestedConfig) {
     audio_config_t halConfig;
     HidlUtils::audioConfigToHal(config, &halConfig);
     audio_stream_out_t* halStream;
-    audio_devices_t halDevice;
-    char halDeviceAddress[AUDIO_DEVICE_MAX_ADDRESS_LEN];
-    if (deviceAddressToHal(device, &halDevice, halDeviceAddress) != NO_ERROR) {
-        return {Result::INVALID_ARGUMENTS, nullptr};
-    }
-    audio_output_flags_t halFlags;
-    if (!audioOutputFlagsToHal(flags, &halFlags)) {
-        return {Result::INVALID_ARGUMENTS, nullptr};
-    }
-    ALOGV("open_output_stream handle: %d devices: %x flags: %#x "
-          "srate: %d format %#x channels %x address %s",
-          ioHandle, halDevice, halFlags, halConfig.sample_rate, halConfig.format,
-          halConfig.channel_mask, halDeviceAddress);
-    int status = mDevice->open_output_stream(mDevice, ioHandle, halDevice, halFlags, &halConfig,
-                                             &halStream, halDeviceAddress);
+    ALOGV(
+        "open_output_stream handle: %d devices: %x flags: %#x "
+        "srate: %d format %#x channels %x address %s",
+        ioHandle, static_cast<audio_devices_t>(device.device),
+        static_cast<audio_output_flags_t>(flags), halConfig.sample_rate, halConfig.format,
+        halConfig.channel_mask, deviceAddressToHal(device).c_str());
+    int status =
+        mDevice->open_output_stream(mDevice, ioHandle, static_cast<audio_devices_t>(device.device),
+                                    static_cast<audio_output_flags_t>(flags), &halConfig,
+                                    &halStream, deviceAddressToHal(device).c_str());
     ALOGV("open_output_stream status %d stream %p", status, halStream);
     sp<IStreamOut> streamOut;
     if (status == OK) {
         streamOut = new StreamOut(this, halStream);
         ++mOpenedStreamsCount;
     }
-    status_t convertStatus =
-            HidlUtils::audioConfigFromHal(halConfig, false /*isInput*/, suggestedConfig);
+    status_t convertStatus = HidlUtils::audioConfigFromHal(halConfig, suggestedConfig);
     ALOGW_IF(convertStatus != OK, "%s: suggested config with incompatible fields", __func__);
     return {analyzeStatus("open_output_stream", status, {EINVAL} /*ignore*/), streamOut};
 }
 
 std::tuple<Result, sp<IStreamIn>> Device::openInputStreamImpl(
-        int32_t ioHandle, const DeviceAddress& device, const AudioConfig& config,
-        const AudioInputFlags& flags, AudioSource source, AudioConfig* suggestedConfig) {
+    int32_t ioHandle, const DeviceAddress& device, const AudioConfig& config,
+    AudioInputFlagBitfield flags, AudioSource source, AudioConfig* suggestedConfig) {
     audio_config_t halConfig;
     HidlUtils::audioConfigToHal(config, &halConfig);
     audio_stream_in_t* halStream;
-    audio_devices_t halDevice;
-    char halDeviceAddress[AUDIO_DEVICE_MAX_ADDRESS_LEN];
-    if (deviceAddressToHal(device, &halDevice, halDeviceAddress) != NO_ERROR) {
-        return {Result::INVALID_ARGUMENTS, nullptr};
-    }
-    audio_input_flags_t halFlags;
-    audio_source_t halSource;
-    if (!audioInputFlagsToHal(flags, &halFlags) ||
-        HidlUtils::audioSourceToHal(source, &halSource) != NO_ERROR) {
-        return {Result::INVALID_ARGUMENTS, nullptr};
-    }
-    ALOGV("open_input_stream handle: %d devices: %x flags: %#x "
-          "srate: %d format %#x channels %x address %s source %d",
-          ioHandle, halDevice, halFlags, halConfig.sample_rate, halConfig.format,
-          halConfig.channel_mask, halDeviceAddress, halSource);
-    int status = mDevice->open_input_stream(mDevice, ioHandle, halDevice, &halConfig, &halStream,
-                                            halFlags, halDeviceAddress, halSource);
+    ALOGV(
+        "open_input_stream handle: %d devices: %x flags: %#x "
+        "srate: %d format %#x channels %x address %s source %d",
+        ioHandle, static_cast<audio_devices_t>(device.device),
+        static_cast<audio_input_flags_t>(flags), halConfig.sample_rate, halConfig.format,
+        halConfig.channel_mask, deviceAddressToHal(device).c_str(),
+        static_cast<audio_source_t>(source));
+    int status = mDevice->open_input_stream(
+        mDevice, ioHandle, static_cast<audio_devices_t>(device.device), &halConfig, &halStream,
+        static_cast<audio_input_flags_t>(flags), deviceAddressToHal(device).c_str(),
+        static_cast<audio_source_t>(source));
     ALOGV("open_input_stream status %d stream %p", status, halStream);
     sp<IStreamIn> streamIn;
     if (status == OK) {
         streamIn = new StreamIn(this, halStream);
         ++mOpenedStreamsCount;
     }
-    status_t convertStatus =
-            HidlUtils::audioConfigFromHal(halConfig, true /*isInput*/, suggestedConfig);
+    status_t convertStatus = HidlUtils::audioConfigFromHal(halConfig, suggestedConfig);
     ALOGW_IF(convertStatus != OK, "%s: suggested config with incompatible fields", __func__);
     return {analyzeStatus("open_input_stream", status, {EINVAL} /*ignore*/), streamIn};
 }
 
 #if MAJOR_VERSION == 2
 Return<void> Device::openOutputStream(int32_t ioHandle, const DeviceAddress& device,
-                                      const AudioConfig& config, AudioOutputFlags flags,
+                                      const AudioConfig& config, AudioOutputFlagBitfield flags,
                                       openOutputStream_cb _hidl_cb) {
     AudioConfig suggestedConfig;
     auto [result, streamOut] =
@@ -229,7 +216,7 @@ Return<void> Device::openOutputStream(int32_t ioHandle, const DeviceAddress& dev
 }
 
 Return<void> Device::openInputStream(int32_t ioHandle, const DeviceAddress& device,
-                                     const AudioConfig& config, AudioInputFlags flags,
+                                     const AudioConfig& config, AudioInputFlagBitfield flags,
                                      AudioSource source, openInputStream_cb _hidl_cb) {
     AudioConfig suggestedConfig;
     auto [result, streamIn] =
@@ -240,12 +227,7 @@ Return<void> Device::openInputStream(int32_t ioHandle, const DeviceAddress& devi
 
 #elif MAJOR_VERSION >= 4
 Return<void> Device::openOutputStream(int32_t ioHandle, const DeviceAddress& device,
-                                      const AudioConfig& config,
-#if MAJOR_VERSION <= 6
-                                      AudioOutputFlags flags,
-#else
-                                      const AudioOutputFlags& flags,
-#endif
+                                      const AudioConfig& config, AudioOutputFlagBitfield flags,
                                       const SourceMetadata& sourceMetadata,
                                       openOutputStream_cb _hidl_cb) {
     AudioConfig suggestedConfig;
@@ -259,12 +241,7 @@ Return<void> Device::openOutputStream(int32_t ioHandle, const DeviceAddress& dev
 }
 
 Return<void> Device::openInputStream(int32_t ioHandle, const DeviceAddress& device,
-                                     const AudioConfig& config,
-#if MAJOR_VERSION <= 6
-                                     AudioInputFlags flags,
-#else
-                                     const AudioInputFlags& flags,
-#endif
+                                     const AudioConfig& config, AudioInputFlagBitfield flags,
                                      const SinkMetadata& sinkMetadata,
                                      openInputStream_cb _hidl_cb) {
     if (sinkMetadata.tracks.size() == 0) {
@@ -294,7 +271,9 @@ Return<bool> Device::supportsAudioPatches() {
 Return<void> Device::createAudioPatch(const hidl_vec<AudioPortConfig>& sources,
                                       const hidl_vec<AudioPortConfig>& sinks,
                                       createAudioPatch_cb _hidl_cb) {
-    auto [retval, patch] = createOrUpdateAudioPatch(AudioPatchHandle{}, sources, sinks);
+    auto [retval, patch] = createOrUpdateAudioPatch(
+            static_cast<AudioPatchHandle>(AudioHandleConsts::AUDIO_PATCH_HANDLE_NONE), sources,
+            sinks);
     _hidl_cb(retval, patch);
     return Void();
 }
@@ -475,7 +454,7 @@ Return<void> Device::updateAudioPatch(int32_t previousPatch,
                                       const hidl_vec<AudioPortConfig>& sources,
                                       const hidl_vec<AudioPortConfig>& sinks,
                                       createAudioPatch_cb _hidl_cb) {
-    if (previousPatch != static_cast<int32_t>(AudioPatchHandle{})) {
+    if (previousPatch != static_cast<int32_t>(AudioHandleConsts::AUDIO_PATCH_HANDLE_NONE)) {
         auto [retval, patch] = createOrUpdateAudioPatch(previousPatch, sources, sinks);
         _hidl_cb(retval, patch);
     } else {
