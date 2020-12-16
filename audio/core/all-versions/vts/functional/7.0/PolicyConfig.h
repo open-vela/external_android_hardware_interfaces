@@ -33,14 +33,10 @@ class PolicyConfig {
         if (mConfig) {
             mStatus = OK;
             mPrimaryModule = getModuleFromName(DeviceManager::kPrimaryDevice);
-            if (mConfig->getFirstModules()) {
-                for (const auto& module : mConfig->getFirstModules()->get_module()) {
-                    if (module.getFirstAttachedDevices()) {
-                        auto attachedDevices = module.getFirstAttachedDevices()->getItem();
-                        if (!attachedDevices.empty()) {
-                            mModulesWithDevicesNames.insert(module.getName());
-                        }
-                    }
+            for (const auto& module : mConfig->getFirstModules()->get_module()) {
+                auto attachedDevices = module.getFirstAttachedDevices()->getItem();
+                if (!attachedDevices.empty()) {
+                    mModulesWithDevicesNames.insert(module.getName());
                 }
             }
         }
@@ -56,7 +52,7 @@ class PolicyConfig {
     }
     const std::string& getFilePath() const { return mFilePath; }
     const xsd::Module* getModuleFromName(const std::string& name) const {
-        if (mConfig && mConfig->getFirstModules()) {
+        if (mConfig) {
             for (const auto& module : mConfig->getFirstModules()->get_module()) {
                 if (module.getName() == name) return &module;
             }
@@ -69,10 +65,8 @@ class PolicyConfig {
     }
     bool haveInputProfilesInModule(const std::string& name) const {
         auto module = getModuleFromName(name);
-        if (module && module->getFirstMixPorts()) {
-            for (const auto& mixPort : module->getFirstMixPorts()->getMixPort()) {
-                if (mixPort.getRole() == xsd::Role::sink) return true;
-            }
+        for (const auto& mixPort : module->getFirstMixPorts()->getMixPort()) {
+            if (mixPort.getRole() == xsd::Role::sink) return true;
         }
         return false;
     }
