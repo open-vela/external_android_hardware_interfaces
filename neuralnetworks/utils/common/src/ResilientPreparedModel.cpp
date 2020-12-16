@@ -64,17 +64,16 @@ nn::SharedPreparedModel ResilientPreparedModel::recover(
 nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>>
 ResilientPreparedModel::execute(const nn::Request& request, nn::MeasureTiming measure,
                                 const nn::OptionalTimePoint& deadline,
-                                const nn::OptionalDuration& loopTimeoutDuration) const {
+                                const nn::OptionalTimeoutDuration& loopTimeoutDuration) const {
     return getPreparedModel()->execute(request, measure, deadline, loopTimeoutDuration);
 }
 
 nn::GeneralResult<std::pair<nn::SyncFence, nn::ExecuteFencedInfoCallback>>
-ResilientPreparedModel::executeFenced(const nn::Request& request,
-                                      const std::vector<nn::SyncFence>& waitFor,
-                                      nn::MeasureTiming measure,
-                                      const nn::OptionalTimePoint& deadline,
-                                      const nn::OptionalDuration& loopTimeoutDuration,
-                                      const nn::OptionalDuration& timeoutDurationAfterFence) const {
+ResilientPreparedModel::executeFenced(
+        const nn::Request& request, const std::vector<nn::SyncFence>& waitFor,
+        nn::MeasureTiming measure, const nn::OptionalTimePoint& deadline,
+        const nn::OptionalTimeoutDuration& loopTimeoutDuration,
+        const nn::OptionalTimeoutDuration& timeoutDurationAfterFence) const {
     return getPreparedModel()->executeFenced(request, waitFor, measure, deadline,
                                              loopTimeoutDuration, timeoutDurationAfterFence);
 }
