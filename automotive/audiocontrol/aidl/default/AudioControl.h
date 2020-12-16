@@ -19,7 +19,6 @@
 #include <aidl/android/hardware/automotive/audiocontrol/AudioFocusChange.h>
 #include <aidl/android/hardware/automotive/audiocontrol/BnAudioControl.h>
 #include <aidl/android/hardware/automotive/audiocontrol/DuckingInfo.h>
-#include <aidl/android/hardware/automotive/audiocontrol/MutingInfo.h>
 
 namespace aidl::android::hardware::automotive::audiocontrol {
 
@@ -31,8 +30,6 @@ class AudioControl : public BnAudioControl {
                                           AudioFocusChange in_focusChange) override;
     ndk::ScopedAStatus onDevicesToDuckChange(
             const std::vector<DuckingInfo>& in_duckingInfos) override;
-    ndk::ScopedAStatus onDevicesToMuteChange(
-            const std::vector<MutingInfo>& in_mutingInfos) override;
     ndk::ScopedAStatus registerFocusListener(
             const shared_ptr<IFocusListener>& in_listener) override;
     ndk::ScopedAStatus setBalanceTowardRight(float in_value) override;
