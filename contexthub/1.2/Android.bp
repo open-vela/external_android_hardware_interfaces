@@ -6,7 +6,6 @@ hidl_interface {
     srcs: [
         "types.hal",
         "IContexthub.hal",
-        "IContexthubCallback.hal",
     ],
     interfaces: [
         "android.hardware.contexthub@1.0",
