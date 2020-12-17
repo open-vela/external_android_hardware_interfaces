@@ -20,12 +20,11 @@
 #include <vector>
 
 #include <android-base/logging.h>
-#include <android/binder_manager.h>
 
 #include <keymint_support/key_param_output.h>
 #include <keymint_support/keymint_utils.h>
 
-namespace aidl::android::hardware::security::keymint {
+namespace android::hardware::security::keymint {
 
 using namespace std::literals::chrono_literals;
 using std::endl;
@@ -43,19 +42,19 @@ using std::optional;
 
 namespace test {
 
-ErrorCode KeyMintAidlTestBase::GetReturnErrorCode(const Status& result) {
+ErrorCode KeyMintAidlTestBase::GetReturnErrorCode(Status result) {
     if (result.isOk()) return ErrorCode::OK;
 
-    if (result.getExceptionCode() == EX_SERVICE_SPECIFIC) {
-        return static_cast<ErrorCode>(result.getServiceSpecificError());
+    if (result.exceptionCode() == binder::Status::EX_SERVICE_SPECIFIC) {
+        return static_cast<ErrorCode>(result.serviceSpecificErrorCode());
     }
 
     return ErrorCode::UNKNOWN_ERROR;
 }
 
-void KeyMintAidlTestBase::InitializeKeyMint(std::shared_ptr<IKeyMintDevice> keyMint) {
+void KeyMintAidlTestBase::InitializeKeyMint(sp<IKeyMintDevice> keyMint) {
     ASSERT_NE(keyMint, nullptr);
-    keymint_ = std::move(keyMint);
+    keymint_ = keyMint;
 
     KeyMintHardwareInfo info;
     ASSERT_TRUE(keymint_->getHardwareInfo(&info).isOk());
@@ -69,12 +68,8 @@ void KeyMintAidlTestBase::InitializeKeyMint(std::shared_ptr<IKeyMintDevice> keyM
 }
 
 void KeyMintAidlTestBase::SetUp() {
-    if (AServiceManager_isDeclared(GetParam().c_str())) {
-        ::ndk::SpAIBinder binder(AServiceManager_waitForService(GetParam().c_str()));
-        InitializeKeyMint(IKeyMintDevice::fromBinder(binder));
-    } else {
-        InitializeKeyMint(nullptr);
-    }
+    InitializeKeyMint(
+            android::waitForDeclaredService<IKeyMintDevice>(String16(GetParam().c_str())));
 }
 
 ErrorCode KeyMintAidlTestBase::GenerateKey(const AuthorizationSet& key_desc,
@@ -181,7 +176,7 @@ ErrorCode KeyMintAidlTestBase::DeleteKey(vector<uint8_t>* key_blob, bool keep_ke
         *key_blob = vector<uint8_t>();
     }
 
-    EXPECT_TRUE(result.isOk()) << result.getServiceSpecificError() << endl;
+    EXPECT_TRUE(result.isOk()) << result.serviceSpecificErrorCode() << endl;
     return GetReturnErrorCode(result);
 }
 
@@ -191,7 +186,7 @@ ErrorCode KeyMintAidlTestBase::DeleteKey(bool keep_key_blob) {
 
 ErrorCode KeyMintAidlTestBase::DeleteAllKeys() {
     Status result = keymint_->deleteAllKeys();
-    EXPECT_TRUE(result.isOk()) << result.getServiceSpecificError() << endl;
+    EXPECT_TRUE(result.isOk()) << result.serviceSpecificErrorCode() << endl;
     return GetReturnErrorCode(result);
 }
 
@@ -206,8 +201,7 @@ void KeyMintAidlTestBase::CheckedDeleteKey() {
 
 ErrorCode KeyMintAidlTestBase::Begin(KeyPurpose purpose, const vector<uint8_t>& key_blob,
                                      const AuthorizationSet& in_params,
-                                     AuthorizationSet* out_params,
-                                     std::shared_ptr<IKeyMintOperation>& op) {
+                                     AuthorizationSet* out_params, sp<IKeyMintOperation>& op) {
     SCOPED_TRACE("Begin");
     Status result;
     BeginResult out;
@@ -332,7 +326,7 @@ ErrorCode KeyMintAidlTestBase::Finish(const AuthorizationSet& in_params, const s
         output->append(oPut.begin(), oPut.end());
     }
 
-    op_.reset();
+    op_.clear();  // So dtor doesn't Abort().
     return GetReturnErrorCode(result);
 }
 
@@ -364,7 +358,7 @@ ErrorCode KeyMintAidlTestBase::Finish(const string& message, const string& signa
     return result;
 }
 
-ErrorCode KeyMintAidlTestBase::Abort(const std::shared_ptr<IKeyMintOperation>& op) {
+ErrorCode KeyMintAidlTestBase::Abort(const sp<IKeyMintOperation>& op) {
     SCOPED_TRACE("Abort");
 
     EXPECT_NE(op, nullptr);
@@ -374,7 +368,7 @@ ErrorCode KeyMintAidlTestBase::Abort(const std::shared_ptr<IKeyMintOperation>& o
 
     Status retval = op->abort();
     EXPECT_TRUE(retval.isOk());
-    return static_cast<ErrorCode>(retval.getServiceSpecificError());
+    return static_cast<ErrorCode>(retval.serviceSpecificErrorCode());
 }
 
 ErrorCode KeyMintAidlTestBase::Abort() {
@@ -386,14 +380,14 @@ ErrorCode KeyMintAidlTestBase::Abort() {
     }
 
     Status retval = op_->abort();
-    return static_cast<ErrorCode>(retval.getServiceSpecificError());
+    return static_cast<ErrorCode>(retval.serviceSpecificErrorCode());
 }
 
 void KeyMintAidlTestBase::AbortIfNeeded() {
     SCOPED_TRACE("AbortIfNeeded");
     if (op_) {
         EXPECT_EQ(ErrorCode::OK, Abort());
-        op_.reset();
+        op_.clear();
     }
 }
 
@@ -528,7 +522,7 @@ void KeyMintAidlTestBase::VerifyMessage(const vector<uint8_t>& key_blob, const s
     AuthorizationSet finish_out_params;
     EXPECT_EQ(ErrorCode::OK, Finish(finish_params, message.substr(consumed), signature,
                                     &finish_out_params, &output));
-    op_.reset();
+    op_.clear();
     EXPECT_TRUE(output.empty());
 }
 
@@ -756,4 +750,4 @@ vector<Digest> KeyMintAidlTestBase::ValidDigests(bool withNone, bool withMD5) {
 
 }  // namespace test
 
-}  // namespace aidl::android::hardware::security::keymint
+}  // namespace android::hardware::security::keymint

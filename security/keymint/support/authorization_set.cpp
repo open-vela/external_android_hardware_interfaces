@@ -16,13 +16,19 @@
 
 #include <keymint_support/authorization_set.h>
 
-#include <aidl/android/hardware/security/keymint/Algorithm.h>
-#include <aidl/android/hardware/security/keymint/BlockMode.h>
-#include <aidl/android/hardware/security/keymint/Digest.h>
-#include <aidl/android/hardware/security/keymint/KeyParameter.h>
-#include <aidl/android/hardware/security/keymint/KeyPurpose.h>
+#include <assert.h>
+#include <sstream>
 
-namespace aidl::android::hardware::security::keymint {
+#include <android-base/logging.h>
+
+#include <android/hardware/security/keymint/Algorithm.h>
+#include <android/hardware/security/keymint/BlockMode.h>
+#include <android/hardware/security/keymint/Digest.h>
+#include <android/hardware/security/keymint/KeyParameter.h>
+#include <android/hardware/security/keymint/KeyPurpose.h>
+#include <android/hardware/security/keymint/TagType.h>
+
+namespace android::hardware::security::keymint {
 
 void AuthorizationSet::Sort() {
     std::sort(data_.begin(), data_.end());
@@ -212,7 +218,7 @@ AuthorizationSetBuilder& AuthorizationSetBuilder::GcmModeMacLen(uint32_t macLeng
 }
 
 AuthorizationSetBuilder& AuthorizationSetBuilder::BlockMode(
-        std::initializer_list<aidl::android::hardware::security::keymint::BlockMode> blockModes) {
+        std::initializer_list<android::hardware::security::keymint::BlockMode> blockModes) {
     for (auto mode : blockModes) {
         push_back(TAG_BLOCK_MODE, mode);
     }
@@ -234,4 +240,4 @@ AuthorizationSetBuilder& AuthorizationSetBuilder::Padding(
     return *this;
 }
 
-}  // namespace aidl::android::hardware::security::keymint
+}  // namespace android::hardware::security::keymint

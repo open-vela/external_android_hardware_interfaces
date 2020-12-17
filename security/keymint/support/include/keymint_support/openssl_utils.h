@@ -16,12 +16,12 @@
 
 #pragma once
 
-#include <aidl/android/hardware/security/keymint/Digest.h>
+#include <android/hardware/security/keymint/Digest.h>
 
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
-namespace aidl::android::hardware::security::keymint {
+namespace android::hardware::security::keymint {
 
 template <typename T, void (*F)(T*)>
 struct UniquePtrDeleter {
@@ -61,4 +61,4 @@ inline const EVP_MD* openssl_digest(Digest digest) {
     return nullptr;
 }
 
-}  // namespace aidl::android::hardware::security::keymint
+}  // namespace android::hardware::security::keymint
