@@ -26,7 +26,7 @@
 
 #include <cutils/properties.h>
 
-#include <android/hardware/security/keymint/KeyFormat.h>
+#include <aidl/android/hardware/security/keymint/KeyFormat.h>
 
 #include <keymint_support/attestation_record.h>
 #include <keymint_support/key_param_output.h>
@@ -37,21 +37,21 @@
 static bool arm_deleteAllKeys = false;
 static bool dump_Attestations = false;
 
-using android::hardware::security::keymint::AuthorizationSet;
-using android::hardware::security::keymint::KeyCharacteristics;
-using android::hardware::security::keymint::KeyFormat;
+using aidl::android::hardware::security::keymint::AuthorizationSet;
+using aidl::android::hardware::security::keymint::KeyCharacteristics;
+using aidl::android::hardware::security::keymint::KeyFormat;
 
-namespace android::hardware::security::keymint {
+namespace aidl::android::hardware::security::keymint {
 
 bool operator==(const keymint::AuthorizationSet& a, const keymint::AuthorizationSet& b) {
     return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin());
 }
 
-}  // namespace android::hardware::security::keymint
+}  // namespace aidl::android::hardware::security::keymint
 
 namespace std {
 
-using namespace android::hardware::security::keymint;
+using namespace aidl::android::hardware::security::keymint;
 
 template <>
 struct std::equal_to<KeyCharacteristics> {
@@ -73,17 +73,14 @@ struct std::equal_to<KeyCharacteristics> {
 
 }  // namespace std
 
-namespace android::hardware::security::keymint::test {
+namespace aidl::android::hardware::security::keymint::test {
 
 namespace {
 
 template <TagType tag_type, Tag tag, typename ValueT>
 bool contains(vector<KeyParameter>& set, TypedTag<tag_type, tag> ttag, ValueT expected_value) {
     auto it = std::find_if(set.begin(), set.end(), [&](const KeyParameter& param) {
-        if (auto p = authorizationValue(ttag, param)) {
-            return *p == expected_value;
-        }
-        return false;
+        return param.tag == tag && accessTagValue(ttag, param) == expected_value;
     });
     return (it != set.end());
 }
@@ -254,10 +251,10 @@ class NewKeyGenerationTest : public KeyMintAidlTestBase {
 
         EXPECT_TRUE(auths.Contains(TAG_OS_VERSION, os_version()))
                 << "OS version is " << os_version() << " key reported "
-                << auths.GetTagValue(TAG_OS_VERSION)->get();
+                << auths.GetTagValue(TAG_OS_VERSION);
         EXPECT_TRUE(auths.Contains(TAG_OS_PATCHLEVEL, os_patch_level()))
                 << "OS patch level is " << os_patch_level() << " key reported "
-                << auths.GetTagValue(TAG_OS_PATCHLEVEL)->get();
+                << auths.GetTagValue(TAG_OS_PATCHLEVEL);
     }
 };
 
@@ -837,7 +834,7 @@ TEST_P(SigningOperationsTest, RsaAbort) {
     EXPECT_EQ(ErrorCode::INVALID_OPERATION_HANDLE, Abort());
 
     // Set to sentinel, so TearDown() doesn't try to abort again.
-    op_.clear();
+    op_.reset();
 }
 
 /*
@@ -2336,8 +2333,8 @@ TEST_P(EncryptionOperationsTest, AesEcbPkcs7PaddingCorrupted) {
 
 vector<uint8_t> CopyIv(const AuthorizationSet& set) {
     auto iv = set.GetTagValue(TAG_NONCE);
-    EXPECT_TRUE(iv);
-    return iv->get();
+    EXPECT_TRUE(iv.isOk());
+    return iv.value();
 }
 
 /*
@@ -2462,13 +2459,13 @@ TEST_P(EncryptionOperationsTest, AesIncremental) {
                 case BlockMode::CBC:
                 case BlockMode::GCM:
                 case BlockMode::CTR:
-                    ASSERT_TRUE(iv) << "No IV for block mode " << block_mode;
-                    EXPECT_EQ(block_mode == BlockMode::GCM ? 12U : 16U, iv->get().size());
-                    params.push_back(TAG_NONCE, iv->get());
+                    ASSERT_TRUE(iv.isOk()) << "No IV for block mode " << block_mode;
+                    EXPECT_EQ(block_mode == BlockMode::GCM ? 12U : 16U, iv.value().size());
+                    params.push_back(TAG_NONCE, iv.value());
                     break;
 
                 case BlockMode::ECB:
-                    EXPECT_FALSE(iv) << "ECB mode should not generate IV";
+                    EXPECT_FALSE(iv.isOk()) << "ECB mode should not generate IV";
                     break;
             }
 
@@ -2652,9 +2649,9 @@ TEST_P(EncryptionOperationsTest, AesCallerNonce) {
     AuthorizationSet out_params;
     string ciphertext = EncryptMessage(message, params, &out_params);
     EXPECT_EQ(message.size(), ciphertext.size());
-    EXPECT_EQ(16U, out_params.GetTagValue(TAG_NONCE)->get().size());
+    EXPECT_EQ(16U, out_params.GetTagValue(TAG_NONCE).value().size());
 
-    params.push_back(TAG_NONCE, out_params.GetTagValue(TAG_NONCE)->get());
+    params.push_back(TAG_NONCE, out_params.GetTagValue(TAG_NONCE).value());
     string plaintext = DecryptMessage(ciphertext, params);
     EXPECT_EQ(message, plaintext);
 
@@ -2700,9 +2697,9 @@ TEST_P(EncryptionOperationsTest, AesCallerNonceProhibited) {
     AuthorizationSet out_params;
     string ciphertext = EncryptMessage(message, params, &out_params);
     EXPECT_EQ(message.size(), ciphertext.size());
-    EXPECT_EQ(16U, out_params.GetTagValue(TAG_NONCE)->get().size());
+    EXPECT_EQ(16U, out_params.GetTagValue(TAG_NONCE).value().size());
 
-    params.push_back(TAG_NONCE, out_params.GetTagValue(TAG_NONCE)->get());
+    params.push_back(TAG_NONCE, out_params.GetTagValue(TAG_NONCE).value());
     string plaintext = DecryptMessage(ciphertext, params);
     EXPECT_EQ(message, plaintext);
 
@@ -2896,7 +2893,7 @@ TEST_P(EncryptionOperationsTest, AesGcmTooShortTagOnDecrypt) {
     AuthorizationSet begin_out_params;
     EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, params, &begin_out_params));
     EXPECT_EQ(1U, begin_out_params.size());
-    ASSERT_TRUE(begin_out_params.GetTagValue(TAG_NONCE));
+    ASSERT_TRUE(begin_out_params.GetTagValue(TAG_NONCE).isOk());
 
     AuthorizationSet finish_out_params;
     string ciphertext;
@@ -3118,7 +3115,7 @@ TEST_P(EncryptionOperationsTest, AesGcmAadOutOfOrder) {
     EXPECT_EQ(ErrorCode::INVALID_TAG,
               Update(update_params, "", &update_out_params, &ciphertext, &input_consumed));
 
-    op_.clear();
+    op_.reset();
 }
 
 /*
@@ -3976,7 +3973,7 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
 
     auto params = AuthorizationSetBuilder().Padding(PaddingMode::NONE);
     constexpr size_t max_operations = 100;  // set to arbituary large number
-    sp<IKeyMintOperation> op_handles[max_operations];
+    std::shared_ptr<IKeyMintOperation> op_handles[max_operations];
     AuthorizationSet out_params;
     ErrorCode result;
     size_t i;
@@ -4043,7 +4040,7 @@ TEST_P(TransportLimitTest, LargeFinishInput) {
 
 INSTANTIATE_KEYMINT_AIDL_TEST(TransportLimitTest);
 
-}  // namespace android::hardware::security::keymint::test
+}  // namespace aidl::android::hardware::security::keymint::test
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
