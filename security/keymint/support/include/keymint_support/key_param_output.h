@@ -19,24 +19,24 @@
 #include <iostream>
 #include <vector>
 
-#include <android/hardware/security/keymint/Algorithm.h>
-#include <android/hardware/security/keymint/BlockMode.h>
-#include <android/hardware/security/keymint/Digest.h>
-#include <android/hardware/security/keymint/EcCurve.h>
-#include <android/hardware/security/keymint/ErrorCode.h>
-#include <android/hardware/security/keymint/HardwareAuthenticatorType.h>
-#include <android/hardware/security/keymint/KeyCharacteristics.h>
-#include <android/hardware/security/keymint/KeyOrigin.h>
-#include <android/hardware/security/keymint/KeyParameter.h>
-#include <android/hardware/security/keymint/KeyPurpose.h>
-#include <android/hardware/security/keymint/PaddingMode.h>
-#include <android/hardware/security/keymint/SecurityLevel.h>
-#include <android/hardware/security/keymint/Tag.h>
-#include <android/hardware/security/keymint/TagType.h>
+#include <aidl/android/hardware/security/keymint/Algorithm.h>
+#include <aidl/android/hardware/security/keymint/BlockMode.h>
+#include <aidl/android/hardware/security/keymint/Digest.h>
+#include <aidl/android/hardware/security/keymint/EcCurve.h>
+#include <aidl/android/hardware/security/keymint/ErrorCode.h>
+#include <aidl/android/hardware/security/keymint/HardwareAuthenticatorType.h>
+#include <aidl/android/hardware/security/keymint/KeyCharacteristics.h>
+#include <aidl/android/hardware/security/keymint/KeyOrigin.h>
+#include <aidl/android/hardware/security/keymint/KeyParameter.h>
+#include <aidl/android/hardware/security/keymint/KeyPurpose.h>
+#include <aidl/android/hardware/security/keymint/PaddingMode.h>
+#include <aidl/android/hardware/security/keymint/SecurityLevel.h>
+#include <aidl/android/hardware/security/keymint/Tag.h>
+#include <aidl/android/hardware/security/keymint/TagType.h>
 
 #include "keymint_tags.h"
 
-namespace android::hardware::security::keymint {
+namespace aidl::android::hardware::security::keymint {
 
 inline ::std::ostream& operator<<(::std::ostream& os, Algorithm value) {
     return os << toString(value);
@@ -71,7 +71,7 @@ inline ::std::ostream& operator<<(::std::ostream& os, SecurityLevel value) {
 }
 
 template <typename ValueT>
-::std::ostream& operator<<(::std::ostream& os, const std::optional<ValueT>& value) {
+::std::ostream& operator<<(::std::ostream& os, const NullOr<ValueT>& value) {
     if (!value.isOk()) {
         os << "(value not present)";
     } else {
@@ -96,4 +96,4 @@ inline ::std::ostream& operator<<(::std::ostream& os, Tag tag) {
     return os << toString(tag);
 }
 
-}  // namespace android::hardware::security::keymint
+}  // namespace aidl::android::hardware::security::keymint
