@@ -16,8 +16,11 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.security.keymint;
-@RustDerive(Clone=true, Eq=true, Hash=true, Ord=true, PartialEq=true, PartialOrd=true) @VintfStability
+@VintfStability
 parcelable KeyParameter {
   android.hardware.security.keymint.Tag tag;
-  android.hardware.security.keymint.KeyParameterValue value;
+  boolean boolValue;
+  int integer;
+  long longInteger;
+  byte[] blob;
 }
