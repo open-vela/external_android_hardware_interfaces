@@ -1480,6 +1480,33 @@ enum VehicleProperty : int32_t {
         | VehiclePropertyType:INT32_VEC
         | VehicleArea:GLOBAL),
 
+    /**
+     * Defines a custom OEM partner input event.
+     *
+     * This input event must be used by OEM partners who wish to propagate events not supported
+     * by Android. It is composed by an array of int32 values only.
+     *
+     * The Android properties are:
+     *
+     * int32Values[0] : Input code identifying the function representing this event. Valid event
+     *                  types are defined by CustomInputType.CUSTOM_EVENT_F1 up to
+     *                  CustomInputType.CUSTOM_EVENT_F10. They represent the custom event to be
+     *                  defined by OEM partners.
+     * int32Values[1] : target display type defined in VehicleDisplay. Events not tied to specific
+     *                  display must be sent to VehicleDisplay#MAIN.
+     * int32Values[2] : repeat counter, if 0 then event is not repeated. Values 1 or above means
+     *                  how many times this event repeated.
+     *
+     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
+     * @data_enum CustomInputType
+     * @access VehiclePropertyAccess:READ
+     */
+    HW_CUSTOM_INPUT = (
+        0X0A30
+        | VehiclePropertyGroup:SYSTEM
+        | VehiclePropertyType:INT32_VEC
+        | VehicleArea:GLOBAL),
+
     /***************************************************************************
      * Most Car Cabin properties have both a POSition and MOVE parameter.  These
      * are used to control the various movements for seats, doors, and windows
@@ -2892,6 +2919,114 @@ enum VehicleProperty : int32_t {
         | VehiclePropertyGroup:SYSTEM
         | VehiclePropertyType:MIXED
         | VehicleArea:GLOBAL),
+
+    /**
+     * Defines a request to apply power policy.
+     *
+     * VHAL sets this property to change car power policy. Car power policy service subscribes to
+     * this property and actually changes the power policy.
+     * The request is made by setting the VehiclePropValue with the ID of a power policy which is
+     * defined at /vendor/etc/power_policy.xml. If the given ID is not defined, car power policy
+     * service ignores the request and the current power policy is maintained.
+     *
+     *   string: "sample_policy_id" // power policy ID
+     *
+     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
+     * @access VehiclePropertyAccess:READ
+     */
+    POWER_POLICY_REQ = (
+        0x0F21
+        | VehiclePropertyGroup:SYSTEM
+        | VehiclePropertyType:STRING
+        | VehicleArea:GLOBAL),
+
+    /**
+     * Defines a request to set the power polic group used to decide a default power policy per
+     * power status transition.
+     *
+     * VHAL sets this property with the ID of a power policy group in order to set the default power
+     * policy applied at power status transition. Power policy groups are defined at
+     * /vendor/etc/power_policy.xml. If the given ID is not defined, car power policy service
+     * ignores the request.
+     * Car power policy service subscribes to this property and sets the power policy group.
+     * The actual application of power policy takes place when the system power status changes and
+     * there is a valid mapped power policy for the new power status.
+     *
+     *   string: "sample_policy_group_id" // power policy group ID
+     *
+     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
+     * @access VehiclePropertyAccess:READ
+     */
+    POWER_POLICY_GROUP_REQ = (
+        0x0F22
+        | VehiclePropertyGroup:SYSTEM
+        | VehiclePropertyType:STRING
+        | VehicleArea:GLOBAL),
+
+    /**
+     * Notifies the current power policy to VHAL layer.
+     *
+     * Car power policy service sets this property when the current power policy is changed.
+     *
+     *   string: "sample_policy_id" // power policy ID
+     *
+     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
+     * @access VehiclePropertyAccess:READ_WRITE
+     */
+    CURRENT_POWER_POLICY = (
+        0x0F23
+        | VehiclePropertyGroup:SYSTEM
+        | VehiclePropertyType:STRING
+        | VehicleArea:GLOBAL),
+
+    /**
+     * Defines an event that car watchdog updates to tell it's alive.
+     *
+     * Car watchdog sets this property to system uptime in milliseconds at every 3 second.
+     * During the boot, the update may take longer time.
+     *
+     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
+     * @access VehiclePropertyAccess:WRITE
+     */
+    WATCHDOG_ALIVE = (
+        0xF31
+        | VehiclePropertyGroup:SYSTEM
+        | VehiclePropertyType:INT64
+        | VehicleArea:GLOBAL),
+
+    /**
+     * Defines a process terminated by car watchdog and the reason of termination.
+     *
+     *   int32Values[0]: 1         // ProcessTerminationReason showing why a process is terminated.
+     *   string: "/system/bin/log" // Process execution command.
+     *
+     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
+     * @access VehiclePropertyAccess:WRITE
+     */
+    WATCHDOG_TERMINATED_PROCESS = (
+        0x0F32
+        | VehiclePropertyGroup:SYSTEM
+        | VehiclePropertyType:MIXED
+        | VehicleArea:GLOBAL),
+
+    /**
+     * Defines an event that VHAL signals to car watchdog as a heartbeat.
+     *
+     * If VHAL supports this property, VHAL should write system uptime to this property at every 3
+     * second. Car watchdog subscribes to this property and checks if the property is updated at
+     * every 3 second. With the buffer time of 3 second, car watchdog waits for a heart beat to be
+     * signaled up to 6 seconds from the last heart beat. If it isn’t, car watchdog considers
+     * VHAL unhealthy and terminates it.
+     * If this property is not supported by VHAL, car watchdog doesn't check VHAL health status.
+     *
+     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
+     * @access VehiclePropertyAccess:READ
+     */
+     VHAL_HEARTBEAT = (
+         0x0F33
+         | VehiclePropertyGroup:SYSTEM
+         | VehiclePropertyType:INT64
+         | VehicleArea:GLOBAL),
 };
 
 /**
@@ -4788,5 +4923,48 @@ enum RotaryInputType : int32_t {
 
     /** Volume control for adjusting audio volume. */
     ROTARY_INPUT_TYPE_AUDIO_VOLUME = 1,
+};
+
+/**
+ * The reason why a process is terminated by car watchdog.
+ * This is used with WATCHDOG_TERMINATED_PROCESS property.
+ */
+enum ProcessTerminationReason : int32_t {
+   /**
+    * A process doesn't respond to car watchdog within the timeout.
+    */
+   NOT_RESPONDING = 1,
+
+   /**
+    * A process uses more IO operations than what is allowed.
+    */
+   IO_OVERUSE = 2,
+
+   /**
+    * A process uses more memory space than what is allowed.
+    */
+   MEMORY_OVERUSE = 3,
+};
+
+/**
+ * Input code values for HW_CUSTOM_INPUT.
+ */
+enum CustomInputType : int32_t {
+    /**
+     * Ten functions representing the custom input code to be defined and implemented by OEM
+     * partners.
+     *
+     * OEMs need to formally contact Android team if more than 10 functions are required.
+     */
+    CUSTOM_EVENT_F1 = 1001,
+    CUSTOM_EVENT_F2 = 1002,
+    CUSTOM_EVENT_F3 = 1003,
+    CUSTOM_EVENT_F4 = 1004,
+    CUSTOM_EVENT_F5 = 1005,
+    CUSTOM_EVENT_F6 = 1006,
+    CUSTOM_EVENT_F7 = 1007,
+    CUSTOM_EVENT_F8 = 1008,
+    CUSTOM_EVENT_F9 = 1009,
+    CUSTOM_EVENT_F10 = 1010,
 };
 
