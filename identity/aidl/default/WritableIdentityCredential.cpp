@@ -57,8 +57,8 @@ bool WritableIdentityCredential::initialize() {
 // attestation certificate with current time and expires one year from now.  The
 // certificate shall contain all values as specified in hal.
 ndk::ScopedAStatus WritableIdentityCredential::getAttestationCertificate(
-        const vector<int8_t>& attestationApplicationId,  //
-        const vector<int8_t>& attestationChallenge,      //
+        const vector<uint8_t>& attestationApplicationId,  //
+        const vector<uint8_t>& attestationChallenge,      //
         vector<Certificate>* outCertificateChain) {
     if (!credentialPrivKey_.empty() || !credentialPubKey_.empty() || !certificateChain_.empty()) {
         return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
@@ -105,7 +105,7 @@ ndk::ScopedAStatus WritableIdentityCredential::getAttestationCertificate(
     *outCertificateChain = vector<Certificate>();
     for (const vector<uint8_t>& cert : certificateChain_) {
         Certificate c = Certificate();
-        c.encodedCertificate = byteStringToSigned(cert);
+        c.encodedCertificate = cert;
         outCertificateChain->push_back(std::move(c));
     }
     return ndk::ScopedAStatus::ok();
@@ -186,14 +186,13 @@ ndk::ScopedAStatus WritableIdentityCredential::addAccessControlProfile(
         return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                 IIdentityCredentialStore::STATUS_FAILED, "Error calculating MAC for profile"));
     }
-    profile.mac = byteStringToSigned(mac.value());
+    profile.mac = mac.value();
 
     cppbor::Map profileMap;
     profileMap.add("id", profile.id);
     if (profile.readerCertificate.encodedCertificate.size() > 0) {
-        profileMap.add(
-                "readerCertificate",
-                cppbor::Bstr(byteStringToUnsigned(profile.readerCertificate.encodedCertificate)));
+        profileMap.add("readerCertificate",
+                       cppbor::Bstr(profile.readerCertificate.encodedCertificate));
     }
     if (profile.userAuthenticationRequired) {
         profileMap.add("userAuthenticationRequired", profile.userAuthenticationRequired);
@@ -273,9 +272,8 @@ ndk::ScopedAStatus WritableIdentityCredential::beginAddEntry(
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus WritableIdentityCredential::addEntryValue(const vector<int8_t>& contentS,
-                                                             vector<int8_t>* outEncryptedContentS) {
-    auto content = byteStringToUnsigned(contentS);
+ndk::ScopedAStatus WritableIdentityCredential::addEntryValue(const vector<uint8_t>& content,
+                                                             vector<uint8_t>* outEncryptedContent) {
     size_t contentSize = content.size();
 
     if (contentSize > IdentityCredentialStore::kGcmChunkSize) {
@@ -330,7 +328,7 @@ ndk::ScopedAStatus WritableIdentityCredential::addEntryValue(const vector<int8_t
         signedDataCurrentNamespace_.add(std::move(entryMap));
     }
 
-    *outEncryptedContentS = byteStringToSigned(encryptedContent.value());
+    *outEncryptedContent = encryptedContent.value();
     return ndk::ScopedAStatus::ok();
 }
 
@@ -379,7 +377,7 @@ bool generateCredentialData(const vector<uint8_t>& hardwareBoundKey, const strin
 }
 
 ndk::ScopedAStatus WritableIdentityCredential::finishAddingEntries(
-        vector<int8_t>* outCredentialData, vector<int8_t>* outProofOfProvisioningSignature) {
+        vector<uint8_t>* outCredentialData, vector<uint8_t>* outProofOfProvisioningSignature) {
     if (numAccessControlProfileRemaining_ != 0) {
         return ndk::ScopedAStatus(AStatus_fromServiceSpecificErrorWithMessage(
                 IIdentityCredentialStore::STATUS_INVALID_DATA,
@@ -436,8 +434,8 @@ ndk::ScopedAStatus WritableIdentityCredential::finishAddingEntries(
                 IIdentityCredentialStore::STATUS_FAILED, "Error generating CredentialData"));
     }
 
-    *outCredentialData = byteStringToSigned(credentialData);
-    *outProofOfProvisioningSignature = byteStringToSigned(signature.value());
+    *outCredentialData = credentialData;
+    *outProofOfProvisioningSignature = signature.value();
     return ndk::ScopedAStatus::ok();
 }
 
