@@ -228,8 +228,7 @@ V1_0::GnssLocation Utils::getMockLocationV1_0() {
             .verticalAccuracyMeters = kMockVerticalAccuracyMeters,
             .speedAccuracyMetersPerSecond = kMockSpeedAccuracyMetersPerSecond,
             .bearingAccuracyDegrees = kMockBearingAccuracyDegrees,
-            .timestamp =
-                    static_cast<int64_t>(kMockTimestamp + ::android::elapsedRealtimeNano() / 1e6)};
+            .timestamp = kMockTimestamp};
     return location;
 }
 
