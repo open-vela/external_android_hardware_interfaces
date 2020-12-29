@@ -22,6 +22,7 @@ cc_test {
     ],
     srcs: [
         "KeyMintTest.cpp",
+        "VerificationTokenTest.cpp",
     ],
     shared_libs: [
         "libbinder_ndk",
@@ -31,7 +32,6 @@ cc_test {
     ],
     static_libs: [
         "android.hardware.security.keymint-unstable-ndk_platform",
-        "android.hardware.security.secureclock-unstable-ndk_platform",
         "libcppbor_external",
         "libkeymint_vts_test_utils",
     ],
@@ -61,7 +61,6 @@ cc_test_library {
     ],
     static_libs: [
         "android.hardware.security.keymint-unstable-ndk_platform",
-        "android.hardware.security.secureclock-unstable-ndk_platform",
         "libcppbor",
     ],
 }
