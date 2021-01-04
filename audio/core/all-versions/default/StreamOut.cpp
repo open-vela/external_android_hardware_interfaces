@@ -26,7 +26,6 @@
 
 #include <memory>
 
-#include <HidlUtils.h>
 #include <android/log.h>
 #include <hardware/audio.h>
 #include <utils/Trace.h>
@@ -36,8 +35,6 @@ namespace hardware {
 namespace audio {
 namespace CPP_VERSION {
 namespace implementation {
-
-using ::android::hardware::audio::common::CPP_VERSION::implementation::HidlUtils;
 
 namespace {
 
@@ -145,7 +142,7 @@ bool WriteThread::threadLoop() {
 StreamOut::StreamOut(const sp<Device>& device, audio_stream_out_t* stream)
     : mDevice(device),
       mStream(stream),
-      mStreamCommon(new Stream(false /*isInput*/, &stream->common)),
+      mStreamCommon(new Stream(&stream->common)),
       mStreamMmap(new StreamMmap<audio_stream_out_t>(stream)),
       mEfGroup(nullptr),
       mStopWriteThread(false) {}
@@ -185,7 +182,6 @@ Return<uint64_t> StreamOut::getBufferSize() {
     return mStreamCommon->getBufferSize();
 }
 
-#if MAJOR_VERSION <= 6
 Return<uint32_t> StreamOut::getSampleRate() {
     return mStreamCommon->getSampleRate();
 }
@@ -231,18 +227,6 @@ Return<void> StreamOut::getSupportedFormats(getSupportedFormats_cb _hidl_cb) {
 Return<Result> StreamOut::setFormat(AudioFormat format) {
     return mStreamCommon->setFormat(format);
 }
-
-#else
-
-Return<void> StreamOut::getSupportedProfiles(getSupportedProfiles_cb _hidl_cb) {
-    return mStreamCommon->getSupportedProfiles(_hidl_cb);
-}
-
-Return<Result> StreamOut::setAudioProperties(const AudioConfigBase& config) {
-    return mStreamCommon->setAudioProperties(config);
-}
-
-#endif  // MAJOR_VERSION <= 6
 
 Return<void> StreamOut::getAudioProperties(getAudioProperties_cb _hidl_cb) {
     return mStreamCommon->getAudioProperties(_hidl_cb);
@@ -343,11 +327,7 @@ Return<Result> StreamOut::setVolume(float left, float right) {
 Return<void> StreamOut::prepareForWriting(uint32_t frameSize, uint32_t framesCount,
                                           prepareForWriting_cb _hidl_cb) {
     status_t status;
-#if MAJOR_VERSION <= 6
     ThreadInfo threadInfo = {0, 0};
-#else
-    int32_t threadInfo = 0;
-#endif
 
     // Wrap the _hidl_cb to return an error
     auto sendError = [&threadInfo, &_hidl_cb](Result result) {
@@ -416,12 +396,8 @@ Return<void> StreamOut::prepareForWriting(uint32_t frameSize, uint32_t framesCou
     mStatusMQ = std::move(tempStatusMQ);
     mWriteThread = tempWriteThread.release();
     mEfGroup = tempElfGroup.release();
-#if MAJOR_VERSION <= 6
     threadInfo.pid = getpid();
     threadInfo.tid = mWriteThread->getTid();
-#else
-    threadInfo = mWriteThread->getTid();
-#endif
     _hidl_cb(Result::OK, *mCommandMQ->getDesc(), *mDataMQ->getDesc(), *mStatusMQ->getDesc(),
              threadInfo);
     return Void();
@@ -520,11 +496,11 @@ Return<bool> StreamOut::supportsDrain() {
 }
 
 Return<Result> StreamOut::drain(AudioDrain type) {
-    audio_drain_type_t halDrainType =
-            type == AudioDrain::EARLY_NOTIFY ? AUDIO_DRAIN_EARLY_NOTIFY : AUDIO_DRAIN_ALL;
     return mStream->drain != NULL
-                   ? Stream::analyzeStatus("drain", mStream->drain(mStream, halDrainType),
-                                           {ENOSYS} /*ignore*/)
+                   ? Stream::analyzeStatus(
+                             "drain",
+                             mStream->drain(mStream, static_cast<audio_drain_type_t>(type)),
+                             {ENOSYS} /*ignore*/)
                    : Result::NOT_SUPPORTED;
 }
 
@@ -585,82 +561,26 @@ Return<void> StreamOut::debug(const hidl_handle& fd, const hidl_vec<hidl_string>
 }
 
 #if MAJOR_VERSION >= 4
-playback_track_metadata StreamOut::convertPlaybackTrackMetadata(
-        const PlaybackTrackMetadata& trackMetadata) {
-    playback_track_metadata_t halTrackMetadata = {.gain = trackMetadata.gain};
-    (void)HidlUtils::audioUsageToHal(trackMetadata.usage, &halTrackMetadata.usage);
-    (void)HidlUtils::audioContentTypeToHal(trackMetadata.contentType,
-                                           &halTrackMetadata.content_type);
-    return halTrackMetadata;
-}
-
-void StreamOut::doUpdateSourceMetadata(const SourceMetadata& sourceMetadata) {
-    std::vector<playback_track_metadata_t> halTracks;
+Return<void> StreamOut::updateSourceMetadata(const SourceMetadata& sourceMetadata) {
+    if (mStream->update_source_metadata == nullptr) {
+        return Void();  // not supported by the HAL
+    }
+    std::vector<playback_track_metadata> halTracks;
     halTracks.reserve(sourceMetadata.tracks.size());
     for (auto& metadata : sourceMetadata.tracks) {
-        halTracks.push_back(convertPlaybackTrackMetadata(metadata));
+        halTracks.push_back({
+            .usage = static_cast<audio_usage_t>(metadata.usage),
+            .content_type = static_cast<audio_content_type_t>(metadata.contentType),
+            .gain = metadata.gain,
+        });
     }
     const source_metadata_t halMetadata = {
         .track_count = halTracks.size(),
         .tracks = halTracks.data(),
     };
     mStream->update_source_metadata(mStream, &halMetadata);
-}
-
-#if MAJOR_VERSION >= 7
-playback_track_metadata_v7 StreamOut::convertPlaybackTrackMetadataV7(
-        const PlaybackTrackMetadata& trackMetadata) {
-    playback_track_metadata_v7 halTrackMetadata;
-    halTrackMetadata.base = convertPlaybackTrackMetadata(trackMetadata);
-    (void)HidlUtils::audioChannelMaskToHal(trackMetadata.channelMask,
-                                           &halTrackMetadata.channel_mask);
-    std::string halTags;
-    for (const auto& tag : trackMetadata.tags) {
-        if (&tag != &trackMetadata.tags[0]) {
-            halTags += HidlUtils::sAudioTagSeparator;
-        }
-        halTags += tag.c_str();
-    }
-    strncpy(halTrackMetadata.tags, halTags.c_str(), AUDIO_ATTRIBUTES_TAGS_MAX_SIZE);
-    return halTrackMetadata;
-}
-
-void StreamOut::doUpdateSourceMetadataV7(const SourceMetadata& sourceMetadata) {
-    std::vector<playback_track_metadata_v7> halTracks;
-    halTracks.reserve(sourceMetadata.tracks.size());
-    for (auto& metadata : sourceMetadata.tracks) {
-        halTracks.push_back(convertPlaybackTrackMetadataV7(metadata));
-    }
-    const source_metadata_v7_t halMetadata = {
-            .track_count = halTracks.size(),
-            .tracks = halTracks.data(),
-    };
-    mStream->update_source_metadata_v7(mStream, &halMetadata);
-}
-#endif  //  MAJOR_VERSION >= 7
-
-Return<void> StreamOut::updateSourceMetadata(const SourceMetadata& sourceMetadata) {
-#if MAJOR_VERSION < 7
-    if (mStream->update_source_metadata == nullptr) {
-        return Void();  // not supported by the HAL
-    }
-    doUpdateSourceMetadata(sourceMetadata);
-#else
-    if (mDevice->version() < AUDIO_DEVICE_API_VERSION_3_2) {
-        if (mStream->update_source_metadata == nullptr) {
-            return Void();  // not supported by the HAL
-        }
-        doUpdateSourceMetadata(sourceMetadata);
-    } else {
-        if (mStream->update_source_metadata_v7 == nullptr) {
-            return Void();  // not supported by the HAL
-        }
-        doUpdateSourceMetadataV7(sourceMetadata);
-    }
-#endif  //  MAJOR_VERSION < 7
     return Void();
 }
-
 Return<Result> StreamOut::selectPresentation(int32_t /*presentationId*/, int32_t /*programId*/) {
     return Result::NOT_SUPPORTED;  // TODO: propagate to legacy
 }

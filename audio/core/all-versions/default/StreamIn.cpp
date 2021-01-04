@@ -24,20 +24,17 @@
 //#define LOG_NDEBUG 0
 #define ATRACE_TAG ATRACE_TAG_AUDIO
 
-#include <HidlUtils.h>
 #include <android/log.h>
 #include <hardware/audio.h>
 #include <utils/Trace.h>
-#include <cmath>
 #include <memory>
+#include <cmath>
 
 namespace android {
 namespace hardware {
 namespace audio {
 namespace CPP_VERSION {
 namespace implementation {
-
-using ::android::hardware::audio::common::CPP_VERSION::implementation::HidlUtils;
 
 namespace {
 
@@ -144,7 +141,7 @@ bool ReadThread::threadLoop() {
 StreamIn::StreamIn(const sp<Device>& device, audio_stream_in_t* stream)
     : mDevice(device),
       mStream(stream),
-      mStreamCommon(new Stream(true /*isInput*/, &stream->common)),
+      mStreamCommon(new Stream(&stream->common)),
       mStreamMmap(new StreamMmap<audio_stream_in_t>(stream)),
       mEfGroup(nullptr),
       mStopReadThread(false) {}
@@ -180,7 +177,6 @@ Return<uint64_t> StreamIn::getBufferSize() {
     return mStreamCommon->getBufferSize();
 }
 
-#if MAJOR_VERSION <= 6
 Return<uint32_t> StreamIn::getSampleRate() {
     return mStreamCommon->getSampleRate();
 }
@@ -226,18 +222,6 @@ Return<void> StreamIn::getSupportedFormats(getSupportedFormats_cb _hidl_cb) {
 Return<Result> StreamIn::setFormat(AudioFormat format) {
     return mStreamCommon->setFormat(format);
 }
-
-#else
-
-Return<void> StreamIn::getSupportedProfiles(getSupportedProfiles_cb _hidl_cb) {
-    return mStreamCommon->getSupportedProfiles(_hidl_cb);
-}
-
-Return<Result> StreamIn::setAudioProperties(const AudioConfigBase& config) {
-    return mStreamCommon->setAudioProperties(config);
-}
-
-#endif  // MAJOR_VERSION <= 6
 
 Return<void> StreamIn::getAudioProperties(getAudioProperties_cb _hidl_cb) {
     return mStreamCommon->getAudioProperties(_hidl_cb);
@@ -337,11 +321,9 @@ Return<Result> StreamIn::close() {
 Return<void> StreamIn::getAudioSource(getAudioSource_cb _hidl_cb) {
     int halSource;
     Result retval = mStreamCommon->getParam(AudioParameter::keyInputSource, &halSource);
-    AudioSource source = {};
+    AudioSource source(AudioSource::DEFAULT);
     if (retval == Result::OK) {
-        retval = Stream::analyzeStatus(
-                "get_audio_source",
-                HidlUtils::audioSourceFromHal(static_cast<audio_source_t>(halSource), &source));
+        source = AudioSource(halSource);
     }
     _hidl_cb(retval, source);
     return Void();
@@ -358,11 +340,7 @@ Return<Result> StreamIn::setGain(float gain) {
 Return<void> StreamIn::prepareForReading(uint32_t frameSize, uint32_t framesCount,
                                          prepareForReading_cb _hidl_cb) {
     status_t status;
-#if MAJOR_VERSION <= 6
     ThreadInfo threadInfo = {0, 0};
-#else
-    int32_t threadInfo = 0;
-#endif
 
     // Wrap the _hidl_cb to return an error
     auto sendError = [&threadInfo, &_hidl_cb](Result result) {
@@ -432,12 +410,8 @@ Return<void> StreamIn::prepareForReading(uint32_t frameSize, uint32_t framesCoun
     mStatusMQ = std::move(tempStatusMQ);
     mReadThread = tempReadThread.release();
     mEfGroup = tempElfGroup.release();
-#if MAJOR_VERSION <= 6
     threadInfo.pid = getpid();
     threadInfo.tid = mReadThread->getTid();
-#else
-    threadInfo = mReadThread->getTid();
-#endif
     _hidl_cb(Result::OK, *mCommandMQ->getDesc(), *mDataMQ->getDesc(), *mStatusMQ->getDesc(),
              threadInfo);
     return Void();
@@ -478,85 +452,32 @@ Return<void> StreamIn::debug(const hidl_handle& fd, const hidl_vec<hidl_string>&
 }
 
 #if MAJOR_VERSION >= 4
-
-record_track_metadata StreamIn::convertRecordTrackMetadata(
-        const RecordTrackMetadata& trackMetadata) {
-    record_track_metadata halTrackMetadata = {.gain = trackMetadata.gain};
-    (void)HidlUtils::audioSourceToHal(trackMetadata.source, &halTrackMetadata.source);
-#if MAJOR_VERSION >= 5
-    if (trackMetadata.destination.getDiscriminator() ==
-        RecordTrackMetadata::Destination::hidl_discriminator::device) {
-        (void)deviceAddressToHal(trackMetadata.destination.device(), &halTrackMetadata.dest_device,
-                                 halTrackMetadata.dest_device_address);
+Return<void> StreamIn::updateSinkMetadata(const SinkMetadata& sinkMetadata) {
+    if (mStream->update_sink_metadata == nullptr) {
+        return Void();  // not supported by the HAL
     }
-#endif
-    return halTrackMetadata;
-}
-
-void StreamIn::doUpdateSinkMetadata(const SinkMetadata& sinkMetadata) {
     std::vector<record_track_metadata> halTracks;
     halTracks.reserve(sinkMetadata.tracks.size());
     for (auto& metadata : sinkMetadata.tracks) {
-        halTracks.push_back(convertRecordTrackMetadata(metadata));
+        record_track_metadata halTrackMetadata = {
+            .source = static_cast<audio_source_t>(metadata.source), .gain = metadata.gain};
+#if MAJOR_VERSION >= 5
+        if (metadata.destination.getDiscriminator() ==
+            RecordTrackMetadata::Destination::hidl_discriminator::device) {
+            halTrackMetadata.dest_device =
+                static_cast<audio_devices_t>(metadata.destination.device().device);
+            strncpy(halTrackMetadata.dest_device_address,
+                    deviceAddressToHal(metadata.destination.device()).c_str(),
+                    AUDIO_DEVICE_MAX_ADDRESS_LEN);
+        }
+#endif
+        halTracks.push_back(halTrackMetadata);
     }
     const sink_metadata_t halMetadata = {
         .track_count = halTracks.size(),
         .tracks = halTracks.data(),
     };
     mStream->update_sink_metadata(mStream, &halMetadata);
-}
-
-#if MAJOR_VERSION >= 7
-record_track_metadata_v7 StreamIn::convertRecordTrackMetadataV7(
-        const RecordTrackMetadata& trackMetadata) {
-    record_track_metadata_v7 halTrackMetadata;
-    halTrackMetadata.base = convertRecordTrackMetadata(trackMetadata);
-    (void)HidlUtils::audioChannelMaskToHal(trackMetadata.channelMask,
-                                           &halTrackMetadata.channel_mask);
-    std::string halTags;
-    for (const auto& tag : trackMetadata.tags) {
-        if (&tag != &trackMetadata.tags[0]) {
-            halTags += HidlUtils::sAudioTagSeparator;
-        }
-        halTags += tag.c_str();
-    }
-    strncpy(halTrackMetadata.tags, halTags.c_str(), AUDIO_ATTRIBUTES_TAGS_MAX_SIZE);
-    return halTrackMetadata;
-}
-
-void StreamIn::doUpdateSinkMetadataV7(const SinkMetadata& sinkMetadata) {
-    std::vector<record_track_metadata_v7> halTracks;
-    halTracks.reserve(sinkMetadata.tracks.size());
-    for (auto& metadata : sinkMetadata.tracks) {
-        halTracks.push_back(convertRecordTrackMetadataV7(metadata));
-    }
-    const sink_metadata_v7_t halMetadata = {
-            .track_count = halTracks.size(),
-            .tracks = halTracks.data(),
-    };
-    mStream->update_sink_metadata_v7(mStream, &halMetadata);
-}
-#endif  //  MAJOR_VERSION >= 7
-
-Return<void> StreamIn::updateSinkMetadata(const SinkMetadata& sinkMetadata) {
-#if MAJOR_VERSION < 7
-    if (mStream->update_sink_metadata == nullptr) {
-        return Void();  // not supported by the HAL
-    }
-    doUpdateSinkMetadata(sinkMetadata);
-#else
-    if (mDevice->version() < AUDIO_DEVICE_API_VERSION_3_2) {
-        if (mStream->update_sink_metadata == nullptr) {
-            return Void();  // not supported by the HAL
-        }
-        doUpdateSinkMetadata(sinkMetadata);
-    } else {
-        if (mStream->update_sink_metadata_v7 == nullptr) {
-            return Void();  // not supported by the HAL
-        }
-        doUpdateSinkMetadataV7(sinkMetadata);
-    }
-#endif  //  MAJOR_VERSION < 7
     return Void();
 }
 
