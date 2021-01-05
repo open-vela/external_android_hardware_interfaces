@@ -56,6 +56,7 @@ struct StreamIn : public IStreamIn {
     Return<uint64_t> getFrameSize() override;
     Return<uint64_t> getFrameCount() override;
     Return<uint64_t> getBufferSize() override;
+#if MAJOR_VERSION <= 6
     Return<uint32_t> getSampleRate() override;
 #if MAJOR_VERSION == 2
     Return<void> getSupportedSampleRates(getSupportedSampleRates_cb _hidl_cb) override;
@@ -69,6 +70,10 @@ struct StreamIn : public IStreamIn {
     Return<AudioFormat> getFormat() override;
     Return<void> getSupportedFormats(getSupportedFormats_cb _hidl_cb) override;
     Return<Result> setFormat(AudioFormat format) override;
+#else
+    Return<void> getSupportedProfiles(getSupportedProfiles_cb _hidl_cb) override;
+    Return<Result> setAudioProperties(const AudioConfigBase& config) override;
+#endif  // MAJOR_VERSION <= 6
     Return<void> getAudioProperties(getAudioProperties_cb _hidl_cb) override;
     Return<Result> addEffect(uint64_t effectId) override;
     Return<Result> removeEffect(uint64_t effectId) override;
@@ -119,7 +124,16 @@ struct StreamIn : public IStreamIn {
     static Result getCapturePositionImpl(audio_stream_in_t* stream, uint64_t* frames,
                                          uint64_t* time);
 
-   private:
+  private:
+#if MAJOR_VERSION >= 4
+    record_track_metadata convertRecordTrackMetadata(const RecordTrackMetadata& trackMetadata);
+    void doUpdateSinkMetadata(const SinkMetadata& sinkMetadata);
+#if MAJOR_VERSION >= 7
+    record_track_metadata_v7 convertRecordTrackMetadataV7(const RecordTrackMetadata& trackMetadata);
+    void doUpdateSinkMetadataV7(const SinkMetadata& sinkMetadata);
+#endif
+#endif
+
     const sp<Device> mDevice;
     audio_stream_in_t* mStream;
     const sp<Stream> mStreamCommon;
