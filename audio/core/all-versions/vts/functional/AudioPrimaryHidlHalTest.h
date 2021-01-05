@@ -926,8 +926,6 @@ class OutputStreamTest : public OpenStreamTest<IStreamOut> {
     const SourceMetadata initMetadata = {
             { { toString(xsd::AudioUsage::AUDIO_USAGE_MEDIA),
                 toString(xsd::AudioContentType::AUDIO_CONTENT_TYPE_MUSIC),
-                {},
-                toString(xsd::AudioChannelMask::AUDIO_CHANNEL_OUT_STEREO),
                 1 /* gain */ } }};
 #endif
 };
@@ -993,10 +991,7 @@ class InputStreamTest : public OpenStreamTest<IStreamIn> {
      const SinkMetadata initMetadata = {{ {.source = AudioSource::DEFAULT, .gain = 1 } }};
 #elif MAJOR_VERSION >= 7
      const SinkMetadata initMetadata = {
-             {{.source = toString(xsd::AudioSource::AUDIO_SOURCE_DEFAULT),
-               .gain = 1,
-               .tags = {},
-               .channelMask = toString(xsd::AudioChannelMask::AUDIO_CHANNEL_IN_MONO)}}};
+             {{.source = toString(xsd::AudioSource::AUDIO_SOURCE_DEFAULT), .gain = 1}}};
 #endif
 };
 
