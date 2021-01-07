@@ -270,10 +270,7 @@ struct AudioOffloadInfo {
  */
 struct AudioConfig {
     AudioConfigBase base;
-    safe_union OffloadInfo {
-        Monostate unspecified;
-        AudioOffloadInfo info;
-    } offloadInfo;
+    AudioOffloadInfo offloadInfo;
     uint64_t frameCount;
 };
 
@@ -281,8 +278,7 @@ struct AudioConfig {
  * AudioTag is an additional use case qualifier complementing
  * AudioUsage and AudioContentType. Tags are set by vendor specific applications
  * and must be prefixed by "VX_". Vendor must namespace their tag
- * names to avoid conflicts. See 'vendorExtension' in audio_policy_configuration.xsd
- * for a formal definition.
+ * names to avoid conflicts.
  */
 typedef string AudioTag;
 

@@ -478,59 +478,87 @@ Return<void> StreamIn::debug(const hidl_handle& fd, const hidl_vec<hidl_string>&
 }
 
 #if MAJOR_VERSION >= 4
-Result StreamIn::doUpdateSinkMetadata(const SinkMetadata& sinkMetadata,
-                                      bool abortOnConversionFailure) {
+
+record_track_metadata StreamIn::convertRecordTrackMetadata(
+        const RecordTrackMetadata& trackMetadata) {
+    record_track_metadata halTrackMetadata = {.gain = trackMetadata.gain};
+    (void)HidlUtils::audioSourceToHal(trackMetadata.source, &halTrackMetadata.source);
+#if MAJOR_VERSION >= 5
+    if (trackMetadata.destination.getDiscriminator() ==
+        RecordTrackMetadata::Destination::hidl_discriminator::device) {
+        (void)deviceAddressToHal(trackMetadata.destination.device(), &halTrackMetadata.dest_device,
+                                 halTrackMetadata.dest_device_address);
+    }
+#endif
+    return halTrackMetadata;
+}
+
+void StreamIn::doUpdateSinkMetadata(const SinkMetadata& sinkMetadata) {
     std::vector<record_track_metadata> halTracks;
-    if (status_t status = sinkMetadataToHal(sinkMetadata, &halTracks);
-        status != NO_ERROR && abortOnConversionFailure) {
-        return Stream::analyzeStatus("sinkMetadataToHal", status);
+    halTracks.reserve(sinkMetadata.tracks.size());
+    for (auto& metadata : sinkMetadata.tracks) {
+        halTracks.push_back(convertRecordTrackMetadata(metadata));
     }
     const sink_metadata_t halMetadata = {
         .track_count = halTracks.size(),
         .tracks = halTracks.data(),
     };
     mStream->update_sink_metadata(mStream, &halMetadata);
-    return Result::OK;
 }
 
 #if MAJOR_VERSION >= 7
-Result StreamIn::doUpdateSinkMetadataV7(const SinkMetadata& sinkMetadata) {
+record_track_metadata_v7 StreamIn::convertRecordTrackMetadataV7(
+        const RecordTrackMetadata& trackMetadata) {
+    record_track_metadata_v7 halTrackMetadata;
+    halTrackMetadata.base = convertRecordTrackMetadata(trackMetadata);
+    (void)HidlUtils::audioChannelMaskToHal(trackMetadata.channelMask,
+                                           &halTrackMetadata.channel_mask);
+    std::string halTags;
+    for (const auto& tag : trackMetadata.tags) {
+        if (&tag != &trackMetadata.tags[0]) {
+            halTags += HidlUtils::sAudioTagSeparator;
+        }
+        halTags += tag.c_str();
+    }
+    strncpy(halTrackMetadata.tags, halTags.c_str(), AUDIO_ATTRIBUTES_TAGS_MAX_SIZE);
+    return halTrackMetadata;
+}
+
+void StreamIn::doUpdateSinkMetadataV7(const SinkMetadata& sinkMetadata) {
     std::vector<record_track_metadata_v7> halTracks;
-    if (status_t status = sinkMetadataToHalV7(sinkMetadata, &halTracks); status != NO_ERROR) {
-        return Stream::analyzeStatus("sinkMetadataToHal", status);
+    halTracks.reserve(sinkMetadata.tracks.size());
+    for (auto& metadata : sinkMetadata.tracks) {
+        halTracks.push_back(convertRecordTrackMetadataV7(metadata));
     }
     const sink_metadata_v7_t halMetadata = {
             .track_count = halTracks.size(),
             .tracks = halTracks.data(),
     };
     mStream->update_sink_metadata_v7(mStream, &halMetadata);
-    return Result::OK;
 }
 #endif  //  MAJOR_VERSION >= 7
 
-#if MAJOR_VERSION <= 6
 Return<void> StreamIn::updateSinkMetadata(const SinkMetadata& sinkMetadata) {
+#if MAJOR_VERSION < 7
     if (mStream->update_sink_metadata == nullptr) {
         return Void();  // not supported by the HAL
     }
-    (void)doUpdateSinkMetadata(sinkMetadata, false /*abortOnConversionFailure*/);
-    return Void();
-}
-#elif MAJOR_VERSION >= 7
-Return<Result> StreamIn::updateSinkMetadata(const SinkMetadata& sinkMetadata) {
+    doUpdateSinkMetadata(sinkMetadata);
+#else
     if (mDevice->version() < AUDIO_DEVICE_API_VERSION_3_2) {
         if (mStream->update_sink_metadata == nullptr) {
-            return Result::NOT_SUPPORTED;
+            return Void();  // not supported by the HAL
         }
-        return doUpdateSinkMetadata(sinkMetadata, true /*abortOnConversionFailure*/);
+        doUpdateSinkMetadata(sinkMetadata);
     } else {
         if (mStream->update_sink_metadata_v7 == nullptr) {
-            return Result::NOT_SUPPORTED;
+            return Void();  // not supported by the HAL
         }
-        return doUpdateSinkMetadataV7(sinkMetadata);
+        doUpdateSinkMetadataV7(sinkMetadata);
     }
+#endif  //  MAJOR_VERSION < 7
+    return Void();
 }
-#endif
 
 Return<void> StreamIn::getActiveMicrophones(getActiveMicrophones_cb _hidl_cb) {
     Result retval = Result::NOT_SUPPORTED;
