@@ -29,15 +29,10 @@
 
 #include <cppbor/cppbor.h>
 
-#include "IdentityCredentialStore.h"
-#include "SecureHardwareProxy.h"
-
 namespace aidl::android::hardware::identity {
 
 using ::aidl::android::hardware::keymaster::HardwareAuthToken;
 using ::aidl::android::hardware::keymaster::VerificationToken;
-using ::android::sp;
-using ::android::hardware::identity::SecureHardwarePresentationProxy;
 using ::std::map;
 using ::std::set;
 using ::std::string;
@@ -45,11 +40,10 @@ using ::std::vector;
 
 class IdentityCredential : public BnIdentityCredential {
   public:
-    IdentityCredential(sp<SecureHardwarePresentationProxy> hwProxy,
-                       const vector<uint8_t>& credentialData)
-        : hwProxy_(hwProxy),
-          credentialData_(credentialData),
+    IdentityCredential(const vector<uint8_t>& credentialData)
+        : credentialData_(credentialData),
           numStartRetrievalCalls_(0),
+          authChallenge_(0),
           expectedDeviceNameSpacesSize_(0) {}
 
     // Parses and decrypts credentialData_, return a status code from
@@ -81,19 +75,23 @@ class IdentityCredential : public BnIdentityCredential {
 
   private:
     // Set by constructor
-    sp<SecureHardwarePresentationProxy> hwProxy_;
     vector<uint8_t> credentialData_;
     int numStartRetrievalCalls_;
 
     // Set by initialize()
     string docType_;
     bool testCredential_;
+    vector<uint8_t> storageKey_;
+    vector<uint8_t> credentialPrivKey_;
 
     // Set by createEphemeralKeyPair()
     vector<uint8_t> ephemeralPublicKey_;
 
     // Set by setReaderEphemeralPublicKey()
     vector<uint8_t> readerPublicKey_;
+
+    // Set by createAuthChallenge()
+    uint64_t authChallenge_;
 
     // Set by setRequestedNamespaces()
     vector<RequestNamespace> requestNamespaces_;
@@ -102,6 +100,7 @@ class IdentityCredential : public BnIdentityCredential {
     VerificationToken verificationToken_;
 
     // Set at startRetrieval() time.
+    map<int32_t, int> profileIdToAccessCheckResult_;
     vector<uint8_t> signingKeyBlob_;
     vector<uint8_t> sessionTranscript_;
     vector<uint8_t> itemsRequest_;
@@ -112,16 +111,15 @@ class IdentityCredential : public BnIdentityCredential {
 
     // Calculated at startRetrieval() time.
     size_t expectedDeviceNameSpacesSize_;
-    vector<unsigned int> expectedNumEntriesPerNamespace_;
 
     // Set at startRetrieveEntryValue() time.
     string currentNameSpace_;
     string currentName_;
-    vector<int32_t> currentAccessControlProfileIds_;
     size_t entryRemainingBytes_;
     vector<uint8_t> entryValue_;
+    vector<uint8_t> entryAdditionalData_;
 
-    void calcDeviceNameSpacesSize(uint32_t accessControlProfileMask);
+    size_t calcDeviceNameSpacesSize();
 };
 
 }  // namespace aidl::android::hardware::identity
