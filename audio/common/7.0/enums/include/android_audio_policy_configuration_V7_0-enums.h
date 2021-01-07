@@ -212,11 +212,12 @@ static inline bool isOutputDevice(const std::string& device) {
     return isOutputDevice(stringToAudioDevice(device));
 }
 
-static inline bool isVendorExtension(const std::string& s) {
+static inline bool isVendorExtension(const std::string& device) {
     // Must match the "vendorExtension" rule from the XSD file.
     static const std::string vendorPrefix = "VX_";
-    return s.size() > vendorPrefix.size() && s.substr(0, vendorPrefix.size()) == vendorPrefix &&
-           std::all_of(s.begin() + vendorPrefix.size(), s.end(),
+    return device.size() > vendorPrefix.size() &&
+           device.substr(0, vendorPrefix.size()) == vendorPrefix &&
+           std::all_of(device.begin() + vendorPrefix.size(), device.end(),
                        [](unsigned char c) { return c == '_' || std::isalnum(c); });
 }
 

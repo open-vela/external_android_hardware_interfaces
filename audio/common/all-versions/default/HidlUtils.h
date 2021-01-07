@@ -109,8 +109,6 @@ struct HidlUtils {
                                            AudioStreamType* streamType);
     static status_t audioStreamTypeToHal(const AudioStreamType& streamType,
                                          audio_stream_type_t* halStreamType);
-    static status_t audioTagsFromHal(const char* halTags, hidl_vec<AudioTag>* tags);
-    static status_t audioTagsToHal(const hidl_vec<AudioTag>& tags, char* halTags);
 
   private:
     static status_t audioIndexChannelMaskFromHal(audio_channel_mask_t halChannelMask,
