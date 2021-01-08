@@ -18,8 +18,11 @@
 
 #include <stdio.h>
 
+#if MAJOR_VERSION >= 7
+#include <android_audio_policy_configuration_V7_0-enums.h>
+#endif
+#include <HidlUtils.h>
 #include <log/log.h>
-#include <media/AudioContainers.h>
 
 namespace android {
 namespace hardware {
@@ -27,118 +30,32 @@ namespace audio {
 namespace CPP_VERSION {
 namespace implementation {
 
-std::string deviceAddressToHal(const DeviceAddress& address) {
-    // HAL assumes that the address is NUL-terminated.
-    char halAddress[AUDIO_DEVICE_MAX_ADDRESS_LEN];
-    memset(halAddress, 0, sizeof(halAddress));
-    uint32_t halDevice = static_cast<uint32_t>(address.device);
-    if (getAudioDeviceOutAllA2dpSet().count(halDevice) > 0 ||
-        halDevice == AUDIO_DEVICE_IN_BLUETOOTH_A2DP) {
-        snprintf(halAddress, sizeof(halAddress), "%02X:%02X:%02X:%02X:%02X:%02X",
-                 address.address.mac[0], address.address.mac[1], address.address.mac[2],
-                 address.address.mac[3], address.address.mac[4], address.address.mac[5]);
-    } else if (halDevice == AUDIO_DEVICE_OUT_IP || halDevice == AUDIO_DEVICE_IN_IP) {
-        snprintf(halAddress, sizeof(halAddress), "%d.%d.%d.%d", address.address.ipv4[0],
-                 address.address.ipv4[1], address.address.ipv4[2], address.address.ipv4[3]);
-    } else if (getAudioDeviceOutAllUsbSet().count(halDevice) > 0 ||
-               getAudioDeviceInAllUsbSet().count(halDevice) > 0) {
-        snprintf(halAddress, sizeof(halAddress), "card=%d;device=%d", address.address.alsa.card,
-                 address.address.alsa.device);
-    } else if (halDevice == AUDIO_DEVICE_OUT_BUS || halDevice == AUDIO_DEVICE_IN_BUS) {
-        snprintf(halAddress, sizeof(halAddress), "%s", address.busAddress.c_str());
-    } else if (halDevice == AUDIO_DEVICE_OUT_REMOTE_SUBMIX ||
-               halDevice == AUDIO_DEVICE_IN_REMOTE_SUBMIX) {
-        snprintf(halAddress, sizeof(halAddress), "%s", address.rSubmixAddress.c_str());
+using ::android::hardware::audio::common::CPP_VERSION::implementation::HidlUtils;
+
+#define CONVERT_CHECKED(expr, result)                   \
+    if (status_t status = (expr); status != NO_ERROR) { \
+        result = status;                                \
     }
-    return halAddress;
+
+status_t deviceAddressToHal(const DeviceAddress& device, audio_devices_t* halDeviceType,
+                            char* halDeviceAddress) {
+#if MAJOR_VERSION >= 5
+    return HidlUtils::deviceAddressToHal(device, halDeviceType, halDeviceAddress);
+#else
+    return HidlUtils::deviceAddressToHalImpl(device, halDeviceType, halDeviceAddress);
+#endif
+}
+
+status_t deviceAddressFromHal(audio_devices_t halDeviceType, const char* halDeviceAddress,
+                              DeviceAddress* device) {
+#if MAJOR_VERSION >= 5
+    return HidlUtils::deviceAddressFromHal(halDeviceType, halDeviceAddress, device);
+#else
+    return HidlUtils::deviceAddressFromHalImpl(halDeviceType, halDeviceAddress, device);
+#endif
 }
 
 #if MAJOR_VERSION >= 4
-status_t deviceAddressFromHal(audio_devices_t device, const char* halAddress,
-                              DeviceAddress* address) {
-    if (address == nullptr) {
-        return BAD_VALUE;
-    }
-    address->device = AudioDevice(device);
-    if (halAddress == nullptr || strnlen(halAddress, AUDIO_DEVICE_MAX_ADDRESS_LEN) == 0) {
-        return OK;
-    }
-
-    if (getAudioDeviceOutAllA2dpSet().count(device) > 0 ||
-        device == AUDIO_DEVICE_IN_BLUETOOTH_A2DP) {
-        int status =
-            sscanf(halAddress, "%hhX:%hhX:%hhX:%hhX:%hhX:%hhX", &address->address.mac[0],
-                   &address->address.mac[1], &address->address.mac[2], &address->address.mac[3],
-                   &address->address.mac[4], &address->address.mac[5]);
-        return status == 6 ? OK : BAD_VALUE;
-    } else if (device == AUDIO_DEVICE_OUT_IP || device == AUDIO_DEVICE_IN_IP) {
-        int status =
-            sscanf(halAddress, "%hhu.%hhu.%hhu.%hhu", &address->address.ipv4[0],
-                   &address->address.ipv4[1], &address->address.ipv4[2], &address->address.ipv4[3]);
-        return status == 4 ? OK : BAD_VALUE;
-    } else if (getAudioDeviceOutAllUsbSet().count(device) > 0 ||
-               getAudioDeviceInAllUsbSet().count(device) > 0) {
-        int status = sscanf(halAddress, "card=%d;device=%d", &address->address.alsa.card,
-                            &address->address.alsa.device);
-        return status == 2 ? OK : BAD_VALUE;
-    } else if (device == AUDIO_DEVICE_OUT_BUS || device == AUDIO_DEVICE_IN_BUS) {
-        address->busAddress = halAddress;
-        return OK;
-    } else if (device == AUDIO_DEVICE_OUT_REMOTE_SUBMIX ||
-               device == AUDIO_DEVICE_IN_REMOTE_SUBMIX) {
-        address->rSubmixAddress = halAddress;
-        return OK;
-    }
-    address->busAddress = halAddress;
-    return OK;
-}
-
-AudioMicrophoneChannelMapping halToChannelMapping(audio_microphone_channel_mapping_t mapping) {
-    switch (mapping) {
-        case AUDIO_MICROPHONE_CHANNEL_MAPPING_UNUSED:
-            return AudioMicrophoneChannelMapping::UNUSED;
-        case AUDIO_MICROPHONE_CHANNEL_MAPPING_DIRECT:
-            return AudioMicrophoneChannelMapping::DIRECT;
-        case AUDIO_MICROPHONE_CHANNEL_MAPPING_PROCESSED:
-            return AudioMicrophoneChannelMapping::PROCESSED;
-        default:
-            ALOGE("Invalid channel mapping type: %d", mapping);
-            return AudioMicrophoneChannelMapping::UNUSED;
-    }
-}
-
-AudioMicrophoneLocation halToLocation(audio_microphone_location_t location) {
-    switch (location) {
-        default:
-        case AUDIO_MICROPHONE_LOCATION_UNKNOWN:
-            return AudioMicrophoneLocation::UNKNOWN;
-        case AUDIO_MICROPHONE_LOCATION_MAINBODY:
-            return AudioMicrophoneLocation::MAINBODY;
-        case AUDIO_MICROPHONE_LOCATION_MAINBODY_MOVABLE:
-            return AudioMicrophoneLocation::MAINBODY_MOVABLE;
-        case AUDIO_MICROPHONE_LOCATION_PERIPHERAL:
-            return AudioMicrophoneLocation::PERIPHERAL;
-    }
-}
-
-AudioMicrophoneDirectionality halToDirectionality(audio_microphone_directionality_t dir) {
-    switch (dir) {
-        default:
-        case AUDIO_MICROPHONE_DIRECTIONALITY_UNKNOWN:
-            return AudioMicrophoneDirectionality::UNKNOWN;
-        case AUDIO_MICROPHONE_DIRECTIONALITY_OMNI:
-            return AudioMicrophoneDirectionality::OMNI;
-        case AUDIO_MICROPHONE_DIRECTIONALITY_BI_DIRECTIONAL:
-            return AudioMicrophoneDirectionality::BI_DIRECTIONAL;
-        case AUDIO_MICROPHONE_DIRECTIONALITY_CARDIOID:
-            return AudioMicrophoneDirectionality::CARDIOID;
-        case AUDIO_MICROPHONE_DIRECTIONALITY_HYPER_CARDIOID:
-            return AudioMicrophoneDirectionality::HYPER_CARDIOID;
-        case AUDIO_MICROPHONE_DIRECTIONALITY_SUPER_CARDIOID:
-            return AudioMicrophoneDirectionality::SUPER_CARDIOID;
-    }
-}
-
 bool halToMicrophoneCharacteristics(MicrophoneInfo* pDst,
                                     const struct audio_microphone_characteristic_t& src) {
     bool status = false;
@@ -150,15 +67,15 @@ bool halToMicrophoneCharacteristics(MicrophoneInfo* pDst,
         }
         pDst->channelMapping.resize(AUDIO_CHANNEL_COUNT_MAX);
         for (size_t ch = 0; ch < pDst->channelMapping.size(); ch++) {
-            pDst->channelMapping[ch] = halToChannelMapping(src.channel_mapping[ch]);
+            pDst->channelMapping[ch] = AudioMicrophoneChannelMapping(src.channel_mapping[ch]);
         }
-        pDst->location = halToLocation(src.location);
+        pDst->location = AudioMicrophoneLocation(src.location);
         pDst->group = (AudioMicrophoneGroup)src.group;
         pDst->indexInTheGroup = (uint32_t)src.index_in_the_group;
         pDst->sensitivity = src.sensitivity;
         pDst->maxSpl = src.max_spl;
         pDst->minSpl = src.min_spl;
-        pDst->directionality = halToDirectionality(src.directionality);
+        pDst->directionality = AudioMicrophoneDirectionality(src.directionality);
         pDst->frequencyResponse.resize(src.num_frequency_responses);
         for (size_t k = 0; k < src.num_frequency_responses; k++) {
             pDst->frequencyResponse[k].frequency = src.frequency_responses[0][k];
@@ -175,6 +92,134 @@ bool halToMicrophoneCharacteristics(MicrophoneInfo* pDst,
         status = true;
     }
     return status;
+}
+
+status_t sinkMetadataToHal(const SinkMetadata& sinkMetadata,
+                           std::vector<record_track_metadata>* halTracks) {
+    status_t result = NO_ERROR;
+    if (halTracks != nullptr) {
+        halTracks->reserve(sinkMetadata.tracks.size());
+    }
+    for (auto& metadata : sinkMetadata.tracks) {
+        record_track_metadata halTrackMetadata{.gain = metadata.gain};
+        CONVERT_CHECKED(HidlUtils::audioSourceToHal(metadata.source, &halTrackMetadata.source),
+                        result);
+#if MAJOR_VERSION >= 5
+        if (metadata.destination.getDiscriminator() ==
+            RecordTrackMetadata::Destination::hidl_discriminator::device) {
+            CONVERT_CHECKED(
+                    deviceAddressToHal(metadata.destination.device(), &halTrackMetadata.dest_device,
+                                       halTrackMetadata.dest_device_address),
+                    result);
+        }
+#endif
+        if (halTracks != nullptr) {
+            halTracks->push_back(std::move(halTrackMetadata));
+        }
+    }
+    return result;
+}
+
+status_t sourceMetadataToHal(const SourceMetadata& sourceMetadata,
+                             std::vector<playback_track_metadata_t>* halTracks) {
+    status_t result = NO_ERROR;
+    if (halTracks != nullptr) {
+        halTracks->reserve(sourceMetadata.tracks.size());
+    }
+    for (auto& metadata : sourceMetadata.tracks) {
+        playback_track_metadata_t halTrackMetadata{.gain = metadata.gain};
+        CONVERT_CHECKED(HidlUtils::audioUsageToHal(metadata.usage, &halTrackMetadata.usage),
+                        result);
+        CONVERT_CHECKED(HidlUtils::audioContentTypeToHal(metadata.contentType,
+                                                         &halTrackMetadata.content_type),
+                        result);
+        if (halTracks != nullptr) {
+            halTracks->push_back(std::move(halTrackMetadata));
+        }
+    }
+    return result;
+}
+#endif  // MAJOR_VERSION >= 4
+
+#if MAJOR_VERSION >= 7
+namespace xsd {
+using namespace ::android::audio::policy::configuration::V7_0;
+}
+
+bool audioInputFlagsToHal(const hidl_vec<AudioInOutFlag>& flags, audio_input_flags_t* halFlags) {
+    bool success = true;
+    *halFlags = {};
+    for (const auto& flag : flags) {
+        audio_input_flags_t halFlag;
+        if (!xsd::isUnknownAudioInOutFlag(flag) &&
+            audio_input_flag_from_string(flag.c_str(), &halFlag)) {
+            *halFlags = static_cast<audio_input_flags_t>(*halFlags | halFlag);
+        } else {
+            ALOGE("Unknown audio input flag \"%s\"", flag.c_str());
+            success = false;
+        }
+    }
+    return success;
+}
+
+bool audioOutputFlagsToHal(const hidl_vec<AudioInOutFlag>& flags, audio_output_flags_t* halFlags) {
+    bool success = true;
+    *halFlags = {};
+    for (const auto& flag : flags) {
+        audio_output_flags_t halFlag;
+        if (!xsd::isUnknownAudioInOutFlag(flag) &&
+            audio_output_flag_from_string(flag.c_str(), &halFlag)) {
+            *halFlags = static_cast<audio_output_flags_t>(*halFlags | halFlag);
+        } else {
+            ALOGE("Unknown audio output flag \"%s\"", flag.c_str());
+            success = false;
+        }
+    }
+    return success;
+}
+
+status_t sinkMetadataToHalV7(const SinkMetadata& sinkMetadata,
+                             std::vector<record_track_metadata_v7_t>* halTracks) {
+    std::vector<record_track_metadata> bases;
+    status_t result = sinkMetadataToHal(sinkMetadata, halTracks != nullptr ? &bases : nullptr);
+    if (halTracks != nullptr) {
+        halTracks->reserve(bases.size());
+    }
+    auto baseIter = std::make_move_iterator(bases.begin());
+    for (auto& metadata : sinkMetadata.tracks) {
+        record_track_metadata_v7_t halTrackMetadata;
+        CONVERT_CHECKED(HidlUtils::audioChannelMaskToHal(metadata.channelMask,
+                                                         &halTrackMetadata.channel_mask),
+                        result);
+        CONVERT_CHECKED(HidlUtils::audioTagsToHal(metadata.tags, halTrackMetadata.tags), result);
+        if (halTracks != nullptr) {
+            halTrackMetadata.base = std::move(*baseIter++);
+            halTracks->push_back(std::move(halTrackMetadata));
+        }
+    }
+    return result;
+}
+
+status_t sourceMetadataToHalV7(const SourceMetadata& sourceMetadata,
+                               std::vector<playback_track_metadata_v7_t>* halTracks) {
+    std::vector<playback_track_metadata_t> bases;
+    status_t result = sourceMetadataToHal(sourceMetadata, halTracks != nullptr ? &bases : nullptr);
+    if (halTracks != nullptr) {
+        halTracks->reserve(bases.size());
+    }
+    auto baseIter = std::make_move_iterator(bases.begin());
+    for (auto& metadata : sourceMetadata.tracks) {
+        playback_track_metadata_v7_t halTrackMetadata;
+        CONVERT_CHECKED(HidlUtils::audioChannelMaskToHal(metadata.channelMask,
+                                                         &halTrackMetadata.channel_mask),
+                        result);
+        CONVERT_CHECKED(HidlUtils::audioTagsToHal(metadata.tags, halTrackMetadata.tags), result);
+        if (halTracks != nullptr) {
+            halTrackMetadata.base = std::move(*baseIter++);
+            halTracks->push_back(std::move(halTrackMetadata));
+        }
+    }
+    return result;
 }
 #endif
 
