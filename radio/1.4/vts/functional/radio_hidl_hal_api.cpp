@@ -34,9 +34,8 @@ TEST_P(RadioHidlTest_v1_4, emergencyDial) {
     if (!deviceSupportsFeature(FEATURE_VOICE_CALL)) {
         ALOGI("Skipping emergencyDial because voice call is not supported in device");
         return;
-    } else if (!deviceSupportsFeature(FEATURE_TELEPHONY_GSM) &&
-               !deviceSupportsFeature(FEATURE_TELEPHONY_CDMA)) {
-        ALOGI("Skipping emergencyDial because gsm/cdma radio is not supported in device");
+    } else if (!deviceSupportsFeature(FEATURE_TELEPHONY)) {
+        ALOGI("Skipping emergencyDial because telephony radio is not supported in device");
         return;
     } else {
         ALOGI("Running emergencyDial because voice call is supported in device");
@@ -60,21 +59,7 @@ TEST_P(RadioHidlTest_v1_4, emergencyDial) {
     EXPECT_EQ(serial, radioRsp_v1_4->rspInfo.serial);
 
     ALOGI("emergencyDial, rspInfo.error = %s\n", toString(radioRsp_v1_4->rspInfo.error).c_str());
-
-    ::android::hardware::radio::V1_0::RadioError rspEmergencyDial = radioRsp_v1_4->rspInfo.error;
-    // In DSDS or TSTS, we only check the result if the current slot is IN_SERVICE
-    // or Emergency_Only.
-    if (isDsDsEnabled() || isTsTsEnabled()) {
-        serial = GetRandomSerialNumber();
-        radio_v1_4->getVoiceRegistrationState(serial);
-        EXPECT_EQ(std::cv_status::no_timeout, wait());
-        if (isVoiceEmergencyOnly(radioRsp_v1_4->voiceRegResp.regState) ||
-            isVoiceInService(radioRsp_v1_4->voiceRegResp.regState)) {
-            EXPECT_EQ(RadioError::NONE, rspEmergencyDial);
-        }
-    } else {
-        EXPECT_EQ(RadioError::NONE, rspEmergencyDial);
-    }
+    EXPECT_EQ(RadioError::NONE, radioRsp_v1_4->rspInfo.error);
 
     // Give some time for modem to establish the emergency call channel.
     sleep(MODEM_EMERGENCY_CALL_ESTABLISH_TIME);
@@ -90,9 +75,8 @@ TEST_P(RadioHidlTest_v1_4, emergencyDial_withServices) {
     if (!deviceSupportsFeature(FEATURE_VOICE_CALL)) {
         ALOGI("Skipping emergencyDial because voice call is not supported in device");
         return;
-    } else if (!deviceSupportsFeature(FEATURE_TELEPHONY_GSM) &&
-               !deviceSupportsFeature(FEATURE_TELEPHONY_CDMA)) {
-        ALOGI("Skipping emergencyDial because gsm/cdma radio is not supported in device");
+    } else if (!deviceSupportsFeature(FEATURE_TELEPHONY)) {
+        ALOGI("Skipping emergencyDial because telephony radio is not supported in device");
         return;
     } else {
         ALOGI("Running emergencyDial because voice call is supported in device");
@@ -117,21 +101,8 @@ TEST_P(RadioHidlTest_v1_4, emergencyDial_withServices) {
 
     ALOGI("emergencyDial_withServices, rspInfo.error = %s\n",
           toString(radioRsp_v1_4->rspInfo.error).c_str());
-    ::android::hardware::radio::V1_0::RadioError rspEmergencyDial = radioRsp_v1_4->rspInfo.error;
+    EXPECT_EQ(RadioError::NONE, radioRsp_v1_4->rspInfo.error);
 
-    // In DSDS or TSTS, we only check the result if the current slot is IN_SERVICE
-    // or Emergency_Only.
-    if (isDsDsEnabled() || isTsTsEnabled()) {
-        serial = GetRandomSerialNumber();
-        radio_v1_4->getVoiceRegistrationState(serial);
-        EXPECT_EQ(std::cv_status::no_timeout, wait());
-        if (isVoiceEmergencyOnly(radioRsp_v1_4->voiceRegResp.regState) ||
-            isVoiceInService(radioRsp_v1_4->voiceRegResp.regState)) {
-            EXPECT_EQ(RadioError::NONE, rspEmergencyDial);
-        }
-    } else {
-        EXPECT_EQ(RadioError::NONE, rspEmergencyDial);
-    }
     // Give some time for modem to establish the emergency call channel.
     sleep(MODEM_EMERGENCY_CALL_ESTABLISH_TIME);
 
@@ -146,9 +117,8 @@ TEST_P(RadioHidlTest_v1_4, emergencyDial_withEmergencyRouting) {
     if (!deviceSupportsFeature(FEATURE_VOICE_CALL)) {
         ALOGI("Skipping emergencyDial because voice call is not supported in device");
         return;
-    } else if (!deviceSupportsFeature(FEATURE_TELEPHONY_GSM) &&
-               !deviceSupportsFeature(FEATURE_TELEPHONY_CDMA)) {
-        ALOGI("Skipping emergencyDial because gsm/cdma radio is not supported in device");
+    } else if (!deviceSupportsFeature(FEATURE_TELEPHONY)) {
+        ALOGI("Skipping emergencyDial because telephony radio is not supported in device");
         return;
     } else {
         ALOGI("Running emergencyDial because voice call is supported in device");
@@ -173,21 +143,7 @@ TEST_P(RadioHidlTest_v1_4, emergencyDial_withEmergencyRouting) {
 
     ALOGI("emergencyDial_withEmergencyRouting, rspInfo.error = %s\n",
           toString(radioRsp_v1_4->rspInfo.error).c_str());
-    ::android::hardware::radio::V1_0::RadioError rspEmergencyDial = radioRsp_v1_4->rspInfo.error;
-
-    // In DSDS or TSTS, we only check the result if the current slot is IN_SERVICE
-    // or Emergency_Only.
-    if (isDsDsEnabled() || isTsTsEnabled()) {
-        serial = GetRandomSerialNumber();
-        radio_v1_4->getVoiceRegistrationState(serial);
-        EXPECT_EQ(std::cv_status::no_timeout, wait());
-        if (isVoiceEmergencyOnly(radioRsp_v1_4->voiceRegResp.regState) ||
-            isVoiceInService(radioRsp_v1_4->voiceRegResp.regState)) {
-            EXPECT_EQ(RadioError::NONE, rspEmergencyDial);
-        }
-    } else {
-        EXPECT_EQ(RadioError::NONE, rspEmergencyDial);
-    }
+    EXPECT_EQ(RadioError::NONE, radioRsp_v1_4->rspInfo.error);
 
     // Give some time for modem to establish the emergency call channel.
     sleep(MODEM_EMERGENCY_CALL_ESTABLISH_TIME);
@@ -232,7 +188,8 @@ TEST_P(RadioHidlTest_v1_4, setPreferredNetworkTypeBitmap) {
     EXPECT_EQ(serial, radioRsp_v1_4->rspInfo.serial);
     ALOGI("setPreferredNetworkTypeBitmap, rspInfo.error = %s\n",
           toString(radioRsp_v1_4->rspInfo.error).c_str());
-    EXPECT_EQ(RadioError::NONE, radioRsp_v1_4->rspInfo.error);
+    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_4->rspInfo.error,
+                                 {RadioError::NONE, RadioError::MODE_NOT_SUPPORTED}));
     if (radioRsp_v1_4->rspInfo.error == RadioError::NONE) {
          // give some time for modem to set the value.
         sleep(3);
