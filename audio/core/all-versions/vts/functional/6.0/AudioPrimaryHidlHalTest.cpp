@@ -116,33 +116,75 @@ const std::vector<DeviceConfigParameter>& getInputDeviceSingleConfigParameters()
 }
 #endif  // MAJOR_VERSION <= 6
 
-class SingleConfigOutputStreamTest : public OutputStreamTest {};
-TEST_P(SingleConfigOutputStreamTest, CloseDeviceWithOpenedOutputStreams) {
+class SingleOutputConfigTest : public AudioHidlTestWithDeviceConfigParameter {};
+TEST_P(SingleOutputConfigTest, CloseDeviceWithOpenedOutputStreams) {
     doc::test("Verify that a device can't be closed if there are output streams opened");
-    // Opening of the stream is done in SetUp.
+#if MAJOR_VERSION <= 6
+    DeviceAddress address{.device = AudioDevice::OUT_DEFAULT};
+    SourceMetadata initMetadata = {{{AudioUsage::MEDIA, AudioContentType::MUSIC, 1 /* gain */}}};
+#elif MAJOR_VERSION >= 7
+    DeviceAddress address{.deviceType = toString(xsd::AudioDevice::AUDIO_DEVICE_OUT_DEFAULT)};
+    SourceMetadata initMetadata = {{{toString(xsd::AudioUsage::AUDIO_USAGE_MEDIA),
+                                     toString(xsd::AudioContentType::AUDIO_CONTENT_TYPE_MUSIC),
+                                     {} /* tags */,
+                                     toString(xsd::AudioChannelMask::AUDIO_CHANNEL_OUT_STEREO),
+                                     1 /* gain */}}};
+#endif
+    const AudioConfig& config = getConfig();
+    auto flags = getOutputFlags();
+    sp<IStreamOut> stream;
+    StreamHelper<IStreamOut> helper(stream);
+    AudioConfig suggestedConfig{};
+    ASSERT_NO_FATAL_FAILURE(helper.open(
+            [&](AudioIoHandle handle, AudioConfig config, auto cb) {
+                return getDevice()->openOutputStream(handle, address, config, flags, initMetadata,
+                                                     cb);
+            },
+            config, &res, &suggestedConfig));
     ASSERT_RESULT(Result::INVALID_STATE, getDevice()->close());
-    ASSERT_OK(closeStream(true /*clear*/));
+    ASSERT_NO_FATAL_FAILURE(helper.close(true /*clear*/, &res));
     ASSERT_OK(getDevice()->close());
     ASSERT_TRUE(resetDevice());
 }
-INSTANTIATE_TEST_CASE_P(SingleConfigOutputStream, SingleConfigOutputStreamTest,
+INSTANTIATE_TEST_CASE_P(SingleOutputConfig, SingleOutputConfigTest,
                         ::testing::ValuesIn(getOutputDeviceSingleConfigParameters()),
                         &DeviceConfigParameterToString);
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SingleConfigOutputStream);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SingleOutputConfig);
 
-class SingleConfigInputStreamTest : public InputStreamTest {};
-TEST_P(SingleConfigInputStreamTest, CloseDeviceWithOpenedInputStreams) {
+class SingleInputConfigTest : public AudioHidlTestWithDeviceConfigParameter {};
+TEST_P(SingleInputConfigTest, CloseDeviceWithOpenedInputStreams) {
     doc::test("Verify that a device can't be closed if there are input streams opened");
-    // Opening of the stream is done in SetUp.
+#if MAJOR_VERSION <= 6
+    DeviceAddress address{.device = AudioDevice::IN_DEFAULT};
+    SinkMetadata initMetadata = {{{.source = AudioSource::MIC, .gain = 1}}};
+#elif MAJOR_VERSION >= 7
+    DeviceAddress address{.deviceType = toString(xsd::AudioDevice::AUDIO_DEVICE_IN_DEFAULT)};
+    SinkMetadata initMetadata = {
+            {{.source = toString(xsd::AudioSource::AUDIO_SOURCE_MIC),
+              .gain = 1,
+              .tags = {},
+              .channelMask = toString(xsd::AudioChannelMask::AUDIO_CHANNEL_IN_MONO)}}};
+#endif
+    const AudioConfig& config = getConfig();
+    auto flags = getInputFlags();
+    sp<IStreamIn> stream;
+    StreamHelper<IStreamIn> helper(stream);
+    AudioConfig suggestedConfig{};
+    ASSERT_NO_FATAL_FAILURE(helper.open(
+            [&](AudioIoHandle handle, AudioConfig config, auto cb) {
+                return getDevice()->openInputStream(handle, address, config, flags, initMetadata,
+                                                    cb);
+            },
+            config, &res, &suggestedConfig));
     ASSERT_RESULT(Result::INVALID_STATE, getDevice()->close());
-    ASSERT_OK(closeStream(true /*clear*/));
+    ASSERT_NO_FATAL_FAILURE(helper.close(true /*clear*/, &res));
     ASSERT_OK(getDevice()->close());
     ASSERT_TRUE(resetDevice());
 }
-INSTANTIATE_TEST_CASE_P(SingleConfigInputStream, SingleConfigInputStreamTest,
+INSTANTIATE_TEST_CASE_P(SingleInputConfig, SingleInputConfigTest,
                         ::testing::ValuesIn(getInputDeviceSingleConfigParameters()),
                         &DeviceConfigParameterToString);
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SingleConfigInputStream);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SingleInputConfig);
 
 TEST_P(AudioPatchHidlTest, UpdatePatchInvalidHandle) {
     doc::test("Verify that passing an invalid handle to updateAudioPatch is checked");
