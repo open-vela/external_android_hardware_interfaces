@@ -1630,12 +1630,6 @@ wifi_error WifiLegacyHal::twtClearStats(const std::string& iface_name,
                                                    configId);
 }
 
-wifi_error WifiLegacyHal::setDtimConfig(const std::string& iface_name,
-                                        uint32_t multiplier) {
-    return global_func_table_.wifi_set_dtim_config(getIfaceHandle(iface_name),
-                                                   multiplier);
-}
-
 void WifiLegacyHal::invalidate() {
     global_handle_ = nullptr;
     iface_name_to_handle_.clear();
