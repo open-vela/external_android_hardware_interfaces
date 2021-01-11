@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.gnss@2.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IAGnss.hal",
@@ -27,3 +30,4 @@ hidl_interface {
     gen_java: true,
     gen_java_constants: true,
 }
+
