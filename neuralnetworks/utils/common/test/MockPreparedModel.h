@@ -35,7 +35,6 @@ class MockPreparedModel final : public IPreparedModel {
                  const OptionalDuration& loopTimeoutDuration,
                  const OptionalDuration& timeoutDurationAfterFence),
                 (const, override));
-    MOCK_METHOD(GeneralResult<SharedBurst>, configureExecutionBurst, (), (const, override));
     MOCK_METHOD(std::any, getUnderlyingResource, (), (const, override));
 };
 
