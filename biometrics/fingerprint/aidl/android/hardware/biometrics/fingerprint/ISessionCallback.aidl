@@ -195,9 +195,6 @@ interface ISessionCallback {
      * SessionState::INVALIDATING_AUTHENTICATOR_ID.
      *
      * See ISession#invalidateAuthenticatorId for more information.
-     *
-     * @param newAuthenticatorId The new entropy-encoded random identifier associated with the
-     *                           current set of enrollments.
      */
-    void onAuthenticatorIdInvalidated(in long newAuthenticatorId);
+    void onAuthenticatorIdInvalidated();
 }

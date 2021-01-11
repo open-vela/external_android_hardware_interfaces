@@ -232,11 +232,6 @@ class IfaceCallback : public ISupplicantStaIfaceCallback {
         override {
         return Void();
     }
-    Return<void> onAssociationRejected_1_4(
-        const ISupplicantStaIfaceCallback::AssociationRejectionData& /* data */)
-        override {
-        return Void();
-    }
 };
 
 /*

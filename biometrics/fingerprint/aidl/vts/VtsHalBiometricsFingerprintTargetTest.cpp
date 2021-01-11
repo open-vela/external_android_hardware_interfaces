@@ -110,7 +110,7 @@ class SessionCallback : public BnSessionCallback {
         return ndk::ScopedAStatus::ok();
     }
 
-    ndk::ScopedAStatus onAuthenticatorIdInvalidated(int64_t /*newAuthenticatorId*/) override {
+    ndk::ScopedAStatus onAuthenticatorIdInvalidated() override {
         return ndk::ScopedAStatus::ok();
     }
 
