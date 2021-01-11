@@ -27,7 +27,6 @@
 
 #define ATRACE_TAG ATRACE_TAG_AUDIO
 
-#include <HidlUtils.h>
 #include <android/log.h>
 #include <media/EffectsFactoryApi.h>
 #include <utils/Trace.h>
@@ -41,10 +40,7 @@ namespace effect {
 namespace CPP_VERSION {
 namespace implementation {
 
-#if MAJOR_VERSION <= 6
 using ::android::hardware::audio::common::CPP_VERSION::implementation::AudioChannelBitfield;
-#endif
-using ::android::hardware::audio::common::CPP_VERSION::implementation::HidlUtils;
 
 namespace {
 
@@ -140,16 +136,13 @@ bool ProcessThread::threadLoop() {
 const char* Effect::sContextResultOfCommand = "returned status";
 const char* Effect::sContextCallToCommand = "error";
 const char* Effect::sContextCallFunction = sContextCallToCommand;
-const char* Effect::sContextConversion = "conversion";
 
-Effect::Effect(bool isInput, effect_handle_t handle)
-    : mIsInput(isInput), mHandle(handle), mEfGroup(nullptr), mStopProcessThread(false) {
-    (void)mIsInput;  // prevent 'unused field' warnings in pre-V7 versions.
-}
+Effect::Effect(effect_handle_t handle)
+    : mIsClosed(false), mHandle(handle), mEfGroup(nullptr), mStopProcessThread(false) {}
 
 Effect::~Effect() {
     ATRACE_CALL();
-    (void)close();
+    close();
     if (mProcessThread.get()) {
         ATRACE_NAME("mProcessThread->join");
         status_t status = mProcessThread->join();
@@ -161,10 +154,8 @@ Effect::~Effect() {
     }
     mInBuffer.clear();
     mOutBuffer.clear();
-#if MAJOR_VERSION <= 5
     int status = EffectRelease(mHandle);
     ALOGW_IF(status, "Error releasing effect %p: %s", mHandle, strerror(-status));
-#endif
     EffectMap::getInstance().remove(mHandle);
     mHandle = 0;
 }
@@ -187,8 +178,7 @@ std::unique_ptr<uint8_t[]> Effect::hidlVecToHal(const hidl_vec<T>& vec, uint32_t
     return halData;
 }
 
-#if MAJOR_VERSION <= 6
-
+// static
 void Effect::effectAuxChannelsConfigFromHal(const channel_config_t& halConfig,
                                             EffectAuxChannelsConfig* config) {
     config->mainChannels = AudioChannelBitfield(halConfig.main_channels);
@@ -202,6 +192,7 @@ void Effect::effectAuxChannelsConfigToHal(const EffectAuxChannelsConfig& config,
     halConfig->aux_channels = static_cast<audio_channel_mask_t>(config.auxChannels);
 }
 
+// static
 void Effect::effectBufferConfigFromHal(const buffer_config_t& halConfig,
                                        EffectBufferConfig* config) {
     config->buffer.id = 0;
@@ -230,56 +221,7 @@ void Effect::effectBufferConfigToHal(const EffectBufferConfig& config, buffer_co
     halConfig->mask = static_cast<uint8_t>(config.mask);
 }
 
-#else  // MAJOR_VERSION <= 6
-
-void Effect::effectAuxChannelsConfigFromHal(const channel_config_t& halConfig,
-                                            EffectAuxChannelsConfig* config) {
-    (void)HidlUtils::audioChannelMaskFromHal(halConfig.main_channels, mIsInput,
-                                             &config->mainChannels);
-    (void)HidlUtils::audioChannelMaskFromHal(halConfig.aux_channels, mIsInput,
-                                             &config->auxChannels);
-}
-
 // static
-void Effect::effectAuxChannelsConfigToHal(const EffectAuxChannelsConfig& config,
-                                          channel_config_t* halConfig) {
-    (void)HidlUtils::audioChannelMaskToHal(config.mainChannels, &halConfig->main_channels);
-    (void)HidlUtils::audioChannelMaskToHal(config.auxChannels, &halConfig->aux_channels);
-}
-
-void Effect::effectBufferConfigFromHal(const buffer_config_t& halConfig,
-                                       EffectBufferConfig* config) {
-    config->buffer.id = 0;
-    config->buffer.frameCount = 0;
-    audio_config_base_t halConfigBase = {halConfig.samplingRate,
-                                         static_cast<audio_channel_mask_t>(halConfig.channels),
-                                         static_cast<audio_format_t>(halConfig.format)};
-    (void)HidlUtils::audioConfigBaseFromHal(halConfigBase, mIsInput, &config->base);
-    config->accessMode = EffectBufferAccess(halConfig.accessMode);
-    config->mask = static_cast<decltype(config->mask)>(halConfig.mask);
-}
-
-// static
-void Effect::effectBufferConfigToHal(const EffectBufferConfig& config, buffer_config_t* halConfig) {
-    // Note: setting the buffers directly is considered obsolete. They need to be set
-    // using 'setProcessBuffers'.
-    halConfig->buffer.frameCount = 0;
-    halConfig->buffer.raw = nullptr;
-    audio_config_base_t halConfigBase;
-    (void)HidlUtils::audioConfigBaseToHal(config.base, &halConfigBase);
-    halConfig->samplingRate = halConfigBase.sample_rate;
-    halConfig->channels = halConfigBase.channel_mask;
-    halConfig->format = halConfigBase.format;
-    // Note: The framework code does not use BP.
-    halConfig->bufferProvider.cookie = nullptr;
-    halConfig->bufferProvider.getBuffer = nullptr;
-    halConfig->bufferProvider.releaseBuffer = nullptr;
-    halConfig->accessMode = static_cast<uint8_t>(config.accessMode);
-    halConfig->mask = static_cast<uint8_t>(config.mask);
-}
-
-#endif  // MAJOR_VERSION <= 6
-
 void Effect::effectConfigFromHal(const effect_config_t& halConfig, EffectConfig* config) {
     effectBufferConfigFromHal(halConfig.inputCfg, &config->inputCfg);
     effectBufferConfigFromHal(halConfig.outputCfg, &config->outputCfg);
@@ -363,11 +305,12 @@ void Effect::getConfigImpl(int commandCode, const char* commandName, GetConfigCa
 Result Effect::getCurrentConfigImpl(uint32_t featureId, uint32_t configSize,
                                     GetCurrentConfigSuccessCallback onSuccess) {
     uint32_t halCmd = featureId;
-    std::vector<uint32_t> halResult(alignedSizeIn<uint32_t>(sizeof(uint32_t) + configSize), 0);
+    uint32_t halResult[alignedSizeIn<uint32_t>(sizeof(uint32_t) + configSize)];
+    memset(halResult, 0, sizeof(halResult));
     uint32_t halResultSize = 0;
-    return sendCommandReturningStatusAndData(
-            EFFECT_CMD_GET_FEATURE_CONFIG, "GET_FEATURE_CONFIG", sizeof(uint32_t), &halCmd,
-            &halResultSize, &halResult[0], sizeof(uint32_t), [&] { onSuccess(&halResult[1]); });
+    return sendCommandReturningStatusAndData(EFFECT_CMD_GET_FEATURE_CONFIG, "GET_FEATURE_CONFIG",
+                                             sizeof(uint32_t), &halCmd, &halResultSize, halResult,
+                                             sizeof(uint32_t), [&] { onSuccess(&halResult[1]); });
 }
 
 Result Effect::getParameterImpl(uint32_t paramSize, const void* paramData,
@@ -394,7 +337,8 @@ Result Effect::getSupportedConfigsImpl(uint32_t featureId, uint32_t maxConfigs, 
                                        GetSupportedConfigsSuccessCallback onSuccess) {
     uint32_t halCmd[2] = {featureId, maxConfigs};
     uint32_t halResultSize = 2 * sizeof(uint32_t) + maxConfigs * sizeof(configSize);
-    std::vector<uint8_t> halResult(static_cast<size_t>(halResultSize), 0);
+    uint8_t halResult[halResultSize];
+    memset(&halResult[0], 0, halResultSize);
     return sendCommandReturningStatusAndData(
         EFFECT_CMD_GET_FEATURE_SUPPORTED_CONFIGS, "GET_FEATURE_SUPPORTED_CONFIGS", sizeof(halCmd),
         halCmd, &halResultSize, &halResult[0], 2 * sizeof(uint32_t), [&] {
@@ -563,73 +507,19 @@ Return<Result> Effect::disable() {
     return sendCommandReturningStatus(EFFECT_CMD_DISABLE, "DISABLE");
 }
 
-Return<Result> Effect::setAudioSource(
-#if MAJOR_VERSION <= 6
-        AudioSource source
-#else
-        const AudioSource& source
-#endif
-) {
-    audio_source_t halSource;
-    if (status_t status = HidlUtils::audioSourceToHal(source, &halSource); status == NO_ERROR) {
-        uint32_t halSourceParam = static_cast<uint32_t>(halSource);
-        return sendCommand(EFFECT_CMD_SET_AUDIO_SOURCE, "SET_AUDIO_SOURCE", sizeof(uint32_t),
-                           &halSourceParam);
-    } else {
-        return analyzeStatus(__func__, "audioSourceToHal", sContextConversion, status);
-    }
-}
-
-#if MAJOR_VERSION <= 6
-
 Return<Result> Effect::setDevice(AudioDeviceBitfield device) {
     uint32_t halDevice = static_cast<uint32_t>(device);
     return sendCommand(EFFECT_CMD_SET_DEVICE, "SET_DEVICE", sizeof(uint32_t), &halDevice);
 }
-
-Return<Result> Effect::setInputDevice(AudioDeviceBitfield device) {
-    uint32_t halDevice = static_cast<uint32_t>(device);
-    return sendCommand(EFFECT_CMD_SET_INPUT_DEVICE, "SET_INPUT_DEVICE", sizeof(uint32_t),
-                       &halDevice);
-}
-
-#else  // MAJOR_VERSION <= 6
-
-Return<Result> Effect::setDevice(const DeviceAddress& device) {
-    audio_devices_t halDevice;
-    char halDeviceAddress[AUDIO_DEVICE_MAX_ADDRESS_LEN];
-    if (status_t status = HidlUtils::deviceAddressToHal(device, &halDevice, halDeviceAddress);
-        status == NO_ERROR) {
-        uint32_t halDeviceParam = static_cast<uint32_t>(halDevice);
-        return sendCommand(EFFECT_CMD_SET_DEVICE, "SET_DEVICE", sizeof(uint32_t), &halDeviceParam);
-    } else {
-        return analyzeStatus(__func__, "deviceAddressToHal", sContextConversion, status);
-    }
-}
-
-Return<Result> Effect::setInputDevice(const DeviceAddress& device) {
-    audio_devices_t halDevice;
-    char halDeviceAddress[AUDIO_DEVICE_MAX_ADDRESS_LEN];
-    if (status_t status = HidlUtils::deviceAddressToHal(device, &halDevice, halDeviceAddress);
-        status == NO_ERROR) {
-        uint32_t halDeviceParam = static_cast<uint32_t>(halDevice);
-        return sendCommand(EFFECT_CMD_SET_INPUT_DEVICE, "SET_INPUT_DEVICE", sizeof(uint32_t),
-                           &halDeviceParam);
-    } else {
-        return analyzeStatus(__func__, "deviceAddressToHal", sContextConversion, status);
-    }
-}
-
-#endif  // MAJOR_VERSION <= 6
 
 Return<void> Effect::setAndGetVolume(const hidl_vec<uint32_t>& volumes,
                                      setAndGetVolume_cb _hidl_cb) {
     uint32_t halDataSize;
     std::unique_ptr<uint8_t[]> halData = hidlVecToHal(volumes, &halDataSize);
     uint32_t halResultSize = halDataSize;
-    std::vector<uint32_t> halResult(volumes.size(), 0);
+    uint32_t halResult[volumes.size()];
     Result retval = sendCommandReturningData(EFFECT_CMD_SET_VOLUME, "SET_VOLUME", halDataSize,
-                                             &halData[0], &halResultSize, &halResult[0]);
+                                             &halData[0], &halResultSize, halResult);
     hidl_vec<uint32_t> result;
     if (retval == Result::OK) {
         result.setToExternal(&halResult[0], halResultSize);
@@ -654,6 +544,12 @@ Return<Result> Effect::setConfigReverse(
     const sp<IEffectBufferProviderCallback>& outputBufferProvider) {
     return setConfigImpl(EFFECT_CMD_SET_CONFIG_REVERSE, "SET_CONFIG_REVERSE", config,
                          inputBufferProvider, outputBufferProvider);
+}
+
+Return<Result> Effect::setInputDevice(AudioDeviceBitfield device) {
+    uint32_t halDevice = static_cast<uint32_t>(device);
+    return sendCommand(EFFECT_CMD_SET_INPUT_DEVICE, "SET_INPUT_DEVICE", sizeof(uint32_t),
+                       &halDevice);
 }
 
 Return<void> Effect::getConfig(getConfig_cb _hidl_cb) {
@@ -683,6 +579,8 @@ Return<void> Effect::getSupportedAuxChannelsConfigs(uint32_t maxConfigs,
 }
 
 Return<void> Effect::getAuxChannelsConfig(getAuxChannelsConfig_cb _hidl_cb) {
+    uint32_t halResult[alignedSizeIn<uint32_t>(sizeof(uint32_t) + sizeof(channel_config_t))];
+    memset(halResult, 0, sizeof(halResult));
     EffectAuxChannelsConfig result;
     Result retval = getCurrentConfigImpl(
         EFFECT_FEATURE_AUX_CHANNELS, sizeof(channel_config_t), [&](void* configData) {
@@ -694,12 +592,17 @@ Return<void> Effect::getAuxChannelsConfig(getAuxChannelsConfig_cb _hidl_cb) {
 }
 
 Return<Result> Effect::setAuxChannelsConfig(const EffectAuxChannelsConfig& config) {
-    std::vector<uint32_t> halCmd(
-            alignedSizeIn<uint32_t>(sizeof(uint32_t) + sizeof(channel_config_t)), 0);
+    uint32_t halCmd[alignedSizeIn<uint32_t>(sizeof(uint32_t) + sizeof(channel_config_t))];
     halCmd[0] = EFFECT_FEATURE_AUX_CHANNELS;
     effectAuxChannelsConfigToHal(config, reinterpret_cast<channel_config_t*>(&halCmd[1]));
     return sendCommandReturningStatus(EFFECT_CMD_SET_FEATURE_CONFIG,
-                                      "SET_FEATURE_CONFIG AUX_CHANNELS", halCmd.size(), &halCmd[0]);
+                                      "SET_FEATURE_CONFIG AUX_CHANNELS", sizeof(halCmd), halCmd);
+}
+
+Return<Result> Effect::setAudioSource(AudioSource source) {
+    uint32_t halSource = static_cast<uint32_t>(source);
+    return sendCommand(EFFECT_CMD_SET_AUDIO_SOURCE, "SET_AUDIO_SOURCE", sizeof(uint32_t),
+                       &halSource);
 }
 
 Return<Result> Effect::offload(const EffectOffloadParameter& param) {
@@ -787,31 +690,24 @@ Return<void> Effect::getCurrentConfigForFeature(uint32_t featureId, uint32_t con
 
 Return<Result> Effect::setCurrentConfigForFeature(uint32_t featureId,
                                                   const hidl_vec<uint8_t>& configData) {
-    std::vector<uint32_t> halCmd(alignedSizeIn<uint32_t>(sizeof(uint32_t) + configData.size()), 0);
+    uint32_t halCmd[alignedSizeIn<uint32_t>(sizeof(uint32_t) + configData.size())];
+    memset(halCmd, 0, sizeof(halCmd));
     halCmd[0] = featureId;
     memcpy(&halCmd[1], &configData[0], configData.size());
     return sendCommandReturningStatus(EFFECT_CMD_SET_FEATURE_CONFIG, "SET_FEATURE_CONFIG",
-                                      halCmd.size(), &halCmd[0]);
+                                      sizeof(halCmd), halCmd);
 }
 
 Return<Result> Effect::close() {
-    if (mStopProcessThread.load(std::memory_order_relaxed)) {  // only this thread modifies
-        return Result::INVALID_STATE;
+    if (mIsClosed) return Result::INVALID_STATE;
+    mIsClosed = true;
+    if (mProcessThread.get()) {
+        mStopProcessThread.store(true, std::memory_order_release);
     }
-    mStopProcessThread.store(true, std::memory_order_release);
     if (mEfGroup) {
         mEfGroup->wake(static_cast<uint32_t>(MessageQueueFlagBits::REQUEST_QUIT));
     }
-#if MAJOR_VERSION <= 5
     return Result::OK;
-#elif MAJOR_VERSION >= 6
-    // No need to join the processing thread, it is part of the API contract that the client
-    // must finish processing before closing the effect.
-    Result retval =
-            analyzeStatus("EffectRelease", "", sContextCallFunction, EffectRelease(mHandle));
-    EffectMap::getInstance().remove(mHandle);
-    return retval;
-#endif
 }
 
 Return<void> Effect::debug(const hidl_handle& fd, const hidl_vec<hidl_string>& /* options */) {
