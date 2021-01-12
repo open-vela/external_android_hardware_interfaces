@@ -731,13 +731,6 @@ Return<void> WifiChip::setCoexUnsafeChannels(
                            hidl_status_cb, unsafeChannels, restrictions);
 }
 
-Return<void> WifiChip::setCountryCode(const hidl_array<int8_t, 2>& code,
-                                      setCountryCode_cb hidl_status_cb) {
-    return validateAndCall(this, WifiStatusCode::ERROR_WIFI_IFACE_INVALID,
-                           &WifiChip::setCountryCodeInternal, hidl_status_cb,
-                           code);
-}
-
 void WifiChip::invalidateAndRemoveAllIfaces() {
     invalidateAndClearBridgedApAll();
     invalidateAndClearAll(ap_ifaces_);
@@ -1482,12 +1475,6 @@ WifiStatus WifiChip::setCoexUnsafeChannelsInternal(
     }
     auto legacy_status = legacy_hal_.lock()->setCoexUnsafeChannels(
         legacy_unsafe_channels, legacy_restrictions);
-    return createWifiStatusFromLegacyError(legacy_status);
-}
-
-WifiStatus WifiChip::setCountryCodeInternal(const std::array<int8_t, 2>& code) {
-    auto legacy_status =
-        legacy_hal_.lock()->setCountryCode(getFirstActiveWlanIfaceName(), code);
     return createWifiStatusFromLegacyError(legacy_status);
 }
 
