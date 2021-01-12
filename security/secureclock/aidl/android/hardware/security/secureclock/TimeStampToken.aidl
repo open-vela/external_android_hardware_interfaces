@@ -23,7 +23,6 @@ import android.hardware.security.secureclock.Timestamp;
  */
 
 @VintfStability
-@RustDerive(Clone=true, Eq=true, PartialEq=true, Ord=true, PartialOrd=true, Hash=true)
 parcelable TimeStampToken {
     /**
      * The challenge that was provided as argument to ISecureClock.generateTimeStamp by the client.

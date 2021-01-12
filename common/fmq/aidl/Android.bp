@@ -9,9 +9,6 @@ aidl_interface {
     srcs: [
         "android/hardware/common/fmq/*.aidl",
     ],
-    imports: [
-        "android.hardware.common",
-    ],
     stability: "vintf",
     backend: {
         java: {
