@@ -16,11 +16,10 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.security.sharedsecret;
+package android.hardware.security.keymint;
 @VintfStability
-interface ISharedSecret {
-  android.hardware.security.sharedsecret.SharedSecretParameters getSharedSecretParameters();
-  byte[] computeSharedSecret(in android.hardware.security.sharedsecret.SharedSecretParameters[] params);
-  const String KEY_AGREEMENT_LABEL = "KeymasterSharedMac";
-  const String KEY_CHECK_LABEL = "Keymaster HMAC Verification";
+parcelable KeyCreationResult {
+  byte[] keyBlob;
+  android.hardware.security.keymint.KeyCharacteristics[] keyCharacteristics;
+  android.hardware.security.keymint.Certificate[] certificateChain;
 }
