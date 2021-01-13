@@ -84,10 +84,8 @@ template <typename ValueT>
 ::std::ostream& operator<<(::std::ostream& os, const KeyParameter& param);
 
 inline ::std::ostream& operator<<(::std::ostream& os, const KeyCharacteristics& value) {
-    for (auto& entry : value.authorizations) {
-        os << value.securityLevel << ": " << entry;
-    }
-    return os;
+    return os << "SW: " << value.softwareEnforced << ::std::endl
+              << "HW: " << value.hardwareEnforced << ::std::endl;
 }
 
 inline ::std::ostream& operator<<(::std::ostream& os, KeyPurpose value) {
