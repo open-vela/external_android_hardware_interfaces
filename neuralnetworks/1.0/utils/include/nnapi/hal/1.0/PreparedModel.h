@@ -35,8 +35,7 @@
 namespace android::hardware::neuralnetworks::V1_0::utils {
 
 // Class that adapts V1_0::IPreparedModel to nn::IPreparedModel.
-class PreparedModel final : public nn::IPreparedModel,
-                            public std::enable_shared_from_this<PreparedModel> {
+class PreparedModel final : public nn::IPreparedModel {
     struct PrivateConstructorTag {};
 
   public:
@@ -56,8 +55,6 @@ class PreparedModel final : public nn::IPreparedModel,
             nn::MeasureTiming measure, const nn::OptionalTimePoint& deadline,
             const nn::OptionalDuration& loopTimeoutDuration,
             const nn::OptionalDuration& timeoutDurationAfterFence) const override;
-
-    nn::GeneralResult<nn::SharedBurst> configureExecutionBurst() const override;
 
     std::any getUnderlyingResource() const override;
 
