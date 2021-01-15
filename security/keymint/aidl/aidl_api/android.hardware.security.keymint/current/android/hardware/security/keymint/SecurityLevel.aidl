@@ -36,5 +36,4 @@ enum SecurityLevel {
   SOFTWARE = 0,
   TRUSTED_ENVIRONMENT = 1,
   STRONGBOX = 2,
-  KEYSTORE = 100,
 }
