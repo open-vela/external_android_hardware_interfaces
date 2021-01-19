@@ -1,5 +1,5 @@
-/*
- * Copyright (C) 2013 The Android Open Source Project
+/**
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,16 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package android.hardware.drm@1.4;
 
-#include <healthd/healthd.h>
+import @1.2::ICryptoPlugin;
 
-void healthd_board_init(struct healthd_config*)
-{
-    // use defaults
-}
-
-int healthd_board_battery_update(struct android::BatteryProperties*)
-{
-    // return 0 to log periodic polled battery status to kernel log
-    return 0;
-}
+/**
+ * ICryptoPlugin is the HAL for vendor-provided crypto plugins.
+ * It allows crypto sessions to be opened and operated on, to
+ * load crypto keys for a codec to decrypt protected video content.
+ */
+interface ICryptoPlugin extends @1.2::ICryptoPlugin {
+};
