@@ -20,6 +20,7 @@ package android.hardware.security.secureclock;
 @VintfStability
 parcelable TimeStampToken {
   long challenge;
-  android.hardware.security.secureclock.Timestamp timestamp;
+  android.hardware.security.keymint.Timestamp timestamp;
+  android.hardware.security.keymint.SecurityLevel securityLevel;
   byte[] mac;
 }

@@ -38,7 +38,6 @@ cc_binary {
     ],
 
     static_libs: [
-        "libhealth_storage_impl_common",
         "libfstab",
     ],
 
