@@ -16,7 +16,8 @@
 
 package android.hardware.security.secureclock;
 
-import android.hardware.security.secureclock.Timestamp;
+import android.hardware.security.keymint.SecurityLevel;
+import android.hardware.security.keymint.Timestamp;
 
 /**
  * TimeStampToken instances are used for secure environments that requires secure time information.
@@ -33,6 +34,11 @@ parcelable TimeStampToken {
      * The current time of the secure environment that generates the TimeStampToken.
      */
     Timestamp timestamp;
+
+    /**
+     * SecurityLevel of the secure environment that generated the token.
+     */
+    SecurityLevel securityLevel;
 
     /**
      * 32-byte HMAC-SHA256 of the above values, computed as:
