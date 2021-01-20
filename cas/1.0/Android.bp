@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.cas@1.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "ICas.hal",
@@ -15,3 +18,4 @@ hidl_interface {
     ],
     gen_java: true,
 }
+
