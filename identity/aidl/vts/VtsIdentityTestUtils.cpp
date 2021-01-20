@@ -14,18 +14,15 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "Util"
+#define LOG_TAG "VtsIdentityTestUtils"
 
-#include "Util.h"
-
-#include <android-base/logging.h>
+#include "VtsIdentityTestUtils.h"
 
 #include <aidl/Gtest.h>
-#include <android-base/stringprintf.h>
+#include <android-base/logging.h>
 #include <keymaster/km_openssl/openssl_utils.h>
 #include <keymasterV4_1/attestation_record.h>
 #include <charconv>
-
 #include <map>
 
 namespace android::hardware::identity::test_utils {
@@ -38,7 +35,6 @@ using std::vector;
 
 using ::android::sp;
 using ::android::String16;
-using ::android::base::StringPrintf;
 using ::android::binder::Status;
 using ::keymaster::X509_Ptr;
 
@@ -90,7 +86,7 @@ optional<vector<uint8_t>> generateReaderCertificate(string serialDecimal,
 
     return support::ecPublicKeyGenerateCertificate(readerPublicKey.value(), readerKey.value(),
                                                    serialDecimal, issuer, subject,
-                                                   validityNotBefore, validityNotAfter, {});
+                                                   validityNotBefore, validityNotAfter);
 }
 
 optional<vector<SecureAccessControlProfile>> addAccessControlProfiles(
