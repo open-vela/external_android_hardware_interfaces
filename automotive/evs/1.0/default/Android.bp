@@ -18,6 +18,7 @@ cc_binary {
         "libcutils",
         "libhardware",
         "libhidlbase",
+        "libhidltransport",
         "liblog",
         "libui",
         "libutils",
@@ -26,9 +27,5 @@ cc_binary {
     cflags: [
         "-O0",
         "-g",
-    ],
-
-    vintf_fragments: [
-        "manifest_android.hardware.automotive.evs@1.0-service.xml",
     ],
 }
