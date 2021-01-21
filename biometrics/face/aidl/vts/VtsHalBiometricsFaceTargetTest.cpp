@@ -59,11 +59,7 @@ class SessionCallback : public BnSessionCallback {
         return ndk::ScopedAStatus::ok();
     }
 
-    ndk::ScopedAStatus onAuthenticationFrame(const AuthenticationFrame& /*frame*/) override {
-        return ndk::ScopedAStatus::ok();
-    }
-
-    ndk::ScopedAStatus onEnrollmentFrame(const EnrollmentFrame& /*frame*/) override {
+    ndk::ScopedAStatus onAcquired(AcquiredInfo /*info*/, int32_t /*vendorCode*/) override {
         return ndk::ScopedAStatus::ok();
     }
 

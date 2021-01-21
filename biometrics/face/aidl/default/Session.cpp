@@ -23,7 +23,6 @@ namespace aidl::android::hardware::biometrics::face {
 class CancellationSignal : public common::BnCancellationSignal {
   private:
     std::shared_ptr<ISessionCallback> cb_;
-
   public:
     explicit CancellationSignal(std::shared_ptr<ISessionCallback> cb) : cb_(std::move(cb)) {}
 
@@ -54,10 +53,10 @@ ndk::ScopedAStatus Session::revokeChallenge(int32_t /*cookie*/, int64_t challeng
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus Session::enroll(
-        int32_t /*cookie*/, biometrics::face::EnrollmentType /*enrollmentType*/,
-        const keymaster::HardwareAuthToken& /*hat*/, const NativeHandle& /*previewSurface*/,
-        std::shared_ptr<biometrics::common::ICancellationSignal>* /*return_val*/) {
+ndk::ScopedAStatus Session::enroll(int32_t /*cookie*/, const keymaster::HardwareAuthToken& /*hat*/,
+                                   const NativeHandle& /*previewSurface*/,
+                                   std::shared_ptr<biometrics::common::ICancellationSignal>*
+                                   /*returnVal*/) {
     return ndk::ScopedAStatus::ok();
 }
 
@@ -87,9 +86,9 @@ ndk::ScopedAStatus Session::enumerateEnrollments(int32_t /*cookie*/) {
 ndk::ScopedAStatus Session::removeEnrollments(int32_t /*cookie*/,
                                               const std::vector<int32_t>& /*enrollmentIds*/) {
     if (cb_) {
-        cb_->onStateChanged(0, SessionState::REMOVING_ENROLLMENTS);
-        cb_->onEnrollmentsRemoved(std::vector<int32_t>());
-        cb_->onStateChanged(0, SessionState::IDLING);
+      cb_->onStateChanged(0, SessionState::REMOVING_ENROLLMENTS);
+      cb_->onEnrollmentsRemoved(std::vector<int32_t>());
+      cb_->onStateChanged(0, SessionState::IDLING);
     }
     return ndk::ScopedAStatus::ok();
 }
@@ -116,5 +115,4 @@ ndk::ScopedAStatus Session::resetLockout(int32_t /*cookie*/,
     }
     return ndk::ScopedAStatus::ok();
 }
-
 }  // namespace aidl::android::hardware::biometrics::face
