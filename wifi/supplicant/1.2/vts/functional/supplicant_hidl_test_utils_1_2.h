@@ -14,44 +14,24 @@
  * limitations under the License.
  */
 
-#pragma once
-#pragma clang diagnostic ignored "-Wweak-vtables"
+#ifndef SUPPLICANT_HIDL_TEST_UTILS_1_2_H
+#define SUPPLICANT_HIDL_TEST_UTILS_1_2_H
 
-#include <VtsCoreUtil.h>
 #include <android/hardware/wifi/supplicant/1.2/ISupplicant.h>
 #include <android/hardware/wifi/supplicant/1.2/ISupplicantP2pIface.h>
 #include <android/hardware/wifi/supplicant/1.2/ISupplicantStaIface.h>
 #include <android/hardware/wifi/supplicant/1.2/ISupplicantStaNetwork.h>
-#include <gtest/gtest.h>
 
 android::sp<android::hardware::wifi::supplicant::V1_2::ISupplicant>
-getSupplicant_1_2(const std::string& supplicant_instance_name, bool isP2pOn);
+getSupplicant_1_2();
 
 android::sp<android::hardware::wifi::supplicant::V1_2::ISupplicantStaIface>
-getSupplicantStaIface_1_2(
-    const android::sp<android::hardware::wifi::supplicant::V1_2::ISupplicant>&
-        supplicant);
+getSupplicantStaIface_1_2();
 
 android::sp<android::hardware::wifi::supplicant::V1_2::ISupplicantStaNetwork>
-createSupplicantStaNetwork_1_2(
-    const android::sp<android::hardware::wifi::supplicant::V1_2::ISupplicant>&
-        supplicant);
+createSupplicantStaNetwork_1_2();
 
 android::sp<android::hardware::wifi::supplicant::V1_2::ISupplicantP2pIface>
-getSupplicantP2pIface_1_2(
-    const android::sp<android::hardware::wifi::supplicant::V1_2::ISupplicant>&
-        supplicant);
+getSupplicantP2pIface_1_2();
 
-class SupplicantHidlTestBaseV1_2 : public SupplicantHidlTestBase {
-   public:
-    virtual void SetUp() override {
-        SupplicantHidlTestBase::SetUp();
-        supplicant_ = getSupplicant_1_2(supplicant_instance_name_, isP2pOn_);
-        ASSERT_NE(supplicant_.get(), nullptr);
-        EXPECT_TRUE(turnOnExcessiveLogging(supplicant_));
-    }
-
-   protected:
-    android::sp<android::hardware::wifi::supplicant::V1_2::ISupplicant>
-        supplicant_;
-};
+#endif /* SUPPLICANT_HIDL_TEST_UTILS_1_2_H */
