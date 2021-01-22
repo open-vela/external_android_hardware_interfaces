@@ -22,10 +22,6 @@ package android.hardware.common.fmq;
 @VintfStability
 parcelable GrantorDescriptor {
     /*
-     * Index of file descriptor for this grantor
-     */
-    int fdIndex;
-    /*
      * The offset of this descriptor in the shared memory in bytes.
      */
     int offset;
