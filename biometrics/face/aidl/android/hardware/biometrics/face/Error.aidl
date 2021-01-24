@@ -32,8 +32,9 @@ enum Error {
     HW_UNAVAILABLE = 1,
 
     /**
-     * The current operation could not be completed, e.g. the sensor was unable
-     * to process the current image or the HAT was invalid.
+     * The current enroll or authenticate operation could not be completed,
+     * e.g. the sensor was unable to process the current image or the HAT was
+     * invalid.
      */
     UNABLE_TO_PROCESS = 2,
 
