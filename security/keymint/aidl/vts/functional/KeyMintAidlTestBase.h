@@ -27,11 +27,7 @@
 
 #include <keymint_support/authorization_set.h>
 
-namespace aidl::android::hardware::security::keymint {
-
-::std::ostream& operator<<(::std::ostream& os, const AuthorizationSet& set);
-
-namespace test {
+namespace aidl::android::hardware::security::keymint::test {
 
 using ::android::sp;
 using Status = ::ndk::ScopedAStatus;
@@ -40,6 +36,8 @@ using ::std::string;
 using ::std::vector;
 
 constexpr uint64_t kOpHandleSentinel = 0xFFFFFFFFFFFFFFFF;
+
+::std::ostream& operator<<(::std::ostream& os, const AuthorizationSet& set);
 
 class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
   public:
@@ -58,13 +56,13 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
 
     ErrorCode GetReturnErrorCode(const Status& result);
     ErrorCode GenerateKey(const AuthorizationSet& key_desc, vector<uint8_t>* key_blob,
-                          vector<KeyCharacteristics>* key_characteristics);
+                          KeyCharacteristics* key_characteristics);
 
     ErrorCode GenerateKey(const AuthorizationSet& key_desc);
 
     ErrorCode ImportKey(const AuthorizationSet& key_desc, KeyFormat format,
                         const string& key_material, vector<uint8_t>* key_blob,
-                        vector<KeyCharacteristics>* key_characteristics);
+                        KeyCharacteristics* key_characteristics);
     ErrorCode ImportKey(const AuthorizationSet& key_desc, KeyFormat format,
                         const string& key_material);
 
@@ -149,8 +147,8 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
 
     std::pair<ErrorCode, vector<uint8_t>> UpgradeKey(const vector<uint8_t>& key_blob);
 
-    bool IsSecure() const { return securityLevel_ != SecurityLevel::SOFTWARE; }
-    SecurityLevel SecLevel() const { return securityLevel_; }
+    bool IsSecure() { return securityLevel_ != SecurityLevel::SOFTWARE; }
+    SecurityLevel SecLevel() { return securityLevel_; }
 
     vector<uint32_t> ValidKeySizes(Algorithm algorithm);
     vector<uint32_t> InvalidKeySizes(Algorithm algorithm);
@@ -166,19 +164,9 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
     }
 
     std::shared_ptr<IKeyMintOperation> op_;
-    vector<Certificate> cert_chain_;
+    vector<Certificate> certChain_;
     vector<uint8_t> key_blob_;
-    vector<KeyCharacteristics> key_characteristics_;
-
-    const vector<KeyParameter>& SecLevelAuthorizations(
-            const vector<KeyCharacteristics>& key_characteristics);
-    inline const vector<KeyParameter>& SecLevelAuthorizations() {
-        return SecLevelAuthorizations(key_characteristics_);
-    }
-    const vector<KeyParameter>& HwEnforcedAuthorizations(
-            const vector<KeyCharacteristics>& key_characteristics);
-    const vector<KeyParameter>& SwEnforcedAuthorizations(
-            const vector<KeyCharacteristics>& key_characteristics);
+    KeyCharacteristics key_characteristics_;
 
   private:
     std::shared_ptr<IKeyMintDevice> keymint_;
@@ -196,6 +184,4 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
                              testing::ValuesIn(KeyMintAidlTestBase::build_params()), \
                              ::android::PrintInstanceNameToString)
 
-}  // namespace test
-
-}  // namespace aidl::android::hardware::security::keymint
+}  // namespace aidl::android::hardware::security::keymint::test
