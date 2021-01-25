@@ -77,6 +77,8 @@ struct HidlUtils {
 #endif
 
 #if MAJOR_VERSION >= 7
+    static constexpr char sAudioTagSeparator = ';';
+
     static status_t audioChannelMaskFromHal(audio_channel_mask_t halChannelMask, bool isInput,
                                             AudioChannelMask* channelMask);
     static status_t audioChannelMasksFromHal(const std::vector<std::string>& halChannelMasks,
@@ -107,6 +109,8 @@ struct HidlUtils {
                                            AudioStreamType* streamType);
     static status_t audioStreamTypeToHal(const AudioStreamType& streamType,
                                          audio_stream_type_t* halStreamType);
+    static status_t audioTagsFromHal(const char* halTags, hidl_vec<AudioTag>* tags);
+    static status_t audioTagsToHal(const hidl_vec<AudioTag>& tags, char* halTags);
 
   private:
     static status_t audioIndexChannelMaskFromHal(audio_channel_mask_t halChannelMask,
@@ -126,6 +130,7 @@ struct HidlUtils {
                                                struct audio_port_config_device_ext* device,
                                                struct audio_port_config_mix_ext* mix,
                                                struct audio_port_config_session_ext* session);
+
 #endif  // MAJOR_VERSION >= 7
 
     // V4 and below have DeviceAddress defined in the 'core' interface.

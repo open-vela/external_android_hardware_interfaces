@@ -30,7 +30,8 @@
 
 namespace android::hardware::neuralnetworks::utils {
 
-class ResilientPreparedModel final : public nn::IPreparedModel {
+class ResilientPreparedModel final : public nn::IPreparedModel,
+                                     public std::enable_shared_from_this<ResilientPreparedModel> {
     struct PrivateConstructorTag {};
 
   public:
@@ -43,8 +44,8 @@ class ResilientPreparedModel final : public nn::IPreparedModel {
                                     nn::SharedPreparedModel preparedModel);
 
     nn::SharedPreparedModel getPreparedModel() const;
-    nn::SharedPreparedModel recover(const nn::IPreparedModel* failingPreparedModel,
-                                    bool blocking) const;
+    nn::GeneralResult<nn::SharedPreparedModel> recover(
+            const nn::IPreparedModel* failingPreparedModel) const;
 
     nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> execute(
             const nn::Request& request, nn::MeasureTiming measure,
@@ -57,9 +58,14 @@ class ResilientPreparedModel final : public nn::IPreparedModel {
             const nn::OptionalDuration& loopTimeoutDuration,
             const nn::OptionalDuration& timeoutDurationAfterFence) const override;
 
+    nn::GeneralResult<nn::SharedBurst> configureExecutionBurst() const override;
+
     std::any getUnderlyingResource() const override;
 
   private:
+    bool isValidInternal() const EXCLUDES(mMutex);
+    nn::GeneralResult<nn::SharedBurst> configureExecutionBurstInternal() const;
+
     const Factory kMakePreparedModel;
     mutable std::mutex mMutex;
     mutable nn::SharedPreparedModel mPreparedModel GUARDED_BY(mMutex);

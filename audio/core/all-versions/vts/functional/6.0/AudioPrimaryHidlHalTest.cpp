@@ -18,137 +18,131 @@
 #include "5.0/AudioPrimaryHidlHalTest.cpp"
 
 #if MAJOR_VERSION <= 6
-const std::vector<DeviceConfigParameter>& getOutputDeviceConfigParameters() {
-    static std::vector<DeviceConfigParameter> parameters = [] {
-        std::vector<DeviceConfigParameter> result;
-        for (const auto& device : getDeviceParameters()) {
-            auto module =
-                    getCachedPolicyConfig().getModuleFromName(std::get<PARAM_DEVICE_NAME>(device));
-            for (const auto& ioProfile : module->getOutputProfiles()) {
-                for (const auto& profile : ioProfile->getAudioProfiles()) {
-                    const auto& channels = profile->getChannels();
-                    const auto& sampleRates = profile->getSampleRates();
-                    auto configs = ConfigHelper::combineAudioConfig(
-                            std::vector<audio_channel_mask_t>(channels.begin(), channels.end()),
-                            std::vector<uint32_t>(sampleRates.begin(), sampleRates.end()),
-                            profile->getFormat());
-                    auto flags = ioProfile->getFlags();
-                    for (auto& config : configs) {
-                        // Some combinations of flags declared in the config file require special
-                        // treatment.
-                        if (flags & AUDIO_OUTPUT_FLAG_COMPRESS_OFFLOAD) {
-                            config.offloadInfo.sampleRateHz = config.sampleRateHz;
-                            config.offloadInfo.channelMask = config.channelMask;
-                            config.offloadInfo.format = config.format;
-                            config.offloadInfo.streamType = AudioStreamType::MUSIC;
-                            config.offloadInfo.bitRatePerSecond = 320;
-                            config.offloadInfo.durationMicroseconds = -1;
-                            config.offloadInfo.bitWidth = 16;
-                            config.offloadInfo.bufferSize = 256;  // arbitrary value
-                            config.offloadInfo.usage = AudioUsage::MEDIA;
-                            result.emplace_back(device, config,
-                                                AudioOutputFlag(AudioOutputFlag::COMPRESS_OFFLOAD |
-                                                                AudioOutputFlag::DIRECT));
-                        } else {
-                            if (flags & AUDIO_OUTPUT_FLAG_PRIMARY) {  // ignore the flag
-                                flags &= ~AUDIO_OUTPUT_FLAG_PRIMARY;
-                            }
-                            result.emplace_back(device, config, AudioOutputFlag(flags));
+static std::vector<DeviceConfigParameter> generateOutputDeviceConfigParameters(
+        bool oneProfilePerDevice) {
+    std::vector<DeviceConfigParameter> result;
+    for (const auto& device : getDeviceParameters()) {
+        auto module =
+                getCachedPolicyConfig().getModuleFromName(std::get<PARAM_DEVICE_NAME>(device));
+        for (const auto& ioProfile : module->getOutputProfiles()) {
+            for (const auto& profile : ioProfile->getAudioProfiles()) {
+                const auto& channels = profile->getChannels();
+                const auto& sampleRates = profile->getSampleRates();
+                auto configs = ConfigHelper::combineAudioConfig(
+                        std::vector<audio_channel_mask_t>(channels.begin(), channels.end()),
+                        std::vector<uint32_t>(sampleRates.begin(), sampleRates.end()),
+                        profile->getFormat());
+                auto flags = ioProfile->getFlags();
+                for (auto& config : configs) {
+                    // Some combinations of flags declared in the config file require special
+                    // treatment.
+                    if (flags & AUDIO_OUTPUT_FLAG_COMPRESS_OFFLOAD) {
+                        config.offloadInfo.sampleRateHz = config.sampleRateHz;
+                        config.offloadInfo.channelMask = config.channelMask;
+                        config.offloadInfo.format = config.format;
+                        config.offloadInfo.streamType = AudioStreamType::MUSIC;
+                        config.offloadInfo.bitRatePerSecond = 320;
+                        config.offloadInfo.durationMicroseconds = -1;
+                        config.offloadInfo.bitWidth = 16;
+                        config.offloadInfo.bufferSize = 256;  // arbitrary value
+                        config.offloadInfo.usage = AudioUsage::MEDIA;
+                        result.emplace_back(device, config,
+                                            AudioOutputFlag(AudioOutputFlag::COMPRESS_OFFLOAD |
+                                                            AudioOutputFlag::DIRECT));
+                    } else {
+                        if (flags & AUDIO_OUTPUT_FLAG_PRIMARY) {  // ignore the flag
+                            flags &= ~AUDIO_OUTPUT_FLAG_PRIMARY;
                         }
+                        result.emplace_back(device, config, AudioOutputFlag(flags));
                     }
+                    if (oneProfilePerDevice) break;
                 }
+                if (oneProfilePerDevice) break;
             }
+            if (oneProfilePerDevice) break;
         }
-        return result;
-    }();
+    }
+    return result;
+}
+
+const std::vector<DeviceConfigParameter>& getOutputDeviceConfigParameters() {
+    static std::vector<DeviceConfigParameter> parameters =
+            generateOutputDeviceConfigParameters(false);
     return parameters;
 }
 
-const std::vector<DeviceConfigParameter>& getInputDeviceConfigParameters() {
-    static std::vector<DeviceConfigParameter> parameters = [] {
-        std::vector<DeviceConfigParameter> result;
-        for (const auto& device : getDeviceParameters()) {
-            auto module =
-                    getCachedPolicyConfig().getModuleFromName(std::get<PARAM_DEVICE_NAME>(device));
-            for (const auto& ioProfile : module->getInputProfiles()) {
-                for (const auto& profile : ioProfile->getAudioProfiles()) {
-                    const auto& channels = profile->getChannels();
-                    const auto& sampleRates = profile->getSampleRates();
-                    auto configs = ConfigHelper::combineAudioConfig(
-                            std::vector<audio_channel_mask_t>(channels.begin(), channels.end()),
-                            std::vector<uint32_t>(sampleRates.begin(), sampleRates.end()),
-                            profile->getFormat());
-                    for (const auto& config : configs) {
-                        result.emplace_back(device, config, AudioInputFlag(ioProfile->getFlags()));
-                    }
+const std::vector<DeviceConfigParameter>& getOutputDeviceSingleConfigParameters() {
+    static std::vector<DeviceConfigParameter> parameters =
+            generateOutputDeviceConfigParameters(true);
+    return parameters;
+}
+
+static std::vector<DeviceConfigParameter> generateInputDeviceConfigParameters(
+        bool oneProfilePerDevice) {
+    std::vector<DeviceConfigParameter> result;
+    for (const auto& device : getDeviceParameters()) {
+        auto module =
+                getCachedPolicyConfig().getModuleFromName(std::get<PARAM_DEVICE_NAME>(device));
+        for (const auto& ioProfile : module->getInputProfiles()) {
+            for (const auto& profile : ioProfile->getAudioProfiles()) {
+                const auto& channels = profile->getChannels();
+                const auto& sampleRates = profile->getSampleRates();
+                auto configs = ConfigHelper::combineAudioConfig(
+                        std::vector<audio_channel_mask_t>(channels.begin(), channels.end()),
+                        std::vector<uint32_t>(sampleRates.begin(), sampleRates.end()),
+                        profile->getFormat());
+                for (const auto& config : configs) {
+                    result.emplace_back(device, config, AudioInputFlag(ioProfile->getFlags()));
+                    if (oneProfilePerDevice) break;
                 }
+                if (oneProfilePerDevice) break;
             }
+            if (oneProfilePerDevice) break;
         }
-        return result;
-    }();
+    }
+    return result;
+}
+
+const std::vector<DeviceConfigParameter>& getInputDeviceConfigParameters() {
+    static std::vector<DeviceConfigParameter> parameters =
+            generateInputDeviceConfigParameters(false);
+    return parameters;
+}
+
+const std::vector<DeviceConfigParameter>& getInputDeviceSingleConfigParameters() {
+    static std::vector<DeviceConfigParameter> parameters =
+            generateInputDeviceConfigParameters(true);
     return parameters;
 }
 #endif  // MAJOR_VERSION <= 6
 
-TEST_P(AudioHidlDeviceTest, CloseDeviceWithOpenedOutputStreams) {
-    doc::test("Verify that a device can't be closed if there are streams opened");
-#if MAJOR_VERSION <= 6
-    DeviceAddress address{.device = AudioDevice::OUT_DEFAULT};
-    SourceMetadata initMetadata = {{{AudioUsage::MEDIA, AudioContentType::MUSIC, 1 /* gain */}}};
-    auto flags = hidl_bitfield<AudioOutputFlag>(AudioOutputFlag::NONE);
-#elif MAJOR_VERSION >= 7
-    DeviceAddress address{.deviceType = toString(xsd::AudioDevice::AUDIO_DEVICE_OUT_DEFAULT)};
-    SourceMetadata initMetadata = {
-            {{toString(xsd::AudioUsage::AUDIO_USAGE_MEDIA),
-              toString(xsd::AudioContentType::AUDIO_CONTENT_TYPE_MUSIC), 1 /* gain */}}};
-    hidl_vec<AudioInOutFlag> flags;
-#endif
-    AudioConfig config{};
-    sp<IStreamOut> stream;
-    StreamHelper<IStreamOut> helper(stream);
-    AudioConfig suggestedConfig{};
-    ASSERT_NO_FATAL_FAILURE(helper.open(
-            [&](AudioIoHandle handle, AudioConfig config, auto cb) {
-                return getDevice()->openOutputStream(handle, address, config, flags, initMetadata,
-                                                     cb);
-            },
-            config, &res, &suggestedConfig));
+class SingleConfigOutputStreamTest : public OutputStreamTest {};
+TEST_P(SingleConfigOutputStreamTest, CloseDeviceWithOpenedOutputStreams) {
+    doc::test("Verify that a device can't be closed if there are output streams opened");
+    // Opening of the stream is done in SetUp.
     ASSERT_RESULT(Result::INVALID_STATE, getDevice()->close());
-    ASSERT_NO_FATAL_FAILURE(helper.close(true /*clear*/, &res));
+    ASSERT_OK(closeStream(true /*clear*/));
     ASSERT_OK(getDevice()->close());
     ASSERT_TRUE(resetDevice());
 }
+INSTANTIATE_TEST_CASE_P(SingleConfigOutputStream, SingleConfigOutputStreamTest,
+                        ::testing::ValuesIn(getOutputDeviceSingleConfigParameters()),
+                        &DeviceConfigParameterToString);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SingleConfigOutputStreamTest);
 
-TEST_P(AudioHidlDeviceTest, CloseDeviceWithOpenedInputStreams) {
-    doc::test("Verify that a device can't be closed if there are streams opened");
-    if (!getCachedPolicyConfig().haveInputProfilesInModule(getDeviceName())) {
-        GTEST_SKIP() << "Device doesn't have input profiles";
-    }
-#if MAJOR_VERSION <= 6
-    DeviceAddress address{.device = AudioDevice::IN_DEFAULT};
-    SinkMetadata initMetadata = {{{.source = AudioSource::MIC, .gain = 1}}};
-    auto flags = hidl_bitfield<AudioInputFlag>(AudioInputFlag::NONE);
-#elif MAJOR_VERSION >= 7
-    DeviceAddress address{.deviceType = toString(xsd::AudioDevice::AUDIO_DEVICE_IN_DEFAULT)};
-    SinkMetadata initMetadata = {
-            {{.source = toString(xsd::AudioSource::AUDIO_SOURCE_MIC), .gain = 1}}};
-    hidl_vec<AudioInOutFlag> flags;
-#endif
-    AudioConfig config{};
-    sp<IStreamIn> stream;
-    StreamHelper<IStreamIn> helper(stream);
-    AudioConfig suggestedConfig{};
-    ASSERT_NO_FATAL_FAILURE(helper.open(
-            [&](AudioIoHandle handle, AudioConfig config, auto cb) {
-                return getDevice()->openInputStream(handle, address, config, flags, initMetadata,
-                                                    cb);
-            },
-            config, &res, &suggestedConfig));
+class SingleConfigInputStreamTest : public InputStreamTest {};
+TEST_P(SingleConfigInputStreamTest, CloseDeviceWithOpenedInputStreams) {
+    doc::test("Verify that a device can't be closed if there are input streams opened");
+    // Opening of the stream is done in SetUp.
     ASSERT_RESULT(Result::INVALID_STATE, getDevice()->close());
-    ASSERT_NO_FATAL_FAILURE(helper.close(true /*clear*/, &res));
+    ASSERT_OK(closeStream(true /*clear*/));
     ASSERT_OK(getDevice()->close());
     ASSERT_TRUE(resetDevice());
 }
+INSTANTIATE_TEST_CASE_P(SingleConfigInputStream, SingleConfigInputStreamTest,
+                        ::testing::ValuesIn(getInputDeviceSingleConfigParameters()),
+                        &DeviceConfigParameterToString);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SingleConfigInputStreamTest);
 
 TEST_P(AudioPatchHidlTest, UpdatePatchInvalidHandle) {
     doc::test("Verify that passing an invalid handle to updateAudioPatch is checked");
