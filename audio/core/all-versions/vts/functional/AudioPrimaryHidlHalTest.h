@@ -522,9 +522,7 @@ using DeviceConfigParameter = std::tuple<DeviceParameter, AudioConfig, std::vect
 
 #if MAJOR_VERSION >= 6
 const std::vector<DeviceConfigParameter>& getInputDeviceConfigParameters();
-const std::vector<DeviceConfigParameter>& getInputDeviceSingleConfigParameters();
 const std::vector<DeviceConfigParameter>& getOutputDeviceConfigParameters();
-const std::vector<DeviceConfigParameter>& getOutputDeviceSingleConfigParameters();
 #endif
 
 #if MAJOR_VERSION >= 4
@@ -885,7 +883,7 @@ class OpenStreamTest : public AudioHidlTestWithDeviceConfigParameter {
         AudioHidlTestWithDeviceConfigParameter::TearDown();
     }
 
-  protected:
+   protected:
     AudioConfig audioConfig;
     DeviceAddress address = {};
     sp<Stream> stream;
@@ -928,8 +926,6 @@ class OutputStreamTest : public OpenStreamTest<IStreamOut> {
     const SourceMetadata initMetadata = {
             { { toString(xsd::AudioUsage::AUDIO_USAGE_MEDIA),
                 toString(xsd::AudioContentType::AUDIO_CONTENT_TYPE_MUSIC),
-                {},
-                toString(xsd::AudioChannelMask::AUDIO_CHANNEL_OUT_STEREO),
                 1 /* gain */ } }};
 #endif
 };
@@ -975,7 +971,7 @@ class InputStreamTest : public OpenStreamTest<IStreamIn> {
         ASSERT_NO_FATAL_FAILURE(OpenStreamTest::SetUp());  // setup base
 #if MAJOR_VERSION <= 6
         address.device = AudioDevice::IN_DEFAULT;
-#elif MAJOR_VERSION >= 7
+#elif MAJOR_VERSION <= 7
         address.deviceType = toString(xsd::AudioDevice::AUDIO_DEVICE_IN_DEFAULT);
 #endif
         const AudioConfig& config = getConfig();
@@ -990,15 +986,12 @@ class InputStreamTest : public OpenStreamTest<IStreamIn> {
 
    protected:
 #if MAJOR_VERSION == 2
-     const AudioSource initMetadata = AudioSource::DEFAULT;
+    const AudioSource initMetadata = AudioSource::DEFAULT;
 #elif MAJOR_VERSION >= 4 && MAJOR_VERSION <= 6
      const SinkMetadata initMetadata = {{ {.source = AudioSource::DEFAULT, .gain = 1 } }};
 #elif MAJOR_VERSION >= 7
      const SinkMetadata initMetadata = {
-             {{.source = toString(xsd::AudioSource::AUDIO_SOURCE_DEFAULT),
-               .gain = 1,
-               .tags = {},
-               .channelMask = toString(xsd::AudioChannelMask::AUDIO_CHANNEL_IN_MONO)}}};
+             {{.source = toString(xsd::AudioSource::AUDIO_SOURCE_DEFAULT), .gain = 1}}};
 #endif
 };
 
