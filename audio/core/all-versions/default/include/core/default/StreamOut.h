@@ -123,9 +123,13 @@ struct StreamOut : public IStreamOut {
     Return<void> createMmapBuffer(int32_t minSizeFrames, createMmapBuffer_cb _hidl_cb) override;
     Return<void> getMmapPosition(getMmapPosition_cb _hidl_cb) override;
 #if MAJOR_VERSION >= 4
-    Return<void> updateSourceMetadata(const SourceMetadata& sourceMetadata) override;
     Return<Result> selectPresentation(int32_t presentationId, int32_t programId) override;
+#if MAJOR_VERSION <= 6
+    Return<void> updateSourceMetadata(const SourceMetadata& sourceMetadata) override;
+#else
+    Return<Result> updateSourceMetadata(const SourceMetadata& sourceMetadata) override;
 #endif
+#endif  // MAJOR_VERSION >= 4
 #if MAJOR_VERSION >= 6
     Return<void> getDualMonoMode(getDualMonoMode_cb _hidl_cb) override;
     Return<Result> setDualMonoMode(DualMonoMode mode) override;
@@ -143,6 +147,13 @@ struct StreamOut : public IStreamOut {
 #endif
 
   private:
+#if MAJOR_VERSION >= 4
+    Result doUpdateSourceMetadata(const SourceMetadata& sourceMetadata);
+#if MAJOR_VERSION >= 7
+    Result doUpdateSourceMetadataV7(const SourceMetadata& sourceMetadata);
+#endif
+#endif  // MAJOR_VERSION >= 4
+
     const sp<Device> mDevice;
     audio_stream_out_t* mStream;
     const sp<Stream> mStreamCommon;

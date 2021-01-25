@@ -103,6 +103,11 @@ interface IDevice {
      * If the stream can not be opened with the proposed audio config,
      * HAL must provide suggested values for the audio config.
      *
+     * Note: INVALID_ARGUMENTS is returned both in the case when the
+     * HAL can not use the provided config and in the case when
+     * the value of any argument is invalid. In the latter case the
+     * HAL must provide a default initialized suggested config.
+     *
      * @param ioHandle handle assigned by AudioFlinger.
      * @param device device type and (if needed) address.
      * @param config stream configuration.
@@ -111,7 +116,8 @@ interface IDevice {
                              May be used by implementations to configure hardware effects.
      * @return retval operation completion status.
      * @return outStream created output stream.
-     * @return suggestedConfig in case of invalid parameters, suggested config.
+     * @return suggestedConfig in the case of rejection of the proposed config,
+     *                         a config suggested by the HAL.
      */
     openOutputStream(
             AudioIoHandle ioHandle,
@@ -128,6 +134,11 @@ interface IDevice {
      * If the stream can not be opened with the proposed audio config,
      * HAL must provide suggested values for the audio config.
      *
+     * Note: INVALID_ARGUMENTS is returned both in the case when the
+     * HAL can not use the provided config and in the case when
+     * the value of any argument is invalid. In the latter case the
+     * HAL must provide a default initialized suggested config.
+     *
      * @param ioHandle handle assigned by AudioFlinger.
      * @param device device type and (if needed) address.
      * @param config stream configuration.
@@ -136,7 +147,8 @@ interface IDevice {
      *                     May be used by implementations to configure processing effects.
      * @return retval operation completion status.
      * @return inStream in case of success, created input stream.
-     * @return suggestedConfig in case of invalid parameters, suggested config.
+     * @return suggestedConfig in the case of rejection of the proposed config,
+     *                         a config suggested by the HAL.
      */
     openInputStream(
             AudioIoHandle ioHandle,
@@ -162,6 +174,9 @@ interface IDevice {
      * Creates an audio patch between several source and sink ports.  The handle
      * is allocated by the HAL and must be unique for this audio HAL module.
      *
+     * Optional method. HAL must support it if 'supportsAudioPatches' returns
+     * 'true'.
+     *
      * @param sources patch sources.
      * @param sinks patch sinks.
      * @return retval operation completion status.
@@ -177,6 +192,9 @@ interface IDevice {
      * as the HAL module can figure out a way of switching the route without
      * causing audio disruption.
      *
+     * Optional method. HAL must support it if 'supportsAudioPatches' returns
+     * 'true'.
+     *
      * @param previousPatch handle of the previous patch to update.
      * @param sources new patch sources.
      * @param sinks new patch sinks.
@@ -191,6 +209,9 @@ interface IDevice {
 
     /**
      * Release an audio patch.
+     *
+     * Optional method. HAL must support it if 'supportsAudioPatches' returns
+     * 'true'.
      *
      * @param patch patch handle.
      * @return retval operation completion status.

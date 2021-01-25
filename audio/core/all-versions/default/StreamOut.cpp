@@ -17,6 +17,7 @@
 #define LOG_TAG "StreamOutHAL"
 
 #include "core/default/StreamOut.h"
+#include "core/default/Conversions.h"
 #include "core/default/Util.h"
 
 //#define LOG_NDEBUG 0
@@ -585,26 +586,71 @@ Return<void> StreamOut::debug(const hidl_handle& fd, const hidl_vec<hidl_string>
 }
 
 #if MAJOR_VERSION >= 4
-Return<void> StreamOut::updateSourceMetadata(const SourceMetadata& sourceMetadata) {
-    if (mStream->update_source_metadata == nullptr) {
-        return Void();  // not supported by the HAL
-    }
+Result StreamOut::doUpdateSourceMetadata(const SourceMetadata& sourceMetadata) {
     std::vector<playback_track_metadata_t> halTracks;
-    halTracks.reserve(sourceMetadata.tracks.size());
-    for (auto& metadata : sourceMetadata.tracks) {
-        playback_track_metadata_t halTrackMetadata = {.gain = metadata.gain};
-        (void)HidlUtils::audioUsageToHal(metadata.usage, &halTrackMetadata.usage);
-        (void)HidlUtils::audioContentTypeToHal(metadata.contentType,
-                                               &halTrackMetadata.content_type);
-        halTracks.push_back(std::move(halTrackMetadata));
+#if MAJOR_VERSION <= 6
+    (void)sourceMetadataToHal(sourceMetadata, &halTracks);
+#else
+    // Validate whether a conversion to V7 is possible. This is needed
+    // to have a consistent behavior of the HAL regardless of the API
+    // version of the legacy HAL (and also to be consistent with openOutputStream).
+    std::vector<playback_track_metadata_v7> halTracksV7;
+    if (status_t status = sourceMetadataToHalV7(sourceMetadata, &halTracksV7); status == NO_ERROR) {
+        halTracks.reserve(halTracksV7.size());
+        for (auto metadata_v7 : halTracksV7) {
+            halTracks.push_back(std::move(metadata_v7.base));
+        }
+    } else {
+        return Stream::analyzeStatus("sourceMetadataToHal", status);
     }
+#endif  // MAJOR_VERSION <= 6
     const source_metadata_t halMetadata = {
         .track_count = halTracks.size(),
         .tracks = halTracks.data(),
     };
     mStream->update_source_metadata(mStream, &halMetadata);
+    return Result::OK;
+}
+
+#if MAJOR_VERSION >= 7
+Result StreamOut::doUpdateSourceMetadataV7(const SourceMetadata& sourceMetadata) {
+    std::vector<playback_track_metadata_v7> halTracks;
+    if (status_t status = sourceMetadataToHalV7(sourceMetadata, &halTracks); status != NO_ERROR) {
+        return Stream::analyzeStatus("sourceMetadataToHal", status);
+    }
+    const source_metadata_v7_t halMetadata = {
+            .track_count = halTracks.size(),
+            .tracks = halTracks.data(),
+    };
+    mStream->update_source_metadata_v7(mStream, &halMetadata);
+    return Result::OK;
+}
+#endif  //  MAJOR_VERSION >= 7
+
+#if MAJOR_VERSION <= 6
+Return<void> StreamOut::updateSourceMetadata(const SourceMetadata& sourceMetadata) {
+    if (mStream->update_source_metadata == nullptr) {
+        return Void();  // not supported by the HAL
+    }
+    (void)doUpdateSourceMetadata(sourceMetadata);
     return Void();
 }
+#elif MAJOR_VERSION >= 7
+Return<Result> StreamOut::updateSourceMetadata(const SourceMetadata& sourceMetadata) {
+    if (mDevice->version() < AUDIO_DEVICE_API_VERSION_3_2) {
+        if (mStream->update_source_metadata == nullptr) {
+            return Result::NOT_SUPPORTED;
+        }
+        return doUpdateSourceMetadata(sourceMetadata);
+    } else {
+        if (mStream->update_source_metadata_v7 == nullptr) {
+            return Result::NOT_SUPPORTED;
+        }
+        return doUpdateSourceMetadataV7(sourceMetadata);
+    }
+}
+#endif
+
 Return<Result> StreamOut::selectPresentation(int32_t /*presentationId*/, int32_t /*programId*/) {
     return Result::NOT_SUPPORTED;  // TODO: propagate to legacy
 }
