@@ -29,7 +29,7 @@
 #include <future>
 #include <map>
 
-#include "Util.h"
+#include "VtsIdentityTestUtils.h"
 
 namespace android::hardware::identity {
 
