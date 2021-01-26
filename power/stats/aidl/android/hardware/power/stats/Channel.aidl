@@ -26,10 +26,5 @@ parcelable Channel {
      * Unique name of this Channel. Vendor/device specific. Opaque to framework
      */
     @utf8InCpp String name;
-
-    /**
-     * Name of the subsystem associated with this Channel. Opaque to framework
-     */
-    @utf8InCpp String subsystem;
 }
 
