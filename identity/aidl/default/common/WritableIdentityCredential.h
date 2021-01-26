@@ -36,21 +36,15 @@ using ::std::vector;
 
 class WritableIdentityCredential : public BnWritableIdentityCredential {
   public:
-    // For a new credential, call initialize() right after construction.
-    //
-    // For an updated credential, call initializeForUpdate() right after construction.
-    //
     WritableIdentityCredential(sp<SecureHardwareProvisioningProxy> hwProxy, const string& docType,
                                bool testCredential)
         : hwProxy_(hwProxy), docType_(docType), testCredential_(testCredential) {}
 
     ~WritableIdentityCredential();
 
-    // Creates the Credential Key. Returns false on failure.
+    // Creates the Credential Key. Returns false on failure. Must be called
+    // right after construction.
     bool initialize();
-
-    // Used when updating a credential. Returns false on failure.
-    bool initializeForUpdate(const vector<uint8_t>& encryptedCredentialKeys);
 
     // Methods from IWritableIdentityCredential follow.
     ndk::ScopedAStatus getAttestationCertificate(const vector<uint8_t>& attestationApplicationId,

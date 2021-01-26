@@ -39,8 +39,5 @@ enum KeyPurpose {
     /* Usable with wrapping keys. */
     WRAP_KEY = 5,
 
-    /* Key Agreement, usable with EC keys. */
-    AGREE_KEY = 6,
-
-    /* TODO(seleneh) add ATTEST_KEY and their corresponding codes and tests later*/
+    /* TODO(seleneh) add AGREE_KEY and ATTEST_KEY and their corresponding codes and tests later*/
 }
