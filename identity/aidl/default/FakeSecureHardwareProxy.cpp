@@ -67,13 +67,6 @@ bool FakeSecureHardwareProvisioningProxy::initialize(bool testCredential) {
     return eicProvisioningInit(&ctx_, testCredential);
 }
 
-bool FakeSecureHardwareProvisioningProxy::initializeForUpdate(
-        bool testCredential, string docType, vector<uint8_t> encryptedCredentialKeys) {
-    return eicProvisioningInitForUpdate(&ctx_, testCredential, docType.c_str(),
-                                        encryptedCredentialKeys.data(),
-                                        encryptedCredentialKeys.size());
-}
-
 // Returns public key certificate.
 optional<vector<uint8_t>> FakeSecureHardwareProvisioningProxy::createCredentialKey(
         const vector<uint8_t>& challenge, const vector<uint8_t>& applicationId) {
@@ -147,16 +140,14 @@ optional<vector<uint8_t>> FakeSecureHardwareProvisioningProxy::finishAddingEntri
     return signatureOfToBeSigned;
 }
 
-// Returns encryptedCredentialKeys.
+// Returns encryptedCredentialKeys (80 bytes).
 optional<vector<uint8_t>> FakeSecureHardwareProvisioningProxy::finishGetCredentialData(
         const string& docType) {
-    vector<uint8_t> encryptedCredentialKeys(116);
-    size_t size = encryptedCredentialKeys.size();
+    vector<uint8_t> encryptedCredentialKeys(80);
     if (!eicProvisioningFinishGetCredentialData(&ctx_, docType.c_str(),
-                                                encryptedCredentialKeys.data(), &size)) {
+                                                encryptedCredentialKeys.data())) {
         return {};
     }
-    encryptedCredentialKeys.resize(size);
     return encryptedCredentialKeys;
 }
 
@@ -171,7 +162,7 @@ bool FakeSecureHardwarePresentationProxy::initialize(bool testCredential, string
     LOG(INFO) << "FakeSecureHardwarePresentationProxy created, sizeof(EicPresentation): "
               << sizeof(EicPresentation);
     return eicPresentationInit(&ctx_, testCredential, docType.c_str(),
-                               encryptedCredentialKeys.data(), encryptedCredentialKeys.size());
+                               encryptedCredentialKeys.data());
 }
 
 // Returns publicKeyCert (1st component) and signingKeyBlob (2nd component)
@@ -321,24 +312,10 @@ optional<vector<uint8_t>> FakeSecureHardwarePresentationProxy::finishRetrieval()
 }
 
 optional<vector<uint8_t>> FakeSecureHardwarePresentationProxy::deleteCredential(
-        const string& docType, const vector<uint8_t>& challenge, bool includeChallenge,
-        size_t proofOfDeletionCborSize) {
+        const string& docType, size_t proofOfDeletionCborSize) {
     vector<uint8_t> signatureOfToBeSigned(EIC_ECDSA_P256_SIGNATURE_SIZE);
-    if (!eicPresentationDeleteCredential(&ctx_, docType.c_str(), challenge.data(), challenge.size(),
-                                         includeChallenge, proofOfDeletionCborSize,
+    if (!eicPresentationDeleteCredential(&ctx_, docType.c_str(), proofOfDeletionCborSize,
                                          signatureOfToBeSigned.data())) {
-        return {};
-    }
-    return signatureOfToBeSigned;
-}
-
-optional<vector<uint8_t>> FakeSecureHardwarePresentationProxy::proveOwnership(
-        const string& docType, bool testCredential, const vector<uint8_t>& challenge,
-        size_t proofOfOwnershipCborSize) {
-    vector<uint8_t> signatureOfToBeSigned(EIC_ECDSA_P256_SIGNATURE_SIZE);
-    if (!eicPresentationProveOwnership(&ctx_, docType.c_str(), testCredential, challenge.data(),
-                                       challenge.size(), proofOfOwnershipCborSize,
-                                       signatureOfToBeSigned.data())) {
         return {};
     }
     return signatureOfToBeSigned;
