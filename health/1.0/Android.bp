@@ -3,8 +3,12 @@
 hidl_interface {
     name: "android.hardware.health@1.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
+        "IHealth.hal",
     ],
     interfaces: [
         "android.hidl.base@1.0",
