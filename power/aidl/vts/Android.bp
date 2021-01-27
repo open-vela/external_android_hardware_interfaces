@@ -23,7 +23,7 @@ cc_test {
         "libbinder",
     ],
     static_libs: [
-        "android.hardware.power-V1-cpp",
+        "android.hardware.power-cpp",
     ],
     test_suites: [
         "vts",
