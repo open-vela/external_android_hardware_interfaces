@@ -16,6 +16,13 @@
 
 #include "AudioPrimaryHidlHalTest.h"
 
+#if MAJOR_VERSION >= 7
+#include <android_audio_policy_configuration_V7_0.h>
+#include <xsdc/XsdcSupport.h>
+
+using android::xsdc_enum_range;
+#endif
+
 TEST_P(AudioHidlTest, OpenPrimaryDeviceUsingGetDevice) {
     doc::test("Calling openDevice(\"primary\") should return the primary device.");
     if (getDeviceName() != DeviceManager::kPrimaryDevice) {
@@ -53,14 +60,31 @@ TEST_P(AudioHidlDeviceTest, GetMicrophonesTest) {
             "Make sure getMicrophones always succeeds"
             "and getActiveMicrophones always succeeds when recording from these microphones.");
         AudioConfig config{};
+#if MAJOR_VERSION <= 6
         config.channelMask = mkEnumBitfield(AudioChannelMask::IN_MONO);
         config.sampleRateHz = 8000;
         config.format = AudioFormat::PCM_16_BIT;
         auto flags = hidl_bitfield<AudioInputFlag>(AudioInputFlag::NONE);
         const SinkMetadata initMetadata = {{{.source = AudioSource::MIC, .gain = 1}}};
+#elif MAJOR_VERSION >= 7
+        config.base.channelMask = toString(xsd::AudioChannelMask::AUDIO_CHANNEL_IN_MONO);
+        config.base.sampleRateHz = 8000;
+        config.base.format = toString(xsd::AudioFormat::AUDIO_FORMAT_PCM_16_BIT);
+        hidl_vec<hidl_string> flags;
+        const SinkMetadata initMetadata = {
+                {{.source = toString(xsd::AudioSource::AUDIO_SOURCE_MIC),
+                  .gain = 1,
+                  .tags = {},
+                  .channelMask = toString(xsd::AudioChannelMask::AUDIO_CHANNEL_IN_MONO)}}};
+#endif
         EventFlag* efGroup;
         for (auto microphone : microphones) {
+#if MAJOR_VERSION <= 6
             if (microphone.deviceAddress.device != AudioDevice::IN_BUILTIN_MIC) {
+#elif MAJOR_VERSION >= 7
+            if (xsd::stringToAudioDevice(microphone.deviceAddress.deviceType) !=
+                xsd::AudioDevice::AUDIO_DEVICE_IN_BUILTIN_MIC) {
+#endif
                 continue;
             }
             sp<IStreamIn> stream;
@@ -81,16 +105,16 @@ TEST_P(AudioHidlDeviceTest, GetMicrophonesTest) {
             size_t frameSize = stream->getFrameSize();
             size_t frameCount = stream->getBufferSize() / frameSize;
             ASSERT_OK(stream->prepareForReading(
-                frameSize, frameCount, [&](auto r, auto& c, auto& d, auto&, auto&) {
-                    readRes = r;
-                    if (readRes == Result::OK) {
-                        commandMQ.reset(new CommandMQ(c));
-                        dataMQ.reset(new DataMQ(d));
-                        if (dataMQ->isValid() && dataMQ->getEventFlagWord()) {
-                            EventFlag::createEventFlag(dataMQ->getEventFlagWord(), &efGroup);
+                    frameSize, frameCount, [&](auto r, auto& c, auto& d, auto&, auto) {
+                        readRes = r;
+                        if (readRes == Result::OK) {
+                            commandMQ.reset(new CommandMQ(c));
+                            dataMQ.reset(new DataMQ(d));
+                            if (dataMQ->isValid() && dataMQ->getEventFlagWord()) {
+                                EventFlag::createEventFlag(dataMQ->getEventFlagWord(), &efGroup);
+                            }
                         }
-                    }
-                }));
+                    }));
             ASSERT_OK(readRes);
             IStreamIn::ReadParameters params;
             params.command = IStreamIn::ReadCommand::READ;
@@ -116,13 +140,27 @@ TEST_P(AudioHidlDeviceTest, GetMicrophonesTest) {
 
 TEST_P(AudioHidlDeviceTest, SetConnectedState) {
     doc::test("Check that the HAL can be notified of device connection and deconnection");
+#if MAJOR_VERSION <= 6
     using AD = AudioDevice;
     for (auto deviceType : {AD::OUT_HDMI, AD::OUT_WIRED_HEADPHONE, AD::IN_USB_HEADSET}) {
         SCOPED_TRACE("device=" + ::testing::PrintToString(deviceType));
+#elif MAJOR_VERSION >= 7
+    using AD = xsd::AudioDevice;
+    for (auto deviceType : {AD::AUDIO_DEVICE_OUT_HDMI, AD::AUDIO_DEVICE_OUT_WIRED_HEADPHONE,
+                            AD::AUDIO_DEVICE_IN_USB_HEADSET}) {
+        SCOPED_TRACE("device=" + toString(deviceType));
+#endif
         for (bool state : {true, false}) {
             SCOPED_TRACE("state=" + ::testing::PrintToString(state));
             DeviceAddress address = {};
+#if MAJOR_VERSION <= 6
             address.device = deviceType;
+#elif MAJOR_VERSION >= 7
+            address.deviceType = toString(deviceType);
+            if (deviceType == AD::AUDIO_DEVICE_IN_USB_HEADSET) {
+                address.address.alsa({0, 0});
+            }
+#endif
             auto ret = getDevice()->setConnectedState(address, state);
             ASSERT_TRUE(ret.isOk());
             if (ret == Result::NOT_SUPPORTED) {
@@ -148,7 +186,11 @@ static void testGetDevices(IStream* stream, AudioDevice expectedDevice) {
     }
     // The stream was constructed with one device, thus getDevices must only return one
     ASSERT_EQ(1U, devices.size());
+#if MAJOR_VERSION <= 6
     AudioDevice device = devices[0].device;
+#elif MAJOR_VERSION >= 7
+    auto device = devices[0].deviceType;
+#endif
     ASSERT_TRUE(device == expectedDevice)
         << "Expected: " << ::testing::PrintToString(expectedDevice)
         << "\n  Actual: " << ::testing::PrintToString(device);
@@ -156,12 +198,22 @@ static void testGetDevices(IStream* stream, AudioDevice expectedDevice) {
 
 TEST_IO_STREAM(GetDevices, "Check that the stream device == the one it was opened with",
                areAudioPatchesSupported() ? doc::partialTest("Audio patches are supported")
+#if MAJOR_VERSION <= 6
                                           : testGetDevices(stream.get(), address.device))
+#elif MAJOR_VERSION >= 7
+                                          : testGetDevices(stream.get(), address.deviceType))
+#endif
 
 static void testSetDevices(IStream* stream, const DeviceAddress& address) {
     DeviceAddress otherAddress = address;
+#if MAJOR_VERSION <= 6
     otherAddress.device = (address.device & AudioDevice::BIT_IN) == 0 ? AudioDevice::OUT_SPEAKER
                                                                       : AudioDevice::IN_BUILTIN_MIC;
+#elif MAJOR_VERSION >= 7
+    otherAddress.deviceType = xsd::isOutputDevice(address.deviceType)
+                                      ? toString(xsd::AudioDevice::AUDIO_DEVICE_OUT_SPEAKER)
+                                      : toString(xsd::AudioDevice::AUDIO_DEVICE_IN_BUILTIN_MIC);
+#endif
     EXPECT_RESULT(okOrNotSupported, stream->setDevices({otherAddress}));
 
     ASSERT_RESULT(okOrNotSupported,
@@ -185,14 +237,14 @@ TEST_IO_STREAM(GetHwAvSync, "Get hardware sync can not fail", checkGetHwAVSync(g
 
 TEST_P(InputStreamTest, updateSinkMetadata) {
     doc::test("The HAL should not crash on metadata change");
-
+#if MAJOR_VERSION <= 6
     hidl_enum_range<AudioSource> range;
     // Test all possible track configuration
-    for (AudioSource source : range) {
+    for (auto source : range) {
         for (float volume : {0.0, 0.5, 1.0}) {
             const SinkMetadata metadata = {{{.source = source, .gain = volume}}};
             ASSERT_OK(stream->updateSinkMetadata(metadata))
-                << "source=" << toString(source) << ", volume=" << volume;
+                    << "source=" << toString(source) << ", volume=" << volume;
         }
     }
 
@@ -200,9 +252,30 @@ TEST_P(InputStreamTest, updateSinkMetadata) {
 
     // Set no metadata as if all stream track had stopped
     ASSERT_OK(stream->updateSinkMetadata({}));
-
     // Restore initial
     ASSERT_OK(stream->updateSinkMetadata(initMetadata));
+
+#elif MAJOR_VERSION >= 7
+    xsdc_enum_range<android::audio::policy::configuration::V7_0::AudioSource> range;
+    // Test all possible track configuration
+    for (auto source : range) {
+        for (float volume : {0.0, 0.5, 1.0}) {
+            const SinkMetadata metadata = {
+                    {{.source = toString(source),
+                      .gain = volume,
+                      .tags = {},
+                      .channelMask = toString(xsd::AudioChannelMask::AUDIO_CHANNEL_IN_MONO)}}};
+            ASSERT_RESULT(okOrNotSupported, stream->updateSinkMetadata(metadata))
+                    << "source=" << toString(source) << ", volume=" << volume;
+        }
+    }
+    // Do not test concurrent capture as this is not officially supported
+
+    // Set no metadata as if all stream track had stopped
+    ASSERT_RESULT(okOrNotSupported, stream->updateSinkMetadata({}));
+    // Restore initial
+    ASSERT_RESULT(okOrNotSupported, stream->updateSinkMetadata(initMetadata));
+#endif
 }
 
 TEST_P(OutputStreamTest, SelectPresentation) {
@@ -212,7 +285,7 @@ TEST_P(OutputStreamTest, SelectPresentation) {
 
 TEST_P(OutputStreamTest, updateSourceMetadata) {
     doc::test("The HAL should not crash on metadata change");
-
+#if MAJOR_VERSION <= 6
     hidl_enum_range<AudioUsage> usageRange;
     hidl_enum_range<AudioContentType> contentRange;
     // Test all possible track configuration
@@ -226,19 +299,68 @@ TEST_P(OutputStreamTest, updateSourceMetadata) {
             }
         }
     }
-
     // Set many track of different configuration
+    // clang-format off
     ASSERT_OK(stream->updateSourceMetadata(
         {{{AudioUsage::MEDIA, AudioContentType::MUSIC, 0.1},
           {AudioUsage::VOICE_COMMUNICATION, AudioContentType::SPEECH, 1.0},
           {AudioUsage::ALARM, AudioContentType::SONIFICATION, 0.0},
-          {AudioUsage::ASSISTANT, AudioContentType::UNKNOWN, 0.3}}}));
-
+          {AudioUsage::ASSISTANT, AudioContentType::UNKNOWN, 0.3}}}
+    ));
+    // clang-format on
     // Set no metadata as if all stream track had stopped
     ASSERT_OK(stream->updateSourceMetadata({}));
-
     // Restore initial
     ASSERT_OK(stream->updateSourceMetadata(initMetadata));
+#elif MAJOR_VERSION >= 7
+    xsdc_enum_range<android::audio::policy::configuration::V7_0::AudioUsage> usageRange;
+    xsdc_enum_range<android::audio::policy::configuration::V7_0::AudioContentType> contentRange;
+    // Test all possible track configuration
+    for (auto usage : usageRange) {
+        for (auto content : contentRange) {
+            for (float volume : {0.0, 0.5, 1.0}) {
+                const SourceMetadata metadata = {
+                        {{toString(usage),
+                          toString(content),
+                          {} /* tags */,
+                          toString(xsd::AudioChannelMask::AUDIO_CHANNEL_OUT_STEREO),
+                          volume}}};
+                ASSERT_RESULT(okOrNotSupported, stream->updateSourceMetadata(metadata))
+                        << "usage=" << toString(usage) << ", content=" << toString(content)
+                        << ", volume=" << volume;
+            }
+        }
+    }
+    // Set many track of different configuration
+    // clang-format off
+    ASSERT_RESULT(okOrNotSupported, stream->updateSourceMetadata(
+        {{{toString(xsd::AudioUsage::AUDIO_USAGE_MEDIA),
+                      toString(xsd::AudioContentType::AUDIO_CONTENT_TYPE_MUSIC),
+                      {},
+                      toString(xsd::AudioChannelMask::AUDIO_CHANNEL_OUT_STEREO),
+                      0.1},
+          {toString(xsd::AudioUsage::AUDIO_USAGE_VOICE_COMMUNICATION),
+                      toString(xsd::AudioContentType::AUDIO_CONTENT_TYPE_SPEECH),
+                      {}, // tags
+                      toString(xsd::AudioChannelMask::AUDIO_CHANNEL_OUT_MONO),
+                      1.0},
+          {toString(xsd::AudioUsage::AUDIO_USAGE_ALARM),
+                      toString(xsd::AudioContentType::AUDIO_CONTENT_TYPE_SONIFICATION),
+                      {}, // tags
+                      toString(xsd::AudioChannelMask::AUDIO_CHANNEL_OUT_STEREO),
+                      0.0},
+          {toString(xsd::AudioUsage::AUDIO_USAGE_ASSISTANT),
+                      toString(xsd::AudioContentType::AUDIO_CONTENT_TYPE_UNKNOWN),
+                      {},
+                      toString(xsd::AudioChannelMask::AUDIO_CHANNEL_OUT_MONO),
+                      0.3}}}
+    ));
+    // clang-format on
+    // Set no metadata as if all stream track had stopped
+    ASSERT_RESULT(okOrNotSupported, stream->updateSourceMetadata({}));
+    // Restore initial
+    ASSERT_RESULT(okOrNotSupported, stream->updateSourceMetadata(initMetadata));
+#endif
 }
 
 TEST_P(AudioPrimaryHidlTest, setMode) {
