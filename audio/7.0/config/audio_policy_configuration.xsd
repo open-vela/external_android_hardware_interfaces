@@ -181,7 +181,6 @@
             <xs:enumeration value="AUDIO_OUTPUT_FLAG_MMAP_NOIRQ" />
             <xs:enumeration value="AUDIO_OUTPUT_FLAG_VOIP_RX" />
             <xs:enumeration value="AUDIO_OUTPUT_FLAG_INCALL_MUSIC" />
-            <xs:enumeration value="AUDIO_OUTPUT_FLAG_GAPLESS_OFFLOAD" />
             <xs:enumeration value="AUDIO_INPUT_FLAG_NONE" />
             <xs:enumeration value="AUDIO_INPUT_FLAG_FAST" />
             <xs:enumeration value="AUDIO_INPUT_FLAG_HW_HOTWORD" />
@@ -407,10 +406,6 @@
             <xs:enumeration value="AUDIO_FORMAT_LHDC_LL"/>
             <xs:enumeration value="AUDIO_FORMAT_APTX_TWSP"/>
             <xs:enumeration value="AUDIO_FORMAT_LC3"/>
-            <xs:enumeration value="AUDIO_FORMAT_MPEGH_BL_L3"/>
-            <xs:enumeration value="AUDIO_FORMAT_MPEGH_BL_L4"/>
-            <xs:enumeration value="AUDIO_FORMAT_MPEGH_LC_L3"/>
-            <xs:enumeration value="AUDIO_FORMAT_MPEGH_LC_L4"/>
         </xs:restriction>
     </xs:simpleType>
     <xs:simpleType name="extendableAudioFormat">
