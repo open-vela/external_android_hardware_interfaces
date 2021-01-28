@@ -367,10 +367,10 @@ static std::vector<AudioPortConfig>& generatePortConfigs(bool valid) {
     static std::vector<AudioPortConfig> invalids = [&] {
         std::vector<AudioPortConfig> result;
         AudioPortConfig invalidBaseChannelMask = valids[PORT_CONF_MINIMAL];
-        invalidBaseChannelMask.base.channelMask.value("random_string");
+        invalidBaseChannelMask.base.channelMask = "random_string";
         result.push_back(std::move(invalidBaseChannelMask));
         AudioPortConfig invalidBaseFormat = valids[PORT_CONF_MINIMAL];
-        invalidBaseFormat.base.format.value("random_string");
+        invalidBaseFormat.base.format = "random_string";
         result.push_back(std::move(invalidBaseFormat));
         AudioPortConfig invalidGainMode = valids[PORT_CONF_WITH_GAIN];
         invalidGainMode.gain.config().mode = {{"random_string"}};
@@ -724,19 +724,19 @@ TEST_SINGLE_CONFIG_IO_STREAM(
         areAudioPatchesSupported() ? doc::partialTest("Audio patches are supported")
                                    : testSetDevicesInvalidDeviceAddress(stream.get()));
 
-static void testSetAudioPropertiesInvalidArguments(IStream* stream) {
-    AudioConfigBaseOptional invalidFormat;
-    invalidFormat.format.value("random_string");
+static void testSetAudioPropertiesInvalidArguments(IStream* stream, const AudioConfigBase& base) {
+    AudioConfigBase invalidFormat = base;
+    invalidFormat.format = "random_string";
     ASSERT_RESULT(invalidArgsOrNotSupported, stream->setAudioProperties(invalidFormat));
 
-    AudioConfigBaseOptional invalidChannelMask;
-    invalidChannelMask.channelMask.value("random_string");
+    AudioConfigBase invalidChannelMask = base;
+    invalidChannelMask.channelMask = "random_string";
     ASSERT_RESULT(invalidArgsOrNotSupported, stream->setAudioProperties(invalidChannelMask));
 }
 TEST_SINGLE_CONFIG_IO_STREAM(
         SetAudioPropertiesInvalidArguments,
         "Verify that invalid arguments are rejected by IStream::setAudioProperties",
-        testSetAudioPropertiesInvalidArguments(stream.get()));
+        testSetAudioPropertiesInvalidArguments(stream.get(), audioConfig.base));
 
 TEST_P(SingleConfigOutputStreamTest, UpdateInvalidSourceMetadata) {
     doc::test("Verify that invalid metadata is rejected by IStreamOut::updateSourceMetadata");
