@@ -19,7 +19,6 @@
 
 #include <vhal_v2_0/VehicleConnector.h>
 
-#include "EmulatedUserHal.h"
 #include "VehicleHalClient.h"
 #include "VehicleHalServer.h"
 
@@ -31,20 +30,10 @@ namespace V2_0 {
 
 namespace impl {
 
-class EmulatedVehicleConnector : public IPassThroughConnector<VehicleHalClient, VehicleHalServer> {
-  public:
-    EmulatedVehicleConnector() {}
+using PassthroughConnector = IPassThroughConnector<VehicleHalClient, VehicleHalServer>;
+using PassthroughConnectorPtr = std::unique_ptr<PassthroughConnector>;
 
-    EmulatedUserHal* getEmulatedUserHal();
-
-    // Methods from VehicleHalServer
-    StatusCode onSetProperty(const VehiclePropValue& value, bool updateStatus) override;
-
-    bool onDump(const hidl_handle& fd, const hidl_vec<hidl_string>& options) override;
-
-  private:
-    EmulatedUserHal mEmulatedUserHal;
-};
+PassthroughConnectorPtr makeEmulatedPassthroughConnector();
 
 }  // namespace impl
 
