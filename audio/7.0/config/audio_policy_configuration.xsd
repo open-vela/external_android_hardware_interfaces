@@ -181,6 +181,7 @@
             <xs:enumeration value="AUDIO_OUTPUT_FLAG_MMAP_NOIRQ" />
             <xs:enumeration value="AUDIO_OUTPUT_FLAG_VOIP_RX" />
             <xs:enumeration value="AUDIO_OUTPUT_FLAG_INCALL_MUSIC" />
+            <xs:enumeration value="AUDIO_OUTPUT_FLAG_GAPLESS_OFFLOAD" />
             <xs:enumeration value="AUDIO_INPUT_FLAG_NONE" />
             <xs:enumeration value="AUDIO_INPUT_FLAG_FAST" />
             <xs:enumeration value="AUDIO_INPUT_FLAG_HW_HOTWORD" />
@@ -329,7 +330,6 @@
     </xs:simpleType>
     <xs:simpleType name="audioFormat">
         <xs:restriction base="xs:string">
-            <xs:enumeration value="AUDIO_FORMAT_DEFAULT" />
             <xs:enumeration value="AUDIO_FORMAT_PCM_16_BIT" />
             <xs:enumeration value="AUDIO_FORMAT_PCM_8_BIT"/>
             <xs:enumeration value="AUDIO_FORMAT_PCM_32_BIT"/>
