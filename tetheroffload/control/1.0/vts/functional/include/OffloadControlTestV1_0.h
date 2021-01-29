@@ -26,10 +26,8 @@ class OffloadControlTestV1_0_HalNotStarted : public OffloadControlTestBase {
         prepareControlHal();
     }
 
-    virtual sp<android::hardware::tetheroffload::control::V1_0::IOffloadControl> createControl(
-            const std::string& serviceName) override {
-        return android::hardware::tetheroffload::control::V1_0::IOffloadControl::getService(
-                serviceName);
+    virtual sp<IOffloadControl> createControl(const std::string& serviceName) override {
+        return IOffloadControl::getService(serviceName);
     }
 };
 
