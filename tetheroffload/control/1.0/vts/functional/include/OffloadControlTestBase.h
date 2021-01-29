@@ -70,14 +70,11 @@ class OffloadControlTestBase : public testing::TestWithParam<std::tuple<std::str
     // class just setup everything correctly and verify basic readiness.
     void setupConfigHal();
 
-    virtual void prepareControlHal() = 0;
+    void prepareControlHal();
 
-    virtual void initOffload(const bool expected_result) = 0;
+    void initOffload(const bool expected_result);
 
-    void setupControlHal() {
-        prepareControlHal();
-        initOffload(true);
-    };
+    void setupControlHal();
 
     void stopOffload(const ExpectBoolean value);
 
