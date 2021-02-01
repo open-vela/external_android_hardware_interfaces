@@ -70,7 +70,8 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
     ::android::hardware::radio::V1_6::RadioResponseInfo rspInfo;
 
     // Call
-    hidl_vec<::android::hardware::radio::V1_2::Call> currentCalls;
+    hidl_vec<::android::hardware::radio::V1_6::Call> currentCalls;
+    ::android::hardware::radio::V1_2::VoiceRegStateResult voiceRegResp;
 
     // Sms
     SendSmsResult sendSmsResult;
@@ -790,10 +791,10 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
     Return<void> cancelHandoverResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
 
-    Return<void> setAllowedNetworkTypesBitmapResponse(
+    Return<void> setAllowedNetworkTypeBitmapResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
 
-    Return<void> getAllowedNetworkTypesBitmapResponse(
+    Return<void> getAllowedNetworkTypeBitmapResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
             const ::android::hardware::hidl_bitfield<
                     ::android::hardware::radio::V1_4::RadioAccessFamily>
