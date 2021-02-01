@@ -22,9 +22,9 @@
 
 #include <android/hardware/camera/provider/2.4/ICameraProvider.h>
 #include <binder/ProcessState.h>
+#include <cutils/memory.h>
 #include <cutils/properties.h>
 #include <hidl/LegacySupport.h>
-#include <malloc.h>
 
 using android::status_t;
 using android::hardware::defaultLazyPassthroughServiceImplementation;
@@ -46,13 +46,7 @@ int main()
 
     // b/166675194
     if (property_get_bool("ro.vendor.camera.provider24.disable_mem_init", false)) {
-        if (mallopt(M_BIONIC_ZERO_INIT, 0) == 0) {
-            // Note - heap initialization is only present on devices with Scudo.
-            // Devices with jemalloc don't have heap-init, and thus the mallopt
-            // will fail. On these devices, you probably just want to remove the
-            // property.
-            ALOGE("Disabling heap initialization failed.");
-        }
+        process_disable_memory_mitigations();
     }
 
     status_t status;
