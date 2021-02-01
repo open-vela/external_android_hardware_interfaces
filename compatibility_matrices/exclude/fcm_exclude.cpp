@@ -51,7 +51,6 @@ bool ShouldCheckMissingHalsInFcm(const std::string& package) {
             "android.hardware.media.bufferpool@2.0",
             "android.hardware.radio.config@1.2",
             // AIDL
-            "android.hardware.biometrics.common",
             "android.hardware.common",
             "android.hardware.common.fmq",
             "android.hardware.graphics.common",
@@ -67,7 +66,7 @@ bool ShouldCheckMissingHalsInFcm(const std::string& package) {
             // TODO(b/171260360) Remove when HAL definition is removed
             "android.hardware.audio.effect@2.0",
             "android.hardware.audio@2.0",
-            // TODO(b/171260613) Remove when HAL definition is removed
+            // Health 1.0 HAL is deprecated. The top level interface are deleted.
             "android.hardware.health@1.0",
             // TODO(b/171260670) Remove when HAL definition is removed
             "android.hardware.nfc@1.0",
