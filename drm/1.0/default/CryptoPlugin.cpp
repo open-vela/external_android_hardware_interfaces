@@ -146,9 +146,9 @@ namespace implementation {
                 return Void();
             }
 
-            size_t totalSize = 0;
-            if (__builtin_add_overflow(destBuffer.offset, destBuffer.size, &totalSize) ||
-                totalSize > destBase->getSize()) {
+            size_t totalDstSize = 0;
+            if (__builtin_add_overflow(destBuffer.offset, destBuffer.size, &totalDstSize) ||
+                totalDstSize > destBase->getSize()) {
                 android_errorWriteLog(0x534e4554, "176496353");
                 _hidl_cb(Status::ERROR_DRM_CANNOT_HANDLE, 0, "invalid buffer size");
                 return Void();
