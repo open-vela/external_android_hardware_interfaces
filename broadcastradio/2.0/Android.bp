@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.broadcastradio@2.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IAnnouncementListener.hal",
@@ -14,5 +17,29 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
+    types: [
+        "AmFmBandRange",
+        "AmFmRegionConfig",
+        "Announcement",
+        "AnnouncementType",
+        "ConfigFlag",
+        "Constants",
+        "DabTableEntry",
+        "Deemphasis",
+        "IdentifierType",
+        "Metadata",
+        "MetadataKey",
+        "ProgramFilter",
+        "ProgramIdentifier",
+        "ProgramInfo",
+        "ProgramInfoFlags",
+        "ProgramListChunk",
+        "ProgramSelector",
+        "Properties",
+        "Rds",
+        "Result",
+        "VendorKeyValue",
+    ],
     gen_java: true,
 }
+

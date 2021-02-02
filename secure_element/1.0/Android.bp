@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.secure_element@1.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "ISecureElement.hal",
@@ -11,5 +14,10 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
+    types: [
+        "LogicalChannelResponse",
+        "SecureElementStatus",
+    ],
     gen_java: true,
 }
+

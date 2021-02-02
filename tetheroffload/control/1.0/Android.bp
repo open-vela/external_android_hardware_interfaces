@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.tetheroffload.control@1.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IOffloadControl.hal",
@@ -11,5 +14,12 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
+    types: [
+        "IPv4AddrPortPair",
+        "NatTimeoutUpdate",
+        "NetworkProtocol",
+        "OffloadCallbackEvent",
+    ],
     gen_java: true,
 }
+
