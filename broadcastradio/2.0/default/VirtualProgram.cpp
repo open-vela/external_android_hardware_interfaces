@@ -13,12 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define LOG_TAG "BcRadioDef.VirtualProgram"
+
 #include "VirtualProgram.h"
 
 #include "resources.h"
 
 #include <android-base/logging.h>
 #include <broadcastradio-utils-2x/Utils.h>
+#include <log/log.h>
 
 namespace android {
 namespace hardware {
@@ -69,7 +72,7 @@ VirtualProgram::operator ProgramInfo() const {
             info.physicallyTunedTo = selectId(IdentifierType::SXM_CHANNEL);
             break;
         default:
-            LOG(FATAL) << "unsupported program type: " << toString(pType);
+            LOG(FATAL) << "Unsupported program type: " << toString(pType);
     }
 
     info.infoFlags |= ProgramInfoFlags::TUNED;
