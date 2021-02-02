@@ -3,9 +3,6 @@
 hidl_interface {
     name: "android.hardware.thermal@1.0",
     root: "android.hardware",
-    vndk: {
-        enabled: true,
-    },
     srcs: [
         "types.hal",
         "IThermal.hal",
@@ -13,16 +10,6 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
-    types: [
-        "CoolingDevice",
-        "CoolingType",
-        "CpuUsage",
-        "Temperature",
-        "TemperatureType",
-        "ThermalStatus",
-        "ThermalStatusCode",
-    ],
     gen_java: true,
     gen_java_constants: true,
 }
-

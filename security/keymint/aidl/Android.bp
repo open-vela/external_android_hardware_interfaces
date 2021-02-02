@@ -1,0 +1,24 @@
+aidl_interface {
+    name: "android.hardware.security.keymint",
+    vendor_available: true,
+    srcs: [
+        "android/hardware/security/keymint/*.aidl",
+    ],
+    imports: [
+        "android.hardware.security.secureclock",
+    ],
+    stability: "vintf",
+    backend: {
+        java: {
+            sdk_version: "module_current",
+        },
+        ndk: {
+            vndk: {
+                enabled: true,
+            },
+        },
+        rust: {
+            enabled: true,
+        },
+    },
+}

@@ -29,7 +29,6 @@ cc_library_shared {
         "libcutils",
         "libhardware",
         "libhidlbase",
-        "libhidltransport",
         "liblog",
         "libutils",
     ],
@@ -94,6 +93,7 @@ cc_test {
         "android.hardware.bluetooth-hci",
         "libgmock",
     ],
+    test_suites: ["general-tests"],
 }
 
 cc_test_host {
@@ -102,13 +102,13 @@ cc_test_host {
     srcs: [
         "bluetooth_address.cc",
         "test/bluetooth_address_test.cc",
-        "test/properties.cc",
     ],
     local_include_dirs: [
         "test",
     ],
     shared_libs: [
         "libbase",
+        "libcutils",
         "liblog",
     ],
 }
@@ -129,7 +129,6 @@ cc_binary {
         "libutils",
         "libhardware",
         "libhidlbase",
-        "libhidltransport",
         "android.hardware.bluetooth@1.0",
     ],
 }

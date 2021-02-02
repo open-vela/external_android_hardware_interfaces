@@ -52,7 +52,6 @@ namespace implementation {
     Return<void> CryptoPlugin::setSharedBufferBase(const hidl_memory& base,
             uint32_t bufferId) {
         sp<IMemory> hidlMemory = mapMemory(base);
-        ALOGE_IF(hidlMemory == nullptr, "mapMemory returns nullptr");
 
         // allow mapMemory to return nullptr
         mSharedBufferMap[bufferId] = hidlMemory;
@@ -125,11 +124,7 @@ namespace implementation {
             return Void();
         }
 
-        size_t totalSize = 0;
-        if (__builtin_add_overflow(source.offset, offset, &totalSize) ||
-            __builtin_add_overflow(totalSize, source.size, &totalSize) ||
-            totalSize > sourceBase->getSize()) {
-            android_errorWriteLog(0x534e4554, "176496160");
+        if (source.offset + offset + source.size > sourceBase->getSize()) {
             _hidl_cb(Status::ERROR_DRM_CANNOT_HANDLE, 0, "invalid buffer size");
             return Void();
         }
