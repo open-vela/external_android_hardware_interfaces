@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,37 +14,33 @@
  * limitations under the License.
  */
 
-#ifndef android_hardware_audio_Uuid_Utils_H_
-#define android_hardware_audio_Uuid_Utils_H_
+#ifndef ANDROID_HARDWARE_AUDIO_EFFECT_CONVERSIONS_H_
+#define ANDROID_HARDWARE_AUDIO_EFFECT_CONVERSIONS_H_
 
-// clang-format off
-#include PATH(android/hardware/audio/common/FILE_VERSION/types.h)
-// clang-format on
+#include PATH(android/hardware/audio/effect/FILE_VERSION/types.h)
 
-#include <system/audio.h>
+#include <string>
 
-using ::android::hardware::hidl_vec;
+#include <system/audio_effect.h>
 
 namespace android {
 namespace hardware {
 namespace audio {
-namespace common {
+namespace effect {
 namespace CPP_VERSION {
 namespace implementation {
 
-using namespace ::android::hardware::audio::common::CPP_VERSION;
+using ::android::hardware::audio::effect::CPP_VERSION::EffectDescriptor;
 
-class UuidUtils {
-  public:
-    static void uuidFromHal(const audio_uuid_t& halUuid, Uuid* uuid);
-    static void uuidToHal(const Uuid& uuid, audio_uuid_t* halUuid);
-};
+void effectDescriptorFromHal(const effect_descriptor_t& halDescriptor,
+                             EffectDescriptor* descriptor);
+std::string uuidToString(const effect_uuid_t& halUuid);
 
 }  // namespace implementation
 }  // namespace CPP_VERSION
-}  // namespace common
+}  // namespace effect
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android
 
-#endif  // android_hardware_audio_Uuid_Utils_H_
+#endif  // ANDROID_HARDWARE_AUDIO_EFFECT_CONVERSIONS_H_
