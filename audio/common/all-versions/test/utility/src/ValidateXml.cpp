@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -131,14 +131,15 @@ struct Libxml2Global {
 
 template <bool atLeastOneRequired>
 ::testing::AssertionResult validateXmlMultipleLocations(
-    const char* xmlFileNameExpr, const char* xmlFileLocationsExpr, const char* xsdFilePathExpr,
-    const char* xmlFileName, std::vector<const char*> xmlFileLocations, const char* xsdFilePath) {
+        const char* xmlFileNameExpr, const char* xmlFileLocationsExpr, const char* xsdFilePathExpr,
+        const char* xmlFileName, const std::vector<std::string>& xmlFileLocations,
+        const char* xsdFilePath) {
     using namespace std::string_literals;
 
     std::vector<std::string> errors;
     std::vector<std::string> foundFiles;
 
-    for (const char* location : xmlFileLocations) {
+    for (const auto& location : xmlFileLocations) {
         std::string xmlFilePath = location + "/"s + xmlFileName;
         if (access(xmlFilePath.c_str(), F_OK) != 0) {
             // If the file does not exist ignore this location and fallback on the next one
@@ -162,18 +163,16 @@ template <bool atLeastOneRequired>
            << "\n                 Which is: " << xmlFileName
            << "\n In the following folders: " << xmlFileLocationsExpr
            << "\n                 Which is: " << ::testing::PrintToString(xmlFileLocations)
-           << (atLeastOneRequired ? "Where at least one file must be found."
-                                  : "Where no file might exist.");
+           << (atLeastOneRequired ? "\nWhere at least one file must be found."
+                                  : "\nWhere no file might exist.");
 }
 
-template ::testing::AssertionResult validateXmlMultipleLocations<true>(const char*, const char*,
-                                                                       const char*, const char*,
-                                                                       std::vector<const char*>,
-                                                                       const char*);
-template ::testing::AssertionResult validateXmlMultipleLocations<false>(const char*, const char*,
-                                                                        const char*, const char*,
-                                                                        std::vector<const char*>,
-                                                                        const char*);
+template ::testing::AssertionResult validateXmlMultipleLocations<true>(
+        const char*, const char*, const char*, const char*, const std::vector<std::string>&,
+        const char*);
+template ::testing::AssertionResult validateXmlMultipleLocations<false>(
+        const char*, const char*, const char*, const char*, const std::vector<std::string>&,
+        const char*);
 
 }  // namespace utility
 }  // namespace test

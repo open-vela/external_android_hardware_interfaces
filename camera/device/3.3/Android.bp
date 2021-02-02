@@ -3,9 +3,6 @@
 hidl_interface {
     name: "android.hardware.camera.device@3.3",
     root: "android.hardware",
-    vndk: {
-        enabled: true,
-    },
     srcs: [
         "types.hal",
         "ICameraDeviceSession.hal",
@@ -16,10 +13,5 @@ hidl_interface {
         "android.hardware.graphics.common@1.0",
         "android.hidl.base@1.0",
     ],
-    types: [
-        "HalStream",
-        "HalStreamConfiguration",
-    ],
     gen_java: false,
 }
-
