@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.broadcastradio@1.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IBroadcastRadio.hal",
@@ -13,5 +16,23 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
+    types: [
+        "AmBandConfig",
+        "Band",
+        "BandConfig",
+        "Class",
+        "Deemphasis",
+        "Direction",
+        "FmBandConfig",
+        "MetaData",
+        "MetaDataClock",
+        "MetadataKey",
+        "MetadataType",
+        "ProgramInfo",
+        "Properties",
+        "Rds",
+        "Result",
+    ],
     gen_java: false,
 }
+

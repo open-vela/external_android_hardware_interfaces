@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.gatekeeper@1.0",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IGatekeeper.hal",
@@ -10,5 +13,10 @@ hidl_interface {
     interfaces: [
         "android.hidl.base@1.0",
     ],
-    gen_java: false,
+    types: [
+        "GatekeeperResponse",
+        "GatekeeperStatusCode",
+    ],
+    gen_java: true,
 }
+

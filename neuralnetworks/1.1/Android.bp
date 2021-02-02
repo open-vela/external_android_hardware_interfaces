@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.neuralnetworks@1.1",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "types.hal",
         "IDevice.hal",
@@ -11,5 +14,13 @@ hidl_interface {
         "android.hardware.neuralnetworks@1.0",
         "android.hidl.base@1.0",
     ],
+    types: [
+        "Capabilities",
+        "ExecutionPreference",
+        "Model",
+        "Operation",
+        "OperationType",
+    ],
     gen_java: false,
 }
+

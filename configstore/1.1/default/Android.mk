@@ -7,7 +7,7 @@ LOCAL_MODULE := android.hardware.configstore@1.1-service
 ifneq ($(NATIVE_COVERAGE),true)
 LOCAL_REQUIRED_MODULES_arm64 := configstore@1.1.policy
 endif
-LOCAL_VENDOR_MODULE := true
+LOCAL_PROPRIETARY_MODULE := true
 LOCAL_MODULE_CLASS := EXECUTABLES
 LOCAL_MODULE_RELATIVE_PATH := hw
 LOCAL_INIT_RC := android.hardware.configstore@1.1-service.rc
@@ -17,6 +17,7 @@ include $(LOCAL_PATH)/surfaceflinger.mk
 
 LOCAL_SHARED_LIBRARIES := \
     libhidlbase \
+    libhidltransport \
     libbase \
     libhwminijail \
     liblog \
@@ -35,14 +36,3 @@ LOCAL_MODULE_PATH := $(TARGET_OUT_VENDOR)/etc/seccomp_policy
 LOCAL_SRC_FILES := seccomp_policy/configstore@1.1-$(TARGET_ARCH).policy
 include $(BUILD_PREBUILT)
 endif
-
-# disable configstore
-include $(CLEAR_VARS)
-LOCAL_MODULE := disable_configstore
-LOCAL_MODULE_CLASS := EXECUTABLES
-LOCAL_SRC_FILES:= disable_configstore.cpp
-LOCAL_OVERRIDES_MODULES := android.hardware.configstore@1.1-service
-LOCAL_VENDOR_MODULE := true
-LOCAL_UNINSTALLABLE_MODULE := true
-
-include $(BUILD_EXECUTABLE)
