@@ -23,8 +23,6 @@
 
 #include <android/hardware/graphics/bufferqueue/1.0/IGraphicBufferProducer.h>
 #include <android/hardware/graphics/bufferqueue/1.0/IProducerListener.h>
-#include <android/hardware/graphics/mapper/2.0/IMapper.h>
-#include <android/hardware/graphics/mapper/2.0/types.h>
 #include <android/hardware/media/omx/1.0/IGraphicBufferSource.h>
 #include <android/hardware/media/omx/1.0/IOmx.h>
 #include <android/hardware/media/omx/1.0/IOmxBufferSource.h>
@@ -34,6 +32,8 @@
 #include <android/hidl/allocator/1.0/IAllocator.h>
 #include <android/hidl/memory/1.0/IMapper.h>
 #include <android/hidl/memory/1.0/IMemory.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
 
 using ::android::hardware::graphics::bufferqueue::V1_0::IGraphicBufferProducer;
 using ::android::hardware::graphics::bufferqueue::V1_0::IProducerListener;
@@ -56,51 +56,48 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::hidl_string;
 using ::android::sp;
 
-#include <VtsHalHidlTargetTestBase.h>
 #include <getopt.h>
 #include <media/hardware/HardwareAPI.h>
-#include <media_hidl_test_common.h>
 #include <media_video_hidl_test_common.h>
 #include <system/window.h>
 #include <fstream>
 #include <variant>
 
-static ComponentTestEnvironment* gEnv = nullptr;
+// Resource directory
+std::string sResourceDir = "";
 
 // video encoder test fixture class
-class VideoEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
-   private:
-    typedef ::testing::VtsHalHidlTargetTestBase Super;
-   public:
-    ::std::string getTestCaseInfo() const override {
-        return ::std::string() +
-                "Component: " + gEnv->getComponent().c_str() + " | " +
-                "Role: " + gEnv->getRole().c_str() + " | " +
-                "Instance: " + gEnv->getInstance().c_str() + " | " +
-                "Res: " + gEnv->getRes().c_str();
+class VideoEncHidlTest
+    : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string>> {
+  public:
+    ::std::string getTestCaseInfo() const {
+        return ::std::string() + "Component: " + component_ + " | " + "Role: " + role_ + " | " +
+               "Instance: " + instance_ + " | " + "Res: " + sResourceDir;
     }
 
     virtual void SetUp() override {
-        Super::SetUp();
+        instance_ = std::get<0>(GetParam());
+        component_ = std::get<1>(GetParam());
+        role_ = std::get<2>(GetParam());
+        ASSERT_NE(sResourceDir.empty(), true);
+
         disableTest = false;
         android::hardware::media::omx::V1_0::Status status;
-        omx = Super::getService<IOmx>(gEnv->getInstance());
+        omx = IOmx::getService(instance_);
         ASSERT_NE(omx, nullptr);
         observer =
             new CodecObserver([this](Message msg, const BufferInfo* buffer) {
                 handleMessage(msg, buffer);
             });
         ASSERT_NE(observer, nullptr);
-        if (strncmp(gEnv->getComponent().c_str(), "OMX.", 4) != 0)
-            disableTest = true;
-        EXPECT_TRUE(omx->allocateNode(
-                           gEnv->getComponent(), observer,
-                           [&](android::hardware::media::omx::V1_0::Status _s,
-                               sp<IOmxNode> const& _nl) {
-                               status = _s;
-                               this->omxNode = _nl;
-                           })
-                        .isOk());
+        if (component_.find("OMX.") != 0) disableTest = true;
+        EXPECT_TRUE(omx->allocateNode(component_, observer,
+                                      [&](android::hardware::media::omx::V1_0::Status _s,
+                                          sp<IOmxNode> const& _nl) {
+                                          status = _s;
+                                          this->omxNode = _nl;
+                                      })
+                            .isOk());
         if (status == android::hardware::media::omx::V1_0::Status::NAME_NOT_FOUND) {
             disableTest = true;
             std::cout << "[   WARN   ] Test Disabled, component not present\n";
@@ -108,7 +105,7 @@ class VideoEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         }
         ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
         ASSERT_NE(omxNode, nullptr);
-        ASSERT_NE(gEnv->getRole().empty(), true) << "Invalid Component Role";
+        ASSERT_NE(role_.empty(), true) << "Invalid Component Role";
         struct StringToName {
             const char* Name;
             standardComp CompName;
@@ -121,7 +118,7 @@ class VideoEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
             sizeof(kStringToName) / sizeof(kStringToName[0]);
         const char* pch;
         char substring[OMX_MAX_STRINGNAME_SIZE];
-        strcpy(substring, gEnv->getRole().c_str());
+        strcpy(substring, role_.c_str());
         pch = strchr(substring, '.');
         ASSERT_NE(pch, nullptr);
         compName = unknown_comp;
@@ -158,11 +155,8 @@ class VideoEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         source = nullptr;
         isSecure = false;
         size_t suffixLen = strlen(".secure");
-        if (strlen(gEnv->getComponent().c_str()) >= suffixLen) {
-            isSecure =
-                !strcmp(gEnv->getComponent().c_str() +
-                            strlen(gEnv->getComponent().c_str()) - suffixLen,
-                        ".secure");
+        if (component_.rfind(".secure") == component_.length() - suffixLen) {
+            isSecure = true;
         }
         if (isSecure) disableTest = true;
         if (disableTest) std::cout << "[   WARN   ] Test Disabled \n";
@@ -177,7 +171,6 @@ class VideoEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
             EXPECT_TRUE((omxNode->freeNode()).isOk());
             omxNode = nullptr;
         }
-        Super::TearDown();
     }
 
     // callback function to process messages received by onMessages() from IL
@@ -244,6 +237,10 @@ class VideoEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         vp9,
         unknown_comp,
     };
+
+    std::string component_;
+    std::string role_;
+    std::string instance_;
 
     sp<IOmx> omx;
     sp<CodecObserver> observer;
@@ -364,61 +361,6 @@ Return<void> DummyBufferSource::onInputBufferEmptied(
     }
     return Void();
 };
-
-// Variant of mappers
-struct MapperV2 : public GrallocV2 {
-    sp<IMapper> mMapper;
-    MapperV2(sp<IMapper>&& mapper): mMapper{std::move(mapper)} {}
-    MapperV2() = default;
-    android::hardware::Return<void> lock(
-            void* buffer,
-            Usage usage,
-            const Rect& rect,
-            const android::hardware::hidl_handle& handle,
-            Error* error,
-            void** data) {
-        return mMapper->lock(buffer, usage, rect, handle,
-                             [error, data](Error e, void* d) {
-                                *error = e;
-                                *data = d;
-                             });
-    }
-};
-struct MapperV3 : public GrallocV3 {
-    sp<IMapper> mMapper;
-    MapperV3(sp<IMapper>&& mapper): mMapper{std::move(mapper)} {}
-    MapperV3() = default;
-    android::hardware::Return<void> lock(
-            void* buffer,
-            Usage usage,
-            const Rect& rect,
-            const android::hardware::hidl_handle& handle,
-            Error* error,
-            void** data) {
-        return mMapper->lock(buffer, usage, rect, handle,
-                             [error, data](Error e, void* d, int32_t, int32_t) {
-                                *error = e;
-                                *data = d;
-                             });
-    }
-};
-using MapperVar = std::variant<MapperV2, MapperV3>;
-// Initializes the MapperVar by trying services of different versions.
-bool initialize(MapperVar& mapperVar) {
-    sp<android::hardware::graphics::mapper::V3_0::IMapper> mapper3 =
-        android::hardware::graphics::mapper::V3_0::IMapper::getService();
-    if (mapper3) {
-        mapperVar.emplace<MapperV3>(std::move(mapper3));
-        return true;
-    }
-    sp<android::hardware::graphics::mapper::V2_0::IMapper> mapper2 =
-        android::hardware::graphics::mapper::V2_0::IMapper::getService();
-    if (mapper2) {
-        mapperVar.emplace<MapperV2>(std::move(mapper2));
-        return true;
-    }
-    return false;
-}
 
 // request VOP refresh
 void requestIDR(sp<IOmxNode> omxNode, OMX_U32 portIndex) {
@@ -628,168 +570,113 @@ void waitOnInputConsumption(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
     }
 }
 
-int colorFormatConversion(BufferInfo* buffer, void* buff, PixelFormat format,
+int colorFormatConversion(BufferInfo* buffer, buffer_handle_t buff, PixelFormat format,
                           std::ifstream& eleStream) {
-    MapperVar mapperVar;
-    if (!initialize(mapperVar)) {
-        EXPECT_TRUE(false) << "failed to obtain mapper service";
-        return 1;
+    android::GraphicBufferMapper& gbmapper = android::GraphicBufferMapper::get();
+
+    android::Rect rect(0, 0, buffer->omxBuffer.attr.anwBuffer.width,
+                       buffer->omxBuffer.attr.anwBuffer.height);
+    android_ycbcr ycbcrLayout;
+    android::status_t error = android::NO_ERROR;
+
+    if (format == PixelFormat::YV12 || format == PixelFormat::YCRCB_420_SP ||
+        format == PixelFormat::YCBCR_420_888) {
+        error = gbmapper.lockYCbCr(buff, buffer->omxBuffer.attr.anwBuffer.usage, rect,
+                                   &ycbcrLayout);
+        EXPECT_EQ(error, android::NO_ERROR);
+        if (error != android::NO_ERROR) return 1;
+
+        int size = ((rect.getWidth() * rect.getHeight() * 3) >> 1);
+        char* img = new char[size];
+        if (img == nullptr) return 1;
+        eleStream.read(img, size);
+        if (eleStream.gcount() != size) {
+            delete[] img;
+            return 1;
+        }
+
+        char* imgTmp = img;
+        char* ipBuffer = static_cast<char*>(ycbcrLayout.y);
+        for (size_t y = rect.getHeight(); y > 0; --y) {
+            memcpy(ipBuffer, imgTmp, rect.getWidth());
+            ipBuffer += ycbcrLayout.ystride;
+            imgTmp += rect.getWidth();
+        }
+
+        if (format == PixelFormat::YV12)
+            EXPECT_EQ(ycbcrLayout.chroma_step, 1U);
+        else if (format == PixelFormat::YCRCB_420_SP)
+            EXPECT_EQ(ycbcrLayout.chroma_step, 2U);
+
+        ipBuffer = static_cast<char*>(ycbcrLayout.cb);
+        for (size_t y = rect.getHeight() >> 1; y > 0; --y) {
+            for (int32_t x = 0; x < (rect.getWidth() >> 1); ++x) {
+                ipBuffer[ycbcrLayout.chroma_step * x] = *imgTmp++;
+            }
+            ipBuffer += ycbcrLayout.cstride;
+        }
+        ipBuffer = static_cast<char*>(ycbcrLayout.cr);
+        for (size_t y = rect.getHeight() >> 1; y > 0; --y) {
+            for (int32_t x = 0; x < (rect.getWidth() >> 1); ++x) {
+                ipBuffer[ycbcrLayout.chroma_step * x] = *imgTmp++;
+            }
+            ipBuffer += ycbcrLayout.cstride;
+        }
+
+        delete[] img;
+
+        error = gbmapper.unlock(buff);
+        EXPECT_EQ(error, android::NO_ERROR);
+        if (error != android::NO_ERROR) return 1;
+    } else {
+        void* data;
+        int32_t outBytesPerPixel;
+        int32_t outBytesPerStride;
+        error = gbmapper.lock(buff, buffer->omxBuffer.attr.anwBuffer.usage, rect, &data,
+                              &outBytesPerPixel, &outBytesPerStride);
+        EXPECT_EQ(error, android::NO_ERROR);
+        if (error != android::NO_ERROR) return 1;
+
+        if (format == PixelFormat::BGRA_8888) {
+            char* ipBuffer = static_cast<char*>(data);
+            for (size_t y = rect.getHeight(); y > 0; --y) {
+                eleStream.read(ipBuffer, rect.getWidth() * 4);
+                if (eleStream.gcount() != rect.getWidth() * 4) return 1;
+                ipBuffer += buffer->omxBuffer.attr.anwBuffer.stride * 4;
+            }
+        } else {
+            EXPECT_TRUE(false) << "un expected pixel format";
+            return 1;
+        }
+
+        error = gbmapper.unlock(buff);
+        EXPECT_EQ(error, android::NO_ERROR);
+        if (error != android::NO_ERROR) return 1;
     }
 
-    return std::visit([buffer, buff, format, &eleStream](auto&& mapper) -> int {
-            using Gralloc = std::remove_reference_t<decltype(mapper)>;
-            using Error = typename Gralloc::Error;
-            using Rect = typename Gralloc::Rect;
-            using Usage = typename Gralloc::Usage;
-            using YCbCrLayout = typename Gralloc::YCbCrLayout;
-
-            android::hardware::hidl_handle fence;
-            Rect rect;
-            YCbCrLayout ycbcrLayout;
-            Error error;
-            rect.left = 0;
-            rect.top = 0;
-            rect.width = buffer->omxBuffer.attr.anwBuffer.width;
-            rect.height = buffer->omxBuffer.attr.anwBuffer.height;
-
-            if (format == PixelFormat::YV12 || format == PixelFormat::YCRCB_420_SP ||
-                format == PixelFormat::YCBCR_420_888) {
-                mapper.mMapper->lockYCbCr(
-                        buff,
-                        static_cast<Usage>(
-                            buffer->omxBuffer.attr.anwBuffer.usage),
-                        rect,
-                        fence,
-                        [&](Error _e,
-                            const YCbCrLayout& _n1) {
-                            error = _e;
-                            ycbcrLayout = _n1;
-                        });
-                EXPECT_EQ(error, Error::NONE);
-                if (error != Error::NONE)
-                    return 1;
-
-                int size = ((rect.width * rect.height * 3) >> 1);
-                char* img = new char[size];
-                if (img == nullptr) return 1;
-                eleStream.read(img, size);
-                if (eleStream.gcount() != size) {
-                    delete[] img;
-                    return 1;
-                }
-
-                char* imgTmp = img;
-                char* ipBuffer = static_cast<char*>(ycbcrLayout.y);
-                for (size_t y = rect.height; y > 0; --y) {
-                    memcpy(ipBuffer, imgTmp, rect.width);
-                    ipBuffer += ycbcrLayout.yStride;
-                    imgTmp += rect.width;
-                }
-
-                if (format == PixelFormat::YV12)
-                    EXPECT_EQ(ycbcrLayout.chromaStep, 1U);
-                else if (format == PixelFormat::YCRCB_420_SP)
-                    EXPECT_EQ(ycbcrLayout.chromaStep, 2U);
-
-                ipBuffer = static_cast<char*>(ycbcrLayout.cb);
-                for (size_t y = rect.height >> 1; y > 0; --y) {
-                    for (int32_t x = 0; x < (rect.width >> 1); ++x) {
-                        ipBuffer[ycbcrLayout.chromaStep * x] = *imgTmp++;
-                    }
-                    ipBuffer += ycbcrLayout.cStride;
-                }
-                ipBuffer = static_cast<char*>(ycbcrLayout.cr);
-                for (size_t y = rect.height >> 1; y > 0; --y) {
-                    for (int32_t x = 0; x < (rect.width >> 1); ++x) {
-                        ipBuffer[ycbcrLayout.chromaStep * x] = *imgTmp++;
-                    }
-                    ipBuffer += ycbcrLayout.cStride;
-                }
-
-                delete[] img;
-
-                mapper.mMapper->unlock(buff,
-                               [&](Error _e,
-                                   const android::hardware::hidl_handle& _n1) {
-                                   error = _e;
-                                   fence = _n1;
-                               });
-                EXPECT_EQ(error, Error::NONE);
-                if (error != Error::NONE)
-                    return 1;
-            } else {
-                void* data;
-                mapper.lock(
-                        buff,
-                        buffer->omxBuffer.attr.anwBuffer.usage,
-                        rect,
-                        fence,
-                        &error,
-                        &data);
-                EXPECT_EQ(error, Error::NONE);
-                if (error != Error::NONE)
-                    return 1;
-
-                if (format == PixelFormat::BGRA_8888) {
-                    char* ipBuffer = static_cast<char*>(data);
-                    for (size_t y = rect.height; y > 0; --y) {
-                        eleStream.read(ipBuffer, rect.width * 4);
-                        if (eleStream.gcount() != rect.width * 4) return 1;
-                        ipBuffer += buffer->omxBuffer.attr.anwBuffer.stride * 4;
-                    }
-                } else {
-                    EXPECT_TRUE(false) << "un expected pixel format";
-                    return 1;
-                }
-
-                mapper.mMapper->unlock(
-                        buff,
-                        [&](Error _e, const android::hardware::hidl_handle& _n1) {
-                            error = _e;
-                            fence = _n1;
-                        });
-                EXPECT_EQ(error, Error::NONE);
-                if (error != Error::NONE)
-                    return 1;
-            }
-
-            return 0;
-        }, mapperVar);
+    return 0;
 }
 
 int fillGraphicBuffer(BufferInfo* buffer, PixelFormat format,
                       std::ifstream& eleStream) {
-    MapperVar mapperVar;
-    if (!initialize(mapperVar)) {
-        EXPECT_TRUE(false) << "failed to obtain mapper service";
-        return 1;
-    }
+    android::GraphicBufferMapper& gbmapper = android::GraphicBufferMapper::get();
+    buffer_handle_t buff;
+    android::status_t error = android::NO_ERROR;
+    gbmapper.importBuffer(
+            buffer->omxBuffer.nativeHandle, buffer->omxBuffer.attr.anwBuffer.width,
+            buffer->omxBuffer.attr.anwBuffer.height, buffer->omxBuffer.attr.anwBuffer.layerCount,
+            static_cast<android::PixelFormat>(format), buffer->omxBuffer.attr.anwBuffer.usage,
+            buffer->omxBuffer.attr.anwBuffer.stride, &buff);
+    EXPECT_EQ(error, android::NO_ERROR);
+    if (error != android::NO_ERROR) return 1;
 
-    return std::visit([buffer, format, &eleStream](auto&& mapper) -> int {
-            using Gralloc = std::remove_reference_t<decltype(mapper)>;
-            using Error = typename Gralloc::Error;
+    if (colorFormatConversion(buffer, buff, format, eleStream)) return 1;
 
-            void* buff = nullptr;
-            Error error;
-            mapper.mMapper->importBuffer(
-                buffer->omxBuffer.nativeHandle,
-                [&](Error _e, void* _n1) {
-                    error = _e;
-                    buff = _n1;
-                });
-            EXPECT_EQ(error, Error::NONE);
-            if (error != Error::NONE)
-                return 1;
+    error = gbmapper.freeBuffer(buff);
+    EXPECT_EQ(error, android::NO_ERROR);
+    if (error != android::NO_ERROR) return 1;
 
-            if (colorFormatConversion(buffer, buff, format, eleStream)) return 1;
-
-            error = mapper.mMapper->freeBuffer(buff);
-            EXPECT_EQ(error, Error::NONE);
-            if (error != Error::NONE)
-                return 1;
-
-            return 0;
-        }, mapperVar);
+    return 0;
 }
 
 int dispatchGraphicBuffer(sp<IOmxNode> omxNode,
@@ -1085,23 +972,23 @@ void encodeNFrames(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
 }
 
 // set component role
-TEST_F(VideoEncHidlTest, SetRole) {
+TEST_P(VideoEncHidlTest, SetRole) {
     description("Test Set Component Role");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
 }
 
 // port format enumeration
-TEST_F(VideoEncHidlTest, EnumeratePortFormat) {
+TEST_P(VideoEncHidlTest, EnumeratePortFormat) {
     description("Test Component on Mandatory Port Parameters (Port Format)");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
     OMX_COLOR_FORMATTYPE eColorFormat = OMX_COLOR_FormatYUV420Planar;
     OMX_U32 xFramerate = (30U << 16);
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1121,12 +1008,12 @@ TEST_F(VideoEncHidlTest, EnumeratePortFormat) {
 }
 
 // Test IOmxBufferSource CallBacks
-TEST_F(VideoEncHidlTest, BufferSourceCallBacks) {
+TEST_P(VideoEncHidlTest, BufferSourceCallBacks) {
     description("Test IOmxBufferSource CallBacks");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1178,12 +1065,12 @@ TEST_F(VideoEncHidlTest, BufferSourceCallBacks) {
 }
 
 // test raw stream encode (input is byte buffers)
-TEST_F(VideoEncHidlTest, EncodeTest) {
+TEST_P(VideoEncHidlTest, EncodeTest) {
     description("Test Encode");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1193,7 +1080,7 @@ TEST_F(VideoEncHidlTest, EncodeTest) {
         kPortIndexOutput = kPortIndexInput + 1;
     }
     char mURL[512];
-    strcpy(mURL, gEnv->getRes().c_str());
+    strcpy(mURL, sResourceDir.c_str());
     GetURLForComponent(mURL);
 
     std::ifstream eleStream;
@@ -1293,12 +1180,12 @@ TEST_F(VideoEncHidlTest, EncodeTest) {
 }
 
 // test raw stream encode (input is ANW buffers)
-TEST_F(VideoEncHidlTest, EncodeTestBufferMetaModes) {
+TEST_P(VideoEncHidlTest, EncodeTestBufferMetaModes) {
     description("Test Encode Input buffer metamodes");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1383,7 +1270,7 @@ TEST_F(VideoEncHidlTest, EncodeTestBufferMetaModes) {
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
 
     char mURL[512];
-    strcpy(mURL, gEnv->getRes().c_str());
+    strcpy(mURL, sResourceDir.c_str());
     GetURLForComponent(mURL);
 
     uint32_t latency = 0;
@@ -1460,12 +1347,12 @@ TEST_F(VideoEncHidlTest, EncodeTestBufferMetaModes) {
 }
 
 // Test end of stream
-TEST_F(VideoEncHidlTest, EncodeTestEOS) {
+TEST_P(VideoEncHidlTest, EncodeTestEOS) {
     description("Test EOS");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1574,15 +1461,21 @@ TEST_F(VideoEncHidlTest, EncodeTestEOS) {
     ASSERT_EQ(returnval, 0);
 }
 
+INSTANTIATE_TEST_SUITE_P(PerInstance, VideoEncHidlTest, testing::ValuesIn(kTestParameters),
+                         android::hardware::PrintInstanceTupleNameToString<>);
+
 int main(int argc, char** argv) {
-    gEnv = new ComponentTestEnvironment();
-    ::testing::AddGlobalTestEnvironment(gEnv);
+    kTestParameters = getTestParameters("video_encoder");
     ::testing::InitGoogleTest(&argc, argv);
-    gEnv->init(&argc, argv);
-    int status = gEnv->initFromOptions(argc, argv);
-    if (status == 0) {
-        status = RUN_ALL_TESTS();
-        ALOGI("Test result = %d", status);
+
+    // Set the resource directory based on command line args.
+    // Test will fail to set up if the argument is not set.
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-P") == 0 && i < argc - 1) {
+            sResourceDir = argv[i + 1];
+            break;
+        }
     }
-    return status;
+
+    return RUN_ALL_TESTS();
 }
