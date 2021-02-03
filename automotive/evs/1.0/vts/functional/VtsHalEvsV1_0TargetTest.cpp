@@ -17,6 +17,15 @@
 #define LOG_TAG "VtsHalEvsTest"
 
 
+// Note:  We have't got a great way to indicate which target
+// should be tested, so we'll leave the interface served by the
+// default (mock) EVS driver here for easy reference.  All
+// actual EVS drivers should serve on the EvsEnumeratorHw name,
+// however, so the code is checked in that way.
+//const static char kEnumeratorName[]  = "EvsEnumeratorHw-Mock";
+const static char kEnumeratorName[]  = "EvsEnumeratorHw";
+
+
 // These values are called out in the EVS design doc (as of Mar 8, 2017)
 static const int kMaxStreamStartMilliseconds = 500;
 static const int kMinimumFramesPerSecond = 10;
@@ -44,9 +53,8 @@ static const float kNanoToSeconds = 0.000000001f;
 #include <android/hardware/automotive/evs/1.0/IEvsCameraStream.h>
 #include <android/hardware/automotive/evs/1.0/IEvsDisplay.h>
 
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 
 using namespace ::android::hardware::automotive::evs::V1_0;
 using ::android::hardware::Return;
@@ -56,19 +64,32 @@ using ::android::hardware::hidl_handle;
 using ::android::hardware::hidl_string;
 using ::android::sp;
 
+// Test environment for Evs HIDL HAL.
+class EvsHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static EvsHidlEnvironment* Instance() {
+        static EvsHidlEnvironment* instance = new EvsHidlEnvironment;
+        return instance;
+    }
+
+    virtual void registerTestServices() override { registerTestService<IEvsEnumerator>(); }
+
+   private:
+    EvsHidlEnvironment() {}
+};
+
 // The main test class for EVS
-class EvsHidlTest : public ::testing::TestWithParam<std::string> {
+class EvsHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 public:
     virtual void SetUp() override {
         // Make sure we can connect to the enumerator
-        std::string service_name = GetParam();
-        pEnumerator = IEvsEnumerator::getService(service_name);
-
+        string service_name =
+            EvsHidlEnvironment::Instance()->getServiceName<IEvsEnumerator>(kEnumeratorName);
+        pEnumerator = getService<IEvsEnumerator>(service_name);
         ASSERT_NE(pEnumerator.get(), nullptr);
 
-        // "default" is reserved for EVS manager.
-        constexpr static char kEvsManagerName[] = "default";
-        mIsHwModule = service_name.compare(kEvsManagerName);
+        mIsHwModule = !service_name.compare(kEnumeratorName);
     }
 
     virtual void TearDown() override {}
@@ -109,7 +130,7 @@ protected:
  * Opens each camera reported by the enumerator and then explicitly closes it via a
  * call to closeCamera.  Then repeats the test to ensure all cameras can be reopened.
  */
-TEST_P(EvsHidlTest, CameraOpenClean) {
+TEST_F(EvsHidlTest, CameraOpenClean) {
     ALOGI("Starting CameraOpenClean test");
 
     // Get the camera list
@@ -141,7 +162,7 @@ TEST_P(EvsHidlTest, CameraOpenClean) {
  * call.  This ensures that the intended "aggressive open" behavior works.  This is necessary for
  * the system to be tolerant of shutdown/restart race conditions.
  */
-TEST_P(EvsHidlTest, CameraOpenAggressive) {
+TEST_F(EvsHidlTest, CameraOpenAggressive) {
     ALOGI("Starting CameraOpenAggressive test");
 
     // Get the camera list
@@ -195,7 +216,7 @@ TEST_P(EvsHidlTest, CameraOpenAggressive) {
  * DisplayOpen:
  * Test both clean shut down and "aggressive open" device stealing behavior.
  */
-TEST_P(EvsHidlTest, DisplayOpen) {
+TEST_F(EvsHidlTest, DisplayOpen) {
     ALOGI("Starting DisplayOpen test");
 
     // Request exclusive access to the EVS display, then let it go
@@ -243,7 +264,7 @@ TEST_P(EvsHidlTest, DisplayOpen) {
  * Validate that display states transition as expected and can be queried from either the display
  * object itself or the owning enumerator.
  */
-TEST_P(EvsHidlTest, DisplayStates) {
+TEST_F(EvsHidlTest, DisplayStates) {
     ALOGI("Starting DisplayStates test");
 
     // Ensure the display starts in the expected state
@@ -303,7 +324,7 @@ TEST_P(EvsHidlTest, DisplayStates) {
  * CameraStreamPerformance:
  * Measure and qualify the stream start up time and streaming frame rate of each reported camera
  */
-TEST_P(EvsHidlTest, CameraStreamPerformance) {
+TEST_F(EvsHidlTest, CameraStreamPerformance) {
     ALOGI("Starting CameraStreamPerformance test");
 
     // Get the camera list
@@ -366,10 +387,10 @@ TEST_P(EvsHidlTest, CameraStreamPerformance) {
  * Ensure the camera implementation behaves properly when the client holds onto buffers for more
  * than one frame time.  The camera must cleanly skip frames until the client is ready again.
  */
-TEST_P(EvsHidlTest, CameraStreamBuffering) {
+TEST_F(EvsHidlTest, CameraStreamBuffering) {
     ALOGI("Starting CameraStreamBuffering test");
 
-    // Arbitrary constant (should be > 1 and not too big)
+    // Arbitrary constant (should be > 1 and less than crazy)
     static const unsigned int kBuffersToHold = 6;
 
     // Get the camera list
@@ -381,7 +402,7 @@ TEST_P(EvsHidlTest, CameraStreamBuffering) {
         sp<IEvsCamera> pCam = pEnumerator->openCamera(cam.cameraId);
         ASSERT_NE(pCam, nullptr);
 
-        // Ask for a very large number of buffers in flight to ensure it errors correctly
+        // Ask for a crazy number of buffers in flight to ensure it errors correctly
         Return<EvsResult> badResult = pCam->setMaxFramesInFlight(0xFFFFFFFF);
         EXPECT_EQ(EvsResult::BUFFER_NOT_AVAILABLE, badResult);
 
@@ -435,7 +456,7 @@ TEST_P(EvsHidlTest, CameraStreamBuffering) {
  * imagery is simply copied to the display buffer and presented on screen.  This is the one test
  * which a human could observe to see the operation of the system on the physical display.
  */
-TEST_P(EvsHidlTest, CameraToDisplayRoundTrip) {
+TEST_F(EvsHidlTest, CameraToDisplayRoundTrip) {
     ALOGI("Starting CameraToDisplayRoundTrip test");
 
     // Get the camera list
@@ -496,7 +517,7 @@ TEST_P(EvsHidlTest, CameraToDisplayRoundTrip) {
  * Verify that each client can start and stop video streams on the same
  * underlying camera.
  */
-TEST_P(EvsHidlTest, MultiCameraStream) {
+TEST_F(EvsHidlTest, MultiCameraStream) {
     ALOGI("Starting MultiCameraStream test");
 
     if (mIsHwModule) {
@@ -579,9 +600,12 @@ TEST_P(EvsHidlTest, MultiCameraStream) {
     }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(EvsHidlTest);
-INSTANTIATE_TEST_SUITE_P(
-    PerInstance,
-    EvsHidlTest,
-    testing::ValuesIn(android::hardware::getAllHalInstanceNames(IEvsEnumerator::descriptor)),
-    android::hardware::PrintInstanceNameToString);
+
+int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(EvsHidlEnvironment::Instance());
+    ::testing::InitGoogleTest(&argc, argv);
+    EvsHidlEnvironment::Instance()->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    ALOGI("Test result = %d", status);
+    return status;
+}
