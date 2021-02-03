@@ -55,9 +55,6 @@ bool KeyCharacteristicsBasicallyValid(SecurityLevel secLevel,
     for (auto& entry : key_characteristics) {
         if (entry.authorizations.empty()) return false;
 
-        // Just ignore the SecurityLevel::KEYSTORE as the KM won't do any enforcement on this.
-        if (entry.securityLevel == SecurityLevel::KEYSTORE) continue;
-
         if (levels_seen.find(entry.securityLevel) != levels_seen.end()) return false;
         levels_seen.insert(entry.securityLevel);
 
@@ -827,36 +824,22 @@ const vector<KeyParameter>& KeyMintAidlTestBase::SecLevelAuthorizations(
     return (found == key_characteristics.end()) ? kEmptyAuthList : found->authorizations;
 }
 
-const vector<KeyParameter>& KeyMintAidlTestBase::SecLevelAuthorizations(
-        const vector<KeyCharacteristics>& key_characteristics, SecurityLevel securityLevel) {
-    auto found = std::find_if(
-            key_characteristics.begin(), key_characteristics.end(),
-            [securityLevel](auto& entry) { return entry.securityLevel == securityLevel; });
+const vector<KeyParameter>& KeyMintAidlTestBase::HwEnforcedAuthorizations(
+        const vector<KeyCharacteristics>& key_characteristics) {
+    auto found =
+            std::find_if(key_characteristics.begin(), key_characteristics.end(), [](auto& entry) {
+                return entry.securityLevel == SecurityLevel::STRONGBOX ||
+                       entry.securityLevel == SecurityLevel::TRUSTED_ENVIRONMENT;
+            });
     return (found == key_characteristics.end()) ? kEmptyAuthList : found->authorizations;
 }
 
-AuthorizationSet KeyMintAidlTestBase::HwEnforcedAuthorizations(
+const vector<KeyParameter>& KeyMintAidlTestBase::SwEnforcedAuthorizations(
         const vector<KeyCharacteristics>& key_characteristics) {
-    AuthorizationSet authList;
-    for (auto& entry : key_characteristics) {
-        if (entry.securityLevel == SecurityLevel::STRONGBOX ||
-            entry.securityLevel == SecurityLevel::TRUSTED_ENVIRONMENT) {
-            authList.push_back(AuthorizationSet(entry.authorizations));
-        }
-    }
-    return authList;
-}
-
-AuthorizationSet KeyMintAidlTestBase::SwEnforcedAuthorizations(
-        const vector<KeyCharacteristics>& key_characteristics) {
-    AuthorizationSet authList;
-    for (auto& entry : key_characteristics) {
-        if (entry.securityLevel == SecurityLevel::SOFTWARE ||
-            entry.securityLevel == SecurityLevel::KEYSTORE) {
-            authList.push_back(AuthorizationSet(entry.authorizations));
-        }
-    }
-    return authList;
+    auto found = std::find_if(
+            key_characteristics.begin(), key_characteristics.end(),
+            [](auto& entry) { return entry.securityLevel == SecurityLevel::SOFTWARE; });
+    return (found == key_characteristics.end()) ? kEmptyAuthList : found->authorizations;
 }
 
 }  // namespace test
