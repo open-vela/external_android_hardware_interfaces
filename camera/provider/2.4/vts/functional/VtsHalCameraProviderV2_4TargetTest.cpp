@@ -1209,7 +1209,12 @@ bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& r
             return notify;
         }
 
-        if (physicalCameraMetadata.size() != request->expectedPhysicalResults.size()) {
+        // Physical device results are only expected in the last/final
+        // partial result notification.
+        bool expectPhysicalResults = !(request->usePartialResult &&
+                (results.partialResult < request->numPartialResults));
+        if (expectPhysicalResults &&
+                (physicalCameraMetadata.size() != request->expectedPhysicalResults.size())) {
             ALOGE("%s: Frame %d: Returned physical metadata count %zu "
                     "must be equal to expected count %zu", __func__, frameNumber,
                     physicalCameraMetadata.size(), request->expectedPhysicalResults.size());
@@ -1670,7 +1675,7 @@ bool CameraHidlTest::isSecureOnly(sp<ICameraProvider> provider, const hidl_strin
     Return<void> ret;
     ::android::sp<ICameraDevice> device3_x;
     bool retVal = false;
-    if (getCameraDeviceVersion(mProviderType, name) == CAMERA_DEVICE_API_VERSION_1_0) {
+    if (getCameraDeviceVersion(name, mProviderType) == CAMERA_DEVICE_API_VERSION_1_0) {
         return false;
     }
     ret = provider->getCameraDeviceInterface_V3_x(name, [&](auto status, const auto& device) {

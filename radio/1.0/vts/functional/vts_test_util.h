@@ -21,6 +21,7 @@
 #include <gtest/gtest.h>
 
 using ::android::hardware::radio::V1_0::RadioError;
+using ::android::hardware::radio::V1_0::RegState;
 using ::android::hardware::radio::V1_0::SapResultCode;
 using namespace std;
 
@@ -33,6 +34,12 @@ enum CheckFlag {
 };
 
 static constexpr const char* FEATURE_VOICE_CALL = "android.software.connectionservice";
+
+static constexpr const char* FEATURE_TELEPHONY = "android.hardware.telephony";
+
+static constexpr const char* FEATURE_TELEPHONY_GSM = "android.hardware.telephony.gsm";
+
+static constexpr const char* FEATURE_TELEPHONY_CDMA = "android.hardware.telephony.cdma";
 
 /*
  * Generate random serial number for radio test
@@ -55,3 +62,23 @@ int GetRandomSerialNumber();
  * Check if device supports feature.
  */
 bool deviceSupportsFeature(const char* feature);
+
+/*
+ * Check if device is in DSDS.
+ */
+bool isDsDsEnabled();
+
+/*
+ * Check if device is in TSTS.
+ */
+bool isTsTsEnabled();
+
+/*
+ * Check if voice status is in emergency only.
+ */
+bool isVoiceEmergencyOnly(RegState state);
+
+/*
+ * Check if voice status is in service.
+ */
+bool isVoiceInService(RegState state);
