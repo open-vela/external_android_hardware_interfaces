@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hardware.soundtrigger@2.1",
     root: "android.hardware",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "ISoundTriggerHw.hal",
         "ISoundTriggerHwCallback.hal",
@@ -12,5 +15,6 @@ hidl_interface {
         "android.hardware.soundtrigger@2.0",
         "android.hidl.base@1.0",
     ],
-    gen_java: true,
+    gen_java: false,
 }
+
