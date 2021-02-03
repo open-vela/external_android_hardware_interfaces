@@ -17,6 +17,7 @@
 #define LOG_TAG "StreamOutHAL"
 
 #include "core/default/StreamOut.h"
+#include "core/default/Conversions.h"
 #include "core/default/Util.h"
 
 //#define LOG_NDEBUG 0
@@ -29,7 +30,6 @@
 #include <HidlUtils.h>
 #include <android/log.h>
 #include <hardware/audio.h>
-#include <util/CoreUtils.h>
 #include <utils/Trace.h>
 
 namespace android {
@@ -163,7 +163,7 @@ StreamOut::~StreamOut() {
         status_t status = EventFlag::deleteEventFlag(&mEfGroup);
         ALOGE_IF(status, "write MQ event flag deletion error: %s", strerror(-status));
     }
-    mCallback = nullptr;
+    mCallback.clear();
 #if MAJOR_VERSION <= 5
     mDevice->closeOutputStream(mStream);
     // Closing the output stream in the HAL waits for the callback to finish,
@@ -462,7 +462,7 @@ Return<Result> StreamOut::setCallback(const sp<IStreamOutCallback>& callback) {
 
 Return<Result> StreamOut::clearCallback() {
     if (mStream->set_callback == NULL) return Result::NOT_SUPPORTED;
-    mCallback = nullptr;
+    mCallback.clear();
     return Result::OK;
 }
 
@@ -477,7 +477,7 @@ int StreamOut::asyncCallback(stream_callback_event_t event, void*, void* cookie)
     // It's correct to hold an sp<> to callback because the reference
     // in the StreamOut instance can be cleared in the meantime. There is
     // no difference on which thread to run IStreamOutCallback's destructor.
-    sp<IStreamOutCallback> callback = self->mCallback.load();
+    sp<IStreamOutCallback> callback = self->mCallback;
     if (callback.get() == nullptr) return 0;
     ALOGV("asyncCallback() event %d", event);
     Return<void> result;
@@ -589,15 +589,13 @@ Return<void> StreamOut::debug(const hidl_handle& fd, const hidl_vec<hidl_string>
 Result StreamOut::doUpdateSourceMetadata(const SourceMetadata& sourceMetadata) {
     std::vector<playback_track_metadata_t> halTracks;
 #if MAJOR_VERSION <= 6
-    (void)CoreUtils::sourceMetadataToHal(sourceMetadata, &halTracks);
+    (void)sourceMetadataToHal(sourceMetadata, &halTracks);
 #else
     // Validate whether a conversion to V7 is possible. This is needed
     // to have a consistent behavior of the HAL regardless of the API
     // version of the legacy HAL (and also to be consistent with openOutputStream).
     std::vector<playback_track_metadata_v7> halTracksV7;
-    if (status_t status = CoreUtils::sourceMetadataToHalV7(
-                sourceMetadata, false /*ignoreNonVendorTags*/, &halTracksV7);
-        status == NO_ERROR) {
+    if (status_t status = sourceMetadataToHalV7(sourceMetadata, &halTracksV7); status == NO_ERROR) {
         halTracks.reserve(halTracksV7.size());
         for (auto metadata_v7 : halTracksV7) {
             halTracks.push_back(std::move(metadata_v7.base));
@@ -617,9 +615,7 @@ Result StreamOut::doUpdateSourceMetadata(const SourceMetadata& sourceMetadata) {
 #if MAJOR_VERSION >= 7
 Result StreamOut::doUpdateSourceMetadataV7(const SourceMetadata& sourceMetadata) {
     std::vector<playback_track_metadata_v7> halTracks;
-    if (status_t status = CoreUtils::sourceMetadataToHalV7(
-                sourceMetadata, false /*ignoreNonVendorTags*/, &halTracks);
-        status != NO_ERROR) {
+    if (status_t status = sourceMetadataToHalV7(sourceMetadata, &halTracks); status != NO_ERROR) {
         return Stream::analyzeStatus("sourceMetadataToHal", status);
     }
     const source_metadata_v7_t halMetadata = {
@@ -735,7 +731,7 @@ Return<Result> StreamOut::setEventCallback(const sp<IStreamOutEventCallback>& ca
 // static
 int StreamOut::asyncEventCallback(stream_event_callback_type_t event, void* param, void* cookie) {
     StreamOut* self = reinterpret_cast<StreamOut*>(cookie);
-    sp<IStreamOutEventCallback> eventCallback = self->mEventCallback.load();
+    sp<IStreamOutEventCallback> eventCallback = self->mEventCallback;
     if (eventCallback.get() == nullptr) return 0;
     ALOGV("%s event %d", __func__, event);
     Return<void> result;
