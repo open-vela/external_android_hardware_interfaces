@@ -43,15 +43,6 @@
 namespace android::hardware::neuralnetworks::V1_2::utils {
 namespace {
 
-nn::GeneralResult<nn::SharedPreparedModel> prepareModelCallback(
-        V1_0::ErrorStatus status, const sp<V1_0::IPreparedModel>& preparedModel) {
-    if (const auto dynamicPreparedModel =
-                V1_2::IPreparedModel::castFrom(preparedModel).withDefault(nullptr)) {
-        return V1_2::utils::prepareModelCallback(status, dynamicPreparedModel);
-    }
-    return V1_0::utils::prepareModelCallback(status, preparedModel);
-}
-
 nn::GeneralResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>>
 convertExecutionGeneralResultsHelper(const hidl_vec<OutputShape>& outputShapes,
                                      const Timing& timing) {
@@ -81,7 +72,7 @@ nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> executi
 
 Return<void> PreparedModelCallback::notify(V1_0::ErrorStatus status,
                                            const sp<V1_0::IPreparedModel>& preparedModel) {
-    mData.put(prepareModelCallback(status, preparedModel));
+    mData.put(V1_0::utils::prepareModelCallback(status, preparedModel));
     return Void();
 }
 
