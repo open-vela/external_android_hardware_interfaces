@@ -42,7 +42,6 @@ std::string printNeuralnetworksHidlTest(
         const testing::TestParamInfo<NeuralnetworksHidlTestParam>& info);
 
 #define INSTANTIATE_DEVICE_TEST(TestSuite)                                                 \
-    GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TestSuite);                              \
     INSTANTIATE_TEST_SUITE_P(PerInstance, TestSuite, testing::ValuesIn(getNamedDevices()), \
                              printNeuralnetworksHidlTest)
 
