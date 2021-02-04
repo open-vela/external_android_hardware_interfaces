@@ -19,6 +19,7 @@
 #include "AcousticEchoCancelerEffect.h"
 #include "AutomaticGainControlEffect.h"
 #include "BassBoostEffect.h"
+#include "Conversions.h"
 #include "DownmixEffect.h"
 #include "Effect.h"
 #include "EnvironmentalReverbEffect.h"
@@ -26,11 +27,11 @@
 #include "LoudnessEnhancerEffect.h"
 #include "NoiseSuppressionEffect.h"
 #include "PresetReverbEffect.h"
+#include "UuidUtils.h"
 #include "VirtualizerEffect.h"
 #include "VisualizerEffect.h"
 #include "common/all-versions/default/EffectMap.h"
 
-#include <UuidUtils.h>
 #include <android/log.h>
 #include <media/EffectsFactoryApi.h>
 #include <system/audio_effects/effect_aec.h>
@@ -44,7 +45,6 @@
 #include <system/audio_effects/effect_presetreverb.h>
 #include <system/audio_effects/effect_virtualizer.h>
 #include <system/audio_effects/effect_visualizer.h>
-#include <util/EffectUtils.h>
 
 namespace android {
 namespace hardware {
@@ -107,7 +107,7 @@ restart:
         effect_descriptor_t halDescriptor;
         status = EffectQueryEffect(i, &halDescriptor);
         if (status == OK) {
-            EffectUtils::effectDescriptorFromHal(halDescriptor, &result[i]);
+            effectDescriptorFromHal(halDescriptor, &result[i]);
         } else {
             ALOGE("Error querying effect at position %d / %d: %s", i, numEffects,
                   strerror(-status));
@@ -141,11 +141,11 @@ Return<void> EffectsFactory::getDescriptor(const Uuid& uuid, getDescriptor_cb _h
     effect_descriptor_t halDescriptor;
     status_t status = EffectGetDescriptor(&halUuid, &halDescriptor);
     EffectDescriptor descriptor;
-    EffectUtils::effectDescriptorFromHal(halDescriptor, &descriptor);
+    effectDescriptorFromHal(halDescriptor, &descriptor);
     Result retval(Result::OK);
     if (status != OK) {
-        ALOGE("Error querying effect descriptor for %s: %s",
-              UuidUtils::uuidToString(halUuid).c_str(), strerror(-status));
+        ALOGE("Error querying effect descriptor for %s: %s", uuidToString(halUuid).c_str(),
+              strerror(-status));
         if (status == -ENOENT) {
             retval = Result::INVALID_ARGUMENTS;
         } else {
@@ -191,14 +191,13 @@ Return<void> EffectsFactory::createEffectImpl(const Uuid& uuid, int32_t session,
             effect = dispatchEffectInstanceCreation(halDescriptor, handle);
             effectId = EffectMap::getInstance().add(handle);
         } else {
-            ALOGE("Error querying effect descriptor for %s: %s",
-                  UuidUtils::uuidToString(halUuid).c_str(), strerror(-status));
+            ALOGE("Error querying effect descriptor for %s: %s", uuidToString(halUuid).c_str(),
+                  strerror(-status));
             EffectRelease(handle);
         }
     }
     if (status != OK) {
-        ALOGE("Error creating effect %s: %s", UuidUtils::uuidToString(halUuid).c_str(),
-              strerror(-status));
+        ALOGE("Error creating effect %s: %s", uuidToString(halUuid).c_str(), strerror(-status));
         if (status == -ENOENT) {
             retval = Result::INVALID_ARGUMENTS;
         } else {

@@ -15,11 +15,10 @@
  */
 
 #include "core/default/ParametersUtil.h"
+#include "core/default/Conversions.h"
 #include "core/default/Util.h"
 
 #include <system/audio.h>
-
-#include <util/CoreUtils.h>
 
 namespace android {
 namespace hardware {
@@ -154,7 +153,7 @@ Result ParametersUtil::setParametersImpl(const hidl_vec<ParameterValue>& context
 Result ParametersUtil::setParam(const char* name, const DeviceAddress& address) {
     audio_devices_t halDeviceType;
     char halDeviceAddress[AUDIO_DEVICE_MAX_ADDRESS_LEN];
-    if (CoreUtils::deviceAddressToHal(address, &halDeviceType, halDeviceAddress) != NO_ERROR) {
+    if (deviceAddressToHal(address, &halDeviceType, halDeviceAddress) != NO_ERROR) {
         return Result::INVALID_ARGUMENTS;
     }
     AudioParameter params{String8(halDeviceAddress)};
