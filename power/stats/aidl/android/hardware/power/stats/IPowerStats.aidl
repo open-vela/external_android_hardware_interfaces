@@ -107,5 +107,5 @@ interface IPowerStats {
      *  - STATUS_BAD_VALUE if an invalid channelId is provided
      *  - STATUS_FAILED_TRANSACTION if any EnergyMeasurement fails to be returned
      */
-    EnergyMeasurement[] readEnergyMeter(in int[] channelIds);
+    EnergyMeasurement[] readEnergyMeters(in int[] channelIds);
 }
