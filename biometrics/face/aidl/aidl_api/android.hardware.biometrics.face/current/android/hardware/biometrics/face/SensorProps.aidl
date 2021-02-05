@@ -41,5 +41,4 @@ parcelable SensorProps {
   float enrollTranslationX;
   float enrollTranslationY;
   float enrollPreviewScale;
-  boolean supportsDetectInteraction;
 }
