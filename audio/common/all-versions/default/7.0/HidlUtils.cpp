@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <algorithm>
 
 #define LOG_TAG "HidlUtils"
 #include <log/log.h>
@@ -147,6 +148,59 @@ status_t HidlUtils::audioConfigBaseToHal(const AudioConfigBase& configBase,
     return result;
 }
 
+status_t HidlUtils::audioConfigBaseOptionalFromHal(const audio_config_base_t& halConfigBase,
+                                                   bool isInput, bool formatSpecified,
+                                                   bool sampleRateSpecified,
+                                                   bool channelMaskSpecified,
+                                                   AudioConfigBaseOptional* configBase) {
+    status_t result = NO_ERROR;
+    if (formatSpecified) {
+        AudioFormat value;
+        CONVERT_CHECKED(audioFormatFromHal(halConfigBase.format, &value), result);
+        configBase->format.value(std::move(value));
+    } else {
+        configBase->format.unspecified({});
+    }
+    if (sampleRateSpecified) {
+        configBase->sampleRateHz.value(halConfigBase.sample_rate);
+    } else {
+        configBase->sampleRateHz.unspecified({});
+    }
+    if (channelMaskSpecified) {
+        AudioChannelMask value;
+        CONVERT_CHECKED(audioChannelMaskFromHal(halConfigBase.channel_mask, isInput, &value),
+                        result);
+        configBase->channelMask.value(std::move(value));
+    }
+    return result;
+}
+
+status_t HidlUtils::audioConfigBaseOptionalToHal(const AudioConfigBaseOptional& configBase,
+                                                 audio_config_base_t* halConfigBase,
+                                                 bool* formatSpecified, bool* sampleRateSpecified,
+                                                 bool* channelMaskSpecified) {
+    status_t result = NO_ERROR;
+    *formatSpecified = configBase.format.getDiscriminator() ==
+                       AudioConfigBaseOptional::Format::hidl_discriminator::value;
+    if (*formatSpecified) {
+        CONVERT_CHECKED(audioFormatToHal(configBase.format.value(), &halConfigBase->format),
+                        result);
+    }
+    *sampleRateSpecified = configBase.sampleRateHz.getDiscriminator() ==
+                           AudioConfigBaseOptional::SampleRate::hidl_discriminator::value;
+    if (*sampleRateSpecified) {
+        halConfigBase->sample_rate = configBase.sampleRateHz.value();
+    }
+    *channelMaskSpecified = configBase.channelMask.getDiscriminator() ==
+                            AudioConfigBaseOptional::ChannelMask::hidl_discriminator::value;
+    if (*channelMaskSpecified) {
+        CONVERT_CHECKED(
+                audioChannelMaskToHal(configBase.channelMask.value(), &halConfigBase->channel_mask),
+                result);
+    }
+    return result;
+}
+
 status_t HidlUtils::audioContentTypeFromHal(const audio_content_type_t halContentType,
                                             AudioContentType* contentType) {
     *contentType = audio_content_type_to_string(halContentType);
@@ -228,7 +282,7 @@ status_t HidlUtils::audioGainModeMaskFromHal(audio_gain_mode_t halGainModeMask,
                                              hidl_vec<AudioGainMode>* gainModeMask) {
     status_t status = NO_ERROR;
     std::vector<AudioGainMode> result;
-    for (uint32_t bit = 0; bit < sizeof(audio_gain_mode_t) * 8; ++bit) {
+    for (uint32_t bit = 0; halGainModeMask != 0 && bit < sizeof(audio_gain_mode_t) * 8; ++bit) {
         audio_gain_mode_t flag = static_cast<audio_gain_mode_t>(1u << bit);
         if ((flag & halGainModeMask) == flag) {
             AudioGainMode flagStr = audio_gain_mode_to_string(flag);
@@ -238,6 +292,7 @@ status_t HidlUtils::audioGainModeMaskFromHal(audio_gain_mode_t halGainModeMask,
                 ALOGE("Unknown audio gain mode value 0x%X", flag);
                 status = BAD_VALUE;
             }
+            halGainModeMask = static_cast<audio_gain_mode_t>(halGainModeMask & ~flag);
         }
     }
     *gainModeMask = result;
@@ -508,23 +563,14 @@ status_t HidlUtils::audioPortConfigFromHal(const struct audio_port_config& halCo
               audio_port_config_has_input_direction(&halConfig), isInput);
         result = BAD_VALUE;
     }
-    if (halConfig.config_mask & AUDIO_PORT_CONFIG_SAMPLE_RATE) {
-        config->base.sampleRateHz = halConfig.sample_rate;
-    } else {
-        config->base.sampleRateHz = {};
-    }
-    if (halConfig.config_mask & AUDIO_PORT_CONFIG_CHANNEL_MASK) {
-        CONVERT_CHECKED(
-                audioChannelMaskFromHal(halConfig.channel_mask, isInput, &config->base.channelMask),
-                result);
-    } else {
-        config->base.channelMask = {};
-    }
-    if (halConfig.config_mask & AUDIO_PORT_CONFIG_FORMAT) {
-        CONVERT_CHECKED(audioFormatFromHal(halConfig.format, &config->base.format), result);
-    } else {
-        config->base.format = {};
-    }
+    audio_config_base_t halConfigBase = {halConfig.sample_rate, halConfig.channel_mask,
+                                         halConfig.format};
+    CONVERT_CHECKED(
+            audioConfigBaseOptionalFromHal(
+                    halConfigBase, isInput, halConfig.config_mask & AUDIO_PORT_CONFIG_FORMAT,
+                    halConfig.config_mask & AUDIO_PORT_CONFIG_SAMPLE_RATE,
+                    halConfig.config_mask & AUDIO_PORT_CONFIG_CHANNEL_MASK, &config->base),
+            result);
     if (halConfig.config_mask & AUDIO_PORT_CONFIG_GAIN) {
         config->gain.config({});
         CONVERT_CHECKED(audioGainConfigFromHal(halConfig.gain, isInput, &config->gain.config()),
@@ -540,19 +586,23 @@ status_t HidlUtils::audioPortConfigToHal(const AudioPortConfig& config,
     status_t result = NO_ERROR;
     memset(halConfig, 0, sizeof(audio_port_config));
     halConfig->id = config.id;
-    halConfig->config_mask = {};
-    if (config.base.sampleRateHz != 0) {
+    halConfig->config_mask = 0;
+    audio_config_base_t halConfigBase = AUDIO_CONFIG_BASE_INITIALIZER;
+    bool formatSpecified = false, sRateSpecified = false, channelMaskSpecified = false;
+    CONVERT_CHECKED(audioConfigBaseOptionalToHal(config.base, &halConfigBase, &formatSpecified,
+                                                 &sRateSpecified, &channelMaskSpecified),
+                    result);
+    if (sRateSpecified) {
         halConfig->config_mask |= AUDIO_PORT_CONFIG_SAMPLE_RATE;
-        halConfig->sample_rate = config.base.sampleRateHz;
+        halConfig->sample_rate = halConfigBase.sample_rate;
     }
-    if (!config.base.channelMask.empty()) {
+    if (channelMaskSpecified) {
         halConfig->config_mask |= AUDIO_PORT_CONFIG_CHANNEL_MASK;
-        CONVERT_CHECKED(audioChannelMaskToHal(config.base.channelMask, &halConfig->channel_mask),
-                        result);
+        halConfig->channel_mask = halConfigBase.channel_mask;
     }
-    if (!config.base.format.empty()) {
+    if (formatSpecified) {
         halConfig->config_mask |= AUDIO_PORT_CONFIG_FORMAT;
-        CONVERT_CHECKED(audioFormatToHal(config.base.format, &halConfig->format), result);
+        halConfig->format = halConfigBase.format;
     }
     if (config.gain.getDiscriminator() ==
         AudioPortConfig::OptionalGain::hidl_discriminator::config) {
@@ -810,15 +860,17 @@ status_t HidlUtils::audioProfileToHal(const AudioProfile& profile,
     return result;
 }
 
-status_t HidlUtils::audioTagsFromHal(const char* halTags, hidl_vec<AudioTag>* tags) {
-    std::vector<std::string> strTags = utils::splitString(halTags, sAudioTagSeparator);
+status_t HidlUtils::audioTagsFromHal(const std::vector<std::string>& strTags,
+                                     hidl_vec<AudioTag>* tags) {
     status_t result = NO_ERROR;
     tags->resize(strTags.size());
     size_t to = 0;
     for (size_t from = 0; from < strTags.size(); ++from) {
-        if (xsd::isVendorExtension(strTags[from])) {
-            (*tags)[to++] = strTags[from];
+        const auto& tag = strTags[from];
+        if (xsd::isVendorExtension(tag)) {
+            (*tags)[to++] = tag;
         } else {
+            ALOGE("Vendor extension tag is ill-formed: \"%s\"", tag.c_str());
             result = BAD_VALUE;
         }
     }
@@ -841,6 +893,7 @@ status_t HidlUtils::audioTagsToHal(const hidl_vec<AudioTag>& tags, char* halTags
             halTagsBuffer << tag;
             hasValue = true;
         } else {
+            ALOGE("Vendor extension tag is ill-formed: \"%s\"", tag.c_str());
             result = BAD_VALUE;
         }
     }
@@ -849,6 +902,31 @@ status_t HidlUtils::audioTagsToHal(const hidl_vec<AudioTag>& tags, char* halTags
     CONVERT_CHECKED(fullHalTags.length() <= AUDIO_ATTRIBUTES_TAGS_MAX_SIZE ? NO_ERROR : BAD_VALUE,
                     result);
     return result;
+}
+
+hidl_vec<AudioTag> HidlUtils::filterOutNonVendorTags(const hidl_vec<AudioTag>& tags) {
+    hidl_vec<AudioTag> result;
+    result.resize(tags.size());
+    size_t resultIdx = 0;
+    for (const auto& tag : tags) {
+        if (xsd::maybeVendorExtension(tag)) {
+            result[resultIdx++] = tag;
+        }
+    }
+    if (resultIdx != result.size()) {
+        result.resize(resultIdx);
+    }
+    return result;
+}
+
+std::vector<std::string> HidlUtils::filterOutNonVendorTags(const std::vector<std::string>& tags) {
+    std::vector<std::string> result;
+    std::copy_if(tags.begin(), tags.end(), std::back_inserter(result), xsd::maybeVendorExtension);
+    return result;
+}
+
+std::vector<std::string> HidlUtils::splitAudioTags(const char* halTags) {
+    return utils::splitString(halTags, sAudioTagSeparator);
 }
 
 status_t HidlUtils::deviceAddressFromHal(audio_devices_t halDeviceType,

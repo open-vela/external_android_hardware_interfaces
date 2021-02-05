@@ -20,9 +20,11 @@
 #include <signal.h>
 #include <iostream>
 
+#include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #include <cutils/properties.h>
 
@@ -560,7 +562,7 @@ TEST_P(NewKeyGenerationTest, Rsa) {
 }
 
 /*
- * NewKeyGenerationTest.Rsa
+ * NewKeyGenerationTest.RsaWithAttestation
  *
  * Verifies that keymint can generate all required RSA key sizes, and that the resulting keys
  * have correct characteristics.
@@ -591,6 +593,100 @@ TEST_P(NewKeyGenerationTest, RsaWithAttestation) {
                 << "Key size " << key_size << "missing";
         EXPECT_TRUE(crypto_params.Contains(TAG_RSA_PUBLIC_EXPONENT, 65537U));
 
+        EXPECT_TRUE(verify_chain(cert_chain_));
+        ASSERT_GT(cert_chain_.size(), 0);
+
+        AuthorizationSet hw_enforced = HwEnforcedAuthorizations(key_characteristics);
+        AuthorizationSet sw_enforced = SwEnforcedAuthorizations(key_characteristics);
+        EXPECT_TRUE(verify_attestation_record(challenge, app_id,  //
+                                              sw_enforced, hw_enforced, SecLevel(),
+                                              cert_chain_[0].encodedCertificate));
+
+        CheckedDeleteKey(&key_blob);
+    }
+}
+
+/*
+ * NewKeyGenerationTest.LimitedUsageRsa
+ *
+ * Verifies that KeyMint can generate all required RSA key sizes with limited usage, and that the
+ * resulting keys have correct characteristics.
+ */
+TEST_P(NewKeyGenerationTest, LimitedUsageRsa) {
+    for (auto key_size : ValidKeySizes(Algorithm::RSA)) {
+        vector<uint8_t> key_blob;
+        vector<KeyCharacteristics> key_characteristics;
+        ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                     .RsaSigningKey(key_size, 65537)
+                                                     .Digest(Digest::NONE)
+                                                     .Padding(PaddingMode::NONE)
+                                                     .Authorization(TAG_USAGE_COUNT_LIMIT, 1),
+                                             &key_blob, &key_characteristics));
+
+        ASSERT_GT(key_blob.size(), 0U);
+        CheckBaseParams(key_characteristics);
+
+        AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
+
+        EXPECT_TRUE(crypto_params.Contains(TAG_ALGORITHM, Algorithm::RSA));
+        EXPECT_TRUE(crypto_params.Contains(TAG_KEY_SIZE, key_size))
+                << "Key size " << key_size << "missing";
+        EXPECT_TRUE(crypto_params.Contains(TAG_RSA_PUBLIC_EXPONENT, 65537U));
+
+        // Check the usage count limit tag appears in the authorizations.
+        AuthorizationSet auths;
+        for (auto& entry : key_characteristics) {
+            auths.push_back(AuthorizationSet(entry.authorizations));
+        }
+        EXPECT_TRUE(auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U))
+                << "key usage count limit " << 1U << " missing";
+
+        CheckedDeleteKey(&key_blob);
+    }
+}
+
+/*
+ * NewKeyGenerationTest.LimitedUsageRsaWithAttestation
+ *
+ * Verifies that KeyMint can generate all required RSA key sizes with limited usage, and that the
+ * resulting keys have correct characteristics and attestation.
+ */
+TEST_P(NewKeyGenerationTest, LimitedUsageRsaWithAttestation) {
+    for (auto key_size : ValidKeySizes(Algorithm::RSA)) {
+        auto challenge = "hello";
+        auto app_id = "foo";
+
+        vector<uint8_t> key_blob;
+        vector<KeyCharacteristics> key_characteristics;
+        ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                     .RsaSigningKey(key_size, 65537)
+                                                     .Digest(Digest::NONE)
+                                                     .Padding(PaddingMode::NONE)
+                                                     .AttestationChallenge(challenge)
+                                                     .AttestationApplicationId(app_id)
+                                                     .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                     .Authorization(TAG_USAGE_COUNT_LIMIT, 1),
+                                             &key_blob, &key_characteristics));
+
+        ASSERT_GT(key_blob.size(), 0U);
+        CheckBaseParams(key_characteristics);
+
+        AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
+
+        EXPECT_TRUE(crypto_params.Contains(TAG_ALGORITHM, Algorithm::RSA));
+        EXPECT_TRUE(crypto_params.Contains(TAG_KEY_SIZE, key_size))
+                << "Key size " << key_size << "missing";
+        EXPECT_TRUE(crypto_params.Contains(TAG_RSA_PUBLIC_EXPONENT, 65537U));
+
+        // Check the usage count limit tag appears in the authorizations.
+        AuthorizationSet auths;
+        for (auto& entry : key_characteristics) {
+            auths.push_back(AuthorizationSet(entry.authorizations));
+        }
+        EXPECT_TRUE(auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U))
+                << "key usage count limit " << 1U << " missing";
+
+        // Check the usage count limit tag also appears in the attestation.
         EXPECT_TRUE(verify_chain(cert_chain_));
         ASSERT_GT(cert_chain_.size(), 0);
 
@@ -658,6 +754,43 @@ TEST_P(NewKeyGenerationTest, Ecdsa) {
         EXPECT_TRUE(crypto_params.Contains(TAG_ALGORITHM, Algorithm::EC));
         EXPECT_TRUE(crypto_params.Contains(TAG_KEY_SIZE, key_size))
                 << "Key size " << key_size << "missing";
+
+        CheckedDeleteKey(&key_blob);
+    }
+}
+
+/*
+ * NewKeyGenerationTest.LimitedUsageEcdsa
+ *
+ * Verifies that KeyMint can generate all required EC key sizes with limited usage, and that the
+ * resulting keys have correct characteristics.
+ */
+TEST_P(NewKeyGenerationTest, LimitedUsageEcdsa) {
+    for (auto key_size : ValidKeySizes(Algorithm::EC)) {
+        vector<uint8_t> key_blob;
+        vector<KeyCharacteristics> key_characteristics;
+        ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                     .EcdsaSigningKey(key_size)
+                                                     .Digest(Digest::NONE)
+                                                     .Authorization(TAG_USAGE_COUNT_LIMIT, 1),
+                                             &key_blob, &key_characteristics));
+
+        ASSERT_GT(key_blob.size(), 0U);
+        CheckBaseParams(key_characteristics);
+
+        AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
+
+        EXPECT_TRUE(crypto_params.Contains(TAG_ALGORITHM, Algorithm::EC));
+        EXPECT_TRUE(crypto_params.Contains(TAG_KEY_SIZE, key_size))
+                << "Key size " << key_size << "missing";
+
+        // Check the usage count limit tag appears in the authorizations.
+        AuthorizationSet auths;
+        for (auto& entry : key_characteristics) {
+            auths.push_back(AuthorizationSet(entry.authorizations));
+        }
+        EXPECT_TRUE(auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U))
+                << "key usage count limit " << 1U << " missing";
 
         CheckedDeleteKey(&key_blob);
     }
@@ -772,6 +905,44 @@ TEST_P(NewKeyGenerationTest, Hmac) {
         EXPECT_TRUE(crypto_params.Contains(TAG_ALGORITHM, Algorithm::HMAC));
         EXPECT_TRUE(crypto_params.Contains(TAG_KEY_SIZE, key_size))
                 << "Key size " << key_size << "missing";
+
+        CheckedDeleteKey(&key_blob);
+    }
+}
+
+/*
+ * NewKeyGenerationTest.LimitedUsageHmac
+ *
+ * Verifies that KeyMint supports all required digests with limited usage Hmac, and that the
+ * resulting keys have correct characteristics.
+ */
+TEST_P(NewKeyGenerationTest, LimitedUsageHmac) {
+    for (auto digest : ValidDigests(false /* withNone */, true /* withMD5 */)) {
+        vector<uint8_t> key_blob;
+        vector<KeyCharacteristics> key_characteristics;
+        constexpr size_t key_size = 128;
+        ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                     .HmacKey(key_size)
+                                                     .Digest(digest)
+                                                     .Authorization(TAG_MIN_MAC_LENGTH, 128)
+                                                     .Authorization(TAG_USAGE_COUNT_LIMIT, 1),
+                                             &key_blob, &key_characteristics));
+
+        ASSERT_GT(key_blob.size(), 0U);
+        CheckBaseParams(key_characteristics);
+
+        AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
+        EXPECT_TRUE(crypto_params.Contains(TAG_ALGORITHM, Algorithm::HMAC));
+        EXPECT_TRUE(crypto_params.Contains(TAG_KEY_SIZE, key_size))
+                << "Key size " << key_size << "missing";
+
+        // Check the usage count limit tag appears in the authorizations.
+        AuthorizationSet auths;
+        for (auto& entry : key_characteristics) {
+            auths.push_back(AuthorizationSet(entry.authorizations));
+        }
+        EXPECT_TRUE(auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U))
+                << "key usage count limit " << 1U << " missing";
 
         CheckedDeleteKey(&key_blob);
     }
@@ -4151,7 +4322,7 @@ TEST_P(MaxOperationsTest, TestLimitAes) {
 }
 
 /*
- * MaxOperationsTest.TestLimitAes
+ * MaxOperationsTest.TestLimitRsa
  *
  * Verifies that the max uses per boot tag works correctly with RSA keys.
  */
@@ -4177,6 +4348,186 @@ TEST_P(MaxOperationsTest, TestLimitRsa) {
 }
 
 INSTANTIATE_KEYMINT_AIDL_TEST(MaxOperationsTest);
+
+typedef KeyMintAidlTestBase UsageCountLimitTest;
+
+/*
+ * UsageCountLimitTest.TestSingleUseAes
+ *
+ * Verifies that the usage count limit tag = 1 works correctly with AES keys.
+ */
+TEST_P(UsageCountLimitTest, TestSingleUseAes) {
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .AesEncryptionKey(128)
+                                                 .EcbMode()
+                                                 .Padding(PaddingMode::NONE)
+                                                 .Authorization(TAG_USAGE_COUNT_LIMIT, 1)));
+
+    // Check the usage count limit tag appears in the authorizations.
+    AuthorizationSet auths;
+    for (auto& entry : key_characteristics_) {
+        auths.push_back(AuthorizationSet(entry.authorizations));
+    }
+    EXPECT_TRUE(auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U))
+            << "key usage count limit " << 1U << " missing";
+
+    string message = "1234567890123456";
+    auto params = AuthorizationSetBuilder().EcbMode().Padding(PaddingMode::NONE);
+
+    AuthorizationSet hardware_auths = HwEnforcedAuthorizations(key_characteristics_);
+    AuthorizationSet keystore_auths =
+            SecLevelAuthorizations(key_characteristics_, SecurityLevel::KEYSTORE);
+
+    // First usage of AES key should work.
+    EncryptMessage(message, params);
+
+    if (hardware_auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U)) {
+        // Usage count limit tag is enforced by hardware. After using the key, the key blob
+        // must be invalidated from secure storage (such as RPMB partition).
+        EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB, Begin(KeyPurpose::ENCRYPT, params));
+    } else {
+        // Usage count limit tag is enforced by keystore, keymint does nothing.
+        EXPECT_TRUE(keystore_auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U));
+        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, params));
+    }
+}
+
+/*
+ * UsageCountLimitTest.TestLimitedUseAes
+ *
+ * Verifies that the usage count limit tag > 1 works correctly with AES keys.
+ */
+TEST_P(UsageCountLimitTest, TestLimitedUseAes) {
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .AesEncryptionKey(128)
+                                                 .EcbMode()
+                                                 .Padding(PaddingMode::NONE)
+                                                 .Authorization(TAG_USAGE_COUNT_LIMIT, 3)));
+
+    // Check the usage count limit tag appears in the authorizations.
+    AuthorizationSet auths;
+    for (auto& entry : key_characteristics_) {
+        auths.push_back(AuthorizationSet(entry.authorizations));
+    }
+    EXPECT_TRUE(auths.Contains(TAG_USAGE_COUNT_LIMIT, 3U))
+            << "key usage count limit " << 3U << " missing";
+
+    string message = "1234567890123456";
+    auto params = AuthorizationSetBuilder().EcbMode().Padding(PaddingMode::NONE);
+
+    AuthorizationSet hardware_auths = HwEnforcedAuthorizations(key_characteristics_);
+    AuthorizationSet keystore_auths =
+            SecLevelAuthorizations(key_characteristics_, SecurityLevel::KEYSTORE);
+
+    EncryptMessage(message, params);
+    EncryptMessage(message, params);
+    EncryptMessage(message, params);
+
+    if (hardware_auths.Contains(TAG_USAGE_COUNT_LIMIT, 3U)) {
+        // Usage count limit tag is enforced by hardware. After using the key, the key blob
+        // must be invalidated from secure storage (such as RPMB partition).
+        EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB, Begin(KeyPurpose::ENCRYPT, params));
+    } else {
+        // Usage count limit tag is enforced by keystore, keymint does nothing.
+        EXPECT_TRUE(keystore_auths.Contains(TAG_USAGE_COUNT_LIMIT, 3U));
+        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, params));
+    }
+}
+
+/*
+ * UsageCountLimitTest.TestSingleUseRsa
+ *
+ * Verifies that the usage count limit tag = 1 works correctly with RSA keys.
+ */
+TEST_P(UsageCountLimitTest, TestSingleUseRsa) {
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .RsaSigningKey(1024, 65537)
+                                                 .NoDigestOrPadding()
+                                                 .Authorization(TAG_USAGE_COUNT_LIMIT, 1)));
+
+    // Check the usage count limit tag appears in the authorizations.
+    AuthorizationSet auths;
+    for (auto& entry : key_characteristics_) {
+        auths.push_back(AuthorizationSet(entry.authorizations));
+    }
+    EXPECT_TRUE(auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U))
+            << "key usage count limit " << 1U << " missing";
+
+    string message = "1234567890123456";
+    auto params = AuthorizationSetBuilder().NoDigestOrPadding();
+
+    AuthorizationSet hardware_auths = HwEnforcedAuthorizations(key_characteristics_);
+    AuthorizationSet keystore_auths =
+            SecLevelAuthorizations(key_characteristics_, SecurityLevel::KEYSTORE);
+
+    // First usage of RSA key should work.
+    SignMessage(message, params);
+
+    if (hardware_auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U)) {
+        // Usage count limit tag is enforced by hardware. After using the key, the key blob
+        // must be invalidated from secure storage (such as RPMB partition).
+        EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB, Begin(KeyPurpose::SIGN, params));
+    } else {
+        // Usage count limit tag is enforced by keystore, keymint does nothing.
+        EXPECT_TRUE(keystore_auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U));
+        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::SIGN, params));
+    }
+}
+
+/*
+ * UsageCountLimitTest.TestLimitUseRsa
+ *
+ * Verifies that the usage count limit tag > 1 works correctly with RSA keys.
+ */
+TEST_P(UsageCountLimitTest, TestLimitUseRsa) {
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .RsaSigningKey(1024, 65537)
+                                                 .NoDigestOrPadding()
+                                                 .Authorization(TAG_USAGE_COUNT_LIMIT, 3)));
+
+    // Check the usage count limit tag appears in the authorizations.
+    AuthorizationSet auths;
+    for (auto& entry : key_characteristics_) {
+        auths.push_back(AuthorizationSet(entry.authorizations));
+    }
+    EXPECT_TRUE(auths.Contains(TAG_USAGE_COUNT_LIMIT, 3U))
+            << "key usage count limit " << 3U << " missing";
+
+    string message = "1234567890123456";
+    auto params = AuthorizationSetBuilder().NoDigestOrPadding();
+
+    AuthorizationSet hardware_auths = HwEnforcedAuthorizations(key_characteristics_);
+    AuthorizationSet keystore_auths =
+            SecLevelAuthorizations(key_characteristics_, SecurityLevel::KEYSTORE);
+
+    SignMessage(message, params);
+    SignMessage(message, params);
+    SignMessage(message, params);
+
+    if (hardware_auths.Contains(TAG_USAGE_COUNT_LIMIT, 3U)) {
+        // Usage count limit tag is enforced by hardware. After using the key, the key blob
+        // must be invalidated from secure storage (such as RPMB partition).
+        EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB, Begin(KeyPurpose::SIGN, params));
+    } else {
+        // Usage count limit tag is enforced by keystore, keymint does nothing.
+        EXPECT_TRUE(keystore_auths.Contains(TAG_USAGE_COUNT_LIMIT, 3U));
+        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::SIGN, params));
+    }
+}
+
+INSTANTIATE_KEYMINT_AIDL_TEST(UsageCountLimitTest);
 
 typedef KeyMintAidlTestBase AddEntropyTest;
 
@@ -4423,6 +4774,121 @@ TEST_P(TransportLimitTest, LargeFinishInput) {
 }
 
 INSTANTIATE_KEYMINT_AIDL_TEST(TransportLimitTest);
+
+typedef KeyMintAidlTestBase KeyAgreementTest;
+
+int CurveToOpenSslCurveName(EcCurve curve) {
+    switch (curve) {
+        case EcCurve::P_224:
+            return NID_secp224r1;
+        case EcCurve::P_256:
+            return NID_X9_62_prime256v1;
+        case EcCurve::P_384:
+            return NID_secp384r1;
+        case EcCurve::P_521:
+            return NID_secp521r1;
+    }
+}
+
+/*
+ * KeyAgreementTest.Ecdh
+ *
+ * Verifies that ECDH works for all curves
+ */
+TEST_P(KeyAgreementTest, Ecdh) {
+    // Because it's possible to use this API with keys on different curves, we
+    // check all N^2 combinations where N is the number of supported
+    // curves.
+    //
+    // This is not a big deal as N is 4 so we only do 16 runs. If we end up with a
+    // lot more curves we can be smart about things and just pick |otherCurve| so
+    // it's not |curve| and that way we end up with only 2*N runs
+    //
+    for (auto curve : ValidCurves()) {
+        for (auto localCurve : ValidCurves()) {
+            // Generate EC key locally (with access to private key material)
+            auto ecKey = EC_KEY_Ptr(EC_KEY_new());
+            int curveName = CurveToOpenSslCurveName(localCurve);
+            auto group = EC_GROUP_Ptr(EC_GROUP_new_by_curve_name(curveName));
+            ASSERT_NE(group, nullptr);
+            ASSERT_EQ(EC_KEY_set_group(ecKey.get(), group.get()), 1);
+            ASSERT_EQ(EC_KEY_generate_key(ecKey.get()), 1);
+            auto pkey = EVP_PKEY_Ptr(EVP_PKEY_new());
+            ASSERT_EQ(EVP_PKEY_set1_EC_KEY(pkey.get(), ecKey.get()), 1);
+
+            // Get encoded form of the public part of the locally generated key...
+            unsigned char* p = nullptr;
+            int encodedPublicKeySize = i2d_PUBKEY(pkey.get(), &p);
+            ASSERT_GT(encodedPublicKeySize, 0);
+            vector<uint8_t> encodedPublicKey(
+                    reinterpret_cast<const uint8_t*>(p),
+                    reinterpret_cast<const uint8_t*>(p + encodedPublicKeySize));
+            OPENSSL_free(p);
+
+            // Generate EC key in KeyMint (only access to public key material)
+            vector<uint8_t> challenge = {0x41, 0x42};
+            EXPECT_EQ(
+                    ErrorCode::OK,
+                    GenerateKey(AuthorizationSetBuilder()
+                                        .Authorization(TAG_NO_AUTH_REQUIRED)
+                                        .Authorization(TAG_EC_CURVE, curve)
+                                        .Authorization(TAG_PURPOSE, KeyPurpose::AGREE_KEY)
+                                        .Authorization(TAG_ALGORITHM, Algorithm::EC)
+                                        .Authorization(TAG_ATTESTATION_APPLICATION_ID, {0x61, 0x62})
+                                        .Authorization(TAG_ATTESTATION_CHALLENGE, challenge)))
+                    << "Failed to generate key";
+            ASSERT_GT(cert_chain_.size(), 0);
+            X509_Ptr kmKeyCert(parse_cert_blob(cert_chain_[0].encodedCertificate));
+            ASSERT_NE(kmKeyCert, nullptr);
+            // Check that keyAgreement (bit 4) is set in KeyUsage
+            EXPECT_TRUE((X509_get_key_usage(kmKeyCert.get()) & X509v3_KU_KEY_AGREEMENT) != 0);
+            auto kmPkey = EVP_PKEY_Ptr(X509_get_pubkey(kmKeyCert.get()));
+            ASSERT_NE(kmPkey, nullptr);
+            if (dump_Attestations) {
+                for (size_t n = 0; n < cert_chain_.size(); n++) {
+                    std::cout << bin2hex(cert_chain_[n].encodedCertificate) << std::endl;
+                }
+            }
+
+            // Now that we have the two keys, we ask KeyMint to perform ECDH...
+            if (curve != localCurve) {
+                // If the keys are using different curves KeyMint should fail with
+                // ErrorCode:INVALID_ARGUMENT. Check that.
+                EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::AGREE_KEY, AuthorizationSetBuilder()));
+                string ZabFromKeyMintStr;
+                EXPECT_EQ(ErrorCode::INVALID_ARGUMENT,
+                          Finish(string(encodedPublicKey.begin(), encodedPublicKey.end()),
+                                 &ZabFromKeyMintStr));
+
+            } else {
+                // Otherwise if the keys are using the same curve, it should work.
+                EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::AGREE_KEY, AuthorizationSetBuilder()));
+                string ZabFromKeyMintStr;
+                EXPECT_EQ(ErrorCode::OK,
+                          Finish(string(encodedPublicKey.begin(), encodedPublicKey.end()),
+                                 &ZabFromKeyMintStr));
+                vector<uint8_t> ZabFromKeyMint(ZabFromKeyMintStr.begin(), ZabFromKeyMintStr.end());
+
+                // Perform local ECDH between the two keys so we can check if we get the same Zab..
+                auto ctx = EVP_PKEY_CTX_Ptr(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+                ASSERT_NE(ctx, nullptr);
+                ASSERT_EQ(EVP_PKEY_derive_init(ctx.get()), 1);
+                ASSERT_EQ(EVP_PKEY_derive_set_peer(ctx.get(), kmPkey.get()), 1);
+                size_t ZabFromTestLen = 0;
+                ASSERT_EQ(EVP_PKEY_derive(ctx.get(), nullptr, &ZabFromTestLen), 1);
+                vector<uint8_t> ZabFromTest;
+                ZabFromTest.resize(ZabFromTestLen);
+                ASSERT_EQ(EVP_PKEY_derive(ctx.get(), ZabFromTest.data(), &ZabFromTestLen), 1);
+
+                EXPECT_EQ(ZabFromKeyMint, ZabFromTest);
+            }
+
+            CheckedDeleteKey();
+        }
+    }
+}
+
+INSTANTIATE_KEYMINT_AIDL_TEST(KeyAgreementTest);
 
 }  // namespace aidl::android::hardware::security::keymint::test
 
