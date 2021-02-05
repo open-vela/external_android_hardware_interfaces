@@ -284,9 +284,6 @@ struct SetupDataCallResult {
      * retry back-off time in milliseconds. Negative value indicates network does not give any
      * suggestion. 0 indicates retry should be performed immediately. 0x7fffffffffffffff indicates
      * the device should not retry data setup anymore.
-     *
-     * During this time, no calls to IRadio@1.6::SetupDataCall for this APN will be made unless
-     * IRadioIndication@1.6::unthrottleApn is sent with the same APN.
      */
     int64_t suggestedRetryTime;
 
@@ -418,8 +415,7 @@ struct LinkCapacityEstimate {
     * This bandwidth estimate shall be the estimated maximum sustainable link bandwidth
     * (as would be measured at the Upper PDCP or SNDCP SAP). This is valid only
     * in if device is connected to both primary and secodary in dual connected
-    * mode. This must be filled with -1 if secondary is not connected or if
-    * modem does not support this feature.
+    * mode. This must be filled with -1 if secondary is not connected.
     */
    uint32_t secondaryDownlinkCapacityKbps;
 
@@ -428,8 +424,7 @@ struct LinkCapacityEstimate {
     * This bandwidth estimate shall be the estimated
     * maximum sustainable link bandwidth (as would be measured at the Upper PDCP or SNDCP SAP).
     * This is valid only in if device is connected to both primary and secodary in dual connected
-    * mode.This must be filled with -1 if secondary is not connected or if modem
-    * does not support this feature.
+    * mode.This must be filled with -1 if secondary is not connected.
     */
    uint32_t secondaryUplinkCapacityKbps;
 };
@@ -737,6 +732,14 @@ struct RegStateResult {
              */
             NrVopsInfo nrVopsInfo;
         } ngranInfo;
+
+        struct GeranRegistrationInfo {
+            /**
+             * True if the dual transfer mode is supported.
+             * Refer to 3GPP TS 44.108 section 3.4.25.3
+             */
+            bool dtmSupported;
+        } geranInfo;
     } accessTechnologySpecificInfo;
 };
 
@@ -747,6 +750,73 @@ struct Call {
      * Reference: 3GPP TS 24.008 section 10.5.4.21b
      */
     string forwardedNumber;
+};
+
+struct PhysicalChannelConfig {
+    /** Connection status for cell. Valid values are PRIMARY_SERVING and SECONDARY_SERVING */
+    CellConnectionStatus status;
+
+    /** The radio technology for this physical channel */
+    RadioTechnology rat;
+
+    /** Downlink Absolute Radio Frequency Channel Number */
+    int32_t downlinkChannelNumber;
+
+    /** Uplink Absolute Radio Frequency Channel Number */
+    int32_t uplinkChannelNumber;
+
+    /** Downlink cell bandwidth, in kHz */
+    int32_t cellBandwidthDownlink;
+
+    /** Uplink cell bandwidth, in kHz */
+    int32_t cellBandwidthUplink;
+
+    /**
+     * A list of data calls mapped to this physical channel. The context id must match the cid of
+     * @1.5::SetupDataCallResult. An empty list means the physical channel has no data call mapped
+     * to it.
+     */
+    vec<int32_t> contextIds;
+
+    /**
+     * The physical cell identifier for this cell.
+     *
+     * In UTRAN, this value is primary scrambling code. The range is [0, 511].
+     * Reference: 3GPP TS 25.213 section 5.2.2.
+     *
+     * In EUTRAN, this value is physical layer cell identity. The range is [0, 503].
+     * Reference: 3GPP TS 36.211 section 6.11.
+     *
+     * In 5G RAN, this value is physical layer cell identity. The range is [0, 1007].
+     * Reference: 3GPP TS 38.211 section 7.4.2.1.
+     */
+    uint32_t physicalCellId;
+
+    /**
+     * The frequency band to scan.
+     */
+    safe_union Band {
+        /** Valid only if radioAccessNetwork = GERAN. */
+        GeranBands geranBand;
+        /** Valid only if radioAccessNetwork = UTRAN. */
+        UtranBands utranBand;
+        /** Valid only if radioAccessNetwork = EUTRAN. */
+        EutranBands eutranBand;
+        /** Valid only if radioAccessNetwork = NGRAN. */
+        NgranBands ngranBand;
+    } band;
+};
+
+/**
+ * Extended from @1.5 NgranBands
+ * IRadio 1.6 supports NGRAN bands up to V16.5.0
+ */
+enum NgranBands  : @1.5::NgranBands {
+    /** 3GPP TS 38.101-1, Table 5.2-1: FR1 bands */
+    BAND_26 = 26,
+    BAND_46 = 46,
+    BAND_53 = 53,
+    BAND_96 = 96,
 };
 
 /**
@@ -824,71 +894,4 @@ enum DataCallFailCause : @1.4::DataCallFailCause {
      * Data call fail due to the slice not being allowed for the data call.
      */
     SLICE_REJECTED = 0x8CC,
-};
-
-struct PhysicalChannelConfig {
-    /** Connection status for cell. Valid values are PRIMARY_SERVING and SECONDARY_SERVING */
-    CellConnectionStatus status;
-
-    /** The radio technology for this physical channel */
-    RadioTechnology rat;
-
-    /** Downlink Absolute Radio Frequency Channel Number */
-    int32_t downlinkChannelNumber;
-
-    /** Uplink Absolute Radio Frequency Channel Number */
-    int32_t uplinkChannelNumber;
-
-    /** Downlink cell bandwidth, in kHz */
-    int32_t cellBandwidthDownlink;
-
-    /** Uplink cell bandwidth, in kHz */
-    int32_t cellBandwidthUplink;
-
-    /**
-     * A list of data calls mapped to this physical channel. The context id must match the cid of
-     * @1.5::SetupDataCallResult. An empty list means the physical channel has no data call mapped
-     * to it.
-     */
-    vec<int32_t> contextIds;
-
-    /**
-     * The physical cell identifier for this cell.
-     *
-     * In UTRAN, this value is primary scrambling code. The range is [0, 511].
-     * Reference: 3GPP TS 25.213 section 5.2.2.
-     *
-     * In EUTRAN, this value is physical layer cell identity. The range is [0, 503].
-     * Reference: 3GPP TS 36.211 section 6.11.
-     *
-     * In 5G RAN, this value is physical layer cell identity. The range is [0, 1007].
-     * Reference: 3GPP TS 38.211 section 7.4.2.1.
-     */
-    uint32_t physicalCellId;
-
-    /**
-     * The frequency band to scan.
-     */
-    safe_union Band {
-        /** Valid only if radioAccessNetwork = GERAN. */
-        GeranBands geranBand;
-        /** Valid only if radioAccessNetwork = UTRAN. */
-        UtranBands utranBand;
-        /** Valid only if radioAccessNetwork = EUTRAN. */
-        EutranBands eutranBand;
-        /** Valid only if radioAccessNetwork = NGRAN. */
-        NgranBands ngranBand;
-    } band;
-};
-
-/**
- * Extended from @1.5 NgranBands
- * IRadio 1.6 supports NGRAN bands up to V16.5.0
- */
-enum NgranBands  : @1.5::NgranBands {
-    /** 3GPP TS 38.101-1, Table 5.2-1: FR1 bands */
-    BAND_26 = 26,
-    BAND_46 = 46,
-    BAND_53 = 53,
-    BAND_96 = 96,
 };

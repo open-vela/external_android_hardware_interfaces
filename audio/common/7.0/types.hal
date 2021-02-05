@@ -118,9 +118,28 @@ typedef string AudioChannelMask;
  * Base configuration attributes applicable to any stream of audio.
  */
 struct AudioConfigBase {
-    AudioFormat format;                 // empty means 'unspecified'
-    uint32_t sampleRateHz;              // 0 means 'unspecified'
-    AudioChannelMask channelMask;       // empty means 'unspecified'
+    AudioFormat format;
+    uint32_t sampleRateHz;
+    AudioChannelMask channelMask;
+};
+
+/**
+ * Base configuration attributes applicable to any stream of audio.
+ * Any attribute may be left unspecified.
+ */
+struct AudioConfigBaseOptional {
+    safe_union Format {
+        Monostate unspecified;
+        AudioFormat value;
+    } format;
+    safe_union SampleRate {
+        Monostate unspecified;
+        uint32_t value;
+    } sampleRateHz;
+    safe_union ChannelMask {
+        Monostate unspecified;
+        AudioChannelMask value;
+    } channelMask;
 };
 
 /**
@@ -290,15 +309,15 @@ typedef string AudioTag;
 struct PlaybackTrackMetadata {
     AudioUsage usage;
     AudioContentType contentType;
-    /** Tags from AudioTrack audio atttributes */
-    vec<AudioTag> tags;
-    AudioChannelMask channelMask;
     /**
      * Positive linear gain applied to the track samples. 0 being muted and 1 is no attenuation,
      * 2 means double amplification...
      * Must not be negative.
      */
     float gain;
+    AudioChannelMask channelMask;
+    /** Tags from AudioTrack audio atttributes */
+    vec<AudioTag> tags;
 };
 
 /** Metadatas of the source of a StreamOut. */
@@ -309,9 +328,6 @@ struct SourceMetadata {
 /** Metadata of a record track for a StreamIn. */
 struct RecordTrackMetadata {
     AudioSource source;
-    /** Tags from AudioTrack audio atttributes */
-    vec<AudioTag> tags;
-    AudioChannelMask channelMask;
     /**
      * Positive linear gain applied to the track samples. 0 being muted and 1 is no attenuation,
      * 2 means double amplification...
@@ -325,6 +341,9 @@ struct RecordTrackMetadata {
         Monostate unspecified;
         DeviceAddress device;
     } destination;
+    AudioChannelMask channelMask;
+    /** Tags from AudioTrack audio atttributes */
+    vec<AudioTag> tags;
 };
 
 /** Metadatas of the sink of a StreamIn. */
@@ -439,11 +458,9 @@ struct AudioPortConfig {
      */
     AudioPortHandle id;
     /**
-     * Basic parameters: sampling rate, format, channel mask. Only some of the
-     * parameters (or none) may be set. See the documentation of the
-     * AudioConfigBase struct.
+     * Basic parameters: sampling rate, format, channel mask.
      */
-    AudioConfigBase base;
+    AudioConfigBaseOptional base;
     /** Associated gain control. */
     safe_union OptionalGain {
         Monostate unspecified;
