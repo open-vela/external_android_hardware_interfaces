@@ -63,10 +63,5 @@ parcelable SensorProps {
      * android.hardware.DisplayManager#getDisplay Android API.
      */
     int displayId;
-
-    /**
-     * Specifies whether or not the implementation supports ISession#detectInteraction.
-     */
-    boolean supportsDetectInteraction;
 }
 
