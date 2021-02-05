@@ -56,7 +56,6 @@ struct StreamIn : public IStreamIn {
     Return<uint64_t> getFrameSize() override;
     Return<uint64_t> getFrameCount() override;
     Return<uint64_t> getBufferSize() override;
-#if MAJOR_VERSION <= 6
     Return<uint32_t> getSampleRate() override;
 #if MAJOR_VERSION == 2
     Return<void> getSupportedSampleRates(getSupportedSampleRates_cb _hidl_cb) override;
@@ -70,10 +69,6 @@ struct StreamIn : public IStreamIn {
     Return<AudioFormat> getFormat() override;
     Return<void> getSupportedFormats(getSupportedFormats_cb _hidl_cb) override;
     Return<Result> setFormat(AudioFormat format) override;
-#else
-    Return<void> getSupportedProfiles(getSupportedProfiles_cb _hidl_cb) override;
-    Return<Result> setAudioProperties(const AudioConfigBaseOptional& config) override;
-#endif  // MAJOR_VERSION <= 6
     Return<void> getAudioProperties(getAudioProperties_cb _hidl_cb) override;
     Return<Result> addEffect(uint64_t effectId) override;
     Return<Result> removeEffect(uint64_t effectId) override;
@@ -114,13 +109,9 @@ struct StreamIn : public IStreamIn {
     Return<void> createMmapBuffer(int32_t minSizeFrames, createMmapBuffer_cb _hidl_cb) override;
     Return<void> getMmapPosition(getMmapPosition_cb _hidl_cb) override;
 #if MAJOR_VERSION >= 4
-#if MAJOR_VERSION <= 6
     Return<void> updateSinkMetadata(const SinkMetadata& sinkMetadata) override;
-#else
-    Return<Result> updateSinkMetadata(const SinkMetadata& sinkMetadata) override;
-#endif
     Return<void> getActiveMicrophones(getActiveMicrophones_cb _hidl_cb) override;
-#endif  // MAJOR_VERSION >= 4
+#endif
 #if MAJOR_VERSION >= 5
     Return<Result> setMicrophoneDirection(MicrophoneDirection direction) override;
     Return<Result> setMicrophoneFieldDimension(float zoom) override;
@@ -128,14 +119,7 @@ struct StreamIn : public IStreamIn {
     static Result getCapturePositionImpl(audio_stream_in_t* stream, uint64_t* frames,
                                          uint64_t* time);
 
-  private:
-#if MAJOR_VERSION >= 4
-    Result doUpdateSinkMetadata(const SinkMetadata& sinkMetadata);
-#if MAJOR_VERSION >= 7
-    Result doUpdateSinkMetadataV7(const SinkMetadata& sinkMetadata);
-#endif
-#endif  // MAJOR_VERSION >= 4
-
+   private:
     const sp<Device> mDevice;
     audio_stream_in_t* mStream;
     const sp<Stream> mStreamCommon;

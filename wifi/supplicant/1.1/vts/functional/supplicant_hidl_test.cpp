@@ -33,12 +33,11 @@ using ::android::hardware::wifi::supplicant::V1_0::SupplicantStatus;
 using ::android::hardware::wifi::supplicant::V1_0::SupplicantStatusCode;
 using ::android::hardware::wifi::supplicant::V1_0::IfaceType;
 using ::android::hardware::wifi::supplicant::V1_1::ISupplicant;
-using ::android::hardware::wifi::V1_0::IWifi;
 using ::android::sp;
 
-class SupplicantHidlTest : public SupplicantHidlTestBaseV1_1 {
+class SupplicantHidlTest : public SupplicantHidlTestBase {
    public:
-    virtual void SetUp() override { SupplicantHidlTestBaseV1_1::SetUp(); }
+    virtual void SetUp() override { SupplicantHidlTestBase::SetUp(); }
 
    protected:
     std::string getWlan0IfaceName() {
@@ -75,7 +74,7 @@ TEST_P(SupplicantHidlTest, AddStaInterface) {
  * AddP2pInterface
  */
 TEST_P(SupplicantHidlTest, AddP2pInterface) {
-    if (!isP2pOn_) return;
+    if (isP2pOn_) return;
     ISupplicant::IfaceInfo iface_info;
     iface_info.name = getP2pIfaceName();
     iface_info.type = IfaceType::P2P;
@@ -115,7 +114,7 @@ TEST_P(SupplicantHidlTest, RemoveStaInterface) {
  * RemoveP2pInterface
  */
 TEST_P(SupplicantHidlTest, RemoveP2pInterface) {
-    if (!isP2pOn_) return;
+    if (isP2pOn_) return;
     ISupplicant::IfaceInfo iface_info;
     iface_info.name = getP2pIfaceName();
     iface_info.type = IfaceType::P2P;
@@ -140,12 +139,20 @@ TEST_P(SupplicantHidlTest, RemoveP2pInterface) {
  */
 TEST_P(SupplicantHidlTest, Terminate) { supplicant_->terminate(); }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantHidlTest);
+static std::vector<std::string> get_wifi_instances() {
+    std::vector<std::string> instances =
+        android::hardware::getAllHalInstanceNames(
+            android::hardware::wifi::V1_0::IWifi::descriptor);
+    // Also test when wifi instance is not set.
+    instances.push_back("");
+
+    return instances;
+}
+
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantHidlTest,
     testing::Combine(
-        testing::ValuesIn(
-            android::hardware::getAllHalInstanceNames(IWifi::descriptor)),
+        testing::ValuesIn(get_wifi_instances()),
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(
             android::hardware::wifi::supplicant::V1_1::ISupplicant::
                 descriptor))),

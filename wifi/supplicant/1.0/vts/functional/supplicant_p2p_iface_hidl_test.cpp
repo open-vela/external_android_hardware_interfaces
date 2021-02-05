@@ -71,13 +71,21 @@ constexpr uint32_t kTestExtListenInterval = 400;
 constexpr SupplicantNetworkId kTestNetworkId = 5;
 }  // namespace
 
-class SupplicantP2pIfaceHidlTest : public SupplicantHidlTestBaseV1_0 {
+class SupplicantP2pIfaceHidlTest
+    : public ::testing::TestWithParam<std::tuple<std::string, std::string>> {
    public:
     virtual void SetUp() override {
-        SupplicantHidlTestBaseV1_0::SetUp();
-        if (!isP2pOn_) {
-            GTEST_SKIP() << "Wi-Fi Direct is not supported, skip this test.";
-        }
+        wifi_instance_name_ = std::get<0>(GetParam());
+        supplicant_instance_name_ = std::get<1>(GetParam());
+        isP2pOn_ =
+            testing::deviceSupportsFeature("android.hardware.wifi.direct");
+        // Stop Framework
+        std::system("/system/bin/stop");
+        stopSupplicant(wifi_instance_name_);
+        startSupplicantAndWaitForHidlService(wifi_instance_name_,
+                                             supplicant_instance_name_);
+        supplicant_ = getSupplicant(supplicant_instance_name_, isP2pOn_);
+        EXPECT_TRUE(turnOnExcessiveLogging(supplicant_));
         p2p_iface_ = getSupplicantP2pIface(supplicant_);
         ASSERT_NE(p2p_iface_.get(), nullptr);
 
@@ -85,11 +93,22 @@ class SupplicantP2pIfaceHidlTest : public SupplicantHidlTestBaseV1_0 {
         memcpy(peer_mac_addr_.data(), kTestPeerMacAddr, peer_mac_addr_.size());
     }
 
+    virtual void TearDown() override {
+        stopSupplicant(wifi_instance_name_);
+        // Start Framework
+        std::system("/system/bin/start");
+    }
+
    protected:
+    bool isP2pOn_ = false;
+    sp<ISupplicant> supplicant_;
+    // ISupplicantP2pIface object used for all tests in this fixture.
     sp<ISupplicantP2pIface> p2p_iface_;
     // MAC address to use for various tests.
     std::array<uint8_t, 6> mac_addr_;
     std::array<uint8_t, 6> peer_mac_addr_;
+    std::string wifi_instance_name_;
+    std::string supplicant_instance_name_;
 };
 
 class IfaceCallback : public ISupplicantP2pIfaceCallback {
@@ -182,8 +201,8 @@ class IfaceCallback : public ISupplicantP2pIfaceCallback {
  * successfully created.
  */
 TEST_P(SupplicantP2pIfaceHidlTest, Create) {
-    stopSupplicant(wifi_v1_0_instance_name_);
-    startSupplicantAndWaitForHidlService(wifi_v1_0_instance_name_,
+    stopSupplicant(wifi_instance_name_);
+    startSupplicantAndWaitForHidlService(wifi_instance_name_,
                                          supplicant_instance_name_);
     sp<ISupplicantP2pIface> p2p_iface = getSupplicantP2pIface(
         getSupplicant(supplicant_instance_name_, isP2pOn_));
@@ -282,17 +301,8 @@ TEST_P(SupplicantP2pIfaceHidlTest, Connect) {
         mac_addr_, ISupplicantP2pIface::WpsProvisionMethod::PBC,
         kTestConnectPin, false, false, kTestConnectGoIntent,
         [](const SupplicantStatus& status, const hidl_string& /* pin */) {
-            /*
-             * Before R, auto-join is not enabled and it is not going to work
-             * with fake values. After enabling auto-join, it will succeed
-             * always.
-             */
-            LOG(INFO) << "ISupplicantP2pIface::connect() ret: "
-                      << toString(status);
-            if (SupplicantStatusCode::FAILURE_UNKNOWN != status.code &&
-                SupplicantStatusCode::SUCCESS != status.code) {
-                FAIL();
-            }
+            // This is not going to work with fake values.
+            EXPECT_EQ(SupplicantStatusCode::FAILURE_UNKNOWN, status.code);
         });
 }
 
@@ -304,26 +314,12 @@ TEST_P(SupplicantP2pIfaceHidlTest, CancelConnect) {
         mac_addr_, ISupplicantP2pIface::WpsProvisionMethod::PBC,
         kTestConnectPin, false, false, kTestConnectGoIntent,
         [](const SupplicantStatus& status, const hidl_string& /* pin */) {
-            /*
-             * Before R, auto-join is not enabled and it is not going to work
-             * with fake values. After enabling auto-join, it will succeed
-             * always.
-             */
-            LOG(INFO) << "ISupplicantP2pIface::connect() ret: "
-                      << toString(status);
-            if (SupplicantStatusCode::FAILURE_UNKNOWN != status.code &&
-                SupplicantStatusCode::SUCCESS != status.code) {
-                FAIL();
-            }
+            // This is not going to work with fake values.
+            EXPECT_EQ(SupplicantStatusCode::FAILURE_UNKNOWN, status.code);
         });
 
     p2p_iface_->cancelConnect([](const SupplicantStatus& status) {
-        LOG(INFO) << "ISupplicantP2pIface::cancelConnect() ret: "
-                  << toString(status);
-        if (SupplicantStatusCode::FAILURE_UNKNOWN != status.code &&
-            SupplicantStatusCode::SUCCESS != status.code) {
-            FAIL();
-        }
+        EXPECT_EQ(SupplicantStatusCode::FAILURE_UNKNOWN, status.code);
     });
 }
 
@@ -651,7 +647,6 @@ TEST_P(SupplicantP2pIfaceHidlTest, SetWfdDeviceInfo) {
         HIDL_INVOKE(p2p_iface_, setWfdDeviceInfo, kTestWfdDeviceInfo).code);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantP2pIfaceHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantP2pIfaceHidlTest,
     testing::Combine(
