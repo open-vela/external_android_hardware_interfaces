@@ -30,10 +30,8 @@
 #include "vhal_v2_0/VehiclePropertyStore.h"
 
 #include "DefaultConfig.h"
-#include "EmulatedUserHal.h"
-#include "EmulatedVehicleConnector.h"
-#include "GeneratorHub.h"
 #include "VehicleEmulator.h"
+#include "FakeValueGenerator.h"
 
 namespace android {
 namespace hardware {
@@ -46,8 +44,7 @@ namespace impl {
 /** Implementation of VehicleHal that connected to emulator instead of real vehicle network. */
 class EmulatedVehicleHal : public EmulatedVehicleHalIface {
 public:
-    EmulatedVehicleHal(VehiclePropertyStore* propStore, VehicleHalClient* client,
-                       EmulatedUserHal* emulatedUserHal = nullptr);
+    EmulatedVehicleHal(VehiclePropertyStore* propStore);
     ~EmulatedVehicleHal() = default;
 
     //  Methods from VehicleHal
@@ -56,14 +53,12 @@ public:
     VehiclePropValuePtr get(const VehiclePropValue& requestedPropValue,
                             StatusCode* outStatus) override;
     StatusCode set(const VehiclePropValue& propValue) override;
-    StatusCode subscribe(int32_t property, float sampleRate) override;
+    StatusCode subscribe(int32_t property, int32_t areas, float sampleRate) override;
     StatusCode unsubscribe(int32_t property) override;
-    bool dump(const hidl_handle& fd, const hidl_vec<hidl_string>& options) override;
 
     //  Methods from EmulatedVehicleHalIface
     bool setPropertyFromVehicle(const VehiclePropValue& propValue) override;
     std::vector<VehiclePropValue> getAllProperties() const override;
-    void getAllPropertiesOverride();
 
 private:
     constexpr std::chrono::nanoseconds hertzToNanoseconds(float hz) const {
@@ -71,7 +66,7 @@ private:
     }
 
     StatusCode handleGenerateFakeDataRequest(const VehiclePropValue& request);
-    void onPropertyValue(const VehiclePropValue& value, bool updateStatus);
+    void onFakeValueGenerated(int32_t propId, float value);
 
     void onContinuousPropertyTimer(const std::vector<int32_t>& properties);
     bool isContinuousProperty(int32_t propId) const;
@@ -87,11 +82,7 @@ private:
     VehiclePropertyStore* mPropStore;
     std::unordered_set<int32_t> mHvacPowerProps;
     RecurrentTimer mRecurrentTimer;
-    VehicleHalClient* mVehicleClient;
-    bool mInEmulator;
-    bool mInitVhalValueOverride;
-    std::vector<VehiclePropValue> mVehiclePropertiesOverride;
-    EmulatedUserHal* mEmulatedUserHal;
+    FakeValueGenerator mFakeValueGenerator;
 };
 
 }  // impl

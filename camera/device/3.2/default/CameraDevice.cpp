@@ -40,11 +40,9 @@ CameraDevice::CameraDevice(
         mCameraDeviceNames(cameraDeviceNames) {
     mCameraIdInt = atoi(mCameraId.c_str());
     // Should not reach here as provider also validate ID
-    if (mCameraIdInt < 0) {
+    if (mCameraIdInt < 0 || mCameraIdInt >= module->getNumberOfCameras()) {
         ALOGE("%s: Invalid camera id: %s", __FUNCTION__, mCameraId.c_str());
         mInitFail = true;
-    } else if (mCameraIdInt >= mModule->getNumberOfCameras()) {
-        ALOGI("%s: Adding a new camera id: %s", __FUNCTION__, mCameraId.c_str());
     }
 
     mDeviceVersion = mModule->getDeviceVersion(mCameraIdInt);
@@ -101,7 +99,7 @@ Status CameraDevice::getHidlStatus(int status) {
 }
 
 // Methods from ::android::hardware::camera::device::V3_2::ICameraDevice follow.
-Return<void> CameraDevice::getResourceCost(ICameraDevice::getResourceCost_cb _hidl_cb)  {
+Return<void> CameraDevice::getResourceCost(getResourceCost_cb _hidl_cb)  {
     Status status = initStatus();
     CameraResourceCost resCost;
     if (status == Status::OK) {
@@ -141,8 +139,7 @@ Return<void> CameraDevice::getResourceCost(ICameraDevice::getResourceCost_cb _hi
     return Void();
 }
 
-Return<void> CameraDevice::getCameraCharacteristics(
-        ICameraDevice::getCameraCharacteristics_cb _hidl_cb)  {
+Return<void> CameraDevice::getCameraCharacteristics(getCameraCharacteristics_cb _hidl_cb)  {
     Status status = initStatus();
     CameraMetadata cameraCharacteristics;
     if (status == Status::OK) {
@@ -173,8 +170,7 @@ Return<Status> CameraDevice::setTorchMode(TorchMode mode)  {
     return status;
 }
 
-Return<void> CameraDevice::open(const sp<ICameraDeviceCallback>& callback,
-        ICameraDevice::open_cb _hidl_cb)  {
+Return<void> CameraDevice::open(const sp<ICameraDeviceCallback>& callback, open_cb _hidl_cb)  {
     Status status = initStatus();
     sp<CameraDeviceSession> session = nullptr;
 
@@ -264,7 +260,7 @@ Return<void> CameraDevice::open(const sp<ICameraDeviceCallback>& callback,
             session->getInterface()->interfaceChain([](
                 ::android::hardware::hidl_vec<::android::hardware::hidl_string> interfaceChain) {
                     ALOGV("Session interface chain:");
-                    for (const auto& iface : interfaceChain) {
+                    for (auto iface : interfaceChain) {
                         ALOGV("  %s", iface.c_str());
                     }
                 });

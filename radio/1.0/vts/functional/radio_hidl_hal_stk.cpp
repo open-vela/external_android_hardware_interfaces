@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <android-base/logging.h>
 #include <radio_hidl_hal_utils_v1_0.h>
 
 using namespace ::android::hardware::radio::V1_0;
@@ -22,9 +21,8 @@ using namespace ::android::hardware::radio::V1_0;
 /*
  * Test IRadio.sendEnvelope() for the response returned.
  */
-TEST_P(RadioHidlTest, sendEnvelope) {
-    LOG(DEBUG) << "sendEnvelope";
-    serial = GetRandomSerialNumber();
+TEST_F(RadioHidlTest, sendEnvelope) {
+    int serial = GetRandomSerialNumber();
 
     // Test with sending empty string
     std::string content = "";
@@ -36,20 +34,20 @@ TEST_P(RadioHidlTest, sendEnvelope) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
-                                     {RadioError::NONE, RadioError::INVALID_ARGUMENTS,
-                                      RadioError::MODEM_ERR, RadioError::SIM_ABSENT},
-                                     CHECK_GENERAL_ERROR));
+        std::cout << static_cast<int>(radioRsp->rspInfo.error) << std::endl;
+        ASSERT_TRUE(CheckGeneralError() ||
+                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
+                    radioRsp->rspInfo.error == RadioError::NONE ||
+                    radioRsp->rspInfo.error == RadioError::MODEM_ERR ||
+                    radioRsp->rspInfo.error == RadioError::SIM_ABSENT);
     }
-    LOG(DEBUG) << "sendEnvelope finished";
 }
 
 /*
  * Test IRadio.sendTerminalResponseToSim() for the response returned.
  */
-TEST_P(RadioHidlTest, sendTerminalResponseToSim) {
-    LOG(DEBUG) << "sendTerminalResponseToSim";
-    serial = GetRandomSerialNumber();
+TEST_F(RadioHidlTest, sendTerminalResponseToSim) {
+    int serial = GetRandomSerialNumber();
 
     // Test with sending empty string
     std::string commandResponse = "";
@@ -61,20 +59,19 @@ TEST_P(RadioHidlTest, sendTerminalResponseToSim) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckAnyOfErrors(
-            radioRsp->rspInfo.error,
-            {RadioError::NONE, RadioError::INVALID_ARGUMENTS, RadioError::SIM_ABSENT},
-            CHECK_GENERAL_ERROR));
+        std::cout << static_cast<int>(radioRsp->rspInfo.error) << std::endl;
+        ASSERT_TRUE(CheckGeneralError() ||
+                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
+                    radioRsp->rspInfo.error == RadioError::NONE ||
+                    radioRsp->rspInfo.error == RadioError::SIM_ABSENT);
     }
-    LOG(DEBUG) << "sendTerminalResponseToSim finished";
 }
 
 /*
  * Test IRadio.handleStkCallSetupRequestFromSim() for the response returned.
  */
-TEST_P(RadioHidlTest, handleStkCallSetupRequestFromSim) {
-    LOG(DEBUG) << "handleStkCallSetupRequestFromSim";
-    serial = GetRandomSerialNumber();
+TEST_F(RadioHidlTest, handleStkCallSetupRequestFromSim) {
+    int serial = GetRandomSerialNumber();
     bool accept = false;
 
     radio->handleStkCallSetupRequestFromSim(serial, accept);
@@ -84,20 +81,18 @@ TEST_P(RadioHidlTest, handleStkCallSetupRequestFromSim) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
-                                     {RadioError::NONE, RadioError::INVALID_ARGUMENTS,
-                                      RadioError::MODEM_ERR, RadioError::SIM_ABSENT},
-                                     CHECK_GENERAL_ERROR));
+        ASSERT_TRUE(CheckGeneralError() || radioRsp->rspInfo.error == RadioError::NONE ||
+                    radioRsp->rspInfo.error == RadioError::MODEM_ERR ||
+                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
+                    radioRsp->rspInfo.error == RadioError::SIM_ABSENT);
     }
-    LOG(DEBUG) << "handleStkCallSetupRequestFromSim finished";
 }
 
 /*
  * Test IRadio.reportStkServiceIsRunning() for the response returned.
  */
-TEST_P(RadioHidlTest, reportStkServiceIsRunning) {
-    LOG(DEBUG) << "reportStkServiceIsRunning";
-    serial = GetRandomSerialNumber();
+TEST_F(RadioHidlTest, reportStkServiceIsRunning) {
+    int serial = GetRandomSerialNumber();
 
     radio->reportStkServiceIsRunning(serial);
 
@@ -106,19 +101,16 @@ TEST_P(RadioHidlTest, reportStkServiceIsRunning) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(
-            CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::NONE}, CHECK_GENERAL_ERROR));
+        ASSERT_TRUE(CheckGeneralError() || radioRsp->rspInfo.error == RadioError::NONE);
     }
-    LOG(DEBUG) << "reportStkServiceIsRunning finished";
 }
 
 /*
  * Test IRadio.sendEnvelopeWithStatus() for the response returned with empty
  * string.
  */
-TEST_P(RadioHidlTest, sendEnvelopeWithStatus) {
-    LOG(DEBUG) << "sendEnvelopeWithStatus";
-    serial = GetRandomSerialNumber();
+TEST_F(RadioHidlTest, sendEnvelopeWithStatus) {
+    int serial = GetRandomSerialNumber();
 
     // Test with sending empty string
     std::string contents = "";
@@ -130,10 +122,9 @@ TEST_P(RadioHidlTest, sendEnvelopeWithStatus) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckAnyOfErrors(
-            radioRsp->rspInfo.error,
-            {RadioError::INVALID_ARGUMENTS, RadioError::MODEM_ERR, RadioError::SIM_ABSENT},
-            CHECK_GENERAL_ERROR));
+        ASSERT_TRUE(CheckGeneralError() ||
+                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
+                    radioRsp->rspInfo.error == RadioError::MODEM_ERR ||
+                    radioRsp->rspInfo.error == RadioError::SIM_ABSENT);
     }
-    LOG(DEBUG) << "sendEnvelopeWithStatus finished";
 }
