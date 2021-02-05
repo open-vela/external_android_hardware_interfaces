@@ -147,9 +147,6 @@ interface IMapper {
      * outside of accessRegion is undefined, except that it must not cause
      * process termination.
      *
-     * An accessRegion of all-zeros means the entire buffer. That is, it is
-     * equivalent to '(0,0)-(buffer width, buffer height)'.
-     *
      * data will be filled with a pointer to the locked buffer memory. This
      * address will represent the top-left corner of the entire buffer, even
      * if accessRegion does not begin at the top-left corner.
@@ -158,7 +155,7 @@ interface IMapper {
      * @param cpuUsage specifies one or more CPU usage flags to request.
      * @param accessRegion is the portion of the buffer that the client
      *        intends to access.
-     * @param acquireFence when non-empty, is a handle containing a file
+     * @param acquireFence, when non-empty, is a handle containing a file
      *        descriptor referring to a sync fence object, which will be
      *        signaled when it is safe for the mapper to lock the buffer. If
      *        it is already safe to lock, acquireFence is empty.
@@ -194,7 +191,7 @@ interface IMapper {
      * @param cpuUsage specifies one or more CPU usage flags to request.
      * @param accessRegion is the portion of the buffer that the client
      *        intends to access.
-     * @param acquireFence when non-empty, is a handle containing a file
+     * @param acquireFence, when non-empty, is a handle containing a file
      *        descriptor referring to a sync fence object, which will be
      *        signaled when it is safe for the mapper to lock the buffer. If
      *        it is already safe to lock, acquireFence is empty.

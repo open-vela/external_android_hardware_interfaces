@@ -52,6 +52,7 @@ namespace implementation {
     Return<void> CryptoPlugin::setSharedBufferBase(const hidl_memory& base,
             uint32_t bufferId) {
         sp<IMemory> hidlMemory = mapMemory(base);
+        ALOGE_IF(hidlMemory == nullptr, "mapMemory returns nullptr");
 
         std::unique_lock<std::mutex> lock(mSharedBufferLock);
 
@@ -100,8 +101,8 @@ namespace implementation {
         legacyPattern.mEncryptBlocks = pattern.encryptBlocks;
         legacyPattern.mSkipBlocks = pattern.skipBlocks;
 
-        std::unique_ptr<android::CryptoPlugin::SubSample[]> legacySubSamples =
-                std::make_unique<android::CryptoPlugin::SubSample[]>(subSamples.size());
+        android::CryptoPlugin::SubSample *legacySubSamples =
+            new android::CryptoPlugin::SubSample[subSamples.size()];
 
         size_t destSize = 0;
         for (size_t i = 0; i < subSamples.size(); i++) {
@@ -110,10 +111,12 @@ namespace implementation {
             uint32_t numBytesOfEncryptedData = subSamples[i].numBytesOfEncryptedData;
             legacySubSamples[i].mNumBytesOfEncryptedData = numBytesOfEncryptedData;
             if (__builtin_add_overflow(destSize, numBytesOfClearData, &destSize)) {
+                delete[] legacySubSamples;
                 _hidl_cb(Status::BAD_VALUE, 0, "subsample clear size overflow");
                 return Void();
             }
             if (__builtin_add_overflow(destSize, numBytesOfEncryptedData, &destSize)) {
+                delete[] legacySubSamples;
                 _hidl_cb(Status::BAD_VALUE, 0, "subsample encrypted size overflow");
                 return Void();
             }
@@ -154,6 +157,7 @@ namespace implementation {
             }
 
             if (destSize > destBuffer.size) {
+                delete[] legacySubSamples;
                 _hidl_cb(Status::BAD_VALUE, 0, "subsample sum too large");
                 return Void();
             }
@@ -162,6 +166,7 @@ namespace implementation {
             destPtr = static_cast<void *>(base + destination.nonsecureMemory.offset);
         } else if (destination.type == BufferType::NATIVE_HANDLE) {
             if (!secure) {
+                delete[] legacySubSamples;
                 _hidl_cb(Status::BAD_VALUE, 0, "native handle destination must be secure");
                 return Void();
             }
@@ -169,6 +174,7 @@ namespace implementation {
                     destination.secureMemory.getNativeHandle());
             destPtr = static_cast<void *>(handle);
         } else {
+            delete[] legacySubSamples;
             _hidl_cb(Status::BAD_VALUE, 0, "invalid destination type");
             return Void();
         }
@@ -176,8 +182,10 @@ namespace implementation {
         // release mSharedBufferLock
         lock.unlock();
         ssize_t result = mLegacyPlugin->decrypt(secure, keyId.data(), iv.data(),
-                legacyMode, legacyPattern, srcPtr, legacySubSamples.get(),
+                legacyMode, legacyPattern, srcPtr, legacySubSamples,
                 subSamples.size(), destPtr, &detailMessage);
+
+        delete[] legacySubSamples;
 
         uint32_t status;
         uint32_t bytesWritten;

@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 #include <radio_hidl_hal_utils_v1_1.h>
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(RadioHidlTest_v1_1);
-INSTANTIATE_TEST_SUITE_P(PerInstance, RadioHidlTest_v1_1,
-                         testing::ValuesIn(android::hardware::getAllHalInstanceNames(
-                                 ::android::hardware::radio::V1_1::IRadio::descriptor)),
-                         android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(new RadioHidlEnvironment);
+    ::testing::InitGoogleTest(&argc, argv);
+
+    int status = RUN_ALL_TESTS();
+    LOG(INFO) << "Test result = " << status;
+
+    return status;
+}

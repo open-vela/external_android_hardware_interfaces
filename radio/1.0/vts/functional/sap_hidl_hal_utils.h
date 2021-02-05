@@ -16,6 +16,7 @@
 
 #include <android-base/logging.h>
 
+#include <VtsHalHidlTargetTestBase.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -23,7 +24,6 @@
 #include <android/hardware/radio/1.0/ISap.h>
 #include <android/hardware/radio/1.0/ISapCallback.h>
 #include <android/hardware/radio/1.0/types.h>
-#include <gtest/gtest.h>
 
 #include "vts_test_util.h"
 
@@ -80,8 +80,8 @@ class SapCallback : public ISapCallback {
 };
 
 // The main test class for Sap HIDL.
-class SapHidlTest : public ::testing::TestWithParam<std::string> {
-  private:
+class SapHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+   private:
     std::mutex mtx;
     std::condition_variable cv;
     int count;
@@ -92,7 +92,7 @@ class SapHidlTest : public ::testing::TestWithParam<std::string> {
     virtual void TearDown() override;
 
     /* Used as a mechanism to inform the test about data/event callback */
-    void notify(int receivedToken);
+    void notify();
 
     /* Test code calls this function to wait for response */
     std::cv_status wait();
@@ -102,7 +102,11 @@ class SapHidlTest : public ::testing::TestWithParam<std::string> {
 
     /* Sap Callback object */
     sp<SapCallback> sapCb;
+};
 
-    /* Token for sap request */
-    int32_t token;
+// A class for test environment setup
+class SapHidlEnvironment : public ::testing::Environment {
+   public:
+    virtual void SetUp() {}
+    virtual void TearDown() {}
 };

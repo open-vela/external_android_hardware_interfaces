@@ -16,6 +16,7 @@
 
 #define LOG_TAG "mediacas_hidl_hal_test"
 
+#include <VtsHalHidlTargetTestBase.h>
 #include <android-base/logging.h>
 #include <android/hardware/cas/1.0/ICas.h>
 #include <android/hardware/cas/1.0/ICasListener.h>
@@ -25,13 +26,9 @@
 #include <android/hardware/cas/native/1.0/IDescrambler.h>
 #include <android/hardware/cas/native/1.0/types.h>
 #include <binder/MemoryDealer.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
 #include <hidl/HidlSupport.h>
 #include <hidl/HidlTransportSupport.h>
-#include <hidl/ServiceManagement.h>
 #include <hidl/Status.h>
-#include <hidlmemory/FrameworkUtils.h>
 #include <utils/Condition.h>
 #include <utils/Mutex.h>
 
@@ -55,7 +52,6 @@ using android::Condition;
 using android::hardware::cas::V1_0::ICas;
 using android::hardware::cas::V1_0::ICasListener;
 using android::hardware::cas::V1_0::IDescramblerBase;
-using android::hardware::cas::V1_0::Status;
 using android::hardware::cas::native::V1_0::IDescrambler;
 using android::hardware::cas::native::V1_0::SubSample;
 using android::hardware::cas::native::V1_0::SharedBuffer;
@@ -64,12 +60,13 @@ using android::hardware::cas::native::V1_0::BufferType;
 using android::hardware::cas::native::V1_0::ScramblingControl;
 using android::hardware::cas::V1_0::IMediaCasService;
 using android::hardware::cas::V1_0::HidlCasPluginDescriptor;
-using android::hardware::fromHeap;
+using android::hardware::Void;
 using android::hardware::hidl_vec;
 using android::hardware::hidl_string;
-using android::hardware::HidlMemory;
+using android::hardware::hidl_handle;
+using android::hardware::hidl_memory;
 using android::hardware::Return;
-using android::hardware::Void;
+using android::hardware::cas::V1_0::Status;
 using android::IMemory;
 using android::IMemoryHeap;
 using android::MemoryDealer;
@@ -209,16 +206,16 @@ void MediaCasListener::testEventEcho(sp<ICas>& mediaCas, int32_t& event, int32_t
     EXPECT_TRUE(mEventData == eventData);
 }
 
-class MediaCasHidlTest : public testing::TestWithParam<std::string> {
-  public:
+class MediaCasHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+   public:
     virtual void SetUp() override {
-        mService = IMediaCasService::getService(GetParam());
+        mService = ::testing::VtsHalHidlTargetTestBase::getService<IMediaCasService>();
         ASSERT_NE(mService, nullptr);
     }
 
-    sp<IMediaCasService> mService = nullptr;
+    sp<IMediaCasService> mService;
 
-  protected:
+   protected:
     static void description(const std::string& description) {
         RecordProperty("description", description);
     }
@@ -226,26 +223,12 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
     sp<ICas> mMediaCas;
     sp<IDescramblerBase> mDescramblerBase;
     sp<MediaCasListener> mCasListener;
-    typedef struct _OobInputTestParams {
-        const SubSample* subSamples;
-        uint32_t numSubSamples;
-        size_t imemSizeActual;
-        uint64_t imemOffset;
-        uint64_t imemSize;
-        uint64_t srcOffset;
-        uint64_t dstOffset;
-    } OobInputTestParams;
 
     ::testing::AssertionResult createCasPlugin(int32_t caSystemId);
     ::testing::AssertionResult openCasSession(std::vector<uint8_t>* sessionId);
-    ::testing::AssertionResult descrambleTestInputBuffer(
-            const sp<IDescrambler>& descrambler,
-            Status* descrambleStatus,
-            sp<IMemory>* hidlInMemory);
-    ::testing::AssertionResult descrambleTestOobInput(
-            const sp<IDescrambler>& descrambler,
-            Status* descrambleStatus,
-            const OobInputTestParams& params);
+    ::testing::AssertionResult descrambleTestInputBuffer(const sp<IDescrambler>& descrambler,
+                                                         Status* descrambleStatus,
+                                                         sp<IMemory>* hidlInMemory);
 };
 
 ::testing::AssertionResult MediaCasHidlTest::createCasPlugin(int32_t caSystemId) {
@@ -304,7 +287,7 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
     }
     *inMemory = mem;
 
-    // build HidlMemory from memory heap
+    // build hidl_memory from memory heap
     ssize_t offset;
     size_t size;
     sp<IMemoryHeap> heap = mem->getMemory(&offset, &size);
@@ -313,14 +296,18 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
         return ::testing::AssertionFailure();
     }
 
-    uint8_t* ipBuffer = static_cast<uint8_t*>(static_cast<void*>(mem->unsecurePointer()));
+    native_handle_t* nativeHandle = native_handle_create(1, 0);
+    if (!nativeHandle) {
+        ALOGE("failed to create native handle!");
+        return ::testing::AssertionFailure();
+    }
+    nativeHandle->data[0] = heap->getHeapID();
+
+    uint8_t* ipBuffer = static_cast<uint8_t*>(static_cast<void*>(mem->pointer()));
     memcpy(ipBuffer, kInBinaryBuffer, sizeof(kInBinaryBuffer));
 
-    // hidlMemory is not to be passed out of scope!
-    sp<HidlMemory> hidlMemory = fromHeap(heap);
-
     SharedBuffer srcBuffer = {
-            .heapBase = *hidlMemory,
+            .heapBase = hidl_memory("ashmem", hidl_handle(nativeHandle), heap->getSize()),
             .offset = (uint64_t) offset,
             .size = (uint64_t) size
     };
@@ -345,69 +332,7 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
     return ::testing::AssertionResult(returnVoid.isOk());
 }
 
-::testing::AssertionResult MediaCasHidlTest::descrambleTestOobInput(
-        const sp<IDescrambler>& descrambler,
-        Status* descrambleStatus,
-        const OobInputTestParams& params) {
-    hidl_vec<SubSample> hidlSubSamples;
-    hidlSubSamples.setToExternal(
-            const_cast<SubSample*>(params.subSamples), params.numSubSamples, false /*own*/);
-
-    sp<MemoryDealer> dealer = new MemoryDealer(params.imemSizeActual, "vts-cas");
-    if (nullptr == dealer.get()) {
-        ALOGE("couldn't get MemoryDealer!");
-        return ::testing::AssertionFailure();
-    }
-
-    sp<IMemory> mem = dealer->allocate(params.imemSizeActual);
-    if (nullptr == mem.get()) {
-        ALOGE("couldn't allocate IMemory!");
-        return ::testing::AssertionFailure();
-    }
-
-    // build HidlMemory from memory heap
-    ssize_t offset;
-    size_t size;
-    sp<IMemoryHeap> heap = mem->getMemory(&offset, &size);
-    if (nullptr == heap.get()) {
-        ALOGE("couldn't get memory heap!");
-        return ::testing::AssertionFailure();
-    }
-
-    // hidlMemory is not to be passed out of scope!
-    sp<HidlMemory> hidlMemory = fromHeap(heap);
-
-    SharedBuffer srcBuffer = {
-            .heapBase = *hidlMemory,
-            .offset = (uint64_t) offset + params.imemOffset,
-            .size = (uint64_t) params.imemSize,
-    };
-
-    DestinationBuffer dstBuffer;
-    dstBuffer.type = BufferType::SHARED_MEMORY;
-    dstBuffer.nonsecureMemory = srcBuffer;
-
-    uint32_t outBytes;
-    hidl_string detailedError;
-    auto returnVoid = descrambler->descramble(
-        ScramblingControl::EVENKEY /*2*/, hidlSubSamples,
-        srcBuffer,
-        params.srcOffset,
-        dstBuffer,
-        params.dstOffset,
-        [&](Status status, uint32_t bytesWritten, const hidl_string& detailedErr) {
-            *descrambleStatus = status;
-            outBytes = bytesWritten;
-            detailedError = detailedErr;
-        });
-    if (!returnVoid.isOk() || *descrambleStatus != Status::OK) {
-        ALOGI("descramble failed, trans=%s, status=%d, outBytes=%u, error=%s",
-              returnVoid.description().c_str(), *descrambleStatus, outBytes, detailedError.c_str());
-    }
-    return ::testing::AssertionResult(returnVoid.isOk());
-}
-
-TEST_P(MediaCasHidlTest, EnumeratePlugins) {
+TEST_F(MediaCasHidlTest, EnumeratePlugins) {
     description("Test enumerate plugins");
     hidl_vec<HidlCasPluginDescriptor> descriptors;
     EXPECT_TRUE(mService
@@ -428,7 +353,7 @@ TEST_P(MediaCasHidlTest, EnumeratePlugins) {
     }
 }
 
-TEST_P(MediaCasHidlTest, TestInvalidSystemIdFails) {
+TEST_F(MediaCasHidlTest, TestInvalidSystemIdFails) {
     description("Test failure for invalid system ID");
     sp<MediaCasListener> casListener = new MediaCasListener();
 
@@ -446,7 +371,7 @@ TEST_P(MediaCasHidlTest, TestInvalidSystemIdFails) {
     EXPECT_EQ(descramblerBase, nullptr);
 }
 
-TEST_P(MediaCasHidlTest, TestClearKeyPluginInstalled) {
+TEST_F(MediaCasHidlTest, TestClearKeyPluginInstalled) {
     description("Test if ClearKey plugin is installed");
     hidl_vec<HidlCasPluginDescriptor> descriptors;
     EXPECT_TRUE(mService
@@ -468,7 +393,7 @@ TEST_P(MediaCasHidlTest, TestClearKeyPluginInstalled) {
     ASSERT_TRUE(false) << "ClearKey plugin not installed";
 }
 
-TEST_P(MediaCasHidlTest, TestClearKeyApis) {
+TEST_F(MediaCasHidlTest, TestClearKeyApis) {
     description("Test that valid call sequences succeed");
 
     ASSERT_TRUE(createCasPlugin(CLEAR_KEY_SYSTEM_ID));
@@ -556,7 +481,7 @@ TEST_P(MediaCasHidlTest, TestClearKeyApis) {
     EXPECT_EQ(Status::OK, descrambleStatus);
 
     ASSERT_NE(nullptr, dataMemory.get());
-    uint8_t* opBuffer = static_cast<uint8_t*>(static_cast<void*>(dataMemory->unsecurePointer()));
+    uint8_t* opBuffer = static_cast<uint8_t*>(static_cast<void*>(dataMemory->pointer()));
 
     int compareResult =
         memcmp(static_cast<const void*>(opBuffer), static_cast<const void*>(kOutRefBinaryBuffer),
@@ -572,7 +497,7 @@ TEST_P(MediaCasHidlTest, TestClearKeyApis) {
     EXPECT_EQ(Status::OK, returnStatus);
 }
 
-TEST_P(MediaCasHidlTest, TestClearKeySessionClosedAfterRelease) {
+TEST_F(MediaCasHidlTest, TestClearKeySessionClosedAfterRelease) {
     description("Test that all sessions are closed after a MediaCas object is released");
 
     ASSERT_TRUE(createCasPlugin(CLEAR_KEY_SYSTEM_ID));
@@ -599,7 +524,7 @@ TEST_P(MediaCasHidlTest, TestClearKeySessionClosedAfterRelease) {
     EXPECT_EQ(Status::ERROR_CAS_SESSION_NOT_OPENED, returnStatus);
 }
 
-TEST_P(MediaCasHidlTest, TestClearKeyErrors) {
+TEST_F(MediaCasHidlTest, TestClearKeyErrors) {
     description("Test that invalid call sequences fail with expected error codes");
 
     ASSERT_TRUE(createCasPlugin(CLEAR_KEY_SYSTEM_ID));
@@ -688,156 +613,11 @@ TEST_P(MediaCasHidlTest, TestClearKeyErrors) {
     EXPECT_FALSE(mDescramblerBase->requiresSecureDecoderComponent("bad"));
 }
 
-TEST_P(MediaCasHidlTest, TestClearKeyOobFails) {
-    description("Test that oob descramble request fails with expected error");
-
-    ASSERT_TRUE(createCasPlugin(CLEAR_KEY_SYSTEM_ID));
-
-    auto returnStatus = mMediaCas->provision(hidl_string(PROVISION_STR));
-    EXPECT_TRUE(returnStatus.isOk());
-    EXPECT_EQ(Status::OK, returnStatus);
-
-    std::vector<uint8_t> sessionId;
-    ASSERT_TRUE(openCasSession(&sessionId));
-
-    returnStatus = mDescramblerBase->setMediaCasSession(sessionId);
-    EXPECT_TRUE(returnStatus.isOk());
-    EXPECT_EQ(Status::OK, returnStatus);
-
-    hidl_vec<uint8_t> hidlEcm;
-    hidlEcm.setToExternal(const_cast<uint8_t*>(kEcmBinaryBuffer), sizeof(kEcmBinaryBuffer));
-    returnStatus = mMediaCas->processEcm(sessionId, hidlEcm);
-    EXPECT_TRUE(returnStatus.isOk());
-    EXPECT_EQ(Status::OK, returnStatus);
-
-    sp<IDescrambler> descrambler = IDescrambler::castFrom(mDescramblerBase);
-    ASSERT_NE(nullptr, descrambler.get());
-
-    Status descrambleStatus = Status::OK;
-
-    // test invalid src buffer offset
-    ASSERT_TRUE(descrambleTestOobInput(
-            descrambler,
-            &descrambleStatus,
-            {
-                .subSamples     = kSubSamples,
-                .numSubSamples  = sizeof(kSubSamples)/sizeof(SubSample),
-                .imemSizeActual = sizeof(kInBinaryBuffer),
-                .imemOffset     = 0xcccccc,
-                .imemSize       = sizeof(kInBinaryBuffer),
-                .srcOffset      = 0,
-                .dstOffset      = 0
-            }));
-    EXPECT_EQ(Status::BAD_VALUE, descrambleStatus);
-
-    // test invalid src buffer size
-    ASSERT_TRUE(descrambleTestOobInput(
-            descrambler,
-            &descrambleStatus,
-            {
-                .subSamples     = kSubSamples,
-                .numSubSamples  = sizeof(kSubSamples)/sizeof(SubSample),
-                .imemSizeActual = sizeof(kInBinaryBuffer),
-                .imemOffset     = 0,
-                .imemSize       = 0xcccccc,
-                .srcOffset      = 0,
-                .dstOffset      = 0
-            }));
-    EXPECT_EQ(Status::BAD_VALUE, descrambleStatus);
-
-    // test invalid src buffer size
-    ASSERT_TRUE(descrambleTestOobInput(
-            descrambler,
-            &descrambleStatus,
-            {
-                .subSamples     = kSubSamples,
-                .numSubSamples  = sizeof(kSubSamples)/sizeof(SubSample),
-                .imemSizeActual = sizeof(kInBinaryBuffer),
-                .imemOffset     = 1,
-                .imemSize       = (uint64_t)-1,
-                .srcOffset      = 0,
-                .dstOffset      = 0
-            }));
-    EXPECT_EQ(Status::BAD_VALUE, descrambleStatus);
-
-    // test invalid srcOffset
-    ASSERT_TRUE(descrambleTestOobInput(
-            descrambler,
-            &descrambleStatus,
-            {
-                .subSamples     = kSubSamples,
-                .numSubSamples  = sizeof(kSubSamples)/sizeof(SubSample),
-                .imemSizeActual = sizeof(kInBinaryBuffer),
-                .imemOffset     = 0,
-                .imemSize       = sizeof(kInBinaryBuffer),
-                .srcOffset      = 0xcccccc,
-                .dstOffset      = 0
-            }));
-    EXPECT_EQ(Status::BAD_VALUE, descrambleStatus);
-
-    // test invalid dstOffset
-    ASSERT_TRUE(descrambleTestOobInput(
-            descrambler,
-            &descrambleStatus,
-            {
-                .subSamples     = kSubSamples,
-                .numSubSamples  = sizeof(kSubSamples)/sizeof(SubSample),
-                .imemSizeActual = sizeof(kInBinaryBuffer),
-                .imemOffset     = 0,
-                .imemSize       = sizeof(kInBinaryBuffer),
-                .srcOffset      = 0,
-                .dstOffset      = 0xcccccc
-            }));
-    EXPECT_EQ(Status::BAD_VALUE, descrambleStatus);
-
-    // test detection of oob subsample sizes
-    const SubSample invalidSubSamples1[] =
-        {{162, 0}, {0, 184}, {0, 0xdddddd}};
-
-    ASSERT_TRUE(descrambleTestOobInput(
-            descrambler,
-            &descrambleStatus,
-            {
-                .subSamples     = invalidSubSamples1,
-                .numSubSamples  = sizeof(invalidSubSamples1)/sizeof(SubSample),
-                .imemSizeActual = sizeof(kInBinaryBuffer),
-                .imemOffset     = 0,
-                .imemSize       = sizeof(kInBinaryBuffer),
-                .srcOffset      = 0,
-                .dstOffset      = 0
-            }));
-    EXPECT_EQ(Status::BAD_VALUE, descrambleStatus);
-
-    // test detection of overflowing subsample sizes
-    const SubSample invalidSubSamples2[] =
-        {{162, 0}, {0, 184}, {2, (uint32_t)-1}};
-
-    ASSERT_TRUE(descrambleTestOobInput(
-            descrambler,
-            &descrambleStatus,
-            {
-                .subSamples     = invalidSubSamples2,
-                .numSubSamples  = sizeof(invalidSubSamples2)/sizeof(SubSample),
-                .imemSizeActual = sizeof(kInBinaryBuffer),
-                .imemOffset     = 0,
-                .imemSize       = sizeof(kInBinaryBuffer),
-                .srcOffset      = 0,
-                .dstOffset      = 0
-            }));
-    EXPECT_EQ(Status::BAD_VALUE, descrambleStatus);
-
-    returnStatus = mDescramblerBase->release();
-    EXPECT_TRUE(returnStatus.isOk());
-    EXPECT_EQ(Status::OK, returnStatus);
-
-    returnStatus = mMediaCas->release();
-    EXPECT_TRUE(returnStatus.isOk());
-    EXPECT_EQ(Status::OK, returnStatus);
-}
-
 }  // anonymous namespace
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, MediaCasHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IMediaCasService::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    LOG(INFO) << "Test result = " << status;
+    return status;
+}

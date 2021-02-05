@@ -21,9 +21,7 @@
 #include <android/hardware/ir/1.0/IConsumerIr.h>
 #include <android/hardware/ir/1.0/types.h>
 
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+#include <VtsHalHidlTargetTestBase.h>
 #include <algorithm>
 
 using ::android::hardware::ir::V1_0::IConsumerIr;
@@ -32,10 +30,11 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::sp;
 
-class ConsumerIrHidlTest : public ::testing::TestWithParam<std::string> {
+// The main test class for IR HIDL HAL.
+class ConsumerIrHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
-    ir = IConsumerIr::getService(GetParam());
+    ir = ::testing::VtsHalHidlTargetTestBase::getService<IConsumerIr>();
     ASSERT_NE(ir, nullptr);
   }
 
@@ -45,7 +44,7 @@ class ConsumerIrHidlTest : public ::testing::TestWithParam<std::string> {
 };
 
 // Test transmit() for the min and max frequency of every available range
-TEST_P(ConsumerIrHidlTest, TransmitTest) {
+TEST_F(ConsumerIrHidlTest, TransmitTest) {
   bool success;
   hidl_vec<ConsumerIrFreqRange> ranges;
   auto cb = [&](bool s, hidl_vec<ConsumerIrFreqRange> v) {
@@ -69,7 +68,7 @@ TEST_P(ConsumerIrHidlTest, TransmitTest) {
 }
 
 // Test transmit() when called with invalid frequencies
-TEST_P(ConsumerIrHidlTest, BadFreqTest) {
+TEST_F(ConsumerIrHidlTest, BadFreqTest) {
   uint32_t len = 16;
   hidl_vec<int32_t> vec;
   vec.resize(len);
@@ -77,8 +76,9 @@ TEST_P(ConsumerIrHidlTest, BadFreqTest) {
   EXPECT_FALSE(ir->transmit(-1, vec));
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(ConsumerIrHidlTest);
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, ConsumerIrHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IConsumerIr::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  int status = RUN_ALL_TESTS();
+  LOG(INFO) << "Test result = " << status;
+  return status;
+}
