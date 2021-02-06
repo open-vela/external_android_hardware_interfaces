@@ -20,8 +20,8 @@
 
 #include <android-base/logging.h>
 
-#include "BluetoothAudioSessionReport_2_1.h"
-#include "BluetoothAudioSupportedCodecsDB_2_1.h"
+#include "BluetoothAudioSessionReport.h"
+#include "BluetoothAudioSupportedCodecsDB.h"
 
 namespace android {
 namespace hardware {
@@ -30,7 +30,7 @@ namespace audio {
 namespace V2_1 {
 namespace implementation {
 
-using ::android::bluetooth::audio::BluetoothAudioSessionReport_2_1;
+using ::android::bluetooth::audio::BluetoothAudioSessionReport;
 using ::android::hardware::kSynchronizedReadWrite;
 using ::android::hardware::MessageQueue;
 using ::android::hardware::Void;
@@ -105,8 +105,8 @@ Return<void> BluetoothAudioProvider::streamStarted(
    * HAL server should start the streaming on data path.
    */
   if (stack_iface_) {
-    BluetoothAudioSessionReport_2_1::ReportControlStatus(session_type_, true,
-                                                         status);
+    BluetoothAudioSessionReport::ReportControlStatus(session_type_, true,
+                                                     status);
   } else {
     LOG(WARNING) << __func__ << " - SessionType=" << toString(session_type_)
                  << ", status=" << toString(status) << " has NO session";
@@ -125,8 +125,8 @@ Return<void> BluetoothAudioProvider::streamSuspended(
    * HAL server should suspend the streaming on data path.
    */
   if (stack_iface_) {
-    BluetoothAudioSessionReport_2_1::ReportControlStatus(session_type_, false,
-                                                         status);
+    BluetoothAudioSessionReport::ReportControlStatus(session_type_, false,
+                                                     status);
   } else {
     LOG(WARNING) << __func__ << " - SessionType=" << toString(session_type_)
                  << ", status=" << toString(status) << " has NO session";
@@ -139,7 +139,7 @@ Return<void> BluetoothAudioProvider::endSession() {
   LOG(INFO) << __func__ << " - SessionType=" << toString(session_type_);
 
   if (stack_iface_) {
-    BluetoothAudioSessionReport_2_1::OnSessionEnded(session_type_);
+    BluetoothAudioSessionReport::OnSessionEnded(session_type_);
     stack_iface_->unlinkToDeath(death_recipient_);
   } else {
     LOG(INFO) << __func__ << " - SessionType=" << toString(session_type_)
