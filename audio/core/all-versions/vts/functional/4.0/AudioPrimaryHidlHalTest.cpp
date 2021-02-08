@@ -322,9 +322,9 @@ TEST_P(OutputStreamTest, updateSourceMetadata) {
                 const SourceMetadata metadata = {
                         {{toString(usage),
                           toString(content),
-                          volume,
+                          {} /* tags */,
                           toString(xsd::AudioChannelMask::AUDIO_CHANNEL_OUT_STEREO),
-                          {} /* tags */}}};
+                          volume}}};
                 ASSERT_RESULT(okOrNotSupported, stream->updateSourceMetadata(metadata))
                         << "usage=" << toString(usage) << ", content=" << toString(content)
                         << ", volume=" << volume;
