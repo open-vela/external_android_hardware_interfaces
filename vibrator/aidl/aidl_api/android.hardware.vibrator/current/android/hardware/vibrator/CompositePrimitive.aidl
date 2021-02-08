@@ -26,5 +26,4 @@ enum CompositePrimitive {
   SLOW_RISE = 5,
   QUICK_FALL = 6,
   LIGHT_TICK = 7,
-  LOW_TICK = 8,
 }
