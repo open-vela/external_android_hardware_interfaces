@@ -17,6 +17,7 @@
 #define LOG_TAG "graphics_composer_hidl_hal_test@2.2"
 
 #include <android-base/logging.h>
+#include <android-base/properties.h>
 #include <android/hardware/graphics/mapper/2.0/IMapper.h>
 #include <composer-vts/2.1/GraphicsComposerCallback.h>
 #include <composer-vts/2.1/TestCommandReader.h>
@@ -681,11 +682,13 @@ TEST_P(GraphicsComposerHidlTest, SetColorMode_2_2BadParameter) {
     EXPECT_EQ(Error::BAD_PARAMETER, renderIntentError);
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GraphicsComposerHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, GraphicsComposerHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IComposer::descriptor)),
         android::hardware::PrintInstanceNameToString);
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GraphicsComposerHidlCommandTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, GraphicsComposerHidlCommandTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IComposer::descriptor)),
@@ -698,3 +701,15 @@ INSTANTIATE_TEST_SUITE_P(
 }  // namespace graphics
 }  // namespace hardware
 }  // namespace android
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+
+    using namespace std::chrono_literals;
+    if (!android::base::WaitForProperty("init.svc.surfaceflinger", "stopped", 10s)) {
+        ALOGE("Failed to stop init.svc.surfaceflinger");
+        return -1;
+    }
+
+    return RUN_ALL_TESTS();
+}

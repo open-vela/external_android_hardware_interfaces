@@ -888,6 +888,8 @@ public:
     static Status getSystemCameraKind(const camera_metadata_t* staticMeta,
                                       SystemCameraKind* systemCameraKind);
 
+    static V3_2::DataspaceFlags getDataspace(PixelFormat format);
+
     void processCaptureRequestInternal(uint64_t bufferusage, RequestTemplate reqTemplate,
                                        bool useSecureOnlyCameras);
 
@@ -1209,7 +1211,12 @@ bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& r
             return notify;
         }
 
-        if (physicalCameraMetadata.size() != request->expectedPhysicalResults.size()) {
+        // Physical device results are only expected in the last/final
+        // partial result notification.
+        bool expectPhysicalResults = !(request->usePartialResult &&
+                (results.partialResult < request->numPartialResults));
+        if (expectPhysicalResults &&
+                (physicalCameraMetadata.size() != request->expectedPhysicalResults.size())) {
             ALOGE("%s: Frame %d: Returned physical metadata count %zu "
                     "must be equal to expected count %zu", __func__, frameNumber,
                     physicalCameraMetadata.size(), request->expectedPhysicalResults.size());
@@ -1260,9 +1267,27 @@ bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& r
             ADD_FAILURE();
             return notify;
         }
-        request->collectedResult.append(
-                reinterpret_cast<const camera_metadata_t*>(
-                    resultMetadata.data()));
+
+        // Verify no duplicate tags between partial results
+        const camera_metadata_t* partialMetadata =
+                reinterpret_cast<const camera_metadata_t*>(resultMetadata.data());
+        const camera_metadata_t* collectedMetadata = request->collectedResult.getAndLock();
+        camera_metadata_ro_entry_t searchEntry, foundEntry;
+        for (size_t i = 0; i < get_camera_metadata_size(partialMetadata); i++) {
+            if (0 != get_camera_metadata_ro_entry(partialMetadata, i, &searchEntry)) {
+                ADD_FAILURE();
+                request->collectedResult.unlock(collectedMetadata);
+                return notify;
+            }
+            if (-ENOENT !=
+                find_camera_metadata_ro_entry(collectedMetadata, searchEntry.tag, &foundEntry)) {
+                ADD_FAILURE();
+                request->collectedResult.unlock(collectedMetadata);
+                return notify;
+            }
+        }
+        request->collectedResult.unlock(collectedMetadata);
+        request->collectedResult.append(partialMetadata);
 
         isPartialResult =
             (results.partialResult < request->numPartialResults);
@@ -1670,7 +1695,7 @@ bool CameraHidlTest::isSecureOnly(sp<ICameraProvider> provider, const hidl_strin
     Return<void> ret;
     ::android::sp<ICameraDevice> device3_x;
     bool retVal = false;
-    if (getCameraDeviceVersion(mProviderType, name) == CAMERA_DEVICE_API_VERSION_1_0) {
+    if (getCameraDeviceVersion(name, mProviderType) == CAMERA_DEVICE_API_VERSION_1_0) {
         return false;
     }
     ret = provider->getCameraDeviceInterface_V3_x(name, [&](auto status, const auto& device) {
@@ -3173,7 +3198,6 @@ TEST_P(CameraHidlTest, constructDefaultRequestSettings) {
     }
 }
 
-
 // Verify that all supported stream formats and sizes can be configured
 // successfully.
 TEST_P(CameraHidlTest, configureStreamsAvailableOutputs) {
@@ -3216,17 +3240,7 @@ TEST_P(CameraHidlTest, configureStreamsAvailableOutputs) {
         uint32_t streamConfigCounter = 0;
         for (auto& it : outputStreams) {
             V3_2::Stream stream3_2;
-            V3_2::DataspaceFlags dataspaceFlag = 0;
-            switch (static_cast<PixelFormat>(it.format)) {
-                case PixelFormat::BLOB:
-                    dataspaceFlag = static_cast<V3_2::DataspaceFlags>(Dataspace::V0_JFIF);
-                    break;
-                case PixelFormat::Y16:
-                    dataspaceFlag = static_cast<V3_2::DataspaceFlags>(Dataspace::DEPTH);
-                    break;
-                default:
-                    dataspaceFlag = static_cast<V3_2::DataspaceFlags>(Dataspace::UNKNOWN);
-            }
+            V3_2::DataspaceFlags dataspaceFlag = getDataspace(static_cast<PixelFormat>(it.format));
             stream3_2 = {streamId,
                              StreamType::OUTPUT,
                              static_cast<uint32_t>(it.width),
@@ -3346,17 +3360,8 @@ TEST_P(CameraHidlTest, configureConcurrentStreamsAvailableOutputs) {
             size_t j = 0;
             for (const auto& it : outputStreams) {
                 V3_2::Stream stream3_2;
-                V3_2::DataspaceFlags dataspaceFlag = 0;
-                switch (static_cast<PixelFormat>(it.format)) {
-                    case PixelFormat::BLOB:
-                        dataspaceFlag = static_cast<V3_2::DataspaceFlags>(Dataspace::V0_JFIF);
-                        break;
-                    case PixelFormat::Y16:
-                        dataspaceFlag = static_cast<V3_2::DataspaceFlags>(Dataspace::DEPTH);
-                        break;
-                    default:
-                        dataspaceFlag = static_cast<V3_2::DataspaceFlags>(Dataspace::UNKNOWN);
-                }
+                V3_2::DataspaceFlags dataspaceFlag = getDataspace(
+                        static_cast<PixelFormat>(it.format));
                 stream3_2 = {streamId++,
                              StreamType::OUTPUT,
                              static_cast<uint32_t>(it.width),
@@ -5896,6 +5901,23 @@ Status CameraHidlTest::getSystemCameraKind(const camera_metadata_t* staticMeta,
     return ret;
 }
 
+// Select an appropriate dataspace given a specific pixel format.
+V3_2::DataspaceFlags CameraHidlTest::getDataspace(PixelFormat format) {
+    switch (format) {
+        case PixelFormat::BLOB:
+            return static_cast<V3_2::DataspaceFlags>(Dataspace::V0_JFIF);
+        case PixelFormat::Y16:
+            return static_cast<V3_2::DataspaceFlags>(Dataspace::DEPTH);
+        case PixelFormat::RAW16:
+        case PixelFormat::RAW_OPAQUE:
+        case PixelFormat::RAW10:
+        case PixelFormat::RAW12:
+            return  static_cast<V3_2::DataspaceFlags>(Dataspace::ARBITRARY);
+        default:
+            return static_cast<V3_2::DataspaceFlags>(Dataspace::UNKNOWN);
+    }
+}
+
 // Check whether this is a monochrome camera using the static camera characteristics.
 Status CameraHidlTest::isMonochromeCamera(const camera_metadata_t *staticMeta) {
     Status ret = Status::METHOD_NOT_SUPPORTED;
@@ -6270,17 +6292,8 @@ void CameraHidlTest::configureOfflineStillStream(const std::string &name,
     ASSERT_EQ(Status::OK, rc);
     ASSERT_FALSE(outputStreams.empty());
 
-    V3_2::DataspaceFlags dataspaceFlag = 0;
-    switch (static_cast<PixelFormat>(outputStreams[idx].format)) {
-        case PixelFormat::BLOB:
-            dataspaceFlag = static_cast<V3_2::DataspaceFlags>(Dataspace::V0_JFIF);
-            break;
-        case PixelFormat::Y16:
-            dataspaceFlag = static_cast<V3_2::DataspaceFlags>(Dataspace::DEPTH);
-            break;
-        default:
-            dataspaceFlag = static_cast<V3_2::DataspaceFlags>(Dataspace::UNKNOWN);
-    }
+    V3_2::DataspaceFlags dataspaceFlag = getDataspace(
+            static_cast<PixelFormat>(outputStreams[idx].format));
 
     ::android::hardware::hidl_vec<V3_4::Stream> streams3_4(/*size*/1);
     V3_4::Stream stream3_4 = {{ 0 /*streamId*/, StreamType::OUTPUT,
@@ -7587,6 +7600,7 @@ void CameraHidlTest::verifyRequestTemplate(const camera_metadata_t* metadata,
     }
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(CameraHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, CameraHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(ICameraProvider::descriptor)),
