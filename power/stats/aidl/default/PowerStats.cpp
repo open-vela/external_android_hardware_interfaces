@@ -21,10 +21,9 @@
 namespace aidl {
 namespace android {
 namespace hardware {
-namespace power {
-namespace stats {
+namespace powerstats {
 
-ndk::ScopedAStatus PowerStats::getPowerEntityInfo(std::vector<PowerEntity>* _aidl_return) {
+ndk::ScopedAStatus PowerStats::getPowerEntityInfo(std::vector<PowerEntityInfo>* _aidl_return) {
     (void)_aidl_return;
     return ndk::ScopedAStatus::ok();
 }
@@ -36,32 +35,32 @@ ndk::ScopedAStatus PowerStats::getStateResidency(const std::vector<int32_t>& in_
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus PowerStats::getEnergyConsumerInfo(std::vector<EnergyConsumer>* _aidl_return) {
+ndk::ScopedAStatus PowerStats::getEnergyConsumerInfo(std::vector<EnergyConsumerId>* _aidl_return) {
     (void)_aidl_return;
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus PowerStats::getEnergyConsumed(const std::vector<int32_t>& in_energyConsumerIds,
-                                                 std::vector<EnergyConsumerResult>* _aidl_return) {
+ndk::ScopedAStatus PowerStats::getEnergyConsumed(
+        const std::vector<EnergyConsumerId>& in_energyConsumerIds,
+        std::vector<EnergyConsumerResult>* _aidl_return) {
     (void)in_energyConsumerIds;
     (void)_aidl_return;
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus PowerStats::getEnergyMeterInfo(std::vector<Channel>* _aidl_return) {
+ndk::ScopedAStatus PowerStats::getEnergyMeterInfo(std::vector<ChannelInfo>* _aidl_return) {
     (void)_aidl_return;
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus PowerStats::readEnergyMeter(const std::vector<int32_t>& in_channelIds,
-                                               std::vector<EnergyMeasurement>* _aidl_return) {
+ndk::ScopedAStatus PowerStats::readEnergyMeters(const std::vector<int32_t>& in_channelIds,
+                                                std::vector<EnergyMeasurement>* _aidl_return) {
     (void)in_channelIds;
     (void)_aidl_return;
     return ndk::ScopedAStatus::ok();
 }
 
-}  // namespace stats
-}  // namespace power
+}  // namespace powerstats
 }  // namespace hardware
 }  // namespace android
 }  // namespace aidl

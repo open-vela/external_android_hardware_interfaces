@@ -14,12 +14,23 @@
  * limitations under the License.
  */
 
-package android.hardware.power.stats;
+package android.hardware.powerstats;
 
-/* Indicates the type of an energy consumer reported by the Power Stats HAL */
+import android.hardware.powerstats.EnergyConsumerId;
+
 @VintfStability
-enum EnergyConsumerType {
-    OTHER,
-    CPU_CLUSTER,
-    DISPLAY,
+parcelable EnergyConsumerResult {
+    /**
+     * ID of the EnergyConsumer associated with this result
+     */
+    EnergyConsumerId energyConsumerId;
+    /**
+     * Time since boot in milliseconds
+     */
+    long timestampMs;
+    /**
+     * Accumulated energy since boot in microwatt-seconds (uWs)
+     */
+    long energyUWs;
 }
+

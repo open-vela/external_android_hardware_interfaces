@@ -14,22 +14,19 @@
  * limitations under the License.
  */
 
-package android.hardware.power.stats;
+package android.hardware.powerstats;
+
+import android.hardware.powerstats.StateResidency;
 
 @VintfStability
-parcelable Channel {
+parcelable StateResidencyResult {
     /**
-     * Unique ID of this Channel
+     * ID of the PowerEntity associated with this result
      */
-    int id;
+    int powerEntityId;
     /**
-     * Unique name of this Channel. Vendor/device specific. Opaque to framework
+     * Residency for each state in the PowerEntity's state space
      */
-    @utf8InCpp String name;
-
-    /**
-     * Name of the subsystem associated with this Channel. Opaque to framework
-     */
-    @utf8InCpp String subsystem;
+    StateResidency[] stateResidencyData;
 }
 
