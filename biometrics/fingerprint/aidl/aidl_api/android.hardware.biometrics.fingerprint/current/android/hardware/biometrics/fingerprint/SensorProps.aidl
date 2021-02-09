@@ -35,10 +35,7 @@ package android.hardware.biometrics.fingerprint;
 parcelable SensorProps {
   android.hardware.biometrics.common.CommonProps commonProps;
   android.hardware.biometrics.fingerprint.FingerprintSensorType sensorType;
+  android.hardware.biometrics.fingerprint.SensorLocation[] sensorLocations;
   boolean supportsNavigationGestures;
-  int sensorLocationX;
-  int sensorLocationY;
-  int sensorRadius;
-  int displayId;
   boolean supportsDetectInteraction;
 }
