@@ -14,28 +14,11 @@
  * limitations under the License.
  */
 
-package android.hardware.power.stats;
-
-import android.hardware.power.stats.EnergyConsumerType;
+package android.hardware.powerstats;
 
 @VintfStability
-parcelable EnergyConsumer {
-    /**
-     * Unique ID of this EnergyConsumer
-     */
-    int id;
-
-    /**
-     * For a group of EnergyConsumers of the same logical type, sorting by ordinal
-     * gives their physical order. Ordinals must be consecutive integers starting from 0.
-     */
-    int ordinal;
-
-    /* Type of this EnergyConsumer */
-    EnergyConsumerType type;
-
-    /**
-     * Unique name of this EnergyConsumer. Vendor/device specific. Opaque to framework
-     */
-    @utf8InCpp String name;
+@Backing(type="int")
+enum EnergyConsumerId {
+    DISPLAY = 0,
+    GPS = 1,
 }

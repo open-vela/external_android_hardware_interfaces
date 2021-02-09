@@ -14,16 +14,21 @@
  * limitations under the License.
  */
 
-package android.hardware.power.stats;
+package android.hardware.powerstats;
 
 @VintfStability
-parcelable EnergyConsumerAttribution {
+parcelable EnergyMeasurement {
     /**
-     * Android ID / Linux UID, the accumulated energy is attributed to
+     * ID of the Channel associated with this measurement
      */
-    int uid;
+    int channelId;
     /**
-     * Accumulated energy since boot in microwatt-seconds (uWs) for this AID
+     * Time since boot in milliseconds
+     */
+    long timestampMs;
+    /**
+     * Accumulated energy since boot in microwatt-seconds (uWs)
      */
     long energyUWs;
 }
+

@@ -14,28 +14,28 @@
  * limitations under the License.
  */
 
-package android.hardware.power.stats;
+package android.hardware.powerstats;
 
-import android.hardware.power.stats.EnergyConsumerAttribution;
-
+/**
+ * Contains residency data for a single state
+ */
 @VintfStability
-parcelable EnergyConsumerResult {
+parcelable StateResidency {
     /**
-     * ID of the EnergyConsumer associated with this result
+     * ID of the state associated with this residency
      */
-    int id;
+    int stateId;
     /**
-     * Time since boot in milliseconds
+     * Total time in milliseconds that the corresponding PowerEntity resided
+     * in this state since boot
      */
-    long timestampMs;
+    long totalTimeInStateMs;
     /**
-     * Total accumulated energy since boot in microwatt-seconds (uWs)
+     * Total number of times that the state was entered since boot
      */
-    long energyUWs;
+    long totalStateEntryCount;
     /**
-     * Optional attributed energy per Android ID / Linux UID for this EnergyConsumer.
-     * Sum total of attributed energy must be less than or equal to total accumulated energy.
+     * Last time this state was entered. Time in milliseconds since boot
      */
-    EnergyConsumerAttribution[] attribution;
+    long lastEntryTimestampMs;
 }
-

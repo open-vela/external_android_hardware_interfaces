@@ -14,28 +14,17 @@
  * limitations under the License.
  */
 
-package android.hardware.power.stats;
+package android.hardware.powerstats;
 
-/**
- * Contains residency data for a single state
- */
 @VintfStability
-parcelable StateResidency {
+parcelable ChannelInfo {
     /**
-     * ID of the state associated with this residency
+     * Unique ID of this ChannelInfo
      */
-    int id;
+    int channelId;
     /**
-     * Total time in milliseconds that the corresponding PowerEntity resided
-     * in this state since boot
+     * Unique name of the ChannelInfo. Vendor/device specific. Opaque to framework
      */
-    long totalTimeInStateMs;
-    /**
-     * Total number of times that the state was entered since boot
-     */
-    long totalStateEntryCount;
-    /**
-     * Last time this state was entered. Time in milliseconds since boot
-     */
-    long lastEntryTimestampMs;
+    @utf8InCpp String channelName;
 }
+

@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package android.hardware.power.stats;
+package android.hardware.powerstats;
 
 @VintfStability
-parcelable State {
+parcelable StateInfo {
     /**
-     * Unique (for a given PowerEntity) ID of this State
+     * Unique (for a given PowerEntityInfo) ID of this StateInfo
      */
-    int id;
+    int stateId;
     /**
-     * Unique (for a given PowerEntity) name of the state. Vendor/device specific.
+     * Unique (for a given PowerEntityInfo) name of the state. Vendor/device specific.
      * Opaque to framework
      */
-    @utf8InCpp String name;
+    @utf8InCpp String stateName;
 }
 
