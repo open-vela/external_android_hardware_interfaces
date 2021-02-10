@@ -311,6 +311,7 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
     sp<ICas> mMediaCas;
     sp<IDescramblerBase> mDescramblerBase;
     sp<MediaCasListener> mCasListener;
+    bool mIsTestDescrambler = false;
     typedef struct _OobInputTestParams {
         const SubSample* subSamples;
         uint32_t numSubSamples;
@@ -335,15 +336,12 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
 
 ::testing::AssertionResult MediaCasHidlTest::createCasPlugin(int32_t caSystemId) {
     auto status = mService->isSystemIdSupported(caSystemId);
-    bool skipDescrambler = false;
     if (!status.isOk() || !status) {
         return ::testing::AssertionFailure();
     }
     status = mService->isDescramblerSupported(caSystemId);
     if (!status.isOk() || !status) {
-        ALOGI("Skip Descrambler test since it's not required in cas@1.2.");
-        mDescramblerBase = nullptr;
-        skipDescrambler = true;
+        return ::testing::AssertionFailure();
     }
 
     mCasListener = new MediaCasListener();
@@ -356,14 +354,12 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
         return ::testing::AssertionFailure();
     }
 
-    if (skipDescrambler) {
-        return ::testing::AssertionSuccess();
-    }
-
     auto descramblerStatus = mService->createDescrambler(caSystemId);
     if (!descramblerStatus.isOk()) {
-        return ::testing::AssertionFailure();
+        ALOGI("Skip Descrambler test since it's not required in cas@1.2.");
+        return ::testing::AssertionSuccess();
     }
+    mIsTestDescrambler = true;
 
     mDescramblerBase = descramblerStatus;
     return ::testing::AssertionResult(mDescramblerBase != nullptr);
@@ -520,7 +516,7 @@ TEST_P(MediaCasHidlTest, TestClearKeyApisWithSession) {
     EXPECT_TRUE(returnStatus.isOk());
     EXPECT_EQ(Status::OK, returnStatus);
 
-    if (mDescramblerBase != nullptr) {
+    if (mIsTestDescrambler) {
         returnStatus = mDescramblerBase->setMediaCasSession(sessionId);
         EXPECT_TRUE(returnStatus.isOk());
         EXPECT_EQ(Status::OK, returnStatus);
@@ -575,7 +571,7 @@ TEST_P(MediaCasHidlTest, TestClearKeyApisWithSession) {
     EXPECT_TRUE(returnStatus.isOk());
     EXPECT_EQ(Status::OK, returnStatus);
 
-    if (mDescramblerBase != nullptr) {
+    if (mIsTestDescrambler) {
         EXPECT_FALSE(mDescramblerBase->requiresSecureDecoderComponent("video/avc"));
 
         sp<IDescrambler> descrambler;
@@ -608,6 +604,7 @@ TEST_P(MediaCasHidlTest, TestClearKeyApisWithSession) {
 
 }  // anonymous namespace
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(MediaCasHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, MediaCasHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IMediaCasService::descriptor)),
