@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,38 +14,15 @@
  * limitations under the License.
  */
 
-package android.hardware.drm@1.4;
+#pragma once
 
-import @1.2::Status;
+#include "../GenericMessageBase.h"
 
-enum LogPriority : uint32_t {
-  ERROR,
-  WARN,
-  INFO,
-  DEBUG,
-  VERBOSE
+namespace android::nl::protocols::generic::families {
+
+class Mac80211hwsim : public GenericMessageBase {
+  public:
+    Mac80211hwsim(nlmsgtype_t familyId);
 };
 
-/**
- * Returned by getLogMessages to report error diagnostics to the
- * app.
- */
-struct LogMessage {
-  int64_t timeMs;
-  LogPriority priority;
-  string message;
-};
-
-enum Status : @1.2::Status {
-
-    /**
-     * Non-specific error reported by the device OEM subsystem.
-     */
-    GENERAL_OEM_ERROR,
-
-    /**
-     * Unexpected internal failure in the drm/crypto plugin.
-     */
-    GENERAL_PLUGIN_ERROR,
-
-};
+}  // namespace android::nl::protocols::generic::families
