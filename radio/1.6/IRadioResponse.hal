@@ -25,6 +25,7 @@ import @1.6::RegStateResult;
 import @1.6::RadioResponseInfo;
 import @1.6::SetupDataCallResult;
 import @1.6::SignalStrength;
+import @1.6::SlicingConfig;
 
 /**
  * Interface declaring response functions to solicited radio requests.
@@ -296,7 +297,7 @@ interface IRadioResponse extends @1.5::IRadioResponse {
     oneway cancelHandoverResponse(RadioResponseInfo info);
 
     /**
-     * Callback of IRadio.setAllowedNetworkTypeBitmap(int, bitfield<RadioAccessFamily>)
+     * Callback of IRadio.setAllowedNetworkTypesBitmap(int, bitfield<RadioAccessFamily>)
      *
      * Valid errors returned:
      *   RadioError:NONE
@@ -309,10 +310,12 @@ interface IRadioResponse extends @1.5::IRadioResponse {
      *   RadioError:REQUEST_NOT_SUPPORTED
      *   RadioError:NO_RESOURCES
      */
-    oneway setAllowedNetworkTypeBitmapResponse(RadioResponseInfo info);
+    oneway setAllowedNetworkTypesBitmapResponse(RadioResponseInfo info);
 
     /**
-     * Callback of IRadio.getAllowedNetworkTypeBitmap(int, bitfield<RadioAccessFamily>)
+     * Callback of IRadio.getAllowedNetworkTypesBitmap(int, bitfield<RadioAccessFamily>)
+     * @param info Response info struct containing response type, serial no. and error
+     * @param networkTypeBitmap a 32-bit bitmap of RadioAccessFamily.
      *
      * Valid errors returned:
      *   RadioError:NONE
@@ -325,7 +328,7 @@ interface IRadioResponse extends @1.5::IRadioResponse {
      *   RadioError:REQUEST_NOT_SUPPORTED
      *   RadioError:NO_RESOURCES
      */
-    oneway getAllowedNetworkTypeBitmapResponse(
+    oneway getAllowedNetworkTypesBitmapResponse(
             RadioResponseInfo info, bitfield<RadioAccessFamily> networkTypeBitmap);
 
     /**
@@ -414,4 +417,17 @@ interface IRadioResponse extends @1.5::IRadioResponse {
      *   RadioError:CANCELLED
      */
     oneway getCurrentCallsResponse_1_6(RadioResponseInfo info, vec<Call> calls);
+
+    /**
+     * @param info Response info struct containing response type, serial no. and error
+     * @param slicingConfig Current slicing configuration
+     *
+     * Valid errors returned:
+     *   RadioError:NONE
+     *   RadioError:RADIO_NOT_AVAILABLE
+     *   RadioError:INTERNAL_ERR
+     *   RadioError:MODEM_ERR
+     */
+    oneway getSlicingConfigResponse(RadioResponseInfo info,
+            SlicingConfig slicingConfig);
 };
