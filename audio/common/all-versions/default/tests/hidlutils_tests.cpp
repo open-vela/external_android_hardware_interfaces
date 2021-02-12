@@ -44,8 +44,8 @@ static constexpr audio_gain_mode_t kInvalidHalGainMode =
         static_cast<audio_gain_mode_t>(0xFFFFFFFFU);
 // AUDIO_SOURCE_INVALID is framework-only.
 static constexpr audio_source_t kInvalidHalSource = static_cast<audio_source_t>(-1);
-// AUDIO_STREAM_DEFAULT is framework-only
-static constexpr audio_stream_type_t kInvalidHalStreamType = static_cast<audio_stream_type_t>(-2);
+static constexpr audio_stream_type_t kInvalidHalStreamType =
+        static_cast<audio_stream_type_t>(0xFFFFFFFFU);
 static constexpr audio_usage_t kInvalidHalUsage = static_cast<audio_usage_t>(0xFFFFFFFFU);
 
 TEST(HidlUtils, ConvertInvalidChannelMask) {
@@ -432,16 +432,10 @@ TEST(HidlUtils, ConvertDeviceType) {
 // The enums module is too small to have unit tests on its own.
 TEST(HidlUtils, VendorExtension) {
     EXPECT_TRUE(xsd::isVendorExtension("VX_GOOGLE_VR_42"));
-    EXPECT_TRUE(xsd::isVendorExtension("VX_QCM_SPK"));
     EXPECT_FALSE(xsd::isVendorExtension(""));
     EXPECT_FALSE(xsd::isVendorExtension("random string"));
     EXPECT_FALSE(xsd::isVendorExtension("VX_"));
-    EXPECT_FALSE(xsd::isVendorExtension("VX_X"));
-    EXPECT_FALSE(xsd::isVendorExtension("VX_X_"));
-    EXPECT_FALSE(xsd::isVendorExtension("VX_X_X"));
-    EXPECT_FALSE(xsd::isVendorExtension("VX_XX_X"));
     EXPECT_FALSE(xsd::isVendorExtension("VX_GOOGLE_$$"));
-    EXPECT_FALSE(xsd::isVendorExtension("VX_$CM_SPK"));
 }
 
 TEST(HidlUtils, ConvertInvalidDeviceAddress) {
@@ -482,11 +476,6 @@ TEST(HidlUtils, ConvertUniqueDeviceAddress) {
     DeviceAddress speaker;
     speaker.deviceType = toString(xsd::AudioDevice::AUDIO_DEVICE_OUT_SPEAKER);
     ConvertDeviceAddress(speaker);
-
-    DeviceAddress micWithAddress;
-    micWithAddress.deviceType = toString(xsd::AudioDevice::AUDIO_DEVICE_IN_BUILTIN_MIC);
-    micWithAddress.address.id("bottom");
-    ConvertDeviceAddress(micWithAddress);
 }
 
 TEST(HidlUtils, ConvertA2dpDeviceAddress) {
@@ -671,16 +660,8 @@ TEST(HidlUtils, ConvertInvalidStreamType) {
     AudioStreamType invalid;
     EXPECT_EQ(BAD_VALUE, HidlUtils::audioStreamTypeFromHal(kInvalidHalStreamType, &invalid));
     audio_stream_type_t halInvalid;
+    EXPECT_EQ(BAD_VALUE, HidlUtils::audioStreamTypeToHal("", &halInvalid));
     EXPECT_EQ(BAD_VALUE, HidlUtils::audioStreamTypeToHal("random string", &halInvalid));
-}
-
-TEST(HidlUtils, ConvertDefaultStreamType) {
-    AudioStreamType streamDefault = "";
-    audio_stream_type_t halStreamDefault;
-    EXPECT_EQ(NO_ERROR, HidlUtils::audioStreamTypeToHal(streamDefault, &halStreamDefault));
-    AudioStreamType streamDefaultBack;
-    EXPECT_EQ(NO_ERROR, HidlUtils::audioStreamTypeFromHal(halStreamDefault, &streamDefaultBack));
-    EXPECT_EQ(streamDefault, streamDefaultBack);
 }
 
 TEST(HidlUtils, ConvertStreamType) {

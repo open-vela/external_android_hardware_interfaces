@@ -89,6 +89,7 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
 
     // Data
     ::android::hardware::radio::V1_4::DataRegStateResult dataRegResp;
+    ::android::hardware::radio::V1_6::SetupDataCallResult setupDataCallResult;
 
     // SimLock status
     ::android::hardware::radio::V1_4::CarrierRestrictionsWithPriority carrierRestrictionsResp;
@@ -791,10 +792,10 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
     Return<void> cancelHandoverResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
 
-    Return<void> setAllowedNetworkTypeBitmapResponse(
+    Return<void> setAllowedNetworkTypesBitmapResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
 
-    Return<void> getAllowedNetworkTypeBitmapResponse(
+    Return<void> getAllowedNetworkTypesBitmapResponse(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
             const ::android::hardware::hidl_bitfield<
                     ::android::hardware::radio::V1_4::RadioAccessFamily>
@@ -804,8 +805,7 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
 
     Return<void> getSystemSelectionChannelsResponse(
-            const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
-            const hidl_vec<::android::hardware::radio::V1_5::RadioAccessSpecifier>& specifier);
+            const ::android::hardware::radio::V1_6::RadioResponseInfo& info);
 
     Return<void> getSignalStrengthResponse_1_6(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
@@ -827,6 +827,10 @@ class RadioResponse_v1_6 : public ::android::hardware::radio::V1_6::IRadioRespon
     Return<void> getCurrentCallsResponse_1_6(
             const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
             const ::android::hardware::hidl_vec<::android::hardware::radio::V1_6::Call>& calls);
+
+    Return<void> getSlicingConfigResponse(
+            const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
+            const ::android::hardware::radio::V1_6::SlicingConfig& slicingConfig);
 };
 
 /* Callback class for radio indication */

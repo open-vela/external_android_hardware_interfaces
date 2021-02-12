@@ -833,16 +833,9 @@ bool parseAsn1Time(const ASN1_TIME* asn1Time, time_t* outTime) {
 optional<vector<vector<uint8_t>>> createAttestation(
         const EVP_PKEY* key, const vector<uint8_t>& applicationId, const vector<uint8_t>& challenge,
         uint64_t activeTimeMilliSeconds, uint64_t expireTimeMilliSeconds, bool isTestCredential) {
-    // Pretend to be implemented in a trusted environment just so we can pass
-    // the VTS tests. Of course, this is a pretend-only game since hopefully no
-    // relying party is ever going to trust our batch key and those keys above
-    // it.
-    ::keymaster::PureSoftKeymasterContext context(::keymaster::KmVersion::KEYMASTER_4_1,
-                                                  KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT);
-
     keymaster_error_t error;
     ::keymaster::CertificateChain attestation_chain =
-            context.GetAttestationChain(KM_ALGORITHM_EC, &error);
+            ::keymaster::getAttestationChain(KM_ALGORITHM_EC, &error);
     if (KM_ERROR_OK != error) {
         LOG(ERROR) << "Error getting attestation chain " << error;
         return {};
@@ -862,6 +855,12 @@ optional<vector<vector<uint8_t>>> createAttestation(
         }
         expireTimeMilliSeconds = bcNotAfter * 1000;
     }
+    const keymaster_key_blob_t* attestation_signing_key =
+            ::keymaster::getAttestationKey(KM_ALGORITHM_EC, nullptr);
+    if (attestation_signing_key == nullptr) {
+        LOG(ERROR) << "Error getting attestation key";
+        return {};
+    }
 
     ::keymaster::X509_NAME_Ptr subjectName;
     if (KM_ERROR_OK !=
@@ -875,11 +874,8 @@ optional<vector<vector<uint8_t>>> createAttestation(
 
     i2d_X509_NAME(subjectName.get(), &subjectPtr);
 
-    uint64_t nowMilliSeconds = time(nullptr) * 1000;
     ::keymaster::AuthorizationSet auth_set(
             ::keymaster::AuthorizationSetBuilder()
-                    .Authorization(::keymaster::TAG_CERTIFICATE_NOT_BEFORE, nowMilliSeconds)
-                    .Authorization(::keymaster::TAG_CERTIFICATE_NOT_AFTER, expireTimeMilliSeconds)
                     .Authorization(::keymaster::TAG_ATTESTATION_CHALLENGE, challenge.data(),
                                    challenge.size())
                     .Authorization(::keymaster::TAG_ACTIVE_DATETIME, activeTimeMilliSeconds)
@@ -918,11 +914,19 @@ optional<vector<vector<uint8_t>>> createAttestation(
     }
     ::keymaster::AuthorizationSet hwEnforced(hwEnforcedBuilder);
 
-    ::keymaster::CertificateChain cert_chain_out = generate_attestation(
-            key, swEnforced, hwEnforced, auth_set, {} /* attest_key */, context, &error);
+    // Pretend to be implemented in a trusted environment just so we can pass
+    // the VTS tests. Of course, this is a pretend-only game since hopefully no
+    // relying party is ever going to trust our batch key and those keys above
+    // it.
+    ::keymaster::PureSoftKeymasterContext context(::keymaster::KmVersion::KEYMASTER_4_1,
+                                                  KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT);
+
+    ::keymaster::CertificateChain cert_chain_out = generate_attestation_from_EVP(
+            key, swEnforced, hwEnforced, auth_set, context, move(attestation_chain),
+            *attestation_signing_key, &error);
 
     if (KM_ERROR_OK != error) {
-        LOG(ERROR) << "Error generating attestation from EVP key: " << error;
+        LOG(ERROR) << "Error generate attestation from EVP key" << error;
         return {};
     }
 
