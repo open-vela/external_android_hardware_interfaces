@@ -217,7 +217,7 @@ GeneralResult<Model::Subgraph> unvalidatedConvert(const hal::V1_3::Subgraph& sub
 
     // Verify number of consumers.
     const auto numberOfConsumers =
-            NN_TRY(hal::utils::countNumberOfConsumers(subgraph.operands.size(), operations));
+            hal::utils::countNumberOfConsumers(subgraph.operands.size(), operations);
     CHECK(subgraph.operands.size() == numberOfConsumers.size());
     for (size_t i = 0; i < subgraph.operands.size(); ++i) {
         if (subgraph.operands[i].numberOfConsumers != numberOfConsumers[i]) {
@@ -261,7 +261,7 @@ GeneralResult<Request::MemoryPool> unvalidatedConvert(
     using Discriminator = hal::V1_3::Request::MemoryPool::hidl_discriminator;
     switch (memoryPool.getDiscriminator()) {
         case Discriminator::hidlMemory:
-            return hal::utils::createSharedMemoryFromHidlMemory(memoryPool.hidlMemory());
+            return createSharedMemoryFromHidlMemory(memoryPool.hidlMemory());
         case Discriminator::token:
             return static_cast<Request::MemoryDomainToken>(memoryPool.token());
     }
@@ -352,7 +352,7 @@ GeneralResult<SharedHandle> convert(const hardware::hidl_handle& handle) {
     return validatedConvert(handle);
 }
 
-GeneralResult<SharedMemory> convert(const hardware::hidl_memory& memory) {
+GeneralResult<Memory> convert(const hardware::hidl_memory& memory) {
     return validatedConvert(memory);
 }
 
@@ -386,7 +386,7 @@ nn::GeneralResult<hidl_handle> unvalidatedConvert(const nn::SharedHandle& handle
     return V1_2::utils::unvalidatedConvert(handle);
 }
 
-nn::GeneralResult<hidl_memory> unvalidatedConvert(const nn::SharedMemory& memory) {
+nn::GeneralResult<hidl_memory> unvalidatedConvert(const nn::Memory& memory) {
     return V1_0::utils::unvalidatedConvert(memory);
 }
 
@@ -424,7 +424,7 @@ nn::GeneralResult<hidl_vec<unvalidatedConvertOutput<Type>>> unvalidatedConvert(
     return unvalidatedConvertVec(arguments);
 }
 
-nn::GeneralResult<Request::MemoryPool> makeMemoryPool(const nn::SharedMemory& memory) {
+nn::GeneralResult<Request::MemoryPool> makeMemoryPool(const nn::Memory& memory) {
     Request::MemoryPool ret;
     ret.hidlMemory(NN_TRY(unvalidatedConvert(memory)));
     return ret;
@@ -559,7 +559,7 @@ nn::GeneralResult<Subgraph> unvalidatedConvert(const nn::Model::Subgraph& subgra
 
     // Update number of consumers.
     const auto numberOfConsumers =
-            NN_TRY(hal::utils::countNumberOfConsumers(operands.size(), subgraph.operations));
+            hal::utils::countNumberOfConsumers(operands.size(), subgraph.operations);
     CHECK(operands.size() == numberOfConsumers.size());
     for (size_t i = 0; i < operands.size(); ++i) {
         operands[i].numberOfConsumers = numberOfConsumers[i];
@@ -677,7 +677,7 @@ nn::GeneralResult<hidl_handle> convert(const nn::SharedHandle& handle) {
     return validatedConvert(handle);
 }
 
-nn::GeneralResult<hidl_memory> convert(const nn::SharedMemory& memory) {
+nn::GeneralResult<hidl_memory> convert(const nn::Memory& memory) {
     return validatedConvert(memory);
 }
 
