@@ -25,10 +25,7 @@
 #include <AndroidSharedSecret.h>
 #include <keymaster/soft_keymaster_logger.h>
 
-#include "RemotelyProvisionedComponent.h"
-
 using aidl::android::hardware::security::keymint::AndroidKeyMintDevice;
-using aidl::android::hardware::security::keymint::RemotelyProvisionedComponent;
 using aidl::android::hardware::security::keymint::SecurityLevel;
 using aidl::android::hardware::security::secureclock::AndroidSecureClock;
 using aidl::android::hardware::security::sharedsecret::AndroidSharedSecret;
@@ -48,6 +45,7 @@ int main() {
     // Zero threads seems like a useless pool, but below we'll join this thread to it, increasing
     // the pool size to 1.
     ABinderProcess_setThreadPoolMaxThreadCount(0);
+
     // Add Keymint Service
     std::shared_ptr<AndroidKeyMintDevice> keyMint =
             addService<AndroidKeyMintDevice>(SecurityLevel::SOFTWARE);
@@ -55,8 +53,6 @@ int main() {
     addService<AndroidSecureClock>(keyMint);
     // Add Shared Secret Service
     addService<AndroidSharedSecret>(keyMint);
-    // Add Remotely Provisioned Component Service
-    addService<RemotelyProvisionedComponent>(keyMint);
     ABinderProcess_joinThreadPool();
     return EXIT_FAILURE;  // should not reach
 }
