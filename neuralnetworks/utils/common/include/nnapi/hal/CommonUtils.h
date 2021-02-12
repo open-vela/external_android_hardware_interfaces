@@ -24,21 +24,15 @@
 #include <functional>
 #include <vector>
 
-// Shorthands
+// Shorthand
 namespace android::hardware::neuralnetworks {
 namespace hal = ::android::hardware::neuralnetworks;
 }  // namespace android::hardware::neuralnetworks
 
-// Shorthands
-namespace aidl::android::hardware::neuralnetworks {
-namespace aidl_hal = ::aidl::android::hardware::neuralnetworks;
-}  // namespace aidl::android::hardware::neuralnetworks
-
-// Shorthands
+// Shorthand
 namespace android::nn {
 namespace hal = ::android::hardware::neuralnetworks;
-namespace aidl_hal = ::aidl::android::hardware::neuralnetworks;
-}  // namespace android::nn
+}
 
 namespace android::hardware::neuralnetworks::utils {
 
@@ -74,12 +68,10 @@ nn::GeneralResult<void> unflushDataFromSharedToPointer(
 std::vector<uint32_t> countNumberOfConsumers(size_t numberOfOperands,
                                              const std::vector<nn::Operation>& operations);
 
-nn::GeneralResult<hidl_memory> createHidlMemoryFromSharedMemory(const nn::SharedMemory& memory);
-nn::GeneralResult<nn::SharedMemory> createSharedMemoryFromHidlMemory(const hidl_memory& memory);
+nn::GeneralResult<nn::Memory> createSharedMemoryFromHidlMemory(const hidl_memory& memory);
 
-nn::GeneralResult<hidl_handle> hidlHandleFromSharedHandle(const nn::Handle& handle);
-nn::GeneralResult<nn::Handle> sharedHandleFromNativeHandle(const native_handle_t* handle);
-
+nn::GeneralResult<hidl_handle> hidlHandleFromSharedHandle(const nn::SharedHandle& handle);
+nn::GeneralResult<nn::SharedHandle> sharedHandleFromNativeHandle(const native_handle_t* handle);
 nn::GeneralResult<hidl_vec<hidl_handle>> convertSyncFences(
         const std::vector<nn::SyncFence>& fences);
 
