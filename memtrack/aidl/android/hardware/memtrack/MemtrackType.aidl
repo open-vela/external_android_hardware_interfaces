@@ -27,4 +27,5 @@ enum MemtrackType {
     GRAPHICS = 2,
     MULTIMEDIA = 3,
     CAMERA = 4,
+    NUM_TYPES,
 }
