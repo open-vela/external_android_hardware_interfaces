@@ -64,11 +64,6 @@ class IContextHubCallbackWrapperBase : public VirtualLightRefBase {
     virtual Return<void> handleAppAbort(uint64_t appId, uint32_t abortCode) = 0;
 
     virtual Return<void> handleAppsInfo(hidl_vec<V1_2::HubAppInfo> appInfo) = 0;
-
-    virtual Return<bool> linkToDeath(const sp<hidl_death_recipient>& recipient,
-                                     uint64_t cookie) = 0;
-
-    virtual Return<bool> unlinkToDeath(const sp<hidl_death_recipient>& recipient) = 0;
 };
 
 template <typename T>
@@ -95,14 +90,6 @@ class ContextHubCallbackWrapper : public IContextHubCallbackWrapperBase {
 
     virtual Return<void> handleAppsInfo(hidl_vec<V1_2::HubAppInfo> appInfo) override {
         return mCallback->handleAppsInfo(convertToOldAppInfo(appInfo));
-    }
-
-    Return<bool> linkToDeath(const sp<hidl_death_recipient>& recipient, uint64_t cookie) override {
-        return mCallback->linkToDeath(recipient, cookie);
-    }
-
-    Return<bool> unlinkToDeath(const sp<hidl_death_recipient>& recipient) override {
-        return mCallback->unlinkToDeath(recipient);
     }
 
   protected:
