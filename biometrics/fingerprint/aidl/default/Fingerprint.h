@@ -20,15 +20,13 @@
 
 namespace aidl::android::hardware::biometrics::fingerprint {
 
-class Fingerprint final : public BnFingerprint {
+class Fingerprint : public BnFingerprint {
   public:
-    Fingerprint();
-
-    ndk::ScopedAStatus getSensorProps(std::vector<SensorProps>* out) override;
+    ndk::ScopedAStatus getSensorProps(std::vector<SensorProps>* _aidl_return) override;
 
     ndk::ScopedAStatus createSession(int32_t sensorId, int32_t userId,
                                      const std::shared_ptr<ISessionCallback>& cb,
-                                     std::shared_ptr<ISession>* out) override;
+                                     std::shared_ptr<ISession>* _aidl_return) override;
 };
 
 }  // namespace aidl::android::hardware::biometrics::fingerprint
