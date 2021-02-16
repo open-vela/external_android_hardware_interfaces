@@ -54,7 +54,8 @@ inline hidl_vec<V1_0::HubAppInfo> convertToOldAppInfo(hidl_vec<V1_2::HubAppInfo>
  */
 class IContextHubCallbackWrapperBase : public VirtualLightRefBase {
   public:
-    virtual Return<void> handleClientMsg(V1_2::ContextHubMsg msg) = 0;
+    virtual Return<void> handleClientMsg(V1_2::ContextHubMsg msg,
+                                         hidl_vec<hidl_string> msgContentPerms) = 0;
 
     virtual Return<void> handleTxnResult(uint32_t txnId, V1_0::TransactionResult result) = 0;
 
@@ -63,6 +64,11 @@ class IContextHubCallbackWrapperBase : public VirtualLightRefBase {
     virtual Return<void> handleAppAbort(uint64_t appId, uint32_t abortCode) = 0;
 
     virtual Return<void> handleAppsInfo(hidl_vec<V1_2::HubAppInfo> appInfo) = 0;
+
+    virtual Return<bool> linkToDeath(const sp<hidl_death_recipient>& recipient,
+                                     uint64_t cookie) = 0;
+
+    virtual Return<bool> unlinkToDeath(const sp<hidl_death_recipient>& recipient) = 0;
 };
 
 template <typename T>
@@ -70,7 +76,8 @@ class ContextHubCallbackWrapper : public IContextHubCallbackWrapperBase {
   public:
     ContextHubCallbackWrapper(sp<T> callback) : mCallback(callback){};
 
-    virtual Return<void> handleClientMsg(V1_2::ContextHubMsg msg) override {
+    virtual Return<void> handleClientMsg(V1_2::ContextHubMsg msg,
+                                         hidl_vec<hidl_string> /* msgContentPerms */) override {
         return mCallback->handleClientMsg(convertToOldMsg(msg));
     }
 
@@ -90,6 +97,14 @@ class ContextHubCallbackWrapper : public IContextHubCallbackWrapperBase {
         return mCallback->handleAppsInfo(convertToOldAppInfo(appInfo));
     }
 
+    Return<bool> linkToDeath(const sp<hidl_death_recipient>& recipient, uint64_t cookie) override {
+        return mCallback->linkToDeath(recipient, cookie);
+    }
+
+    Return<bool> unlinkToDeath(const sp<hidl_death_recipient>& recipient) override {
+        return mCallback->unlinkToDeath(recipient);
+    }
+
   protected:
     sp<T> mCallback;
 };
@@ -105,8 +120,9 @@ class IContextHubCallbackWrapperV1_2 : public ContextHubCallbackWrapper<V1_2::IC
     IContextHubCallbackWrapperV1_2(sp<V1_2::IContexthubCallback> callback)
         : ContextHubCallbackWrapper(callback){};
 
-    Return<void> handleClientMsg(V1_2::ContextHubMsg msg) override {
-        return mCallback->handleClientMsg_1_2(msg);
+    Return<void> handleClientMsg(V1_2::ContextHubMsg msg,
+                                 hidl_vec<hidl_string> msgContentPerms) override {
+        return mCallback->handleClientMsg_1_2(msg, msgContentPerms);
     }
 
     Return<void> handleAppsInfo(hidl_vec<V1_2::HubAppInfo> appInfo) override {
