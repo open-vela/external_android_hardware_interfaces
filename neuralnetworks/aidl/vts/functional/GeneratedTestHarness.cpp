@@ -266,7 +266,7 @@ Model createModel(const TestModel& testModel) {
     copyTestBuffers(constCopies, operandValues.data());
 
     // Shared memory.
-    std::vector<nn::SharedMemory> pools = {};
+    std::vector<nn::Memory> pools = {};
     if (constRefSize > 0) {
         const auto pool = nn::createSharedMemory(constRefSize).value();
         pools.push_back(pool);
