@@ -15,11 +15,9 @@
  */
 
 #include <gmock/gmock.h>
-#include <nnapi/SharedMemory.h>
 #include <nnapi/TypeUtils.h>
 #include <nnapi/Types.h>
 #include <nnapi/hal/ResilientBuffer.h>
-#include <memory>
 #include <tuple>
 #include <utility>
 #include "MockBuffer.h"
@@ -115,8 +113,7 @@ TEST(ResilientBufferTest, copyTo) {
     EXPECT_CALL(*mockBuffer, copyTo(_)).Times(1).WillOnce(Return(kNoError));
 
     // run test
-    const nn::SharedMemory memory = std::make_shared<const nn::Memory>();
-    const auto result = buffer->copyTo(memory);
+    const auto result = buffer->copyTo({});
 
     // verify result
     ASSERT_TRUE(result.has_value())
@@ -129,8 +126,7 @@ TEST(ResilientBufferTest, copyToError) {
     EXPECT_CALL(*mockBuffer, copyTo(_)).Times(1).WillOnce(kReturnGeneralFailure);
 
     // run test
-    const nn::SharedMemory memory = std::make_shared<const nn::Memory>();
-    const auto result = buffer->copyTo(memory);
+    const auto result = buffer->copyTo({});
 
     // verify result
     ASSERT_FALSE(result.has_value());
@@ -144,8 +140,7 @@ TEST(ResilientBufferTest, copyToDeadObjectFailedRecovery) {
     EXPECT_CALL(*mockBufferFactory, Call()).Times(1).WillOnce(kReturnGeneralFailure);
 
     // run test
-    const nn::SharedMemory memory = std::make_shared<const nn::Memory>();
-    const auto result = buffer->copyTo(memory);
+    const auto result = buffer->copyTo({});
 
     // verify result
     ASSERT_FALSE(result.has_value());
@@ -161,8 +156,7 @@ TEST(ResilientBufferTest, copyToDeadObjectSuccessfulRecovery) {
     EXPECT_CALL(*mockBufferFactory, Call()).Times(1).WillOnce(Return(recoveredMockBuffer));
 
     // run test
-    const nn::SharedMemory memory = std::make_shared<const nn::Memory>();
-    const auto result = buffer->copyTo(memory);
+    const auto result = buffer->copyTo({});
 
     // verify result
     ASSERT_TRUE(result.has_value())
@@ -175,8 +169,7 @@ TEST(ResilientBufferTest, copyFrom) {
     EXPECT_CALL(*mockBuffer, copyFrom(_, _)).Times(1).WillOnce(Return(kNoError));
 
     // run test
-    const nn::SharedMemory memory = std::make_shared<const nn::Memory>();
-    const auto result = buffer->copyFrom(memory, {});
+    const auto result = buffer->copyFrom({}, {});
 
     // verify result
     ASSERT_TRUE(result.has_value())
@@ -189,8 +182,7 @@ TEST(ResilientBufferTest, copyFromError) {
     EXPECT_CALL(*mockBuffer, copyFrom(_, _)).Times(1).WillOnce(kReturnGeneralFailure);
 
     // run test
-    const nn::SharedMemory memory = std::make_shared<const nn::Memory>();
-    const auto result = buffer->copyFrom(memory, {});
+    const auto result = buffer->copyFrom({}, {});
 
     // verify result
     ASSERT_FALSE(result.has_value());
@@ -204,8 +196,7 @@ TEST(ResilientBufferTest, copyFromDeadObjectFailedRecovery) {
     EXPECT_CALL(*mockBufferFactory, Call()).Times(1).WillOnce(kReturnGeneralFailure);
 
     // run test
-    const nn::SharedMemory memory = std::make_shared<const nn::Memory>();
-    const auto result = buffer->copyFrom(memory, {});
+    const auto result = buffer->copyFrom({}, {});
 
     // verify result
     ASSERT_FALSE(result.has_value());
@@ -221,8 +212,7 @@ TEST(ResilientBufferTest, copyFromDeadObjectSuccessfulRecovery) {
     EXPECT_CALL(*mockBufferFactory, Call()).Times(1).WillOnce(Return(recoveredMockBuffer));
 
     // run test
-    const nn::SharedMemory memory = std::make_shared<const nn::Memory>();
-    const auto result = buffer->copyFrom(memory, {});
+    const auto result = buffer->copyFrom({}, {});
 
     // verify result
     ASSERT_TRUE(result.has_value())
