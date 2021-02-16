@@ -154,9 +154,9 @@ class GraphicsComposerHidlTest : public ::testing::TestWithParam<std::string> {
 
     void execute() { mComposerClient->execute(mReader.get(), mWriter.get()); }
 
-    const native_handle_t* allocate(int32_t width, int32_t height) {
+    const native_handle_t* allocate() {
         return mGralloc->allocate(
-                width, height, /*layerCount*/ 1,
+                /*width*/ 64, /*height*/ 64, /*layerCount*/ 1,
                 static_cast<common::V1_1::PixelFormat>(PixelFormat::RGBA_8888),
                 static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN));
     }
@@ -462,10 +462,7 @@ void GraphicsComposerHidlTest::sendRefreshFrame(const VtsDisplay& display,
     mComposerClient->setPowerMode(display.get(), V2_1::IComposerClient::PowerMode::ON);
     mComposerClient->setColorMode_2_3(display.get(), ColorMode::NATIVE, RenderIntent::COLORIMETRIC);
 
-    IComposerClient::FRect displayCrop = display.getCrop();
-    int32_t displayWidth = static_cast<int32_t>(std::ceilf(displayCrop.right - displayCrop.left));
-    int32_t displayHeight = static_cast<int32_t>(std::ceilf(displayCrop.bottom - displayCrop.top));
-    auto handle = allocate(displayWidth, displayHeight);
+    auto handle = allocate();
     ASSERT_NE(nullptr, handle);
 
     Layer layer;
@@ -493,7 +490,7 @@ void GraphicsComposerHidlTest::sendRefreshFrame(const VtsDisplay& display,
     ASSERT_EQ(0, mReader->mErrors.size());
 
     mWriter->selectLayer(layer);
-    auto handle2 = allocate(displayWidth, displayHeight);
+    auto handle2 = allocate();
     ASSERT_NE(nullptr, handle2);
 
     mWriter->setLayerBuffer(0, handle2, -1);
@@ -715,7 +712,6 @@ TEST_P(GraphicsComposerHidlTest, setGameContentType) {
     Test_setContentType(ContentType::GAME, "GAME");
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GraphicsComposerHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, GraphicsComposerHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IComposer::descriptor)),
