@@ -288,7 +288,6 @@ class AuthorizationSetBuilder : public AuthorizationSet {
 
     AuthorizationSetBuilder& SigningKey();
     AuthorizationSetBuilder& EncryptionKey();
-    AuthorizationSetBuilder& AttestKey();
 
     AuthorizationSetBuilder& NoDigestOrPadding();
 
