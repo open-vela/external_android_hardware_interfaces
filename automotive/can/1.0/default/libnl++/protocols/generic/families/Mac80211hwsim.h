@@ -14,19 +14,15 @@
  * limitations under the License.
  */
 
-package android.hardware.security.keymint;
+#pragma once
 
-import android.hardware.security.keymint.KeyParameter;
+#include "../GenericMessageBase.h"
 
-/**
- * Contains a key blob with Tag::ATTEST_KEY that can be used to sign an attestation certificate,
- * and the DER-encoded X.501 Subject Name that will be placed in the Issuer field of the attestation
- * certificate.
- */
-@VintfStability
-@RustDerive(Clone=true, Eq=true, PartialEq=true, Ord=true, PartialOrd=true, Hash=true)
-parcelable AttestationKey {
-    byte[] keyBlob;
-    KeyParameter[] attestKeyParams;
-    byte[] issuerSubjectName;
-}
+namespace android::nl::protocols::generic::families {
+
+class Mac80211hwsim : public GenericMessageBase {
+  public:
+    Mac80211hwsim(nlmsgtype_t familyId);
+};
+
+}  // namespace android::nl::protocols::generic::families
