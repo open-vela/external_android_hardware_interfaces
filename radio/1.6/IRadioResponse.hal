@@ -19,7 +19,6 @@ package android.hardware.radio@1.6;
 import @1.0::SendSmsResult;
 import @1.4::RadioAccessFamily;
 import @1.5::IRadioResponse;
-import @1.5::RadioAccessSpecifier;
 import @1.6::Call;
 import @1.6::CellInfo;
 import @1.6::RegStateResult;
@@ -297,7 +296,7 @@ interface IRadioResponse extends @1.5::IRadioResponse {
     oneway cancelHandoverResponse(RadioResponseInfo info);
 
     /**
-     * Callback of IRadio.setAllowedNetworkTypesBitmap(int, bitfield<RadioAccessFamily>)
+     * Callback of IRadio.setAllowedNetworkTypeBitmap(int, bitfield<RadioAccessFamily>)
      *
      * Valid errors returned:
      *   RadioError:NONE
@@ -310,12 +309,10 @@ interface IRadioResponse extends @1.5::IRadioResponse {
      *   RadioError:REQUEST_NOT_SUPPORTED
      *   RadioError:NO_RESOURCES
      */
-    oneway setAllowedNetworkTypesBitmapResponse(RadioResponseInfo info);
+    oneway setAllowedNetworkTypeBitmapResponse(RadioResponseInfo info);
 
     /**
-     * Callback of IRadio.getAllowedNetworkTypesBitmap(int, bitfield<RadioAccessFamily>)
-     * @param info Response info struct containing response type, serial no. and error
-     * @param networkTypeBitmap a 32-bit bitmap of RadioAccessFamily.
+     * Callback of IRadio.getAllowedNetworkTypeBitmap(int, bitfield<RadioAccessFamily>)
      *
      * Valid errors returned:
      *   RadioError:NONE
@@ -328,7 +325,7 @@ interface IRadioResponse extends @1.5::IRadioResponse {
      *   RadioError:REQUEST_NOT_SUPPORTED
      *   RadioError:NO_RESOURCES
      */
-    oneway getAllowedNetworkTypesBitmapResponse(
+    oneway getAllowedNetworkTypeBitmapResponse(
             RadioResponseInfo info, bitfield<RadioAccessFamily> networkTypeBitmap);
 
     /**
@@ -344,7 +341,6 @@ interface IRadioResponse extends @1.5::IRadioResponse {
 
     /**
      * @param info Response info struct containing response type, serial no. and error
-     * @param specifiers List of RadioAccessSpecifiers that are scanned.
      *
      * Valid errors returned:
      *   RadioError:NONE
@@ -352,8 +348,7 @@ interface IRadioResponse extends @1.5::IRadioResponse {
      *   RadioError:INTERNAL_ERR
      *   RadioError:INVALID_ARGUMENTS
      */
-    oneway getSystemSelectionChannelsResponse(
-            RadioResponseInfo info, vec<RadioAccessSpecifier> specifiers);
+    oneway getSystemSelectionChannelsResponse(RadioResponseInfo info);
 
     /**
      * This is identical to getCellInfoListResponse_1_5 but uses an updated version of CellInfo.

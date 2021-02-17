@@ -21,20 +21,27 @@
 #include <binder/IServiceManager.h>
 #include <binder/ProcessState.h>
 #include <gtest/gtest.h>
+#include <openssl/x509.h>
 
 #include <aidl/android/hardware/security/keymint/ErrorCode.h>
 #include <aidl/android/hardware/security/keymint/IKeyMintDevice.h>
 
 #include <keymint_support/authorization_set.h>
+#include <keymint_support/openssl_utils.h>
 
 namespace aidl::android::hardware::security::keymint {
 
 ::std::ostream& operator<<(::std::ostream& os, const AuthorizationSet& set);
 
+inline bool operator==(const keymint::AuthorizationSet& a, const keymint::AuthorizationSet& b) {
+    return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin());
+}
+
 namespace test {
 
 using ::android::sp;
 using Status = ::ndk::ScopedAStatus;
+using ::std::optional;
 using ::std::shared_ptr;
 using ::std::string;
 using ::std::vector;
@@ -43,6 +50,14 @@ constexpr uint64_t kOpHandleSentinel = 0xFFFFFFFFFFFFFFFF;
 
 class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
   public:
+    struct KeyData {
+        vector<uint8_t> blob;
+        vector<KeyCharacteristics> characteristics;
+    };
+
+    static bool arm_deleteAllKeys;
+    static bool dump_Attestations;
+
     void SetUp() override;
     void TearDown() override {
         if (key_blob_.size()) {
@@ -57,10 +72,18 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
     uint32_t os_patch_level() { return os_patch_level_; }
 
     ErrorCode GetReturnErrorCode(const Status& result);
-    ErrorCode GenerateKey(const AuthorizationSet& key_desc, vector<uint8_t>* key_blob,
-                          vector<KeyCharacteristics>* key_characteristics);
 
-    ErrorCode GenerateKey(const AuthorizationSet& key_desc);
+    ErrorCode GenerateKey(const AuthorizationSet& key_desc, vector<uint8_t>* key_blob,
+                          vector<KeyCharacteristics>* key_characteristics) {
+        return GenerateKey(key_desc, std::nullopt /* attest_key */, key_blob, key_characteristics,
+                           &cert_chain_);
+    }
+    ErrorCode GenerateKey(const AuthorizationSet& key_desc,
+                          const optional<AttestationKey>& attest_key, vector<uint8_t>* key_blob,
+                          vector<KeyCharacteristics>* key_characteristics,
+                          vector<Certificate>* cert_chain);
+    ErrorCode GenerateKey(const AuthorizationSet& key_desc,
+                          const optional<AttestationKey>& attest_key = std::nullopt);
 
     ErrorCode ImportKey(const AuthorizationSet& key_desc, KeyFormat format,
                         const string& key_material, vector<uint8_t>* key_blob,
@@ -106,7 +129,9 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
     string ProcessMessage(const vector<uint8_t>& key_blob, KeyPurpose operation,
                           const string& message, const AuthorizationSet& in_params,
                           AuthorizationSet* out_params);
-
+    std::tuple<ErrorCode, std::string /* processedMessage */, AuthorizationSet /* out_params */>
+    ProcessMessage(const vector<uint8_t>& key_blob, KeyPurpose operation,
+                   const std::string& message, const AuthorizationSet& in_params);
     string SignMessage(const vector<uint8_t>& key_blob, const string& message,
                        const AuthorizationSet& params);
     string SignMessage(const string& message, const AuthorizationSet& params);
@@ -149,6 +174,56 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
 
     std::pair<ErrorCode, vector<uint8_t>> UpgradeKey(const vector<uint8_t>& key_blob);
 
+    template <typename TagType>
+    std::tuple<KeyData /* aesKey */, KeyData /* hmacKey */, KeyData /* rsaKey */,
+               KeyData /* ecdsaKey */>
+    CreateTestKeys(TagType tagToTest, ErrorCode expectedReturn) {
+        /* AES */
+        KeyData aesKeyData;
+        ErrorCode errorCode = GenerateKey(AuthorizationSetBuilder()
+                                                  .AesEncryptionKey(128)
+                                                  .Authorization(tagToTest)
+                                                  .BlockMode(BlockMode::ECB)
+                                                  .Padding(PaddingMode::NONE)
+                                                  .Authorization(TAG_NO_AUTH_REQUIRED),
+                                          &aesKeyData.blob, &aesKeyData.characteristics);
+        EXPECT_EQ(expectedReturn, errorCode);
+
+        /* HMAC */
+        KeyData hmacKeyData;
+        errorCode = GenerateKey(AuthorizationSetBuilder()
+                                        .HmacKey(128)
+                                        .Authorization(tagToTest)
+                                        .Digest(Digest::SHA_2_256)
+                                        .Authorization(TAG_MIN_MAC_LENGTH, 128)
+                                        .Authorization(TAG_NO_AUTH_REQUIRED),
+                                &hmacKeyData.blob, &hmacKeyData.characteristics);
+        EXPECT_EQ(expectedReturn, errorCode);
+
+        /* RSA */
+        KeyData rsaKeyData;
+        errorCode = GenerateKey(AuthorizationSetBuilder()
+                                        .RsaSigningKey(2048, 65537)
+                                        .Authorization(tagToTest)
+                                        .Digest(Digest::NONE)
+                                        .Padding(PaddingMode::NONE)
+                                        .Authorization(TAG_NO_AUTH_REQUIRED)
+                                        .SetDefaultValidity(),
+                                &rsaKeyData.blob, &rsaKeyData.characteristics);
+        EXPECT_EQ(expectedReturn, errorCode);
+
+        /* ECDSA */
+        KeyData ecdsaKeyData;
+        errorCode = GenerateKey(AuthorizationSetBuilder()
+                                        .EcdsaSigningKey(256)
+                                        .Authorization(tagToTest)
+                                        .Digest(Digest::SHA_2_256)
+                                        .Authorization(TAG_NO_AUTH_REQUIRED)
+                                        .SetDefaultValidity(),
+                                &ecdsaKeyData.blob, &ecdsaKeyData.characteristics);
+        EXPECT_EQ(expectedReturn, errorCode);
+        return {aesKeyData, hmacKeyData, rsaKeyData, ecdsaKeyData};
+    }
     bool IsSecure() const { return securityLevel_ != SecurityLevel::SOFTWARE; }
     SecurityLevel SecLevel() const { return securityLevel_; }
 
@@ -182,6 +257,10 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
             const vector<KeyCharacteristics>& key_characteristics);
     AuthorizationSet SwEnforcedAuthorizations(
             const vector<KeyCharacteristics>& key_characteristics);
+    ErrorCode UseAesKey(const vector<uint8_t>& aesKeyBlob);
+    ErrorCode UseHmacKey(const vector<uint8_t>& hmacKeyBlob);
+    ErrorCode UseRsaKey(const vector<uint8_t>& rsaKeyBlob);
+    ErrorCode UseEcdsaKey(const vector<uint8_t>& ecdsaKeyBlob);
 
   private:
     std::shared_ptr<IKeyMintDevice> keymint_;
@@ -193,6 +272,16 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
     string author_;
     long challenge_;
 };
+
+bool verify_attestation_record(const string& challenge,                //
+                               const string& app_id,                   //
+                               AuthorizationSet expected_sw_enforced,  //
+                               AuthorizationSet expected_hw_enforced,  //
+                               SecurityLevel security_level,
+                               const vector<uint8_t>& attestation_cert);
+string bin2hex(const vector<uint8_t>& data);
+X509_Ptr parse_cert_blob(const vector<uint8_t>& blob);
+::testing::AssertionResult ChainSignaturesAreValid(const vector<Certificate>& chain);
 
 #define INSTANTIATE_KEYMINT_AIDL_TEST(name)                                          \
     INSTANTIATE_TEST_SUITE_P(PerInstance, name,                                      \

@@ -39,4 +39,5 @@ enum KeyPurpose {
   VERIFY = 3,
   WRAP_KEY = 5,
   AGREE_KEY = 6,
+  ATTEST_KEY = 7,
 }

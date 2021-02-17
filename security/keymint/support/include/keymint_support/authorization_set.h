@@ -288,6 +288,7 @@ class AuthorizationSetBuilder : public AuthorizationSet {
 
     AuthorizationSetBuilder& SigningKey();
     AuthorizationSetBuilder& EncryptionKey();
+    AuthorizationSetBuilder& AttestKey();
 
     AuthorizationSetBuilder& NoDigestOrPadding();
 
@@ -299,6 +300,8 @@ class AuthorizationSetBuilder : public AuthorizationSet {
     AuthorizationSetBuilder& OaepMGFDigest(const std::vector<Digest>& digests);
     AuthorizationSetBuilder& Digest(std::vector<Digest> digests);
     AuthorizationSetBuilder& Padding(std::initializer_list<PaddingMode> paddings);
+
+    AuthorizationSetBuilder& SetDefaultValidity();
 
     AuthorizationSetBuilder& AttestationChallenge(const std::string& challenge) {
         return Authorization(TAG_ATTESTATION_CHALLENGE, challenge);
