@@ -16,7 +16,6 @@
 
 package android.hardware.security.keymint;
 
-import android.hardware.security.keymint.AttestationKey;
 import android.hardware.security.keymint.BeginResult;
 import android.hardware.security.keymint.ByteArray;
 import android.hardware.security.keymint.HardwareAuthToken;
@@ -316,18 +315,9 @@ interface IKeyMintDevice {
      *        provided in params.  See above for detailed specifications of which tags are required
      *        for which types of keys.
      *
-     * @param attestationKey, if provided, specifies the key that must be used to sign the
-     *        attestation certificate.  If `keyParams` does not contain a Tag::ATTESTATION_CHALLENGE
-     *        but `attestationKey` is non-null, the IKeyMintDevice must return
-     *        ErrorCode::INVALID_ARGUMENT.  If the provided AttestationKey does not contain a key
-     *        blob containing an asymmetric key with KeyPurpose::ATTEST_KEY, the IKeyMintDevice must
-     *        return ErrorCode::INVALID_PURPOSE.  If the provided AttestationKey has an empty issuer
-     *        subject name, the IKeyMintDevice must return ErrorCode::INVALID_ARGUMENT.
-     *
      * @return The result of key creation.  See KeyCreationResult.aidl.
      */
-    KeyCreationResult generateKey(
-            in KeyParameter[] keyParams, in @nullable AttestationKey attestationKey);
+    KeyCreationResult generateKey(in KeyParameter[] keyParams);
 
     /**
      * Imports key material into an IKeyMintDevice.  Key definition parameters and return values
@@ -355,18 +345,10 @@ interface IKeyMintDevice {
      *
      * @param inKeyData The key material to import, in the format specified in keyFormat.
      *
-     * @param attestationKey, if provided, specifies the key that must be used to sign the
-     *        attestation certificate.  If `keyParams` does not contain a Tag::ATTESTATION_CHALLENGE
-     *        but `attestationKey` is non-null, the IKeyMintDevice must return
-     *        ErrorCode::INVALID_ARGUMENT.  If the provided AttestationKey does not contain a key
-     *        blob containing an asymmetric key with KeyPurpose::ATTEST_KEY, the IKeyMintDevice must
-     *        return ErrorCode::INVALID_PURPOSE.  If the provided AttestationKey has an empty issuer
-     *        subject name, the IKeyMintDevice must return ErrorCode::INVALID_ARGUMENT.
-     *
      * @return The result of key creation.  See KeyCreationResult.aidl.
      */
-    KeyCreationResult importKey(in KeyParameter[] keyParams, in KeyFormat keyFormat,
-            in byte[] keyData, in @nullable AttestationKey attestationKey);
+    KeyCreationResult importKey(
+            in KeyParameter[] keyParams, in KeyFormat keyFormat, in byte[] keyData);
 
     /**
      * Securely imports a key, or key pair, returning a key blob and a description of the imported
@@ -485,7 +467,7 @@ interface IKeyMintDevice {
      * @return A new key blob that references the same key as keyBlobToUpgrade, but is in the new
      *         format, or has the new version data.
      */
-    byte[] upgradeKey(in byte[] keyBlobToUpgrade, in KeyParameter[] upgradeParams);
+    byte[] upgradeKey(in byte[] inKeyBlobToUpgrade, in KeyParameter[] inUpgradeParams);
 
     /**
      * Deletes the key, or key pair, associated with the key blob.  Calling this function on
@@ -495,7 +477,7 @@ interface IKeyMintDevice {
      *
      * @param inKeyBlob The opaque descriptor returned by generateKey() or importKey();
      */
-    void deleteKey(in byte[] keyBlob);
+    void deleteKey(in byte[] inKeyBlob);
 
     /**
      * Deletes all keys in the hardware keystore.  Used when keystore is reset completely.  After
@@ -721,8 +703,8 @@ interface IKeyMintDevice {
      *         from operations that generate an IV or nonce, and IKeyMintOperation object pointer
      *         which is used to perform update(), finish() or abort() operations.
      */
-    BeginResult begin(in KeyPurpose purpose, in byte[] keyBlob, in KeyParameter[] params,
-            in HardwareAuthToken authToken);
+    BeginResult begin(in KeyPurpose inPurpose, in byte[] inKeyBlob, in KeyParameter[] inParams,
+            in HardwareAuthToken inAuthToken);
 
     /**
      * Called by client to notify the IKeyMintDevice that the device is now locked, and keys with
