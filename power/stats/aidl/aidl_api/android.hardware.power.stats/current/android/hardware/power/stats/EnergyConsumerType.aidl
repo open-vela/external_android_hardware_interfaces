@@ -34,10 +34,6 @@ package android.hardware.power.stats;
 @VintfStability
 enum EnergyConsumerType {
   OTHER = 0,
-  BLUETOOTH = 1,
-  CPU_CLUSTER = 2,
-  DISPLAY = 3,
-  GNSS = 4,
-  MOBILE_RADIO = 5,
-  WIFI = 6,
+  CPU_CLUSTER = 1,
+  DISPLAY = 2,
 }
