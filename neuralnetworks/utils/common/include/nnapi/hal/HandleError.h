@@ -14,9 +14,6 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_UTILS_COMMON_HANDLE_ERROR_H
-#define ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_UTILS_COMMON_HANDLE_ERROR_H
-
 #include <android/hidl/base/1.0/IBase.h>
 #include <hidl/HidlSupport.h>
 #include <nnapi/Result.h>
@@ -53,8 +50,7 @@ nn::GeneralResult<Type> handleTransportError(const hardware::Return<Type>& ret) 
     })
 
 template <typename Type>
-nn::GeneralResult<Type> makeGeneralFailure(
-        nn::Result<Type> result, nn::ErrorStatus status = nn::ErrorStatus::GENERAL_FAILURE) {
+nn::GeneralResult<Type> makeGeneralFailure(nn::Result<Type> result, nn::ErrorStatus status) {
     if (!result.has_value()) {
         return nn::error(status) << std::move(result).error();
     }
@@ -79,8 +75,7 @@ nn::ExecutionResult<Type> makeExecutionFailure(nn::GeneralResult<Type> result) {
 }
 
 template <typename Type>
-nn::ExecutionResult<Type> makeExecutionFailure(
-        nn::Result<Type> result, nn::ErrorStatus status = nn::ErrorStatus::GENERAL_FAILURE) {
+nn::ExecutionResult<Type> makeExecutionFailure(nn::Result<Type> result, nn::ErrorStatus status) {
     return makeExecutionFailure(makeGeneralFailure(result, status));
 }
 
@@ -92,5 +87,3 @@ nn::ExecutionResult<Type> makeExecutionFailure(
         return NN_ERROR(canonical)
 
 }  // namespace android::hardware::neuralnetworks::utils
-
-#endif  // ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_UTILS_COMMON_HANDLE_ERROR_H
