@@ -217,7 +217,7 @@ GeneralResult<Model::Subgraph> unvalidatedConvert(const hal::V1_3::Subgraph& sub
 
     // Verify number of consumers.
     const auto numberOfConsumers =
-            NN_TRY(hal::utils::countNumberOfConsumers(subgraph.operands.size(), operations));
+            hal::utils::countNumberOfConsumers(subgraph.operands.size(), operations);
     CHECK(subgraph.operands.size() == numberOfConsumers.size());
     for (size_t i = 0; i < subgraph.operands.size(); ++i) {
         if (subgraph.operands[i].numberOfConsumers != numberOfConsumers[i]) {
@@ -261,7 +261,7 @@ GeneralResult<Request::MemoryPool> unvalidatedConvert(
     using Discriminator = hal::V1_3::Request::MemoryPool::hidl_discriminator;
     switch (memoryPool.getDiscriminator()) {
         case Discriminator::hidlMemory:
-            return hal::utils::createSharedMemoryFromHidlMemory(memoryPool.hidlMemory());
+            return createSharedMemoryFromHidlMemory(memoryPool.hidlMemory());
         case Discriminator::token:
             return static_cast<Request::MemoryDomainToken>(memoryPool.token());
     }
@@ -559,7 +559,7 @@ nn::GeneralResult<Subgraph> unvalidatedConvert(const nn::Model::Subgraph& subgra
 
     // Update number of consumers.
     const auto numberOfConsumers =
-            NN_TRY(hal::utils::countNumberOfConsumers(operands.size(), subgraph.operations));
+            hal::utils::countNumberOfConsumers(operands.size(), subgraph.operations);
     CHECK(operands.size() == numberOfConsumers.size());
     for (size_t i = 0; i < operands.size(); ++i) {
         operands[i].numberOfConsumers = numberOfConsumers[i];
