@@ -13,9 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-cc_library {
+cc_library_shared {
     name: "android.hardware.graphics.composer@2.1-resources",
-    system_ext_specific: true,
     defaults: ["hidl_defaults"],
     vendor_available: true,
     shared_libs: [
