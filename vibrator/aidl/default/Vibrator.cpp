@@ -119,6 +119,7 @@ ndk::ScopedAStatus Vibrator::getSupportedPrimitives(std::vector<CompositePrimiti
             CompositePrimitive::THUD,       CompositePrimitive::SPIN,
             CompositePrimitive::QUICK_RISE, CompositePrimitive::SLOW_RISE,
             CompositePrimitive::QUICK_FALL, CompositePrimitive::LIGHT_TICK,
+            CompositePrimitive::LOW_TICK,
     };
     return ndk::ScopedAStatus::ok();
 }
@@ -163,6 +164,10 @@ ndk::ScopedAStatus Vibrator::compose(const std::vector<CompositeEffect>& composi
             }
             LOG(INFO) << "triggering primitive " << static_cast<int>(e.primitive) << " @ scale "
                       << e.scale;
+
+            int32_t durationMs;
+            getPrimitiveDuration(e.primitive, &durationMs);
+            usleep(durationMs * 1000);
         }
 
         if (callback != nullptr) {
