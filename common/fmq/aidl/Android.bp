@@ -1,0 +1,24 @@
+aidl_interface {
+    name: "android.hardware.common.fmq",
+    host_supported: true,
+    vendor_available: true,
+    vndk: {
+        enabled: true,
+        support_system_process: true,
+    },
+    srcs: [
+        "android/hardware/common/fmq/*.aidl",
+    ],
+    imports: [
+        "android.hardware.common",
+    ],
+    stability: "vintf",
+    backend: {
+        java: {
+            enabled: false,
+        },
+        cpp: {
+            enabled: false,
+        },
+    },
+}
