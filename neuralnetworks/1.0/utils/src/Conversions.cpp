@@ -153,8 +153,8 @@ GeneralResult<Model::OperandValues> unvalidatedConvert(const hidl_vec<uint8_t>& 
     return Model::OperandValues(operandValues.data(), operandValues.size());
 }
 
-GeneralResult<SharedMemory> unvalidatedConvert(const hidl_memory& memory) {
-    return hal::utils::createSharedMemoryFromHidlMemory(memory);
+GeneralResult<Memory> unvalidatedConvert(const hidl_memory& memory) {
+    return createSharedMemoryFromHidlMemory(memory);
 }
 
 GeneralResult<Model> unvalidatedConvert(const hal::V1_0::Model& model) {
@@ -162,7 +162,7 @@ GeneralResult<Model> unvalidatedConvert(const hal::V1_0::Model& model) {
 
     // Verify number of consumers.
     const auto numberOfConsumers =
-            NN_TRY(hal::utils::countNumberOfConsumers(model.operands.size(), operations));
+            hal::utils::countNumberOfConsumers(model.operands.size(), operations);
     CHECK(model.operands.size() == numberOfConsumers.size());
     for (size_t i = 0; i < model.operands.size(); ++i) {
         if (model.operands[i].numberOfConsumers != numberOfConsumers[i]) {
@@ -346,8 +346,9 @@ nn::GeneralResult<hidl_vec<uint8_t>> unvalidatedConvert(
     return hidl_vec<uint8_t>(operandValues.data(), operandValues.data() + operandValues.size());
 }
 
-nn::GeneralResult<hidl_memory> unvalidatedConvert(const nn::SharedMemory& memory) {
-    return hal::utils::createHidlMemoryFromSharedMemory(memory);
+nn::GeneralResult<hidl_memory> unvalidatedConvert(const nn::Memory& memory) {
+    return hidl_memory(memory.name, NN_TRY(hal::utils::hidlHandleFromSharedHandle(memory.handle)),
+                       memory.size);
 }
 
 nn::GeneralResult<Model> unvalidatedConvert(const nn::Model& model) {
@@ -360,7 +361,7 @@ nn::GeneralResult<Model> unvalidatedConvert(const nn::Model& model) {
 
     // Update number of consumers.
     const auto numberOfConsumers =
-            NN_TRY(hal::utils::countNumberOfConsumers(operands.size(), model.main.operations));
+            hal::utils::countNumberOfConsumers(operands.size(), model.main.operations);
     CHECK(operands.size() == numberOfConsumers.size());
     for (size_t i = 0; i < operands.size(); ++i) {
         operands[i].numberOfConsumers = numberOfConsumers[i];
@@ -391,7 +392,7 @@ nn::GeneralResult<RequestArgument> unvalidatedConvert(
 }
 
 nn::GeneralResult<hidl_memory> unvalidatedConvert(const nn::Request::MemoryPool& memoryPool) {
-    return unvalidatedConvert(std::get<nn::SharedMemory>(memoryPool));
+    return unvalidatedConvert(std::get<nn::Memory>(memoryPool));
 }
 
 nn::GeneralResult<Request> unvalidatedConvert(const nn::Request& request) {
