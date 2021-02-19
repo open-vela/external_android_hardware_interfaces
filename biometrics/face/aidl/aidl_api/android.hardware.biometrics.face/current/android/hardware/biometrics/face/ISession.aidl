@@ -45,5 +45,4 @@ interface ISession {
   void getAuthenticatorId(in int cookie);
   void invalidateAuthenticatorId(in int cookie);
   void resetLockout(in int cookie, in android.hardware.keymaster.HardwareAuthToken hat);
-  void close(in int cookie);
 }
