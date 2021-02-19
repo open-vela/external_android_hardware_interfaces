@@ -99,11 +99,6 @@ ndk::ScopedAStatus Session::resetLockout(int32_t /*cookie*/,
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus Session::close(int32_t /*cookie*/) {
-    LOG(INFO) << "close";
-    return ndk::ScopedAStatus::ok();
-}
-
 ndk::ScopedAStatus Session::onPointerDown(int32_t /*pointerId*/, int32_t /*x*/, int32_t /*y*/,
                                           float /*minor*/, float /*major*/) {
     LOG(INFO) << "onPointerDown";
