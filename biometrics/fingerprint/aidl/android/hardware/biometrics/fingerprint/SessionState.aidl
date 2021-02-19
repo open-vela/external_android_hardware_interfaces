@@ -25,11 +25,6 @@ enum SessionState {
     IDLING,
 
     /**
-     * The session has been closed by the client.
-     */
-    CLOSED,
-
-    /**
      * The HAL is processing the ISession#generateChallenge request.
      */
     GENERATING_CHALLENGE,
@@ -79,3 +74,4 @@ enum SessionState {
      */
     RESETTING_LOCKOUT
 }
+

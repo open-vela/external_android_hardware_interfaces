@@ -63,8 +63,6 @@ class Session : public BnSession {
     ndk::ScopedAStatus resetLockout(int32_t cookie,
                                     const keymaster::HardwareAuthToken& hat) override;
 
-    ndk::ScopedAStatus close(int32_t cookie) override;
-
   private:
     std::shared_ptr<ISessionCallback> cb_;
 };

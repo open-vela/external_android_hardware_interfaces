@@ -142,8 +142,4 @@ ndk::ScopedAStatus Session::resetLockout(int32_t /*cookie*/,
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus Session::close(int32_t /*cookie*/) {
-    return ndk::ScopedAStatus::ok();
-}
-
 }  // namespace aidl::android::hardware::biometrics::face
