@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,13 @@
 
 #pragma once
 
-#include <aidl/android/hardware/biometrics/face/BnFace.h>
+#include "../GenericMessageBase.h"
 
-namespace aidl::android::hardware::biometrics::face {
+namespace android::nl::protocols::generic::families {
 
-class Face : public BnFace {
+class Mac80211hwsim : public GenericMessageBase {
   public:
-    ndk::ScopedAStatus getSensorProps(std::vector<SensorProps>* _aidl_return) override;
-
-    ndk::ScopedAStatus createSession(int32_t sensorId, int32_t userId,
-                                     const std::shared_ptr<ISessionCallback>& cb,
-                                     std::shared_ptr<ISession>* _aidl_return) override;
+    Mac80211hwsim(nlmsgtype_t familyId);
 };
 
-}  // namespace aidl::android::hardware::biometrics::face
+}  // namespace android::nl::protocols::generic::families
