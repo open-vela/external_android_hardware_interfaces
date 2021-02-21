@@ -16,7 +16,6 @@
 
 package android.hardware.security.keymint;
 
-import android.hardware.security.keymint.DeviceInfo;
 import android.hardware.security.keymint.MacedPublicKey;
 import android.hardware.security.keymint.ProtectedData;
 
@@ -110,7 +109,6 @@ import android.hardware.security.keymint.ProtectedData;
  * The IRemotelyProvisionedComponent supports a test mode, allowing the generation of test key pairs
  * and test CertificateRequests. Test keys/requests are annotated as such, and the BCC used for test
  * CertificateRequests must contain freshly-generated keys, not the real BCC key pairs.
- * @hide
  */
 @VintfStability
 interface IRemotelyProvisionedComponent {
@@ -258,7 +256,7 @@ interface IRemotelyProvisionedComponent {
      * @param out ProtectedData contains the encrypted BCC and the ephemeral MAC key used to
      *        authenticate the keysToSign (see keysToSignMac output argument).
      */
-    byte[] generateCertificateRequest(in boolean testMode, in MacedPublicKey[] keysToSign,
-            in byte[] endpointEncryptionCertChain, in byte[] challenge, out DeviceInfo deviceInfo,
+    void generateCertificateRequest(in boolean testMode, in MacedPublicKey[] keysToSign,
+            in byte[] endpointEncryptionCertChain, in byte[] challenge, out byte[] keysToSignMac,
             out ProtectedData protectedData);
 }
