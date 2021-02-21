@@ -18,7 +18,6 @@ package android.hardware.security.keymint;
 
 /**
  * Supported EC curves, used in ECDSA
- * @hide
  */
 @VintfStability
 @Backing(type="int")
