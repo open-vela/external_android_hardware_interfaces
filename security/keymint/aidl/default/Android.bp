@@ -1,8 +1,21 @@
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
 cc_binary {
     name: "android.hardware.security.keymint-service",
     relative_install_path: "hw",
     init_rc: ["android.hardware.security.keymint-service.rc"],
-    vintf_fragments: ["android.hardware.security.keymint-service.xml"],
+    vintf_fragments: [
+        "android.hardware.security.keymint-service.xml",
+        "android.hardware.security.sharedsecret-service.xml",
+        "android.hardware.security.secureclock-service.xml",
+    ],
     vendor: true,
     cflags: [
         "-Wall",
@@ -10,17 +23,45 @@ cc_binary {
     ],
     shared_libs: [
         "android.hardware.security.keymint-V1-ndk_platform",
+        "android.hardware.security.sharedsecret-V1-ndk_platform",
+        "android.hardware.security.secureclock-V1-ndk_platform",
         "libbase",
         "libbinder_ndk",
-        "libcppbor",
+        "libcppbor_external",
         "libcrypto",
         "libkeymaster_portable",
         "libkeymint",
         "liblog",
         "libpuresoftkeymasterdevice",
+        "libremote_provisioner",
         "libutils",
     ],
     srcs: [
         "service.cpp",
+    ],
+}
+
+cc_library {
+    name: "libremote_provisioner",
+    vendor_available: true,
+    static_libs: [
+        "libkeymint_remote_prov_support",
+    ],
+    shared_libs: [
+        "android.hardware.security.keymint-V1-ndk_platform",
+        "libbinder_ndk",
+        "libcppbor_external",
+        "libcppcose",
+        "libcrypto",
+        "libkeymaster_portable",
+        "libkeymint",
+        "liblog",
+        "libpuresoftkeymasterdevice",
+    ],
+    export_include_dirs: [
+        ".",
+    ],
+    srcs: [
+        "RemotelyProvisionedComponent.cpp",
     ],
 }

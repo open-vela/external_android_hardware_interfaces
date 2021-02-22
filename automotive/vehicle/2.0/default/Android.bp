@@ -12,6 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
 cc_defaults {
     name: "vhal_v2_0_defaults",
     shared_libs: [
@@ -32,7 +41,7 @@ cc_defaults {
     defaults: ["vhal_v2_0_defaults"],
     shared_libs: [
         "libbinder_ndk",
-        "android.automotive.watchdog-V2-ndk_platform",
+        "carwatchdog_aidl_interface-V2-ndk_platform",
     ],
 }
 
@@ -137,6 +146,7 @@ cc_library_static {
     local_include_dirs: ["common/include/vhal_v2_0"],
     export_include_dirs: ["impl"],
     srcs: [
+        "impl/vhal_v2_0/EmulatedUserHal.cpp",
         "impl/vhal_v2_0/GeneratorHub.cpp",
         "impl/vhal_v2_0/JsonFakeValueGenerator.cpp",
         "impl/vhal_v2_0/LinearFakeValueGenerator.cpp",

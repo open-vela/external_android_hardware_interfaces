@@ -191,6 +191,10 @@ AuthorizationSetBuilder& AuthorizationSetBuilder::EncryptionKey() {
     return Authorization(TAG_PURPOSE, KeyPurpose::DECRYPT);
 }
 
+AuthorizationSetBuilder& AuthorizationSetBuilder::AttestKey() {
+    return Authorization(TAG_PURPOSE, KeyPurpose::ATTEST_KEY);
+}
+
 AuthorizationSetBuilder& AuthorizationSetBuilder::NoDigestOrPadding() {
     Authorization(TAG_DIGEST, Digest::NONE);
     return Authorization(TAG_PADDING, PaddingMode::NONE);
@@ -241,6 +245,14 @@ AuthorizationSetBuilder& AuthorizationSetBuilder::Padding(
         push_back(TAG_PADDING, paddingMode);
     }
     return *this;
+}
+
+AuthorizationSetBuilder& AuthorizationSetBuilder::SetDefaultValidity() {
+    // Per RFC 5280 4.1.2.5, an undefined expiration (not-after) field should be set to
+    // GeneralizedTime 999912312359559, which is 253402300799000 ms from Jan 1, 1970.
+    constexpr uint64_t kUndefinedExpirationDateTime = 253402300799000;
+    Authorization(TAG_CERTIFICATE_NOT_BEFORE, 0);
+    return Authorization(TAG_CERTIFICATE_NOT_AFTER, kUndefinedExpirationDateTime);
 }
 
 }  // namespace aidl::android::hardware::security::keymint
