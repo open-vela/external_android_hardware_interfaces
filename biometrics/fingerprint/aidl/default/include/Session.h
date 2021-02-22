@@ -19,9 +19,6 @@
 #include <aidl/android/hardware/biometrics/fingerprint/BnSession.h>
 #include <aidl/android/hardware/biometrics/fingerprint/ISessionCallback.h>
 
-#include "FakeFingerprintEngine.h"
-#include "WorkerThread.h"
-
 namespace aidl::android::hardware::biometrics::fingerprint {
 
 namespace common = aidl::android::hardware::biometrics::common;
@@ -29,8 +26,7 @@ namespace keymaster = aidl::android::hardware::keymaster;
 
 class Session : public BnSession {
   public:
-    Session(int sensorId, int userId, std::shared_ptr<ISessionCallback> cb,
-            FakeFingerprintEngine* engine, WorkerThread* worker);
+    explicit Session(std::shared_ptr<ISessionCallback> cb);
 
     ndk::ScopedAStatus generateChallenge(int32_t cookie, int32_t timeoutSec) override;
 
@@ -39,7 +35,7 @@ class Session : public BnSession {
     ndk::ScopedAStatus enroll(int32_t cookie, const keymaster::HardwareAuthToken& hat,
                               std::shared_ptr<common::ICancellationSignal>* out) override;
 
-    ndk::ScopedAStatus authenticate(int32_t cookie, int64_t operationId,
+    ndk::ScopedAStatus authenticate(int32_t cookie, int64_t keystoreOperationId,
                                     std::shared_ptr<common::ICancellationSignal>* out) override;
 
     ndk::ScopedAStatus detectInteraction(
@@ -66,29 +62,8 @@ class Session : public BnSession {
 
     ndk::ScopedAStatus onUiReady() override;
 
-    bool isClosed();
-
   private:
-    // Crashes the HAL if it's not currently idling because that would be an invalid state machine
-    // transition. Otherwise, sets the scheduled state to the given state.
-    void scheduleStateOrCrash(SessionState state);
-
-    // Crashes the HAL if the provided state doesn't match the previously scheduled state.
-    // Otherwise, transitions into the provided state, clears the scheduled state, and notifies
-    // the client about the transition by calling ISessionCallback#onStateChanged.
-    void enterStateOrCrash(int cookie, SessionState state);
-
-    // Sets the current state to SessionState::IDLING and notifies the client about the transition
-    // by calling ISessionCallback#onStateChanged.
-    void enterIdling(int cookie);
-
-    int32_t mSensorId;
-    int32_t mUserId;
     std::shared_ptr<ISessionCallback> mCb;
-    FakeFingerprintEngine* mEngine;
-    WorkerThread* mWorker;
-    SessionState mScheduledState;
-    SessionState mCurrentState;
 };
 
 }  // namespace aidl::android::hardware::biometrics::fingerprint

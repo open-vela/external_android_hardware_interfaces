@@ -36,7 +36,7 @@ WorkerThread::~WorkerThread() {
     mThread.join();
 }
 
-bool WorkerThread::schedule(std::unique_ptr<Callable> task) {
+bool WorkerThread::schedule(Task&& task) {
     if (mIsDestructing) {
         return false;
     }
@@ -58,10 +58,10 @@ void WorkerThread::threadFunc() {
         if (mIsDestructing) {
             return;
         }
-        std::unique_ptr<Callable> task = std::move(mQueue.front());
+        Task task = std::move(mQueue.front());
         mQueue.pop_front();
         lock.unlock();
-        (*task)();
+        task();
     }
 }
 
