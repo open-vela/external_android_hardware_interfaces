@@ -14,6 +14,15 @@
 // limitations under the License.
 //
 
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
 cc_library_static {
     name: "neuralnetworks_utils_hal_aidl",
     defaults: ["neuralnetworks_utils_defaults"],
@@ -21,12 +30,14 @@ cc_library_static {
     local_include_dirs: ["include/nnapi/hal/aidl/"],
     export_include_dirs: ["include"],
     static_libs: [
+        "libarect",
         "neuralnetworks_types",
         "neuralnetworks_utils_hal_common",
     ],
     shared_libs: [
-        "libhidlbase",
         "android.hardware.neuralnetworks-V1-ndk_platform",
         "libbinder_ndk",
+        "libhidlbase",
+        "libnativewindow",
     ],
 }
