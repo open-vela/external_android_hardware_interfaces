@@ -123,9 +123,6 @@ class FrontendTests {
     AssertionResult closeFrontend();
     AssertionResult getFrontendDtmbCaps(uint32_t);
 
-    AssertionResult linkCiCam(uint32_t ciCamId);
-    AssertionResult unlinkCiCam(uint32_t ciCamId);
-
     void getFrontendIdByType(FrontendType feType, uint32_t& feId);
     void tuneTest(FrontendConfig frontendConf);
     void scanTest(FrontendConfig frontend, FrontendScanType type);
