@@ -27,16 +27,12 @@ namespace V1_0 {
 namespace implementation {
 
 #define WAIT_TIMEOUT 3000000000
-
 Demux::Demux(uint32_t demuxId, sp<Tuner> tuner) {
     mDemuxId = demuxId;
     mTunerService = tuner;
 }
 
-Demux::~Demux() {
-    mFrontendInputThreadRunning = false;
-    std::lock_guard<std::mutex> lock(mFrontendInputThreadLock);
-}
+Demux::~Demux() {}
 
 Return<Result> Demux::setFrontendDataSource(uint32_t frontendId) {
     ALOGV("%s", __FUNCTION__);
@@ -175,8 +171,6 @@ Return<Result> Demux::close() {
     mFilters.clear();
     mLastUsedFilterId = -1;
     mTunerService->removeDemux(mDemuxId);
-    mFrontendInputThreadRunning = false;
-    std::lock_guard<std::mutex> lock(mFrontendInputThreadLock);
 
     return Result::SUCCESS;
 }
@@ -328,7 +322,6 @@ uint16_t Demux::getFilterTpid(uint64_t filterId) {
 }
 
 void Demux::startFrontendInputLoop() {
-    mFrontendInputThreadRunning = true;
     pthread_create(&mFrontendInputThread, NULL, __threadLoopFrontend, this);
     pthread_setname_np(mFrontendInputThread, "frontend_input_thread");
 }
@@ -341,6 +334,8 @@ void* Demux::__threadLoopFrontend(void* user) {
 
 void Demux::frontendInputThreadLoop() {
     std::lock_guard<std::mutex> lock(mFrontendInputThreadLock);
+    mFrontendInputThreadRunning = true;
+
     if (!mDvrPlayback) {
         ALOGW("[Demux] No software Frontend input configured. Ending Frontend thread loop.");
         mFrontendInputThreadRunning = false;
