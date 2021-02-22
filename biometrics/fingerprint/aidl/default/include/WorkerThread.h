@@ -21,9 +21,9 @@
 #include <queue>
 #include <thread>
 
-#include "Callable.h"
-
 namespace aidl::android::hardware::biometrics::fingerprint {
+
+using Task = std::function<void()>;
 
 // A class that encapsulates a worker thread and a task queue, and provides a convenient interface
 // for a Session to schedule its tasks for asynchronous execution.
@@ -47,12 +47,7 @@ class WorkerThread final {
 
     // If the internal queue is not full, pushes a task at the end of the queue and returns true.
     // Otherwise, returns false. If the queue is busy, blocks until it becomes available.
-    // This method expects heap-allocated tasks because it's the simplest way to represent function
-    // objects of any type. Stack-allocated std::function could be used instead, but it cannot
-    // represent functions with move-only captures because std::function is inherently copyable.
-    // Not being able to pass move-only lambdas is a major limitation for the HAL implementation,
-    // so heap-allocated tasks that share a common interface (Callable) were chosen instead.
-    bool schedule(std::unique_ptr<Callable> task);
+    bool schedule(Task&& task);
 
   private:
     // The function that runs on the internal thread. Sequentially runs the available tasks from
@@ -68,7 +63,7 @@ class WorkerThread final {
     std::atomic<bool> mIsDestructing;
 
     // Queue that's guarded by mQueueMutex and mQueueCond.
-    std::deque<std::unique_ptr<Callable>> mQueue;
+    std::deque<Task> mQueue;
     std::mutex mQueueMutex;
     std::condition_variable mQueueCond;
 

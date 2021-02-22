@@ -15,12 +15,11 @@
  */
 
 #include "Fingerprint.h"
-
 #include "Session.h"
 
 namespace aidl::android::hardware::biometrics::fingerprint {
 namespace {
-constexpr size_t MAX_WORKER_QUEUE_SIZE = 5;
+
 constexpr int SENSOR_ID = 1;
 constexpr common::SensorStrength SENSOR_STRENGTH = common::SensorStrength::STRONG;
 constexpr int MAX_ENROLLMENTS_PER_USER = 5;
@@ -33,8 +32,7 @@ constexpr char SERIAL_NUMBER[] = "00000001";
 
 }  // namespace
 
-Fingerprint::Fingerprint()
-    : mEngine(std::make_unique<FakeFingerprintEngine>()), mWorker(MAX_WORKER_QUEUE_SIZE) {}
+Fingerprint::Fingerprint() {}
 
 ndk::ScopedAStatus Fingerprint::getSensorProps(std::vector<SensorProps>* out) {
     std::vector<common::HardwareInfo> hardwareInfos = {
@@ -54,21 +52,14 @@ ndk::ScopedAStatus Fingerprint::getSensorProps(std::vector<SensorProps>* out) {
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus Fingerprint::createSession(int32_t sensorId, int32_t userId,
+ndk::ScopedAStatus Fingerprint::createSession(int32_t /*sensorId*/, int32_t /*userId*/,
                                               const std::shared_ptr<ISessionCallback>& cb,
                                               std::shared_ptr<ISession>* out) {
-    auto sessionSp = mSession.lock();
-    CHECK(sessionSp == nullptr || sessionSp->isClosed()) << "Open session already exists!";
-
-    auto session = SharedRefBase::make<Session>(sensorId, userId, cb, mEngine.get(), &mWorker);
-    mSession = session;
-    *out = session;
+    *out = SharedRefBase::make<Session>(cb);
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus Fingerprint::reset() {
-    // Crash. The system will start a fresh instance of the HAL.
-    CHECK(false) << "Unable to reset. Crashing.";
     return ndk::ScopedAStatus::ok();
 }
 
