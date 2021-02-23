@@ -1310,10 +1310,8 @@ static void mutateExecutionPriorityTest(const std::shared_ptr<IDevice>& device,
 ////////////////////////// ENTRY POINT //////////////////////////////
 
 void validateModel(const std::shared_ptr<IDevice>& device, const Model& model) {
-    const auto numberOfConsumers =
-            nn::countNumberOfConsumers(model.main.operands.size(),
-                                       nn::convert(model.main.operations).value())
-                    .value();
+    const auto numberOfConsumers = nn::countNumberOfConsumers(
+            model.main.operands.size(), nn::convert(model.main.operations).value());
     mutateExecutionOrderTest(device, model, numberOfConsumers);
     mutateOperandTypeTest(device, model);
     mutateOperandRankTest(device, model);
