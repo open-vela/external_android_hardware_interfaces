@@ -246,9 +246,9 @@ nn::GeneralResult<void> unflushDataFromSharedToPointer(
     return {};
 }
 
-nn::GeneralResult<std::vector<uint32_t>> countNumberOfConsumers(
-        size_t numberOfOperands, const std::vector<nn::Operation>& operations) {
-    return makeGeneralFailure(nn::countNumberOfConsumers(numberOfOperands, operations));
+std::vector<uint32_t> countNumberOfConsumers(size_t numberOfOperands,
+                                             const std::vector<nn::Operation>& operations) {
+    return nn::countNumberOfConsumers(numberOfOperands, operations);
 }
 
 nn::GeneralResult<hidl_memory> createHidlMemoryFromSharedMemory(const nn::SharedMemory& memory) {
