@@ -87,9 +87,5 @@ enum Error {
      *
      * LOCKOUT_PERMANENT = 9
      */
-
-    /**
-     * Authentication cannot be performed because re-enrollment is required.
-     */
-    REENROLL_REQUIRED = 16,
 }
+
