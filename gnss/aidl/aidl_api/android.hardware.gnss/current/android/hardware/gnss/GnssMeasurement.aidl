@@ -50,7 +50,7 @@ parcelable GnssMeasurement {
   long carrierCycles;
   double carrierPhase;
   double carrierPhaseUncertainty;
-  android.hardware.gnss.GnssMultipathIndicator multipathIndicator = android.hardware.gnss.GnssMultipathIndicator.UNKNOWN;
+  android.hardware.gnss.GnssMultipathIndicator multipathIndicator;
   double snrDb;
   double agcLevelDb;
   double fullInterSignalBiasNs;
