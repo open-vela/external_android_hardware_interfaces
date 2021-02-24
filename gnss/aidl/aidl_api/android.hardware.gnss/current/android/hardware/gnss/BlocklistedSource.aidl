@@ -33,6 +33,6 @@
 package android.hardware.gnss;
 @VintfStability
 parcelable BlocklistedSource {
-  android.hardware.gnss.GnssConstellationType constellation = android.hardware.gnss.GnssConstellationType.UNKNOWN;
+  android.hardware.gnss.GnssConstellationType constellation;
   int svid;
 }
