@@ -26,7 +26,7 @@ parcelable BlocklistedSource {
     /**
      * Defines the constellation of the given satellite(s).
      */
-    GnssConstellationType constellation = GnssConstellationType.UNKNOWN;
+    GnssConstellationType constellation;
 
     /**
      * Satellite (space vehicle) ID number, as defined in GnssSvInfo::svid, or 0 to blocklist all
