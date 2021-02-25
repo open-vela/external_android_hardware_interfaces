@@ -21,9 +21,6 @@
 
 #include <android-base/logging.h>
 
-#include <android/hardware/graphics/allocator/2.0/IAllocator.h>
-#include <android/hardware/graphics/mapper/2.0/IMapper.h>
-#include <android/hardware/graphics/mapper/2.0/types.h>
 #include <android/hardware/media/omx/1.0/IOmx.h>
 #include <android/hardware/media/omx/1.0/IOmxNode.h>
 #include <android/hardware/media/omx/1.0/IOmxObserver.h>
@@ -31,7 +28,9 @@
 #include <android/hidl/allocator/1.0/IAllocator.h>
 #include <android/hidl/memory/1.0/IMapper.h>
 #include <android/hidl/memory/1.0/IMemory.h>
-#include <cutils/atomic.h>
+
+#include <atomic>
+#include <variant>
 
 using ::android::hardware::graphics::common::V1_0::BufferUsage;
 using ::android::hardware::graphics::common::V1_0::PixelFormat;
@@ -51,17 +50,16 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::hidl_string;
 using ::android::sp;
 
-#include <VtsHalHidlTargetTestBase.h>
 #include <hidlmemory/mapping.h>
 #include <media/hardware/HardwareAPI.h>
 #include <media_hidl_test_common.h>
 #include <memory>
 
 // set component role
-Return<android::hardware::media::omx::V1_0::Status> setRole(
-    sp<IOmxNode> omxNode, const char* role) {
+Return<android::hardware::media::omx::V1_0::Status> setRole(sp<IOmxNode> omxNode,
+                                                            const std::string& role) {
     OMX_PARAM_COMPONENTROLETYPE params;
-    strcpy((char*)params.cRole, role);
+    strcpy((char*)params.cRole, role.c_str());
     return setParam(omxNode, OMX_IndexParamStandardComponentRole, &params);
 }
 
@@ -195,67 +193,39 @@ void allocateGraphicBuffers(sp<IOmxNode> omxNode, OMX_U32 portIndex,
                             BufferInfo* buffer, uint32_t nFrameWidth,
                             uint32_t nFrameHeight, int32_t* nStride,
                             int format) {
-    android::hardware::media::omx::V1_0::Status status;
-    sp<android::hardware::graphics::allocator::V2_0::IAllocator> allocator =
-        android::hardware::graphics::allocator::V2_0::IAllocator::getService();
-    ASSERT_NE(nullptr, allocator.get());
-
-    sp<android::hardware::graphics::mapper::V2_0::IMapper> mapper =
-        android::hardware::graphics::mapper::V2_0::IMapper::getService();
-    ASSERT_NE(mapper.get(), nullptr);
-
-    android::hardware::graphics::mapper::V2_0::IMapper::BufferDescriptorInfo
-        descriptorInfo;
-    uint32_t usage;
-
-    descriptorInfo.width = nFrameWidth;
-    descriptorInfo.height = nFrameHeight;
-    descriptorInfo.layerCount = 1;
-    descriptorInfo.format = static_cast<PixelFormat>(format);
-    descriptorInfo.usage = static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN);
-    omxNode->getGraphicBufferUsage(
+    android::hardware::media::omx::V1_0::Status status{};
+    uint64_t usage{};
+    ASSERT_TRUE(omxNode->getGraphicBufferUsage(
         portIndex,
         [&status, &usage](android::hardware::media::omx::V1_0::Status _s,
                           uint32_t _n1) {
             status = _s;
             usage = _n1;
-        });
-    if (status == android::hardware::media::omx::V1_0::Status::OK) {
-        descriptorInfo.usage |= usage;
-    }
+        }).isOk());
+    ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::OK);
 
-    ::android::hardware::hidl_vec<uint32_t> descriptor;
-    android::hardware::graphics::mapper::V2_0::Error error;
-    mapper->createDescriptor(
-        descriptorInfo, [&error, &descriptor](
-                            android::hardware::graphics::mapper::V2_0::Error _s,
-                            ::android::hardware::hidl_vec<uint32_t> _n1) {
-            error = _s;
-            descriptor = _n1;
-        });
-    ASSERT_EQ(error, android::hardware::graphics::mapper::V2_0::Error::NONE);
+    uint32_t stride;
+    buffer_handle_t handle = nullptr;
+    android::GraphicBufferAllocator& allocator = android::GraphicBufferAllocator::get();
+    android::status_t error = allocator.allocate(
+            nFrameWidth, nFrameHeight, static_cast<android::PixelFormat>(format), 1,
+            usage | BufferUsage::CPU_READ_OFTEN, &handle, &stride, "omx_vts_common");
 
-    static volatile int32_t nextId = 0;
-    uint64_t id = static_cast<uint64_t>(getpid()) << 32;
-    allocator->allocate(
-        descriptor, 1,
-        [&](android::hardware::graphics::mapper::V2_0::Error _s, uint32_t _n1,
-            const ::android::hardware::hidl_vec<
-                ::android::hardware::hidl_handle>& _n2) {
-            ASSERT_EQ(android::hardware::graphics::mapper::V2_0::Error::NONE,
-                      _s);
-            *nStride = _n1;
-            buffer->omxBuffer.nativeHandle = _n2[0];
-            buffer->omxBuffer.attr.anwBuffer.width = nFrameWidth;
-            buffer->omxBuffer.attr.anwBuffer.height = nFrameHeight;
-            buffer->omxBuffer.attr.anwBuffer.stride = _n1;
-            buffer->omxBuffer.attr.anwBuffer.format = descriptorInfo.format;
-            buffer->omxBuffer.attr.anwBuffer.usage = descriptorInfo.usage;
-            buffer->omxBuffer.attr.anwBuffer.layerCount =
-                descriptorInfo.layerCount;
-            buffer->omxBuffer.attr.anwBuffer.id =
-                id | static_cast<uint32_t>(android_atomic_inc(&nextId));
-        });
+    ASSERT_EQ(error, android::NO_ERROR);
+    ASSERT_NE(handle, nullptr);
+
+    *nStride = static_cast<int32_t>(stride);
+    buffer->handle = handle;
+    buffer->omxBuffer.nativeHandle = handle;
+    buffer->omxBuffer.attr.anwBuffer.width = nFrameWidth;
+    buffer->omxBuffer.attr.anwBuffer.height = nFrameHeight;
+    buffer->omxBuffer.attr.anwBuffer.stride = stride;
+    buffer->omxBuffer.attr.anwBuffer.format = static_cast<PixelFormat>(format);
+    buffer->omxBuffer.attr.anwBuffer.usage = usage | BufferUsage::CPU_READ_OFTEN;
+    buffer->omxBuffer.attr.anwBuffer.layerCount = 1;
+    static std::atomic_int32_t bufferIdCounter{0};
+    buffer->omxBuffer.attr.anwBuffer.id = (static_cast<uint64_t>(getpid()) << 32) |
+                                          bufferIdCounter.fetch_add(1, std::memory_order_relaxed);
 }
 
 // allocate buffers needed on a component port
@@ -366,6 +336,18 @@ void allocatePortBuffers(sp<IOmxNode> omxNode,
     }
 }
 
+// free buffers needed on a component port
+void freePortBuffers(android::Vector<BufferInfo>* buffArray, PortMode portMode, bool allocGrap) {
+    for (size_t i = 0; i < buffArray->size(); i++) {
+        if (portMode == PortMode::PRESET_ANW_BUFFER ||
+            (allocGrap && portMode == PortMode::DYNAMIC_ANW_BUFFER)) {
+            android::GraphicBufferAllocator& allocator = android::GraphicBufferAllocator::get();
+            android::status_t error = allocator.free((*buffArray)[i].handle);
+            ASSERT_EQ(error, android::NO_ERROR);
+        }
+    }
+}
+
 // State Transition : Loaded -> Idle
 // Note: This function does not make any background checks for this transition.
 // The callee holds the reponsibility to ensure the legality of the transition.
@@ -430,11 +412,15 @@ void changeStateLoadedtoIdle(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
 // The callee holds the reponsibility to ensure the legality of the transition.
 void changeStateIdletoLoaded(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                              android::Vector<BufferInfo>* iBuffer,
-                             android::Vector<BufferInfo>* oBuffer,
-                             OMX_U32 kPortIndexInput,
-                             OMX_U32 kPortIndexOutput) {
+                             android::Vector<BufferInfo>* oBuffer, OMX_U32 kPortIndexInput,
+                             OMX_U32 kPortIndexOutput, PortMode* portMode, bool allocGrap) {
     android::hardware::media::omx::V1_0::Status status;
     Message msg;
+    PortMode defaultPortMode[2], *pm;
+
+    defaultPortMode[0] = PortMode::PRESET_BYTE_BUFFER;
+    defaultPortMode[1] = PortMode::PRESET_BYTE_BUFFER;
+    pm = portMode ? portMode : defaultPortMode;
 
     // set state to Loaded
     status = omxNode->sendCommand(toRawCommandType(OMX_CommandStateSet),
@@ -477,6 +463,8 @@ void changeStateIdletoLoaded(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
     ASSERT_EQ(msg.data.eventData.data1, OMX_CommandStateSet);
     ASSERT_EQ(msg.data.eventData.data2, OMX_StateLoaded);
 
+    ASSERT_NO_FATAL_FAILURE(freePortBuffers(iBuffer, pm[0], allocGrap));
+    ASSERT_NO_FATAL_FAILURE(freePortBuffers(oBuffer, pm[1], allocGrap));
     return;
 }
 
@@ -492,7 +480,7 @@ void changeStateIdletoExecute(sp<IOmxNode> omxNode,
     status = omxNode->sendCommand(toRawCommandType(OMX_CommandStateSet),
                                   OMX_StateExecuting);
     ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::OK);
-    status = observer->dequeueMessage(&msg, DEFAULT_TIMEOUT);
+    status = observer->dequeueMessage(&msg, RELAXED_TIMEOUT);
     ASSERT_EQ(status, android::hardware::media::omx::V1_0::Status::OK);
     ASSERT_EQ(msg.type, Message::Type::EVENT);
     ASSERT_EQ(msg.data.eventData.event, OMX_EventCmdComplete);
@@ -716,4 +704,47 @@ void testEOS(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
     // test for flag
     EXPECT_EQ(eosFlag, true);
     eosFlag = false;
+}
+
+hidl_vec<IOmx::ComponentInfo> getComponentInfoList(sp<IOmx> omx) {
+    android::hardware::media::omx::V1_0::Status status;
+    hidl_vec<IOmx::ComponentInfo> nodeList;
+    omx->listNodes([&status, &nodeList](android::hardware::media::omx::V1_0::Status _s,
+                                        hidl_vec<IOmx::ComponentInfo> const& _nl) {
+        status = _s;
+        nodeList = _nl;
+    });
+    if (status != android::hardware::media::omx::V1_0::Status::OK) {
+        ALOGE("Failed to get ComponentInfo list for IOmx.");
+    }
+    return nodeList;
+}
+
+// Return all test parameters, a list of tuple of <instance, component, role>
+const std::vector<std::tuple<std::string, std::string, std::string>>& getTestParameters(
+        const std::string& filter) {
+    static std::vector<std::tuple<std::string, std::string, std::string>> parameters;
+
+    auto instances = android::hardware::getAllHalInstanceNames(IOmx::descriptor);
+    for (std::string instance : instances) {
+        sp<IOmx> omx = IOmx::getService(instance);
+        hidl_vec<IOmx::ComponentInfo> componentInfos = getComponentInfoList(omx);
+        for (IOmx::ComponentInfo info : componentInfos) {
+            for (std::string role : info.mRoles) {
+                if (filter.empty()) {
+                    if (kKnownRoles.find(role.c_str()) == kKnownRoles.end()) {
+                        // This is for component test and the role is not supported.
+                        continue;
+                    }
+                } else if (role.find(filter) == std::string::npos) {
+                    // The role doesn't match the given filter, e.g., video_decoder_vp8 role doesn't
+                    // need to run for audio_decoder tests.
+                    continue;
+                }
+                parameters.push_back(std::make_tuple(instance, info.mName.c_str(), role.c_str()));
+            }
+        }
+    }
+
+    return parameters;
 }
