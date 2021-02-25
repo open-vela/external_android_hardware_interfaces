@@ -103,8 +103,7 @@ class GraphicsCompositionTestBase : public ::testing::Test {
 
         mTestRenderEngine->initGraphicBuffer(
                 static_cast<uint32_t>(mDisplayWidth), static_cast<uint32_t>(mDisplayHeight), 1,
-                static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN |
-                                      BufferUsage::GPU_RENDER_TARGET));
+                static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN));
         mTestRenderEngine->setDisplaySettings(clientCompositionDisplay);
     }
 
