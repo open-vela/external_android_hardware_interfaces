@@ -57,10 +57,12 @@ ndk::ScopedAStatus Fingerprint::getSensorProps(std::vector<SensorProps>* out) {
 ndk::ScopedAStatus Fingerprint::createSession(int32_t sensorId, int32_t userId,
                                               const std::shared_ptr<ISessionCallback>& cb,
                                               std::shared_ptr<ISession>* out) {
-    CHECK(mSession == nullptr || mSession->isClosed()) << "Open session already exists!";
+    auto sessionSp = mSession.lock();
+    CHECK(sessionSp == nullptr || sessionSp->isClosed()) << "Open session already exists!";
 
-    mSession = SharedRefBase::make<Session>(sensorId, userId, cb, mEngine.get(), &mWorker);
-    *out = mSession;
+    auto session = SharedRefBase::make<Session>(sensorId, userId, cb, mEngine.get(), &mWorker);
+    mSession = session;
+    *out = session;
     return ndk::ScopedAStatus::ok();
 }
 
