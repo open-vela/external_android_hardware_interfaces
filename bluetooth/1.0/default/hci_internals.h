@@ -24,7 +24,8 @@ enum HciPacketType {
   HCI_PACKET_TYPE_COMMAND = 1,
   HCI_PACKET_TYPE_ACL_DATA = 2,
   HCI_PACKET_TYPE_SCO_DATA = 3,
-  HCI_PACKET_TYPE_EVENT = 4
+  HCI_PACKET_TYPE_EVENT = 4,
+  HCI_PACKET_TYPE_ISO_DATA = 5,
 };
 
 // 2 bytes for opcode, 1 byte for parameter length (Volume 2, Part E, 5.4.1)
@@ -42,6 +43,10 @@ const size_t HCI_LENGTH_OFFSET_SCO = 2;
 // 1 byte for event code, 1 byte for parameter length (Volume 2, Part E, 5.4.4)
 const size_t HCI_EVENT_PREAMBLE_SIZE = 2;
 const size_t HCI_LENGTH_OFFSET_EVT = 1;
+
+// 2 bytes for handle and flags, 2 byte for data length (Volume 4, Part E, 5.4.5)
+const size_t HCI_ISO_PREAMBLE_SIZE = 4;
+const size_t HCI_LENGTH_OFFSET_ISO = 2;
 
 const size_t HCI_PREAMBLE_SIZE_MAX = HCI_ACL_PREAMBLE_SIZE;
 
