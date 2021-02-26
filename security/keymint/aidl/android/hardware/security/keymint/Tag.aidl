@@ -883,7 +883,11 @@ enum Tag {
     STORAGE_KEY = (7 << 28) /* TagType:BOOL */ | 722,
 
     /**
-     * TODO: Delete when keystore1 is deleted.
+     * Tag::ASSOCIATED_DATA Provides "associated data" for AES-GCM encryption or decryption.  This
+     * tag is provided to update and specifies data that is not encrypted/decrypted, but is used in
+     * computing the GCM tag.
+     *
+     * Must never appear KeyCharacteristics.
      */
     ASSOCIATED_DATA = (9 << 28) /* TagType:BYTES */ | 1000,
 
