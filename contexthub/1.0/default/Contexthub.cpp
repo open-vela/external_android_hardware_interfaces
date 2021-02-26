@@ -155,10 +155,10 @@ Return<Result> Contexthub::sendMessageToHub(uint32_t hubId,
         .message = static_cast<const uint8_t *>(msg.msg.data()),
     };
 
-    // Use a placeholder to prevent send_message with empty message from failing prematurely
-    static uint8_t placeholder;
+    // Use a dummy to prevent send_message with empty message from failing prematurely
+    static uint8_t dummy;
     if (txMsg.message_len == 0 && txMsg.message == nullptr) {
-        txMsg.message = &placeholder;
+        txMsg.message = &dummy;
     }
 
     ALOGI("Sending msg of type %" PRIu32 ", size %" PRIu32 " to app 0x%" PRIx64,
@@ -255,7 +255,7 @@ static bool isValidOsStatus(const uint8_t *msg,
 
     memcpy(rsp, msg, sizeof(*rsp));
 
-    // No validations on return values
+    // No sanity checks on return values
     return true;
 }
 
