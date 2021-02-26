@@ -274,7 +274,8 @@ enum HandoverFailureMode : int32_t {
 /**
  * Overwritten from @1.5::SetupDataCallResult in order to change the suggestedRetryTime
  * to 64-bit value. In the future, this must be extended instead of overwritten.
- * Also added defaultQos, qosSessions, and handoverFailureMode in this version.
+ * Also added defaultQos, qosSessions, handoverFailureMode, pduSessionId, sliceInfo,
+ * and traffic descriptors in this version.
  */
 struct SetupDataCallResult {
     /** Data call fail cause. DataCallFailCause.NONE if no error. */
@@ -366,6 +367,13 @@ struct SetupDataCallResult {
      * AccessNetwork:NGRAN.
      */
     OptionalSliceInfo sliceInfo;
+
+    /**
+     * TrafficDescriptors for which this data call must be used. It only includes
+     * the TDs for which a data call has been requested so far; it is not an
+     * exhaustive list.
+     */
+    vec<TrafficDescriptor> trafficDescriptors;
 };
 
 /**
@@ -419,7 +427,8 @@ struct LinkCapacityEstimate {
     * This bandwidth estimate shall be the estimated maximum sustainable link bandwidth
     * (as would be measured at the Upper PDCP or SNDCP SAP). This is valid only
     * in if device is connected to both primary and secodary in dual connected
-    * mode. This must be filled with -1 if secondary is not connected.
+    * mode. This must be filled with -1 if secondary is not connected or if
+    * modem does not support this feature.
     */
    uint32_t secondaryDownlinkCapacityKbps;
 
@@ -428,7 +437,8 @@ struct LinkCapacityEstimate {
     * This bandwidth estimate shall be the estimated
     * maximum sustainable link bandwidth (as would be measured at the Upper PDCP or SNDCP SAP).
     * This is valid only in if device is connected to both primary and secodary in dual connected
-    * mode.This must be filled with -1 if secondary is not connected.
+    * mode.This must be filled with -1 if secondary is not connected or if modem
+    * does not support this feature.
     */
    uint32_t secondaryUplinkCapacityKbps;
 };
@@ -756,73 +766,6 @@ struct Call {
     string forwardedNumber;
 };
 
-struct PhysicalChannelConfig {
-    /** Connection status for cell. Valid values are PRIMARY_SERVING and SECONDARY_SERVING */
-    CellConnectionStatus status;
-
-    /** The radio technology for this physical channel */
-    RadioTechnology rat;
-
-    /** Downlink Absolute Radio Frequency Channel Number */
-    int32_t downlinkChannelNumber;
-
-    /** Uplink Absolute Radio Frequency Channel Number */
-    int32_t uplinkChannelNumber;
-
-    /** Downlink cell bandwidth, in kHz */
-    int32_t cellBandwidthDownlink;
-
-    /** Uplink cell bandwidth, in kHz */
-    int32_t cellBandwidthUplink;
-
-    /**
-     * A list of data calls mapped to this physical channel. The context id must match the cid of
-     * @1.5::SetupDataCallResult. An empty list means the physical channel has no data call mapped
-     * to it.
-     */
-    vec<int32_t> contextIds;
-
-    /**
-     * The physical cell identifier for this cell.
-     *
-     * In UTRAN, this value is primary scrambling code. The range is [0, 511].
-     * Reference: 3GPP TS 25.213 section 5.2.2.
-     *
-     * In EUTRAN, this value is physical layer cell identity. The range is [0, 503].
-     * Reference: 3GPP TS 36.211 section 6.11.
-     *
-     * In 5G RAN, this value is physical layer cell identity. The range is [0, 1007].
-     * Reference: 3GPP TS 38.211 section 7.4.2.1.
-     */
-    uint32_t physicalCellId;
-
-    /**
-     * The frequency band to scan.
-     */
-    safe_union Band {
-        /** Valid only if radioAccessNetwork = GERAN. */
-        GeranBands geranBand;
-        /** Valid only if radioAccessNetwork = UTRAN. */
-        UtranBands utranBand;
-        /** Valid only if radioAccessNetwork = EUTRAN. */
-        EutranBands eutranBand;
-        /** Valid only if radioAccessNetwork = NGRAN. */
-        NgranBands ngranBand;
-    } band;
-};
-
-/**
- * Extended from @1.5 NgranBands
- * IRadio 1.6 supports NGRAN bands up to V16.5.0
- */
-enum NgranBands  : @1.5::NgranBands {
-    /** 3GPP TS 38.101-1, Table 5.2-1: FR1 bands */
-    BAND_26 = 26,
-    BAND_46 = 46,
-    BAND_53 = 53,
-    BAND_96 = 96,
-};
-
 /**
  * This safe_union represents an optional slice info
  */
@@ -898,6 +841,281 @@ enum DataCallFailCause : @1.4::DataCallFailCause {
      * Data call fail due to the slice not being allowed for the data call.
      */
     SLICE_REJECTED = 0x8CC,
+
+    /**
+     * No matching rule available for the request, and match-all rule is not allowed for it.
+     */
+    MATCH_ALL_RULE_NOT_ALLOWED = 0x8CD,
+
+    /**
+     * If connection failed for all matching URSP rules.
+     */
+    ALL_MATCHING_RULES_FAILED = 0x8CE,
+};
+
+struct PhysicalChannelConfig {
+    /** Connection status for cell. Valid values are PRIMARY_SERVING and SECONDARY_SERVING */
+    CellConnectionStatus status;
+
+    /** The radio technology for this physical channel */
+    RadioTechnology rat;
+
+    /** Downlink Absolute Radio Frequency Channel Number */
+    int32_t downlinkChannelNumber;
+
+    /** Uplink Absolute Radio Frequency Channel Number */
+    int32_t uplinkChannelNumber;
+
+    /** Downlink cell bandwidth, in kHz */
+    int32_t cellBandwidthDownlink;
+
+    /** Uplink cell bandwidth, in kHz */
+    int32_t cellBandwidthUplink;
+
+    /**
+     * A list of data calls mapped to this physical channel. The context id must match the cid of
+     * @1.5::SetupDataCallResult. An empty list means the physical channel has no data call mapped
+     * to it.
+     */
+    vec<int32_t> contextIds;
+
+    /**
+     * The physical cell identifier for this cell.
+     *
+     * In UTRAN, this value is primary scrambling code. The range is [0, 511].
+     * Reference: 3GPP TS 25.213 section 5.2.2.
+     *
+     * In EUTRAN, this value is physical layer cell identity. The range is [0, 503].
+     * Reference: 3GPP TS 36.211 section 6.11.
+     *
+     * In 5G RAN, this value is physical layer cell identity. The range is [0, 1007].
+     * Reference: 3GPP TS 38.211 section 7.4.2.1.
+     */
+    uint32_t physicalCellId;
+
+    /**
+     * The frequency band to scan.
+     */
+    safe_union Band {
+        /** Valid only if radioAccessNetwork = GERAN. */
+        GeranBands geranBand;
+        /** Valid only if radioAccessNetwork = UTRAN. */
+        UtranBands utranBand;
+        /** Valid only if radioAccessNetwork = EUTRAN. */
+        EutranBands eutranBand;
+        /** Valid only if radioAccessNetwork = NGRAN. */
+        NgranBands ngranBand;
+    } band;
+};
+
+/**
+ * Extended from @1.5 NgranBands
+ * IRadio 1.6 supports NGRAN bands up to V16.5.0
+ */
+enum NgranBands  : @1.5::NgranBands {
+    /** 3GPP TS 38.101-1, Table 5.2-1: FR1 bands */
+    BAND_26 = 26,
+    BAND_46 = 46,
+    BAND_53 = 53,
+    BAND_96 = 96,
+};
+
+/**
+ * This safe_union represents an optional DNN. DNN stands for Data Network Name
+ * and represents an APN as defined in 3GPP TS 23.003.
+ */
+safe_union OptionalDnn {
+    Monostate noinit;
+    string value;
+};
+
+/**
+ * This safe_union represents an optional OsAppId.
+ */
+safe_union OptionalOsAppId {
+    Monostate noinit;
+    OsAppId value;
+};
+
+/**
+ * This safe_union represents an optional TrafficDescriptor.
+ */
+safe_union OptionalTrafficDescriptor {
+    Monostate noinit;
+    TrafficDescriptor value;
+};
+
+/**
+ * This struct represents a traffic descriptor. A valid struct must have at least
+ * one of the optional values present. This is based on the definition of traffic
+ * descriptor in TS 24.526 Section 5.2.
+ */
+struct TrafficDescriptor {
+    /**
+     * DNN stands for Data Network Name and represents an APN as defined in
+     * 3GPP TS 23.003.
+     */
+    OptionalDnn dnn;
+    /**
+     * Indicates the OsId + OsAppId (used as category in Android).
+     */
+    OptionalOsAppId osAppId;
+};
+
+/**
+ * This struct represents the OsId + OsAppId as defined in TS 24.526 Section 5.2
+ */
+struct OsAppId {
+    /**
+     * Byte array representing OsId + OsAppId. The minimum length of the array is
+     * 18 and maximum length is 272 (16 bytes for OsId + 1 byte for OsAppId length
+     * + up to 255 bytes for OsAppId).
+     */
+    vec<uint8_t> osAppId;
+};
+
+/**
+ * This struct represents the current slicing configuration.
+ */
+struct SlicingConfig {
+    /**
+     * This vector contains the current URSP rules. Empty vector represents that no
+     * rules are configured.
+     */
+    vec<UrspRule> urspRules;
+    /**
+     * Struct containing all NSSAIs (list of slice info).
+     */
+    Nssais nsaids;
+};
+
+/**
+ * This struct represents a single URSP rule as defined in 3GPP TS 24.526.
+ */
+struct UrspRule {
+    /**
+     * Precedence value in the range of 0 to 255. Higher value has lower
+     * precedence.
+     */
+    uint8_t precedence;
+    /**
+     * Used as a matcher for network requests.
+     */
+    vec<TrafficDescriptor> trafficDescriptors;
+    /**
+     * List of routes (connection parameters) that must be used for requests
+     * matching a trafficDescriptor.
+     */
+    vec<RouteSelectionDescriptor> routeSelectionDescriptor;
+};
+
+
+/**
+ * This struct represents a single route selection descriptor as defined in
+ * 3GPP TS 24.526.
+ */
+struct RouteSelectionDescriptor {
+    /**
+     * Precedence value in the range of 0 to 255. Higher value has lower
+     * precedence.
+     */
+    uint8_t precedence;
+    /**
+     * Parameters defining this RouteSelectionDescriptor. The length of the vector
+     * must be >= 1.
+     */
+    vec<RouteSelectionDescriptorParams> routeSelectionDescriptorParams;
+};
+
+/**
+ * This struct represents a route selection descriptor. A valid struct must have
+ * at least one of the vectors non-empty.
+ */
+struct RouteSelectionDescriptorParams {
+    /**
+     * Valid values are IP, IPV6 and IPV4V6.
+     */
+    OptionalPdpProtocolType sessionType;
+    OptionalSscMode sscMode;
+    /**
+     * There can be 0 or more SliceInfo specified in a route descriptor.
+     */
+    vec<SliceInfo> sliceInfo;
+    /**
+     * DNN stands for Data Network Name and represents an APN as defined in
+     * 3GPP TS 23.003. There can be 0 or more DNNs specified in a route
+     * descriptor.
+     */
+    vec<string> dnn;
+};
+
+/**
+ * This safe_union represents an optional PdpProtocolType.
+ */
+safe_union OptionalPdpProtocolType {
+    Monostate noinit;
+    PdpProtocolType value;
+};
+
+/**
+ * This safe_union represents an optional SscMode.
+ */
+safe_union OptionalSscMode {
+    Monostate noinit;
+    SscMode value;
+};
+
+/**
+ * This struct contains all NSSAIs (lists of slices).
+ */
+struct Nssais {
+    /**
+     * These are all the slices configured by the network. This includes allowed
+     * and rejected slices, as well as slices that are neither allowed nor rejected
+     * yet. Empty vector indicates that no slices are configured, and in that case
+     * allowed and rejected vectors must be empty as well.
+     */
+    vec<SliceInfo> configured;
+    /**
+     * These are all the slices that the UE is allowed to use. All these slices
+     * must be configured as well. Empty vector indicates that no slices are
+     * allowed yet.
+     */
+    vec<SliceInfo> allowed;
+    /**
+     * These are all the slices that the UE is not allowed to use. All these slices
+     * must be configured as well. Empty vector indicates that no slices are
+     * rejected yet.
+     */
+    vec<RejectedSliceInfo> rejected;
+    /**
+     * Default configured NSSAI
+     */
+    vec<SliceInfo> defaultConfigured;
+};
+
+/**
+ * This struct represents a network slice rejected by the network. It contains a
+ * rejectionCause corresponding to a rejected network slice.
+ */
+struct RejectedSliceInfo {
+    SliceInfo sliceInfo;
+    SliceRejectionCause rejectionCause;
+};
+
+enum SliceRejectionCause : int32_t {
+    NOT_AVAILABLE_IN_PLMN,
+    NOT_AVAILABLE_IN_REG_AREA,
+};
+
+/**
+ * Enum representing session and service continuity mode as defined in
+ * 3GPP TS 23.501.
+ */
+enum SscMode : int32_t {
+    MODE_1 = 1,
+    MODE_2 = 2,
+    MODE_3 = 3,
 };
 
 /**
