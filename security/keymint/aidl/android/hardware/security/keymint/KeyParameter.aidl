@@ -16,8 +16,8 @@
 
 package android.hardware.security.keymint;
 
-import android.hardware.security.keymint.KeyParameterValue;
 import android.hardware.security.keymint.Tag;
+import android.hardware.security.keymint.KeyParameterValue;
 
 /**
  * Identifies the key authorization parameters to be used with keyMint.  This is usually
@@ -26,6 +26,6 @@ import android.hardware.security.keymint.Tag;
 @VintfStability
 @RustDerive(Clone=true, Eq=true, PartialEq=true, Ord=true, PartialOrd=true, Hash=true)
 parcelable KeyParameter {
-    Tag tag = Tag.INVALID;
+    Tag tag;
     KeyParameterValue value;
 }
