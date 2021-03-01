@@ -88,18 +88,6 @@ Return<Result> Frontend::stopTune() {
 
 Return<Result> Frontend::scan(const FrontendSettings& settings, FrontendScanType type) {
     ALOGV("%s", __FUNCTION__);
-
-    if (mType == FrontendType::ATSC) {
-        FrontendScanMessage msg;
-        msg.isLocked(true);
-        mCallback->onScanMessage(FrontendScanMessageType::LOCKED, msg);
-        mIsLocked = true;
-        return Result::SUCCESS;
-    }
-    if (mType != FrontendType::DVBT) {
-        return Result::UNAVAILABLE;
-    }
-
     FrontendScanMessage msg;
 
     if (mIsLocked) {
@@ -108,15 +96,96 @@ Return<Result> Frontend::scan(const FrontendSettings& settings, FrontendScanType
         return Result::SUCCESS;
     }
 
-    uint32_t frequency = settings.dvbt().frequency;
+    uint32_t frequency;
+    switch (settings.getDiscriminator()) {
+        case FrontendSettings::hidl_discriminator::analog:
+            frequency = settings.analog().frequency;
+            break;
+        case FrontendSettings::hidl_discriminator::atsc:
+            frequency = settings.atsc().frequency;
+            break;
+        case FrontendSettings::hidl_discriminator::atsc3:
+            frequency = settings.atsc3().frequency;
+            break;
+        case FrontendSettings::hidl_discriminator::dvbs:
+            frequency = settings.dvbs().frequency;
+            break;
+        case FrontendSettings::hidl_discriminator::dvbc:
+            frequency = settings.dvbc().frequency;
+            break;
+        case FrontendSettings::hidl_discriminator::dvbt:
+            frequency = settings.dvbt().frequency;
+            break;
+        case FrontendSettings::hidl_discriminator::isdbs:
+            frequency = settings.isdbs().frequency;
+            break;
+        case FrontendSettings::hidl_discriminator::isdbs3:
+            frequency = settings.isdbs3().frequency;
+            break;
+        case FrontendSettings::hidl_discriminator::isdbt:
+            frequency = settings.isdbt().frequency;
+            break;
+    }
+
     if (type == FrontendScanType::SCAN_BLIND) {
         frequency += 100;
     }
+
     msg.frequencies({frequency});
     mCallback->onScanMessage(FrontendScanMessageType::FREQUENCY, msg);
-    msg.isLocked(true);
-    mCallback->onScanMessage(FrontendScanMessageType::LOCKED, msg);
-    mIsLocked = true;
+
+    msg.progressPercent(20);
+    mCallback->onScanMessage(FrontendScanMessageType::PROGRESS_PERCENT, msg);
+
+    msg.symbolRates({30});
+    mCallback->onScanMessage(FrontendScanMessageType::SYMBOL_RATE, msg);
+
+    if (mType == FrontendType::DVBT) {
+        msg.hierarchy(FrontendDvbtHierarchy::HIERARCHY_NON_NATIVE);
+        mCallback->onScanMessage(FrontendScanMessageType::HIERARCHY, msg);
+    }
+
+    if (mType == FrontendType::ANALOG) {
+        msg.analogType(FrontendAnalogType::PAL);
+        mCallback->onScanMessage(FrontendScanMessageType::ANALOG_TYPE, msg);
+    }
+
+    msg.plpIds({3});
+    mCallback->onScanMessage(FrontendScanMessageType::PLP_IDS, msg);
+
+    msg.groupIds({2});
+    mCallback->onScanMessage(FrontendScanMessageType::GROUP_IDS, msg);
+
+    msg.inputStreamIds({1});
+    mCallback->onScanMessage(FrontendScanMessageType::INPUT_STREAM_IDS, msg);
+
+    FrontendScanMessage::Standard s;
+    switch (mType) {
+        case FrontendType::DVBT:
+            s.tStd(FrontendDvbtStandard::AUTO);
+            msg.std(s);
+            mCallback->onScanMessage(FrontendScanMessageType::STANDARD, msg);
+            break;
+        case FrontendType::DVBS:
+            s.sStd(FrontendDvbsStandard::AUTO);
+            msg.std(s);
+            mCallback->onScanMessage(FrontendScanMessageType::STANDARD, msg);
+            break;
+        case FrontendType::ANALOG:
+            s.sifStd(FrontendAnalogSifStandard::AUTO);
+            msg.std(s);
+            mCallback->onScanMessage(FrontendScanMessageType::STANDARD, msg);
+            break;
+        default:
+            break;
+    }
+
+    FrontendScanAtsc3PlpInfo info{
+            .plpId = 1,
+            .bLlsFlag = false,
+    };
+    msg.atsc3PlpInfos({info});
+    mCallback->onScanMessage(FrontendScanMessageType::ATSC3_PLP_INFO, msg);
 
     sp<V1_1::IFrontendCallback> frontendCallback_v1_1 =
             V1_1::IFrontendCallback::castFrom(mCallback);
@@ -129,15 +198,20 @@ Return<Result> Frontend::scan(const FrontendSettings& settings, FrontendScanType
         frontendCallback_v1_1->onScanMessageExt1_1(
                 V1_1::FrontendScanMessageTypeExt1_1::HIGH_PRIORITY, msg);
     } else {
-        ALOGD("[Filter] Couldn't cast to V1_1 IFrontendCallback");
+        ALOGD("[Frontend] Couldn't cast to V1_1 IFrontendCallback");
     }
+
+    msg.isLocked(true);
+    mCallback->onScanMessage(FrontendScanMessageType::LOCKED, msg);
+    mIsLocked = true;
 
     return Result::SUCCESS;
 }
 
 Return<Result> Frontend::scan_1_1(const FrontendSettings& settings, FrontendScanType type,
-                                  const V1_1::FrontendSettingsExt1_1& /*settingsExt1_1*/) {
+                                  const V1_1::FrontendSettingsExt1_1& settingsExt1_1) {
     ALOGV("%s", __FUNCTION__);
+    ALOGD("[Frontend] scan_1_1 end frequency %d", settingsExt1_1.endFrequency);
     return scan(settings, type);
 }
 
@@ -196,8 +270,38 @@ Return<void> Frontend::getStatus(const hidl_vec<FrontendStatusType>& statusTypes
             }
             case FrontendStatusType::MODULATION: {
                 FrontendModulationStatus modulationStatus;
-                modulationStatus.isdbs(FrontendIsdbsModulation::MOD_BPSK);  // value = 1 << 1
-                status.modulation(modulationStatus);
+                switch (mType) {
+                    case FrontendType::ISDBS: {
+                        modulationStatus.isdbs(
+                                FrontendIsdbsModulation::MOD_BPSK);  // value = 1 << 1
+                        status.modulation(modulationStatus);
+                        break;
+                    }
+                    case FrontendType::DVBC: {
+                        modulationStatus.dvbc(FrontendDvbcModulation::MOD_16QAM);  // value = 1 << 1
+                        status.modulation(modulationStatus);
+                        break;
+                    }
+                    case FrontendType::DVBS: {
+                        modulationStatus.dvbs(FrontendDvbsModulation::MOD_QPSK);  // value = 1 << 1
+                        status.modulation(modulationStatus);
+                        break;
+                    }
+                    case FrontendType::ISDBS3: {
+                        modulationStatus.isdbs3(
+                                FrontendIsdbs3Modulation::MOD_BPSK);  // value = 1 << 1
+                        status.modulation(modulationStatus);
+                        break;
+                    }
+                    case FrontendType::ISDBT: {
+                        modulationStatus.isdbt(
+                                FrontendIsdbtModulation::MOD_DQPSK);  // value = 1 << 1
+                        status.modulation(modulationStatus);
+                        break;
+                    }
+                    default:
+                        break;
+                }
                 break;
             }
             case FrontendStatusType::SPECTRAL: {
@@ -282,15 +386,70 @@ Return<void> Frontend::getStatusExt1_1(const hidl_vec<V1_1::FrontendStatusTypeEx
         V1_1::FrontendStatusTypeExt1_1 type = statusTypes[i];
         V1_1::FrontendStatusExt1_1 status;
 
-        // assign randomly selected values for testing.
-        // TODO: assign status values according to the frontend type
         switch (type) {
             case V1_1::FrontendStatusTypeExt1_1::MODULATIONS: {
                 vector<V1_1::FrontendModulation> modulations;
                 V1_1::FrontendModulation modulation;
-                modulation.isdbs(FrontendIsdbsModulation::MOD_BPSK);  // value = 1 << 1
-                modulations.push_back(modulation);
-                status.modulations(modulations);
+                switch ((int)mType) {
+                    case (int)FrontendType::ISDBS: {
+                        modulation.isdbs(FrontendIsdbsModulation::MOD_BPSK);  // value = 1 << 1
+                        modulations.push_back(modulation);
+                        status.modulations(modulations);
+                        break;
+                    }
+                    case (int)FrontendType::DVBC: {
+                        modulation.dvbc(FrontendDvbcModulation::MOD_16QAM);  // value = 1 << 1
+                        modulations.push_back(modulation);
+                        status.modulations(modulations);
+                        break;
+                    }
+                    case (int)FrontendType::DVBS: {
+                        modulation.dvbs(FrontendDvbsModulation::MOD_QPSK);  // value = 1 << 1
+                        modulations.push_back(modulation);
+                        status.modulations(modulations);
+                        break;
+                    }
+                    case (int)FrontendType::DVBT: {
+                        // value = 1 << 16
+                        modulation.dvbt(V1_1::FrontendDvbtConstellation::CONSTELLATION_16QAM_R);
+                        modulations.push_back(modulation);
+                        status.modulations(modulations);
+                        break;
+                    }
+                    case (int)FrontendType::ISDBS3: {
+                        modulation.isdbs3(FrontendIsdbs3Modulation::MOD_BPSK);  //  value = 1 << 1
+                        modulations.push_back(modulation);
+                        status.modulations(modulations);
+                        break;
+                    }
+                    case (int)FrontendType::ISDBT: {
+                        modulation.isdbt(FrontendIsdbtModulation::MOD_DQPSK);  // value = 1 << 1
+                        modulations.push_back(modulation);
+                        status.modulations(modulations);
+                        break;
+                    }
+                    case (int)FrontendType::ATSC: {
+                        modulation.atsc(FrontendAtscModulation::MOD_8VSB);  // value = 1 << 2
+                        modulations.push_back(modulation);
+                        status.modulations(modulations);
+                        break;
+                    }
+                    case (int)FrontendType::ATSC3: {
+                        modulation.atsc3(FrontendAtsc3Modulation::MOD_QPSK);  // value = 1 << 1
+                        modulations.push_back(modulation);
+                        status.modulations(modulations);
+                        break;
+                    }
+                    case (int)V1_1::FrontendType::DTMB: {
+                        // value = 1 << 1
+                        modulation.dtmb(V1_1::FrontendDtmbModulation::CONSTELLATION_4QAM);
+                        modulations.push_back(modulation);
+                        status.modulations(modulations);
+                        break;
+                    }
+                    default:
+                        break;
+                }
                 break;
             }
             case V1_1::FrontendStatusTypeExt1_1::BERS: {
@@ -306,20 +465,86 @@ Return<void> Frontend::getStatusExt1_1(const hidl_vec<V1_1::FrontendStatusTypeEx
             }
             case V1_1::FrontendStatusTypeExt1_1::BANDWIDTH: {
                 V1_1::FrontendBandwidth bandwidth;
-                bandwidth.dvbt(FrontendDvbtBandwidth::BANDWIDTH_8MHZ);
-                status.bandwidth(bandwidth);
+                switch ((int)mType) {
+                    case (int)FrontendType::DVBC: {
+                        // value = 1 << 1
+                        bandwidth.dvbc(V1_1::FrontendDvbcBandwidth::BANDWIDTH_6MHZ);
+                        status.bandwidth(bandwidth);
+                        break;
+                    }
+                    case (int)FrontendType::DVBT: {
+                        // value = 1 << 1
+                        bandwidth.dvbt(FrontendDvbtBandwidth::BANDWIDTH_8MHZ);
+                        status.bandwidth(bandwidth);
+                        break;
+                    }
+                    case (int)FrontendType::ISDBT: {
+                        bandwidth.isdbt(FrontendIsdbtBandwidth::BANDWIDTH_8MHZ);  // value = 1 << 1
+                        status.bandwidth(bandwidth);
+                        break;
+                    }
+                    case (int)FrontendType::ATSC3: {
+                        bandwidth.atsc3(FrontendAtsc3Bandwidth::BANDWIDTH_6MHZ);  // value = 1 << 1
+                        status.bandwidth(bandwidth);
+                        break;
+                    }
+                    case (int)V1_1::FrontendType::DTMB: {
+                        // value = 1 << 1
+                        bandwidth.dtmb(V1_1::FrontendDtmbBandwidth::BANDWIDTH_8MHZ);
+                        status.bandwidth(bandwidth);
+                        break;
+                    }
+                    default:
+                        break;
+                }
                 break;
             }
             case V1_1::FrontendStatusTypeExt1_1::GUARD_INTERVAL: {
                 V1_1::FrontendGuardInterval interval;
-                interval.dvbt(FrontendDvbtGuardInterval::INTERVAL_1_32);  // value = 1 << 1
-                status.interval(interval);
+                switch ((int)mType) {
+                    case (int)FrontendType::DVBT: {
+                        interval.dvbt(FrontendDvbtGuardInterval::INTERVAL_1_32);  // value = 1 << 1
+                        status.interval(interval);
+                        break;
+                    }
+                    case (int)FrontendType::ISDBT: {
+                        interval.isdbt(FrontendDvbtGuardInterval::INTERVAL_1_32);  // value = 1 << 1
+                        status.interval(interval);
+                        break;
+                    }
+                    case (int)V1_1::FrontendType::DTMB: {
+                        // value = 1 << 1
+                        interval.dtmb(V1_1::FrontendDtmbGuardInterval::PN_420_VARIOUS);
+                        status.interval(interval);
+                        break;
+                    }
+                    default:
+                        break;
+                }
                 break;
             }
             case V1_1::FrontendStatusTypeExt1_1::TRANSMISSION_MODE: {
                 V1_1::FrontendTransmissionMode transMode;
-                transMode.dvbt(V1_1::FrontendDvbtTransmissionMode::AUTO);  // value = 1 << 0
-                status.transmissionMode(transMode);
+                switch ((int)mType) {
+                    case (int)FrontendType::DVBT: {
+                        // value = 1 << 8
+                        transMode.dvbt(V1_1::FrontendDvbtTransmissionMode::MODE_16K_E);
+                        status.transmissionMode(transMode);
+                        break;
+                    }
+                    case (int)FrontendType::ISDBT: {
+                        transMode.isdbt(FrontendIsdbtMode::MODE_1);  // value = 1 << 1
+                        status.transmissionMode(transMode);
+                        break;
+                    }
+                    case (int)V1_1::FrontendType::DTMB: {
+                        transMode.dtmb(V1_1::FrontendDtmbTransmissionMode::C1);  // value = 1 << 1
+                        status.transmissionMode(transMode);
+                        break;
+                    }
+                    default:
+                        break;
+                }
                 break;
             }
             case V1_1::FrontendStatusTypeExt1_1::UEC: {
@@ -332,9 +557,32 @@ Return<void> Frontend::getStatusExt1_1(const hidl_vec<V1_1::FrontendStatusTypeEx
             }
             case V1_1::FrontendStatusTypeExt1_1::INTERLEAVINGS: {
                 V1_1::FrontendInterleaveMode interleave;
-                interleave.atsc3(FrontendAtsc3TimeInterleaveMode::AUTO);
-                vector<V1_1::FrontendInterleaveMode> interleaving = {interleave};
-                status.interleaving(interleaving);
+                switch ((int)mType) {
+                    case (int)FrontendType::DVBC: {
+                        // value = 1 << 1
+                        interleave.dvbc(
+                                V1_1::FrontendCableTimeInterleaveMode::INTERLEAVING_128_1_0);
+                        vector<V1_1::FrontendInterleaveMode> interleaving = {interleave};
+                        status.interleaving(interleaving);
+                        break;
+                    }
+                    case (int)FrontendType::ATSC3: {
+                        // value = 1 << 1
+                        interleave.atsc3(FrontendAtsc3TimeInterleaveMode::CTI);
+                        vector<V1_1::FrontendInterleaveMode> interleaving = {interleave};
+                        status.interleaving(interleaving);
+                        break;
+                    }
+                    case (int)V1_1::FrontendType::DTMB: {
+                        // value = 1 << 1
+                        interleave.dtmb(V1_1::FrontendDtmbTimeInterleaveMode::TIMER_INT_240);
+                        vector<V1_1::FrontendInterleaveMode> interleaving = {interleave};
+                        status.interleaving(interleaving);
+                        break;
+                    }
+                    default:
+                        break;
+                }
                 break;
             }
             case V1_1::FrontendStatusTypeExt1_1::ISDBT_SEGMENTS: {
@@ -349,8 +597,28 @@ Return<void> Frontend::getStatusExt1_1(const hidl_vec<V1_1::FrontendStatusTypeEx
             }
             case V1_1::FrontendStatusTypeExt1_1::ROLL_OFF: {
                 V1_1::FrontendRollOff rollOff;
-                rollOff.isdbs(FrontendIsdbsRolloff::ROLLOFF_0_35);
-                status.rollOff(rollOff);
+                switch (mType) {
+                    case FrontendType::DVBS: {
+                        // value = 1
+                        rollOff.dvbs(FrontendDvbsRolloff::ROLLOFF_0_35);
+                        status.rollOff(rollOff);
+                        break;
+                    }
+                    case FrontendType::ISDBS: {
+                        // value = 1
+                        rollOff.isdbs(FrontendIsdbsRolloff::ROLLOFF_0_35);
+                        status.rollOff(rollOff);
+                        break;
+                    }
+                    case FrontendType::ISDBS3: {
+                        // value = 1
+                        rollOff.isdbs3(FrontendIsdbs3Rolloff::ROLLOFF_0_03);
+                        status.rollOff(rollOff);
+                        break;
+                    }
+                    default:
+                        break;
+                }
                 break;
             }
             case V1_1::FrontendStatusTypeExt1_1::IS_MISO: {
