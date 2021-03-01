@@ -14,27 +14,13 @@
  * limitations under the License.
  */
 
-#pragma once
+package android.hardware.security.keymint;
 
-#include "MessageDefinition.h"
-
-#include <sstream>
-
-namespace android::nl::protocols {
-
-template <typename T>
-void arrayToStream(std::stringstream& ss, const Buffer<nlattr> attr) {
-    ss << '{';
-    for (const auto it : attr.data<T>().getRaw()) {
-        ss << it << ',';
-    }
-    ss.seekp(-1, std::ios_base::cur);
-    ss << '}';
+/**
+ * This is used to contain a byte[], to make out parameters of byte arrays
+ * more convenient for callers.
+ */
+@VintfStability
+parcelable ByteArray {
+    byte[] data;
 }
-
-typedef std::map<uint64_t, std::string> FlagsMap;
-AttributeDefinition::ToStream flagsToStream(FlagsMap flags);
-
-void hwaddrToStream(std::stringstream& ss, const Buffer<nlattr> attr);
-
-}  // namespace android::nl::protocols
