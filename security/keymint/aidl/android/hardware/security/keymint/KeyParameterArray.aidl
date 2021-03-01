@@ -17,20 +17,15 @@
 package android.hardware.security.keymint;
 
 import android.hardware.security.keymint.KeyParameter;
-import android.hardware.security.keymint.SecurityLevel;
 
 /**
- * KeyCharacteristics defines the attributes of a key that are enforced by KeyMint, and the security
- * level (see SecurityLevel.aidl) of that enforcement.
- *
- * The `generateKey` `importKey` and `importWrappedKey` methods each return an array of
- * KeyCharacteristics, specifying the security levels of enforcement and the authorizations
- * enforced.  Note that enforcement at a given security level means that the semantics of the tag
- * and value are fully enforced.  See the definition of individual tags for specifications of what
- * must be enforced.
+ * Identifies the key authorization parameters to be used with keyMint.  This is usually
+ * provided as an array of KeyParameters to IKeyMintDevice or Operation.
  */
 @VintfStability
-parcelable KeyCharacteristics {
-    SecurityLevel securityLevel;
-    KeyParameter[] authorizations;
+parcelable KeyParameterArray {
+    /**
+     * Identify list of key parameters corresponding to a particular key blob.
+     */
+    KeyParameter[] params;
 }
