@@ -34,7 +34,7 @@ package android.hardware.neuralnetworks;
 @VintfStability
 interface IPreparedModel {
   android.hardware.neuralnetworks.ExecutionResult executeSynchronously(in android.hardware.neuralnetworks.Request request, in boolean measureTiming, in long deadline, in long loopTimeoutDuration);
-  android.hardware.neuralnetworks.IFencedExecutionCallback executeFenced(in android.hardware.neuralnetworks.Request request, in ParcelFileDescriptor[] waitFor, in boolean measureTiming, in long deadline, in long loopTimeoutDuration, in long duration, out @nullable ParcelFileDescriptor syncFence);
+  android.hardware.neuralnetworks.FencedExecutionResult executeFenced(in android.hardware.neuralnetworks.Request request, in ParcelFileDescriptor[] waitFor, in boolean measureTiming, in long deadline, in long loopTimeoutDuration, in long duration);
   const long DEFAULT_LOOP_TIMEOUT_DURATION_NS = 2000000000;
   const long MAXIMUM_LOOP_TIMEOUT_DURATION_NS = 15000000000;
 }
