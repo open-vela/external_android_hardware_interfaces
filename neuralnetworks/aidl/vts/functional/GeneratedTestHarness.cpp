@@ -571,32 +571,33 @@ void EvaluatePreparedModel(const std::shared_ptr<IDevice>& device,
         case Executor::FENCED: {
             SCOPED_TRACE("fenced");
             ErrorStatus result = ErrorStatus::NONE;
-            FencedExecutionResult executionResult;
+            ndk::ScopedFileDescriptor syncFenceFd;
+            std::shared_ptr<IFencedExecutionCallback> fencedCallback;
             auto ret = preparedModel->executeFenced(request, {}, testConfig.measureTiming,
                                                     kNoDeadline, loopTimeoutDuration, kNoDuration,
-                                                    &executionResult);
+                                                    &syncFenceFd, &fencedCallback);
             ASSERT_TRUE(ret.isOk() || ret.getExceptionCode() == EX_SERVICE_SPECIFIC)
                     << ret.getDescription();
             if (!ret.isOk()) {
                 result = static_cast<ErrorStatus>(ret.getServiceSpecificError());
                 executionStatus = result;
-            } else if (executionResult.syncFence.get() != -1) {
+            } else if (syncFenceFd.get() != -1) {
                 std::vector<ndk::ScopedFileDescriptor> waitFor;
-                auto dupFd = dup(executionResult.syncFence.get());
+                auto dupFd = dup(syncFenceFd.get());
                 ASSERT_NE(dupFd, -1);
                 waitFor.emplace_back(dupFd);
                 // If a sync fence is returned, try start another run waiting for the sync fence.
                 ret = preparedModel->executeFenced(request, waitFor, testConfig.measureTiming,
                                                    kNoDeadline, loopTimeoutDuration, kNoDuration,
-                                                   &executionResult);
+                                                   &syncFenceFd, &fencedCallback);
                 ASSERT_TRUE(ret.isOk());
-                waitForSyncFence(executionResult.syncFence.get());
+                waitForSyncFence(syncFenceFd.get());
             }
             if (result == ErrorStatus::NONE) {
-                ASSERT_NE(executionResult.callback, nullptr);
+                ASSERT_NE(fencedCallback, nullptr);
                 Timing timingFenced;
-                auto ret = executionResult.callback->getExecutionInfo(&timing, &timingFenced,
-                                                                      &executionStatus);
+                auto ret =
+                        fencedCallback->getExecutionInfo(&timing, &timingFenced, &executionStatus);
                 ASSERT_TRUE(ret.isOk());
             }
             break;
