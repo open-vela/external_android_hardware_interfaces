@@ -25,8 +25,6 @@ namespace audio {
 class BluetoothAudioSessionControl_2_1 {
   using SessionType_2_1 =
       ::android::hardware::bluetooth::audio::V2_1::SessionType;
-  using AudioConfiguration_2_1 =
-      ::android::hardware::bluetooth::audio::V2_1::AudioConfiguration;
 
  public:
   // The control API helps to check if session is ready or not
@@ -67,17 +65,18 @@ class BluetoothAudioSessionControl_2_1 {
 
   // The control API for the bluetooth_audio module to get current
   // AudioConfiguration
-  static const AudioConfiguration_2_1 GetAudioConfig(
+  static const AudioConfiguration& GetAudioConfig(
       const SessionType_2_1& session_type) {
     std::shared_ptr<BluetoothAudioSession_2_1> session_ptr =
         BluetoothAudioSessionInstance_2_1::GetSessionInstance(session_type);
     if (session_ptr != nullptr) {
-      return session_ptr->GetAudioConfig();
+      // TODO: map 2.1 to 2.0 audio config inside GetAudioConfig?
+      return session_ptr->GetAudioSession()->GetAudioConfig();
     } else if (session_type ==
                SessionType_2_1::A2DP_HARDWARE_OFFLOAD_DATAPATH) {
-      return BluetoothAudioSession_2_1::kInvalidOffloadAudioConfiguration;
+      return BluetoothAudioSession::kInvalidOffloadAudioConfiguration;
     } else {
-      return BluetoothAudioSession_2_1::kInvalidSoftwareAudioConfiguration;
+      return BluetoothAudioSession::kInvalidSoftwareAudioConfiguration;
     }
   }
 
@@ -139,17 +138,6 @@ class BluetoothAudioSessionControl_2_1 {
         BluetoothAudioSessionInstance_2_1::GetSessionInstance(session_type);
     if (session_ptr != nullptr) {
       return session_ptr->GetAudioSession()->OutWritePcmData(buffer, bytes);
-    }
-    return 0;
-  }
-
-  // The control API reads stream from FMQ
-  static size_t InReadPcmData(const SessionType_2_1& session_type, void* buffer,
-                              size_t bytes) {
-    std::shared_ptr<BluetoothAudioSession_2_1> session_ptr =
-        BluetoothAudioSessionInstance_2_1::GetSessionInstance(session_type);
-    if (session_ptr != nullptr) {
-      return session_ptr->GetAudioSession()->InReadPcmData(buffer, bytes);
     }
     return 0;
   }

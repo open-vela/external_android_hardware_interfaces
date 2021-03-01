@@ -68,10 +68,11 @@ static void validate(const std::shared_ptr<IPreparedModel>& preparedModel,
     // fenced
     {
         SCOPED_TRACE(message + " [executeFenced]");
-        FencedExecutionResult executionResult;
+        ndk::ScopedFileDescriptor syncFence;
+        std::shared_ptr<IFencedExecutionCallback> callback;
         const auto executeStatus = preparedModel->executeFenced(request, {}, false, kNoDeadline,
                                                                 kOmittedTimeoutDuration,
-                                                                kNoDuration, &executionResult);
+                                                                kNoDuration, &syncFence, &callback);
         ASSERT_FALSE(executeStatus.isOk());
         ASSERT_EQ(executeStatus.getExceptionCode(), EX_SERVICE_SPECIFIC);
         ASSERT_EQ(static_cast<ErrorStatus>(executeStatus.getServiceSpecificError()),
