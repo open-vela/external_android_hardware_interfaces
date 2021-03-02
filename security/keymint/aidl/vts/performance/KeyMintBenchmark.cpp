@@ -206,15 +206,41 @@ class KeyMintBenchmarkTest {
         return std::move(builder);
     }
 
-    optional<string> Process(const string& message, const string& signature = "") {
+    optional<string> Process(const string& message, const AuthorizationSet& /*in_params*/,
+                             AuthorizationSet* out_params, const string& signature = "") {
+        static const int HIDL_BUFFER_LIMIT = 1 << 14;  // 16KB
         ErrorCode result;
 
+        // Update
+        AuthorizationSet update_params;
+        AuthorizationSet update_out_params;
         string output;
-        result = Finish(message, signature, &output);
+        string aidl_output;
+        int32_t input_consumed = 0;
+        int32_t aidl_input_consumed = 0;
+        while (message.length() - input_consumed > 0) {
+            result = Update(update_params, message.substr(input_consumed, HIDL_BUFFER_LIMIT),
+                            &update_out_params, &aidl_output, &aidl_input_consumed);
+            if (result != ErrorCode::OK) {
+                error_ = result;
+                return {};
+            }
+            output.append(aidl_output);
+            input_consumed += aidl_input_consumed;
+            aidl_output.clear();
+        }
+
+        // Finish
+        AuthorizationSet finish_params;
+        AuthorizationSet finish_out_params;
+        result = Finish(finish_params, message.substr(input_consumed), signature,
+                        &finish_out_params, &aidl_output);
         if (result != ErrorCode::OK) {
             error_ = result;
             return {};
         }
+        output.append(aidl_output);
+        out_params->push_back(finish_out_params);
         return output;
     }
 
@@ -270,36 +296,66 @@ class KeyMintBenchmarkTest {
         name_.assign(info.keyMintName.begin(), info.keyMintName.end());
     }
 
-    ErrorCode Finish(const string& input, const string& signature, string* output) {
+    ErrorCode Finish(const AuthorizationSet& in_params, const string& input,
+                     const string& signature, AuthorizationSet* out_params, string* output) {
+        Status result;
         if (!op_) {
             std::cerr << "Finish: Operation is nullptr" << std::endl;
             return ErrorCode::UNEXPECTED_NULL_POINTER;
         }
+        KeyParameterArray key_params;
+        key_params.params = in_params.vector_data();
+
+        KeyParameterArray in_keyParams;
+        in_keyParams.params = in_params.vector_data();
+
+        std::optional<KeyParameterArray> out_keyParams;
+        std::optional<vector<uint8_t>> o_put;
 
         vector<uint8_t> oPut;
-        Status result =
-                op_->finish(vector<uint8_t>(input.begin(), input.end()),
-                            vector<uint8_t>(signature.begin(), signature.end()), {} /* authToken */,
-                            {} /* timestampToken */, {} /* confirmationToken */, &oPut);
+        result = op_->finish(in_keyParams, vector<uint8_t>(input.begin(), input.end()),
+                             vector<uint8_t>(signature.begin(), signature.end()), {}, {},
+                             &out_keyParams, &oPut);
 
-        if (result.isOk()) output->append(oPut.begin(), oPut.end());
-
+        if (result.isOk()) {
+            if (out_keyParams) {
+                out_params->push_back(AuthorizationSet(out_keyParams->params));
+            }
+            output->append(oPut.begin(), oPut.end());
+        }
         op_.reset();
         return GetReturnErrorCode(result);
     }
 
-    ErrorCode Update(const string& input, string* output) {
+    ErrorCode Update(const AuthorizationSet& in_params, const string& input,
+                     AuthorizationSet* out_params, string* output, int32_t* input_consumed) {
         Status result;
         if (!op_) {
             std::cerr << "Update: Operation is nullptr" << std::endl;
             return ErrorCode::UNEXPECTED_NULL_POINTER;
         }
 
-        std::vector<uint8_t> o_put;
-        result = op_->update(vector<uint8_t>(input.begin(), input.end()), {} /* authToken */,
-                             {} /* timestampToken */, &o_put);
+        KeyParameterArray key_params;
+        key_params.params = in_params.vector_data();
 
-        if (result.isOk() && output) *output = {o_put.begin(), o_put.end()};
+        KeyParameterArray in_keyParams;
+        in_keyParams.params = in_params.vector_data();
+
+        std::optional<KeyParameterArray> out_keyParams;
+        std::optional<ByteArray> o_put;
+        result = op_->update(in_keyParams, vector<uint8_t>(input.begin(), input.end()), {}, {},
+                             &out_keyParams, &o_put, input_consumed);
+
+        if (result.isOk()) {
+            if (o_put) {
+                output->append(o_put->data.begin(), o_put->data.end());
+            }
+
+            if (out_keyParams) {
+                out_params->push_back(AuthorizationSet(out_keyParams->params));
+            }
+        }
+
         return GetReturnErrorCode(result);
     }
 
@@ -437,7 +493,7 @@ static void sign(benchmark::State& state, string transform, int keySize, int msg
         }
         state.ResumeTiming();
         out_params.Clear();
-        if (!keymintTest->Process(message)) {
+        if (!keymintTest->Process(message, in_params, &out_params)) {
             state.SkipWithError(("Sign error, " + std::to_string(keymintTest->getError())).c_str());
             break;
         }
@@ -460,7 +516,7 @@ static void verify(benchmark::State& state, string transform, int keySize, int m
                 ("Error beginning sign, " + std::to_string(keymintTest->getError())).c_str());
         return;
     }
-    std::optional<string> signature = keymintTest->Process(message);
+    std::optional<string> signature = keymintTest->Process(message, in_params, &out_params);
     if (!signature) {
         state.SkipWithError(("Sign error, " + std::to_string(keymintTest->getError())).c_str());
         return;
@@ -478,7 +534,7 @@ static void verify(benchmark::State& state, string transform, int keySize, int m
             return;
         }
         state.ResumeTiming();
-        if (!keymintTest->Process(message, *signature)) {
+        if (!keymintTest->Process(message, in_params, &out_params, *signature)) {
             state.SkipWithError(
                     ("Verify error, " + std::to_string(keymintTest->getError())).c_str());
             break;
@@ -556,7 +612,7 @@ static void encrypt(benchmark::State& state, string transform, int keySize, int 
         }
         out_params.Clear();
         state.ResumeTiming();
-        if (!keymintTest->Process(message)) {
+        if (!keymintTest->Process(message, in_params, &out_params)) {
             state.SkipWithError(
                     ("Encryption error, " + std::to_string(keymintTest->getError())).c_str());
             break;
@@ -580,7 +636,7 @@ static void decrypt(benchmark::State& state, string transform, int keySize, int 
                 ("Encryption begin error, " + std::to_string(keymintTest->getError())).c_str());
         return;
     }
-    auto encryptedMessage = keymintTest->Process(message);
+    auto encryptedMessage = keymintTest->Process(message, in_params, &out_params);
     if (!encryptedMessage) {
         state.SkipWithError(
                 ("Encryption error, " + std::to_string(keymintTest->getError())).c_str());
@@ -597,7 +653,7 @@ static void decrypt(benchmark::State& state, string transform, int keySize, int 
             return;
         }
         state.ResumeTiming();
-        if (!keymintTest->Process(*encryptedMessage)) {
+        if (!keymintTest->Process(*encryptedMessage, in_params, &out_params)) {
             state.SkipWithError(
                     ("Decryption error, " + std::to_string(keymintTest->getError())).c_str());
             break;
