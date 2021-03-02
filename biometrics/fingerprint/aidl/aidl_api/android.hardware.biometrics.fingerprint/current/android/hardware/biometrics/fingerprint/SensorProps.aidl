@@ -12,8 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
-///////////////////////////////////////////////////////////////////////////////
+ *////////////////////////////////////////////////////////////////////////////////
 // THIS FILE IS IMMUTABLE. DO NOT EDIT IN ANY CASE.                          //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -35,7 +34,7 @@ package android.hardware.biometrics.fingerprint;
 @VintfStability
 parcelable SensorProps {
   android.hardware.biometrics.common.CommonProps commonProps;
-  android.hardware.biometrics.fingerprint.FingerprintSensorType sensorType;
+  android.hardware.biometrics.fingerprint.FingerprintSensorType sensorType = android.hardware.biometrics.fingerprint.FingerprintSensorType.UNKNOWN;
   android.hardware.biometrics.fingerprint.SensorLocation[] sensorLocations;
   boolean supportsNavigationGestures;
   boolean supportsDetectInteraction;
