@@ -14,20 +14,24 @@
  * limitations under the License.
  */
 
-package android.hardware.biometrics.face;
+package android.hardware.neuralnetworks;
 
-import android.hardware.biometrics.face.Cell;
-import android.hardware.biometrics.face.EnrollmentStage;
+import android.hardware.neuralnetworks.IFencedExecutionCallback;
 
+/**
+ * A result from running an asynchronous execution of a prepared model.
+ */
 @VintfStability
-parcelable EnrollmentStageConfig {
+parcelable FencedExecutionResult {
     /**
-     * The stage that's being configured.
+     * IFencedExecutionCallback can be used to query information like duration and error
+     * status when the execution is completed.
      */
-    EnrollmentStage stage = EnrollmentStage.FIRST_FRAME_RECEIVED;
-
+    IFencedExecutionCallback callback;
     /**
-     * Optional list of cells that must be completed to finish this stage.
+     * The sync fence that will be signaled when the task is completed. The
+     * sync fence will be set to error if a critical error, e.g. hardware
+     * failure or kernel panic, occurs when doing execution.
      */
-    List<Cell> cells;
+    @nullable ParcelFileDescriptor syncFence;
 }
