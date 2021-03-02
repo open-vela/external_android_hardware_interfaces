@@ -103,6 +103,12 @@ interface IRadio extends @1.5::IRadio {
      *   - Support simultaneous data call contexts up to DataRegStateResult.maxDataCalls specified
      *     in the response of getDataRegistrationState.
      *
+     * The differences relative to the 1.5 version of the API are:
+     *   - The addition of new parameters pduSessionId, sliceInfo, trafficDescriptor, and
+     *     matchAllRuleAllowed.
+     *   - If an existing data call should be used for the request, that must be indicated in the
+     *     response by setting SetupDataCallResult::cid to the context id of that call.
+     *
      * @param serial Serial number of request.
      * @param accessNetwork The access network to setup the data call. If the data connection cannot
      *     be established on the specified access network then it should be responded with an error.
@@ -122,7 +128,8 @@ interface IRadio extends @1.5::IRadio {
      *     Reference: 3GPP TS 24.007 section 11.2.3.1b
      * @param sliceInfo SliceInfo to be used for the data connection when a handover occurs from
      *     EPDG to 5G.  It is valid only when accessNetwork is AccessNetwork:NGRAN.  If the slice
-     *     passed from EPDG is rejected, then the data failure cause must be DataCallFailCause:SLICE_REJECTED.
+     *     passed from EPDG is rejected, then the data failure cause must be
+     *     DataCallFailCause:SLICE_REJECTED.
      * @param trafficDescriptor TrafficDescriptor for which data connection needs to be
      *     established. It is used for URSP traffic matching as described in TS 24.526
      *     Section 4.2.2. It includes an optional DNN which, if present, must be used for traffic
@@ -340,8 +347,9 @@ interface IRadio extends @1.5::IRadio {
     /**
      * Requests to set the network type for searching and registering.
      *
-     * Instruct the radio to *only* accept the types of network provided. This
-     * is stronger than setPreferredNetworkType which is a suggestion.
+     * Instruct the radio to *only* accept the types of network provided.
+     * setPreferredNetworkType, setPreferredNetworkTypesBitmap will not be called anymore
+     * except for IRadio v1.5 or older devices.
      *
      * In case of an emergency call, the modem is authorized to bypass this
      * restriction.
@@ -349,24 +357,22 @@ interface IRadio extends @1.5::IRadio {
      * @param serial Serial number of request.
      * @param networkTypeBitmap a 32-bit bearer bitmap of RadioAccessFamily
      *
-     * Response callback is IRadioResponse.setNetworkTypeBitmapResponse()
+     * Response callback is IRadioResponse.setAllowedNetworkTypesBitmapResponse()
      */
-    oneway setAllowedNetworkTypeBitmap(
+    oneway setAllowedNetworkTypesBitmap(
             uint32_t serial, bitfield<RadioAccessFamily> networkTypeBitmap);
 
     /**
      * Requests bitmap representing the currently allowed network types.
      *
-     * Requests the bitmap set by the corresponding method
-     * setAllowedNetworkTypeBitmap, which sets a strict set of RATs for the
-     * radio to use. Differs from getPreferredNetworkType and getPreferredNetworkTypeBitmap
-     * in that those request *preferences*.
+     * getPreferredNetworkType, getPreferredNetworkTypesBitmap will not be called anymore
+     * except for IRadio v1.5 or older devices.
      *
      * @param serial Serial number of request.
      *
-     * Response callback is IRadioResponse.getNetworkTypeBitmapResponse()
+     * Response callback is IRadioResponse.getAllowedNetworkTypesBitmapResponse()
      */
-    oneway getAllowedNetworkTypeBitmap(uint32_t serial);
+    oneway getAllowedNetworkTypesBitmap(uint32_t serial);
 
     /**
      * Control data throttling at modem.
