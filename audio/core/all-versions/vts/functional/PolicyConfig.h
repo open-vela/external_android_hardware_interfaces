@@ -16,19 +16,11 @@
 
 #pragma once
 
-#include <set>
-#include <string>
+// Note: it is assumed that this file is included from AudioPrimaryHidlTest.h
+// and thus it doesn't have all '#include' and 'using' directives required
+// for a standalone compilation.
 
-#include <DeviceDescriptor.h>
-#include <HwModule.h>
 #include <Serializer.h>
-#include <gtest/gtest.h>
-#include <system/audio_config.h>
-
-#include "DeviceManager.h"
-
-using ::android::sp;
-using ::android::status_t;
 
 struct PolicyConfigData {
     android::HwModuleCollection hwModules;
@@ -50,14 +42,28 @@ class PolicyConfig : private PolicyConfigData, public android::AudioPolicyConfig
                 break;
             }
         }
-        init();
-    }
-    PolicyConfig(const std::string& configPath, const std::string& configFileName)
-        : android::AudioPolicyConfig(hwModules, availableOutputDevices, availableInputDevices,
-                                     defaultOutputDevice),
-          mConfigFileName{configFileName},
-          mFilePath{configPath + "/" + mConfigFileName} {
-        init();
+        mStatus = android::deserializeAudioPolicyFile(mFilePath.c_str(), this);
+        if (mStatus == OK) {
+            mPrimaryModule = getModuleFromName(DeviceManager::kPrimaryDevice);
+            // Available devices are not 'attached' to modules at this moment.
+            // Need to go over available devices and find their module.
+            for (const auto& device : availableOutputDevices) {
+                for (const auto& module : hwModules) {
+                    if (module->getDeclaredDevices().indexOf(device) >= 0) {
+                        mModulesWithDevicesNames.insert(module->getName());
+                        break;
+                    }
+                }
+            }
+            for (const auto& device : availableInputDevices) {
+                for (const auto& module : hwModules) {
+                    if (module->getDeclaredDevices().indexOf(device) >= 0) {
+                        mModulesWithDevicesNames.insert(module->getName());
+                        break;
+                    }
+                }
+            }
+        }
     }
     status_t getStatus() const { return mStatus; }
     std::string getError() const {
@@ -82,33 +88,8 @@ class PolicyConfig : private PolicyConfigData, public android::AudioPolicyConfig
     }
 
   private:
-    void init() {
-        mStatus = android::deserializeAudioPolicyFileForVts(mFilePath.c_str(), this);
-        if (mStatus == android::OK) {
-            mPrimaryModule = getModuleFromName(DeviceManager::kPrimaryDevice);
-            // Available devices are not 'attached' to modules at this moment.
-            // Need to go over available devices and find their module.
-            for (const auto& device : availableOutputDevices) {
-                for (const auto& module : hwModules) {
-                    if (module->getDeclaredDevices().indexOf(device) >= 0) {
-                        mModulesWithDevicesNames.insert(module->getName());
-                        break;
-                    }
-                }
-            }
-            for (const auto& device : availableInputDevices) {
-                for (const auto& module : hwModules) {
-                    if (module->getDeclaredDevices().indexOf(device) >= 0) {
-                        mModulesWithDevicesNames.insert(module->getName());
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
     const std::string mConfigFileName;
-    status_t mStatus = android::NO_INIT;
+    status_t mStatus = NO_INIT;
     std::string mFilePath;
     sp<const android::HwModule> mPrimaryModule = nullptr;
     std::set<std::string> mModulesWithDevicesNames;
