@@ -274,7 +274,8 @@ enum HandoverFailureMode : int32_t {
 /**
  * Overwritten from @1.5::SetupDataCallResult in order to change the suggestedRetryTime
  * to 64-bit value. In the future, this must be extended instead of overwritten.
- * Also added defaultQos, qosSessions, and handoverFailureMode in this version.
+ * Also added defaultQos, qosSessions, handoverFailureMode, pduSessionId, sliceInfo,
+ * and traffic descriptors in this version.
  */
 struct SetupDataCallResult {
     /** Data call fail cause. DataCallFailCause.NONE if no error. */
@@ -426,7 +427,8 @@ struct LinkCapacityEstimate {
     * This bandwidth estimate shall be the estimated maximum sustainable link bandwidth
     * (as would be measured at the Upper PDCP or SNDCP SAP). This is valid only
     * in if device is connected to both primary and secodary in dual connected
-    * mode. This must be filled with -1 if secondary is not connected.
+    * mode. This must be filled with -1 if secondary is not connected or if
+    * modem does not support this feature.
     */
    uint32_t secondaryDownlinkCapacityKbps;
 
@@ -435,7 +437,8 @@ struct LinkCapacityEstimate {
     * This bandwidth estimate shall be the estimated
     * maximum sustainable link bandwidth (as would be measured at the Upper PDCP or SNDCP SAP).
     * This is valid only in if device is connected to both primary and secodary in dual connected
-    * mode.This must be filled with -1 if secondary is not connected.
+    * mode.This must be filled with -1 if secondary is not connected or if modem
+    * does not support this feature.
     */
    uint32_t secondaryUplinkCapacityKbps;
 };
@@ -704,10 +707,8 @@ struct RegStateResult {
     RegState regState;
 
     /**
-     * Indicates the available voice radio technology, valid values as defined by RadioTechnology,
-     * except LTE_CA, which is no longer a valid value on 1.5 or above. When the device is on
-     * carrier aggregation, vendor RIL service should properly report multiple PhysicalChannelConfig
-     * elements through IRadio::currentPhysicalChannelConfigs_1_6.
+     * Indicates the available voice radio technology, valid values as
+     * defined by RadioTechnology.
      */
     RadioTechnology rat;
 
@@ -763,73 +764,6 @@ struct Call {
      * Reference: 3GPP TS 24.008 section 10.5.4.21b
      */
     string forwardedNumber;
-};
-
-struct PhysicalChannelConfig {
-    /** Connection status for cell. Valid values are PRIMARY_SERVING and SECONDARY_SERVING */
-    CellConnectionStatus status;
-
-    /** The radio technology for this physical channel */
-    RadioTechnology rat;
-
-    /** Downlink Absolute Radio Frequency Channel Number */
-    int32_t downlinkChannelNumber;
-
-    /** Uplink Absolute Radio Frequency Channel Number */
-    int32_t uplinkChannelNumber;
-
-    /** Downlink cell bandwidth, in kHz */
-    int32_t cellBandwidthDownlink;
-
-    /** Uplink cell bandwidth, in kHz */
-    int32_t cellBandwidthUplink;
-
-    /**
-     * A list of data calls mapped to this physical channel. The context id must match the cid of
-     * @1.5::SetupDataCallResult. An empty list means the physical channel has no data call mapped
-     * to it.
-     */
-    vec<int32_t> contextIds;
-
-    /**
-     * The physical cell identifier for this cell.
-     *
-     * In UTRAN, this value is primary scrambling code. The range is [0, 511].
-     * Reference: 3GPP TS 25.213 section 5.2.2.
-     *
-     * In EUTRAN, this value is physical layer cell identity. The range is [0, 503].
-     * Reference: 3GPP TS 36.211 section 6.11.
-     *
-     * In 5G RAN, this value is physical layer cell identity. The range is [0, 1007].
-     * Reference: 3GPP TS 38.211 section 7.4.2.1.
-     */
-    uint32_t physicalCellId;
-
-    /**
-     * The frequency band to scan.
-     */
-    safe_union Band {
-        /** Valid only if radioAccessNetwork = GERAN. */
-        GeranBands geranBand;
-        /** Valid only if radioAccessNetwork = UTRAN. */
-        UtranBands utranBand;
-        /** Valid only if radioAccessNetwork = EUTRAN. */
-        EutranBands eutranBand;
-        /** Valid only if radioAccessNetwork = NGRAN. */
-        NgranBands ngranBand;
-    } band;
-};
-
-/**
- * Extended from @1.5 NgranBands
- * IRadio 1.6 supports NGRAN bands up to V16.5.0
- */
-enum NgranBands  : @1.5::NgranBands {
-    /** 3GPP TS 38.101-1, Table 5.2-1: FR1 bands */
-    BAND_26 = 26,
-    BAND_46 = 46,
-    BAND_53 = 53,
-    BAND_96 = 96,
 };
 
 /**
@@ -914,26 +848,93 @@ enum DataCallFailCause : @1.4::DataCallFailCause {
     MATCH_ALL_RULE_NOT_ALLOWED = 0x8CD,
 
     /**
-     * If connection failed for all matching URSP rules
+     * If connection failed for all matching URSP rules.
      */
     ALL_MATCHING_RULES_FAILED = 0x8CE,
+};
+
+struct PhysicalChannelConfig {
+    /** Connection status for cell. Valid values are PRIMARY_SERVING and SECONDARY_SERVING */
+    CellConnectionStatus status;
+
+    /** The radio technology for this physical channel */
+    RadioTechnology rat;
+
+    /** Downlink Absolute Radio Frequency Channel Number */
+    int32_t downlinkChannelNumber;
+
+    /** Uplink Absolute Radio Frequency Channel Number */
+    int32_t uplinkChannelNumber;
+
+    /** Downlink cell bandwidth, in kHz */
+    int32_t cellBandwidthDownlink;
+
+    /** Uplink cell bandwidth, in kHz */
+    int32_t cellBandwidthUplink;
+
+    /**
+     * A list of data calls mapped to this physical channel. The context id must match the cid of
+     * @1.5::SetupDataCallResult. An empty list means the physical channel has no data call mapped
+     * to it.
+     */
+    vec<int32_t> contextIds;
+
+    /**
+     * The physical cell identifier for this cell.
+     *
+     * In UTRAN, this value is primary scrambling code. The range is [0, 511].
+     * Reference: 3GPP TS 25.213 section 5.2.2.
+     *
+     * In EUTRAN, this value is physical layer cell identity. The range is [0, 503].
+     * Reference: 3GPP TS 36.211 section 6.11.
+     *
+     * In 5G RAN, this value is physical layer cell identity. The range is [0, 1007].
+     * Reference: 3GPP TS 38.211 section 7.4.2.1.
+     */
+    uint32_t physicalCellId;
+
+    /**
+     * The frequency band to scan.
+     */
+    safe_union Band {
+        /** Valid only if radioAccessNetwork = GERAN. */
+        GeranBands geranBand;
+        /** Valid only if radioAccessNetwork = UTRAN. */
+        UtranBands utranBand;
+        /** Valid only if radioAccessNetwork = EUTRAN. */
+        EutranBands eutranBand;
+        /** Valid only if radioAccessNetwork = NGRAN. */
+        NgranBands ngranBand;
+    } band;
+};
+
+/**
+ * Extended from @1.5 NgranBands
+ * IRadio 1.6 supports NGRAN bands up to V16.5.0
+ */
+enum NgranBands  : @1.5::NgranBands {
+    /** 3GPP TS 38.101-1, Table 5.2-1: FR1 bands */
+    BAND_26 = 26,
+    BAND_46 = 46,
+    BAND_53 = 53,
+    BAND_96 = 96,
 };
 
 /**
  * This safe_union represents an optional DNN. DNN stands for Data Network Name
  * and represents an APN as defined in 3GPP TS 23.003.
  */
-safe_union OptionalDNN {
+safe_union OptionalDnn {
     Monostate noinit;
     string value;
 };
 
 /**
- * This safe_union represents an optional OSAppId.
+ * This safe_union represents an optional OsAppId.
  */
-safe_union OptionalOSAppId {
+safe_union OptionalOsAppId {
     Monostate noinit;
-    OSAppId value;
+    OsAppId value;
 };
 
 /**
@@ -954,21 +955,21 @@ struct TrafficDescriptor {
      * DNN stands for Data Network Name and represents an APN as defined in
      * 3GPP TS 23.003.
      */
-    OptionalDNN dnn;
+    OptionalDnn dnn;
     /**
-     * Indicates the OSId + OSAppId (used as category in Android).
+     * Indicates the OsId + OsAppId (used as category in Android).
      */
-    OptionalOSAppId osAppId;
+    OptionalOsAppId osAppId;
 };
 
 /**
- * This struct represents the OSId + OSAppId as defined in TS 24.526 Section 5.2
+ * This struct represents the OsId + OsAppId as defined in TS 24.526 Section 5.2
  */
-struct OSAppId {
+struct OsAppId {
     /**
-     * Byte array representing OSId + OSAppId. The minimum length of the array is
-     * 18 and maximum length is 272 (16 bytes for OSId + 1 byte for OSAppId length
-     * + up to 255 bytes for OSAppId).
+     * Byte array representing OsId + OsAppId. The minimum length of the array is
+     * 18 and maximum length is 272 (16 bytes for OsId + 1 byte for OsAppId length
+     * + up to 255 bytes for OsAppId).
      */
     vec<uint8_t> osAppId;
 };
