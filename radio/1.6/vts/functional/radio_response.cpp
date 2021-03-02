@@ -1059,7 +1059,6 @@ Return<void> RadioResponse_v1_6::setupDataCallResponse_1_6(
     parent_v1_6.notify(info.serial);
     return Void();
 }
-
 Return<void> RadioResponse_v1_6::setNrDualConnectivityStateResponse(
         const ::android::hardware::radio::V1_6::RadioResponseInfo& info) {
     rspInfo = info;
@@ -1155,14 +1154,14 @@ Return<void> RadioResponse_v1_6::cancelHandoverResponse(
     return Void();
 }
 
-Return<void> RadioResponse_v1_6::setAllowedNetworkTypesBitmapResponse(
+Return<void> RadioResponse_v1_6::setAllowedNetworkTypeBitmapResponse(
         const ::android::hardware::radio::V1_6::RadioResponseInfo& info) {
     rspInfo = info;
     parent_v1_6.notify(info.serial);
     return Void();
 }
 
-Return<void> RadioResponse_v1_6::getAllowedNetworkTypesBitmapResponse(
+Return<void> RadioResponse_v1_6::getAllowedNetworkTypeBitmapResponse(
         const ::android::hardware::radio::V1_6::RadioResponseInfo& /*info*/,
         const ::android::hardware::hidl_bitfield<
                 ::android::hardware::radio::V1_4::RadioAccessFamily>
