@@ -16,21 +16,10 @@
 
 #pragma once
 
-#include <common/all-versions/VersionUtils.h>
-
-#include "PolicyConfig.h"
-
-// clang-format off
-#include PATH(android/hardware/audio/FILE_VERSION/types.h)
-#include PATH(android/hardware/audio/common/FILE_VERSION/types.h)
-// clang-format on
-
-using ::android::hardware::audio::common::utils::EnumBitfield;
-using ::android::hardware::audio::common::utils::mkEnumBitfield;
-
-// Forward declaration for functions that are substituted
-// in generator unit tests.
-const PolicyConfig& getCachedPolicyConfig();
+// Code in this file uses 'getCachedPolicyConfig'
+#ifndef AUDIO_PRIMARY_HIDL_HAL_TEST
+#error Must be included from AudioPrimaryHidlTest.h
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 //////////////// Required and recommended audio format support ///////////////
@@ -46,7 +35,7 @@ struct ConfigHelper {
     // FIXME: in the next audio HAL version, test all available devices
     static bool primaryHasMic() {
         auto& policyConfig = getCachedPolicyConfig();
-        if (policyConfig.getStatus() != android::OK || policyConfig.getPrimaryModule() == nullptr) {
+        if (policyConfig.getStatus() != OK || policyConfig.getPrimaryModule() == nullptr) {
             return true;  // Could not get the information, run all tests
         }
         auto getMic = [](auto& devs) {
