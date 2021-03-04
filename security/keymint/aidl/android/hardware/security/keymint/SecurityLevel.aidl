@@ -44,15 +44,13 @@ enum SecurityLevel {
 
     /**
      * The TRUSTED_ENVIRONMENT security level represents a KeyMint implementation that runs in an
-     * isolated execution environment that is securely isolated from the code running on the kernel
-     * and above, and which satisfies the requirements specified in CDD 9.11.1 [C-1-2]. An attacker
-     * who completely compromises Android, including the Linux kernel, does not have the ability to
-     * subvert it.  An attacker who can find an exploit that gains them control of the trusted
-     * environment, or who has access to the physical device and can mount a sophisticated hardware
-     * attack, may be able to defeat it.
+     * Android process, or a tag enforced by such an implementation.  An attacker who completely
+     * compromises Android, including the Linux kernel, does not have the ability to subvert it.  At
+     * attacker who can find an exploit that gains them control of the trusted environment, or who
+     * has access to the physical device and can mount a sophisticated hardware attack, may be able
+     * to defeat it.
      */
     TRUSTED_ENVIRONMENT = 1,
-
     /**
      * The STRONGBOX security level represents a KeyMint implementation that runs in security
      * hardware that satisfies the requirements specified in CDD 9.11.2.  Roughly speaking, these
