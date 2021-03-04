@@ -222,6 +222,10 @@ nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> Burst::
         relocation.input->flush();
     }
 
+    if (relocation.input) {
+        relocation.input->flush();
+    }
+
     ExecutionResult executionResult;
     const auto ret = kBurst->executeSynchronously(request, memoryIdentifierTokens, measure,
                                                   deadline, loopTimeoutDuration, &executionResult);
