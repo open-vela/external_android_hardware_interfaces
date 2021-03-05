@@ -18,7 +18,6 @@
 
 #include <android/binder_auto_utils.h>
 #include <android/binder_manager.h>
-#include <android/binder_process.h>
 
 #include <nnapi/IDevice.h>
 #include <nnapi/Result.h>
@@ -30,21 +29,19 @@
 
 namespace aidl::android::hardware::neuralnetworks::utils {
 
-nn::GeneralResult<nn::SharedDevice> getDevice(const std::string& instanceName) {
-    auto fullName = std::string(IDevice::descriptor) + "/" + instanceName;
+nn::GeneralResult<nn::SharedDevice> getDevice(const std::string& name) {
     hal::utils::ResilientDevice::Factory makeDevice =
-            [instanceName,
-             name = std::move(fullName)](bool blocking) -> nn::GeneralResult<nn::SharedDevice> {
-        const auto& getService =
-                blocking ? AServiceManager_getService : AServiceManager_checkService;
-        auto service = IDevice::fromBinder(ndk::SpAIBinder(getService(name.c_str())));
+            [name](bool blocking) -> nn::GeneralResult<nn::SharedDevice> {
+        auto service = blocking ? IDevice::fromBinder(
+                                          ndk::SpAIBinder(AServiceManager_getService(name.c_str())))
+                                : IDevice::fromBinder(ndk::SpAIBinder(
+                                          AServiceManager_checkService(name.c_str())));
         if (service == nullptr) {
             return NN_ERROR() << (blocking ? "AServiceManager_getService"
                                            : "AServiceManager_checkService")
                               << " returned nullptr";
         }
-        ABinderProcess_startThreadPool();
-        return Device::create(instanceName, std::move(service));
+        return Device::create(name, std::move(service));
     };
 
     return hal::utils::ResilientDevice::create(std::move(makeDevice));

@@ -20,12 +20,13 @@
 #include <nnapi/IDevice.h>
 #include <nnapi/Result.h>
 #include <nnapi/Types.h>
+#include <nnapi/hal/CommonUtils.h>
 
 #include <string>
 
 namespace aidl::android::hardware::neuralnetworks::utils {
 
-::android::nn::GeneralResult<::android::nn::SharedDevice> getDevice(const std::string& name);
+nn::GeneralResult<nn::SharedDevice> getDevice(const std::string& name);
 
 }  // namespace aidl::android::hardware::neuralnetworks::utils
 
