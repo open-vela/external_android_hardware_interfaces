@@ -14,17 +14,15 @@
  * limitations under the License.
  */
 
-package android.hardware.camera.provider@2.7;
+#pragma once
 
-import android.hardware.camera.device@3.7::StreamConfiguration;
+#include "../GenericMessageBase.h"
 
-/**
- * CameraIdAndStreamCombination:
- *
- * This is identical to @2.6::CameraIdAndStreamCombination except that
- * streamConfiguration is of version @3.7.
- */
-struct CameraIdAndStreamCombination {
-    string cameraId;
-    @3.7::StreamConfiguration streamConfiguration;
+namespace android::nl::protocols::generic::families {
+
+class Mac80211hwsim : public GenericMessageBase {
+  public:
+    Mac80211hwsim(nlmsgtype_t familyId);
 };
+
+}  // namespace android::nl::protocols::generic::families
