@@ -2927,6 +2927,29 @@ enum VehicleProperty : int32_t {
         | VehicleArea:GLOBAL),
 
     /**
+     * Enable/request an EVS service.
+     *
+     * The property provides a generalized way to trigger EVS services.  VHAL
+     * should use this property to request Android to start or stop EVS service.
+     *
+     *  int32Values[0] = a type of the EVS service. The value must be one of enums in
+     *                   EvsServiceType.
+     *  int32Values[1] = the state of the EVS service. The value must be one of enums in
+     *                   EvsServiceState.
+     *
+     * For example, to enable rear view EVS service, android side can set the property value as
+     * [EvsServiceType::REAR_VIEW, EvsServiceState::ON].
+     *
+     * @change_mode VehiclePropertyChangeMode:ON_CHANGE
+     * @access VehiclePropertyAccess:READ
+     */
+    EVS_SERVICE_REQUEST = (
+        0x0F10
+        | VehiclePropertyGroup:SYSTEM
+        | VehiclePropertyType:INT32_VEC
+        | VehicleArea:GLOBAL),
+
+    /**
      * Defines a request to apply power policy.
      *
      * VHAL sets this property to change car power policy. Car power policy service subscribes to
@@ -3037,7 +3060,7 @@ enum VehicleProperty : int32_t {
     /**
      * Starts the ClusterUI in cluster display.
      *
-     * int32: the type of ClusterUI to show
+     * int32[0]: the type of ClusterUI to show
      *    0 indicates ClusterHome, that is a home screen of cluster display, and provides
      *        the default UI and a kind of launcher functionality for cluster display.
      *    the other values are followed by OEM's definition.
@@ -3057,12 +3080,12 @@ enum VehicleProperty : int32_t {
      * int32[0]: on/off: 0 - off, 1 - on, -1 - don't care
      * int32[1]: width: positive number - actual width in pixels
                         -1 - don't care (should set "don't care" both width and height)
-     * int32[2]: height: same format with 'width'
+     * int32[2]: height: ditto with width
      * int32[3]: Inset - left: positive number - actual left inset value in pixels
                                -1 - don't care (should set "don't care" all Inset fields)
-     * int32[4]: Inset - top:    same format with 'left'
-     * int32[5]: Inset - right:  same format with 'left'
-     * int32[6]: Inset - bottom: same format with 'left'
+     * int32[4]: Inset - top
+     * int32[5]: Inset - right
+     * int32[6]: Inset - bottom
      *
      * @change_mode VehiclePropertyChangeMode:ON_CHANGE
      * @access VehiclePropertyAccess:READ
@@ -3097,9 +3120,9 @@ enum VehicleProperty : int32_t {
      *    -1 indicates the area isn't used any more.
      * bytes: the array to represent the availability of ClusterUI.
      *     0 indicates non-available and 1 indicates available.
-     *     For example, let's assume a car supports 3 OEM defined ClusterUI like HOME, MAPS, CALL,
-     *     and it only supports CALL UI only when the cellular network is available. Then, if the
-     *     nework is avaibale, it'll send [1 1 1], and if it's out of network, it'll send [1 1 0].
+     *     For example, let's assume a car supports 3 UI like HOME, MAPS, CALL and it only supports
+     *     CALL UI only when the cellular network is available. Then, if the nework is avaibale,
+     *     it'll send [1 1 1], and if it's out of network, it'll send [1 1 0].
      *
      * @change_mode VehiclePropertyChangeMode:ON_CHANGE
      * @access VehiclePropertyAccess:WRITE
@@ -3117,7 +3140,7 @@ enum VehicleProperty : int32_t {
      * request to turn the display on to show some specific ClusterUI.
      * ClusterOS should response this with CLUSTER_DISPLAY_STATE.
      *
-     * int32: the type of ClusterUI to show
+     * int32[0]: the type of ClusterUI to show
      *
      * @change_mode VehiclePropertyChangeMode:ON_CHANGE
      * @access VehiclePropertyAccess:WRITE
@@ -3210,6 +3233,33 @@ enum  VehicleSeatOccupancyState : int32_t {
     UNKNOWN = 0,
     VACANT = 1,
     OCCUPIED = 2
+};
+
+/**
+ * Used by EVS_SERVICE_REQUEST to enumerate the service's type.
+ */
+enum EvsServiceType : int32_t {
+
+    REARVIEW = 0,
+    SURROUNDVIEW = 1,
+};
+
+/**
+ * Used by EVS_SERVICE_REQUEST to enumerate the service's state.
+ */
+enum EvsServiceState : int32_t {
+
+    OFF = 0,
+    ON = 1,
+};
+
+/**
+ * Index in int32VAlues for VehicleProperty#EVS_SERVICE_REQUEST property.
+ */
+enum EvsServiceRequestIndex : int32_t {
+
+    TYPE = 0,
+    STATE = 1,
 };
 
 /**
