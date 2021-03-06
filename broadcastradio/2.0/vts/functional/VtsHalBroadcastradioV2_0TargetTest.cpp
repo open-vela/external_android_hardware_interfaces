@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "BcRadio.vts"
-#define LOG_NDEBUG 0
 #define EGMOCK_VERBOSE 1
 
 #include <VtsHalHidlTargetTestBase.h>
@@ -416,7 +414,7 @@ TEST_F(BroadcastRadioHalTest, GetDabRegionConfig) {
 TEST_F(BroadcastRadioHalTest, FmTune) {
     ASSERT_TRUE(openSession());
 
-    uint64_t freq = 100100;  // 100.1 FM
+    uint64_t freq = 90900;  // 90.9 FM
     auto sel = make_selector_amfm(freq);
 
     /* TODO(b/69958777): there is a race condition between tune() and onCurrentProgramInfoChanged
@@ -446,7 +444,7 @@ TEST_F(BroadcastRadioHalTest, FmTune) {
     EXPECT_EQ(Result::OK, result);
     EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onCurrentProgramInfoChanged_, timeout::tune);
 
-    ALOGD("current program info: %s", toString(infoCb).c_str());
+    LOG(DEBUG) << "current program info: " << toString(infoCb);
 
     // it should tune exactly to what was requested
     auto freqs = utils::getAllIds(infoCb.selector, IdentifierType::AMFM_FREQUENCY);
@@ -486,6 +484,50 @@ TEST_F(BroadcastRadioHalTest, TuneFailsWithInvalid) {
 }
 
 /**
+ * Test tuning with DAB selector.
+ *
+ * Verifies that:
+ *  - if DAB selector is not supported, the method returns NOT_SUPPORTED;
+ *  - if it is supported, the method succeeds;
+ *  - after a successful tune call, onCurrentProgramInfoChanged callback is
+ *    invoked carrying a proper selector;
+ *  - program changes exactly to what was requested.
+ */
+TEST_F(BroadcastRadioHalTest, DabTune) {
+    ASSERT_TRUE(openSession());
+
+    ProgramSelector sel = {};
+    uint64_t freq = 178352;
+    sel.primaryId = make_identifier(IdentifierType::DAB_FREQUENCY,freq);
+
+    std::this_thread::sleep_for(gTuneWorkaround);
+
+    // try tuning
+    ProgramInfo infoCb = {};
+    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_,
+                        InfoHasId(utils::make_identifier(IdentifierType::DAB_FREQUENCY, freq)))
+        .Times(AnyNumber())
+        .WillOnce(DoAll(SaveArg<0>(&infoCb), testing::Return(ByMove(Void()))));
+    auto result = mSession->tune(sel);
+
+    // expect a failure if it's not supported
+    if (!utils::isSupported(mProperties, sel)) {
+        EXPECT_EQ(Result::NOT_SUPPORTED, result);
+        return;
+    }
+
+    // expect a callback if it succeeds
+    EXPECT_EQ(Result::OK, result);
+    EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onCurrentProgramInfoChanged_, timeout::tune);
+
+    LOG(DEBUG) << "current program info: " << toString(infoCb);
+
+    // it should tune exactly to what was requested
+    auto freqs = utils::getAllIds(infoCb.selector, IdentifierType::DAB_FREQUENCY);
+    EXPECT_NE(freqs.end(), find(freqs.begin(), freqs.end(), freq));
+}
+
+/**
  * Test tuning with empty program selector.
  *
  * Verifies that:
@@ -514,12 +556,18 @@ TEST_F(BroadcastRadioHalTest, Seek) {
     // TODO(b/69958777): see FmTune workaround
     std::this_thread::sleep_for(gTuneWorkaround);
 
-    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_, _);
+    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_, _).Times(AnyNumber());
     auto result = mSession->scan(true /* up */, true /* skip subchannel */);
+
+    if (result == Result::NOT_SUPPORTED) {
+        printSkipped("seek not supported");
+        return;
+    }
+
     EXPECT_EQ(Result::OK, result);
     EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onCurrentProgramInfoChanged_, timeout::tune);
 
-    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_, _);
+    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_, _).Times(AnyNumber());
     result = mSession->scan(false /* down */, false /* don't skip subchannel */);
     EXPECT_EQ(Result::OK, result);
     EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onCurrentProgramInfoChanged_, timeout::tune);
@@ -548,7 +596,7 @@ TEST_F(BroadcastRadioHalTest, Step) {
     EXPECT_EQ(Result::OK, result);
     EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onCurrentProgramInfoChanged_, timeout::tune);
 
-    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_, _);
+    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_, _).Times(AnyNumber());
     result = mSession->step(false /* down */);
     EXPECT_EQ(Result::OK, result);
     EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onCurrentProgramInfoChanged_, timeout::tune);
@@ -565,6 +613,12 @@ TEST_F(BroadcastRadioHalTest, Cancel) {
 
     for (int i = 0; i < 10; i++) {
         auto result = mSession->scan(true /* up */, true /* skip subchannel */);
+
+        if (result == Result::NOT_SUPPORTED) {
+            printSkipped("cancel is skipped because of seek not supported");
+            return;
+        }
+
         ASSERT_EQ(Result::OK, result);
 
         auto cancelResult = mSession->cancel();
@@ -823,11 +877,11 @@ int main(int argc, char** argv) {
     using android::hardware::broadcastradio::V2_0::vts::gEnv;
     using android::hardware::broadcastradio::V2_0::IBroadcastRadio;
     using android::hardware::broadcastradio::vts::BroadcastRadioHidlEnvironment;
+    android::base::SetDefaultTag("BcRadio.vts");
+    android::base::SetMinimumLogSeverity(android::base::VERBOSE);
     gEnv = new BroadcastRadioHidlEnvironment<IBroadcastRadio>;
     ::testing::AddGlobalTestEnvironment(gEnv);
     ::testing::InitGoogleTest(&argc, argv);
     gEnv->init(&argc, argv);
-    int status = RUN_ALL_TESTS();
-    ALOGI("Test result = %d", status);
-    return status;
+    return RUN_ALL_TESTS();
 }
