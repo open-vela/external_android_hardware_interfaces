@@ -12,8 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- */
-///////////////////////////////////////////////////////////////////////////////
+ *////////////////////////////////////////////////////////////////////////////////
 // THIS FILE IS IMMUTABLE. DO NOT EDIT IN ANY CASE.                          //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -34,7 +33,6 @@
 package android.hardware.biometrics.face;
 @Backing(type="byte") @VintfStability
 enum FaceSensorType {
-  UNKNOWN = 0,
-  RGB = 1,
-  IR = 2,
+  RGB = 0,
+  IR = 1,
 }
