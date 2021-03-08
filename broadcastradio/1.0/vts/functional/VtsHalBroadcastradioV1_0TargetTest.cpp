@@ -15,39 +15,42 @@
  */
 
 #define LOG_TAG "BroadcastRadioHidlHalTest"
-#include <VtsHalHidlTargetTestBase.h>
 #include <android-base/logging.h>
 #include <cutils/native_handle.h>
 #include <cutils/properties.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
 #include <hidl/HidlTransportSupport.h>
+#include <hidl/ServiceManagement.h>
 #include <utils/threads.h>
 
-#include <android/hardware/broadcastradio/1.0/IBroadcastRadioFactory.h>
 #include <android/hardware/broadcastradio/1.0/IBroadcastRadio.h>
+#include <android/hardware/broadcastradio/1.0/IBroadcastRadioFactory.h>
 #include <android/hardware/broadcastradio/1.0/ITuner.h>
 #include <android/hardware/broadcastradio/1.0/ITunerCallback.h>
 #include <android/hardware/broadcastradio/1.0/types.h>
+#include <broadcastradio-vts-utils/hal-1.x-enum-utils.h>
 
-
-using ::android::sp;
-using ::android::Mutex;
 using ::android::Condition;
+using ::android::Mutex;
+using ::android::sp;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
-using ::android::hardware::broadcastradio::V1_0::IBroadcastRadioFactory;
-using ::android::hardware::broadcastradio::V1_0::IBroadcastRadio;
-using ::android::hardware::broadcastradio::V1_0::ITuner;
-using ::android::hardware::broadcastradio::V1_0::ITunerCallback;
-using ::android::hardware::broadcastradio::V1_0::Result;
-using ::android::hardware::broadcastradio::V1_0::Class;
-using ::android::hardware::broadcastradio::V1_0::Properties;
 using ::android::hardware::broadcastradio::V1_0::Band;
 using ::android::hardware::broadcastradio::V1_0::BandConfig;
+using ::android::hardware::broadcastradio::V1_0::Class;
 using ::android::hardware::broadcastradio::V1_0::Direction;
-using ::android::hardware::broadcastradio::V1_0::ProgramInfo;
+using ::android::hardware::broadcastradio::V1_0::IBroadcastRadio;
+using ::android::hardware::broadcastradio::V1_0::IBroadcastRadioFactory;
+using ::android::hardware::broadcastradio::V1_0::ITuner;
+using ::android::hardware::broadcastradio::V1_0::ITunerCallback;
 using ::android::hardware::broadcastradio::V1_0::MetaData;
 using ::android::hardware::broadcastradio::V1_0::MetadataKey;
 using ::android::hardware::broadcastradio::V1_0::MetadataType;
+using ::android::hardware::broadcastradio::V1_0::ProgramInfo;
+using ::android::hardware::broadcastradio::V1_0::Properties;
+using ::android::hardware::broadcastradio::V1_0::Result;
+using ::android::hardware::broadcastradio::V1_0::vts::RadioClassFromString;
 
 #define RETURN_IF_SKIPPED \
     if (skipped) { \
@@ -56,18 +59,18 @@ using ::android::hardware::broadcastradio::V1_0::MetadataType;
     }
 
 // The main test class for Broadcast Radio HIDL HAL.
-
-class BroadcastRadioHidlTest : public ::testing::VtsHalHidlTargetTestBase,
-        public ::testing::WithParamInterface<Class> {
- protected:
+class BroadcastRadioHidlTest
+    : public ::testing::TestWithParam<std::tuple<std::string, std::string>> {
+  protected:
     virtual void SetUp() override {
         ASSERT_EQ(nullptr, mRadio.get());
 
-        radioClass = GetParam();
+        radioClass = RadioClassFromString(std::get<1>(GetParam()));
+
         skipped = false;
 
         sp<IBroadcastRadioFactory> factory =
-              ::testing::VtsHalHidlTargetTestBase::getService<IBroadcastRadioFactory>();
+                IBroadcastRadioFactory::getService(std::get<0>(GetParam()));
         ASSERT_NE(nullptr, factory.get());
 
         Result connectResult;
@@ -725,14 +728,10 @@ TEST_P(BroadcastRadioHidlTest, IbImagesOnly) {
     }
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BroadcastRadioHidlTest);
 INSTANTIATE_TEST_CASE_P(
-    BroadcastRadioHidlTestCases,
-    BroadcastRadioHidlTest,
-    ::testing::Values(Class::AM_FM, Class::SAT, Class::DT));
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  int status = RUN_ALL_TESTS();
-  ALOGI("Test result = %d", status);
-  return status;
-}
+        PerInstance, BroadcastRadioHidlTest,
+        testing::Combine(testing::ValuesIn(android::hardware::getAllHalInstanceNames(
+                                 IBroadcastRadioFactory::descriptor)),
+                         ::testing::Values("AM_FM", "SAT", "DT")),
+        android::hardware::PrintInstanceTupleNameToString<>);

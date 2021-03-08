@@ -28,6 +28,8 @@
 #include <android/hidl/allocator/1.0/IAllocator.h>
 #include <android/hidl/memory/1.0/IMapper.h>
 #include <android/hidl/memory/1.0/IMemory.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
 
 using ::android::hardware::media::omx::V1_0::IOmx;
 using ::android::hardware::media::omx::V1_0::IOmxObserver;
@@ -44,130 +46,53 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::hidl_string;
 using ::android::sp;
 
-#include <VtsHalHidlTargetTestBase.h>
 #include <getopt.h>
 #include <media_audio_hidl_test_common.h>
-#include <media_hidl_test_common.h>
 #include <fstream>
 
-// A class for test environment setup
-class ComponentTestEnvironment : public ::testing::Environment {
-   public:
-    virtual void SetUp() {}
-    virtual void TearDown() {}
-
-    ComponentTestEnvironment() : instance("default"), res("/data/local/tmp/media/") {}
-
-    void setInstance(const char* _instance) { instance = _instance; }
-
-    void setComponent(const char* _component) { component = _component; }
-
-    void setRole(const char* _role) { role = _role; }
-
-    void setRes(const char* _res) { res = _res; }
-
-    const hidl_string getInstance() const { return instance; }
-
-    const hidl_string getComponent() const { return component; }
-
-    const hidl_string getRole() const { return role; }
-
-    const hidl_string getRes() const { return res; }
-
-    int initFromOptions(int argc, char** argv) {
-        static struct option options[] = {
-            {"instance", required_argument, 0, 'I'},
-            {"component", required_argument, 0, 'C'},
-            {"role", required_argument, 0, 'R'},
-            {"res", required_argument, 0, 'P'},
-            {0, 0, 0, 0}};
-
-        while (true) {
-            int index = 0;
-            int c = getopt_long(argc, argv, "I:C:R:P:", options, &index);
-            if (c == -1) {
-                break;
-            }
-
-            switch (c) {
-                case 'I':
-                    setInstance(optarg);
-                    break;
-                case 'C':
-                    setComponent(optarg);
-                    break;
-                case 'R':
-                    setRole(optarg);
-                    break;
-                case 'P':
-                    setRes(optarg);
-                    break;
-                case '?':
-                    break;
-            }
-        }
-
-        if (optind < argc) {
-            fprintf(stderr,
-                    "unrecognized option: %s\n\n"
-                    "usage: %s <gtest options> <test options>\n\n"
-                    "test options are:\n\n"
-                    "-I, --instance: HAL instance to test\n"
-                    "-C, --component: OMX component to test\n"
-                    "-R, --role: OMX component Role\n"
-                    "-P, --res: Resource files directory location\n",
-                    argv[optind ?: 1], argv[0]);
-            return 2;
-        }
-        return 0;
-    }
-
-   private:
-    hidl_string instance;
-    hidl_string component;
-    hidl_string role;
-    hidl_string res;
-};
-
-static ComponentTestEnvironment* gEnv = nullptr;
+// Resource directory
+std::string sResourceDir = "";
 
 // audio encoder test fixture class
-class AudioEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
-   private:
-    typedef ::testing::VtsHalHidlTargetTestBase Super;
-   public:
-    ::std::string getTestCaseInfo() const override {
-        return ::std::string() +
-                "Component: " + gEnv->getComponent().c_str() + " | " +
-                "Role: " + gEnv->getRole().c_str() + " | " +
-                "Instance: " + gEnv->getInstance().c_str() + " | " +
-                "Res: " + gEnv->getRes().c_str();
+class AudioEncHidlTest
+    : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string>> {
+  public:
+    ::std::string getTestCaseInfo() const {
+        return ::std::string() + "Component: " + component_ + " | " + "Role: " + role_ + " | " +
+               "Instance: " + instance_ + " | " + "Res: " + sResourceDir;
     }
 
     virtual void SetUp() override {
-        Super::SetUp();
+        instance_ = std::get<0>(GetParam());
+        component_ = std::get<1>(GetParam());
+        role_ = std::get<2>(GetParam());
+        ASSERT_NE(sResourceDir.empty(), true);
+
         disableTest = false;
         android::hardware::media::omx::V1_0::Status status;
-        omx = Super::getService<IOmx>(gEnv->getInstance());
+        omx = IOmx::getService(instance_);
         ASSERT_NE(omx, nullptr);
         observer =
             new CodecObserver([this](Message msg, const BufferInfo* buffer) {
                 handleMessage(msg, buffer);
             });
         ASSERT_NE(observer, nullptr);
-        if (strncmp(gEnv->getComponent().c_str(), "OMX.", 4) != 0)
+        if (component_.find("OMX.") != 0) disableTest = true;
+        EXPECT_TRUE(omx->allocateNode(component_, observer,
+                                      [&](android::hardware::media::omx::V1_0::Status _s,
+                                          sp<IOmxNode> const& _nl) {
+                                          status = _s;
+                                          this->omxNode = _nl;
+                                      })
+                            .isOk());
+        if (status == android::hardware::media::omx::V1_0::Status::NAME_NOT_FOUND) {
             disableTest = true;
-        EXPECT_TRUE(omx->allocateNode(
-                           gEnv->getComponent(), observer,
-                           [&](android::hardware::media::omx::V1_0::Status _s,
-                               sp<IOmxNode> const& _nl) {
-                               status = _s;
-                               this->omxNode = _nl;
-                           })
-                        .isOk());
+            std::cout << "[   WARN   ] Test Disabled, component not present\n";
+            return;
+        }
         ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
         ASSERT_NE(omxNode, nullptr);
-        ASSERT_NE(gEnv->getRole().empty(), true) << "Invalid Component Role";
+        ASSERT_NE(role_.empty(), true) << "Invalid Component Role";
         struct StringToName {
             const char* Name;
             standardComp CompName;
@@ -179,7 +104,7 @@ class AudioEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
             sizeof(kStringToName) / sizeof(kStringToName[0]);
         const char* pch;
         char substring[OMX_MAX_STRINGNAME_SIZE];
-        strcpy(substring, gEnv->getRole().c_str());
+        strcpy(substring, role_.c_str());
         pch = strchr(substring, '.');
         ASSERT_NE(pch, nullptr);
         compName = unknown_comp;
@@ -223,7 +148,6 @@ class AudioEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
             EXPECT_TRUE((omxNode->freeNode()).isOk());
             omxNode = nullptr;
         }
-        Super::TearDown();
     }
 
     // callback function to process messages received by onMessages() from IL
@@ -263,6 +187,10 @@ class AudioEncHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         flac,
         unknown_comp,
     };
+
+    std::string component_;
+    std::string role_;
+    std::string instance_;
 
     sp<IOmx> omx;
     sp<CodecObserver> observer;
@@ -438,21 +366,21 @@ void encodeNFrames(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
 }
 
 // set component role
-TEST_F(AudioEncHidlTest, SetRole) {
+TEST_P(AudioEncHidlTest, SetRole) {
     description("Test Set Component Role");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_.c_str());
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
 }
 
 // port format enumeration
-TEST_F(AudioEncHidlTest, EnumeratePortFormat) {
+TEST_P(AudioEncHidlTest, EnumeratePortFormat) {
     description("Test Component on Mandatory Port Parameters (Port Format)");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamAudioInit, &params);
@@ -468,12 +396,12 @@ TEST_F(AudioEncHidlTest, EnumeratePortFormat) {
 }
 
 // test raw stream encode
-TEST_F(AudioEncHidlTest, SimpleEncodeTest) {
+TEST_P(AudioEncHidlTest, SimpleEncodeTest) {
     description("Tests Basic encoding and EOS");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamAudioInit, &params);
@@ -483,7 +411,7 @@ TEST_F(AudioEncHidlTest, SimpleEncodeTest) {
         kPortIndexOutput = kPortIndexInput + 1;
     }
     char mURL[512];
-    strcpy(mURL, gEnv->getRes().c_str());
+    strcpy(mURL, sResourceDir.c_str());
     GetURLForComponent(compName, mURL);
 
     std::ifstream eleStream;
@@ -558,14 +486,22 @@ TEST_F(AudioEncHidlTest, SimpleEncodeTest) {
                                                     kPortIndexOutput));
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(AudioEncHidlTest);
+INSTANTIATE_TEST_SUITE_P(PerInstance, AudioEncHidlTest, testing::ValuesIn(kTestParameters),
+                         android::hardware::PrintInstanceTupleNameToString<>);
+
 int main(int argc, char** argv) {
-    gEnv = new ComponentTestEnvironment();
-    ::testing::AddGlobalTestEnvironment(gEnv);
+    kTestParameters = getTestParameters("audio_encoder");
     ::testing::InitGoogleTest(&argc, argv);
-    int status = gEnv->initFromOptions(argc, argv);
-    if (status == 0) {
-        status = RUN_ALL_TESTS();
-        ALOGI("Test result = %d", status);
+
+    // Set the resource directory based on command line args.
+    // Test will fail to set up if the argument is not set.
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-P") == 0 && i < argc - 1) {
+            sResourceDir = argv[i + 1];
+            break;
+        }
     }
-    return status;
+
+    return RUN_ALL_TESTS();
 }

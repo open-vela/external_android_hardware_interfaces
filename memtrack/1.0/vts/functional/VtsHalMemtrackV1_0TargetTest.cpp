@@ -20,7 +20,9 @@
 
 #include <android/hardware/memtrack/1.0/IMemtrack.h>
 
-#include <VtsHalHidlTargetTestBase.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
 
 #include <fcntl.h>
 #include <algorithm>
@@ -38,11 +40,11 @@ using ::android::base::unique_fd;
 using std::vector;
 using std::count_if;
 
-class MemtrackHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+class MemtrackHidlTest : public ::testing::TestWithParam<std::string> {
  public:
   virtual void SetUp() override {
-    memtrack = ::testing::VtsHalHidlTargetTestBase::getService<IMemtrack>();
-    ASSERT_NE(memtrack, nullptr);
+      memtrack = IMemtrack::getService(GetParam());
+      ASSERT_NE(memtrack, nullptr);
   }
 
   virtual void TearDown() override {}
@@ -79,7 +81,7 @@ auto generate_cb(MemtrackStatus *s, hidl_vec<MemtrackRecord> *v) {
 
 /* Sanity check results when getMemory() is passed a negative PID
  */
-TEST_F(MemtrackHidlTest, BadPidTest) {
+TEST_P(MemtrackHidlTest, BadPidTest) {
   MemtrackStatus s;
   hidl_vec<MemtrackRecord> v;
   auto cb = generate_cb(&s, &v);
@@ -94,7 +96,7 @@ TEST_F(MemtrackHidlTest, BadPidTest) {
 
 /* Sanity check results when getMemory() is passed a bad memory usage type
  */
-TEST_F(MemtrackHidlTest, BadTypeTest) {
+TEST_P(MemtrackHidlTest, BadTypeTest) {
   MemtrackStatus s;
   hidl_vec<MemtrackRecord> v;
   auto cb = generate_cb(&s, &v);
@@ -107,7 +109,7 @@ TEST_F(MemtrackHidlTest, BadTypeTest) {
  * for all memory types, including valid flag combinations for every
  * MemtrackRecord returned.
  */
-TEST_F(MemtrackHidlTest, GetMemoryTest) {
+TEST_P(MemtrackHidlTest, GetMemoryTest) {
   /* Opening this device causes the kernel to provide memtrack with memory
    * info for this process.
    */
@@ -158,9 +160,8 @@ TEST_F(MemtrackHidlTest, GetMemoryTest) {
                   static_cast<uint32_t>(MemtrackType::NUM_TYPES));
 }
 
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  int status = RUN_ALL_TESTS();
-  LOG(INFO) << "Test result = " << status;
-  return status;
-}
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(MemtrackHidlTest);
+INSTANTIATE_TEST_SUITE_P(
+        PerInstance, MemtrackHidlTest,
+        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IMemtrack::descriptor)),
+        android::hardware::PrintInstanceNameToString);

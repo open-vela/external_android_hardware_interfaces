@@ -26,17 +26,27 @@
 
 namespace {
 
-const size_t preamble_size_for_type[] = {
-    0, HCI_COMMAND_PREAMBLE_SIZE, HCI_ACL_PREAMBLE_SIZE, HCI_SCO_PREAMBLE_SIZE,
-    HCI_EVENT_PREAMBLE_SIZE};
-const size_t packet_length_offset_for_type[] = {
-    0, HCI_LENGTH_OFFSET_CMD, HCI_LENGTH_OFFSET_ACL, HCI_LENGTH_OFFSET_SCO,
-    HCI_LENGTH_OFFSET_EVT};
+const size_t preamble_size_for_type[] = {0,
+                                         HCI_COMMAND_PREAMBLE_SIZE,
+                                         HCI_ACL_PREAMBLE_SIZE,
+                                         HCI_SCO_PREAMBLE_SIZE,
+                                         HCI_EVENT_PREAMBLE_SIZE,
+                                         HCI_ISO_PREAMBLE_SIZE};
+const size_t packet_length_offset_for_type[] = {0,
+                                                HCI_LENGTH_OFFSET_CMD,
+                                                HCI_LENGTH_OFFSET_ACL,
+                                                HCI_LENGTH_OFFSET_SCO,
+                                                HCI_LENGTH_OFFSET_EVT,
+                                                HCI_LENGTH_OFFSET_ISO};
 
 size_t HciGetPacketLengthForType(HciPacketType type, const uint8_t* preamble) {
   size_t offset = packet_length_offset_for_type[type];
-  if (type != HCI_PACKET_TYPE_ACL_DATA) return preamble[offset];
-  return (((preamble[offset + 1]) << 8) | preamble[offset]);
+  if (type == HCI_PACKET_TYPE_ACL_DATA) {
+    return (((preamble[offset + 1]) << 8) | preamble[offset]);
+  } else if (type == HCI_PACKET_TYPE_ISO_DATA) {
+    return ((((preamble[offset + 1]) & 0x3f) << 8) | preamble[offset]);
+  }
+  return preamble[offset];
 }
 
 }  // namespace
@@ -46,9 +56,7 @@ namespace hardware {
 namespace bluetooth {
 namespace hci {
 
-const hidl_vec<uint8_t>& HciPacketizer::GetPacket() const {
-  return packet_;
-}
+const hidl_vec<uint8_t>& HciPacketizer::GetPacket() const { return packet_; }
 
 void HciPacketizer::OnDataReady(int fd, HciPacketType packet_type) {
   switch (state_) {
@@ -56,9 +64,13 @@ void HciPacketizer::OnDataReady(int fd, HciPacketType packet_type) {
       ssize_t bytes_read = TEMP_FAILURE_RETRY(
           read(fd, preamble_ + bytes_read_,
                preamble_size_for_type[packet_type] - bytes_read_));
-      if (bytes_read <= 0) {
-        LOG_ALWAYS_FATAL_IF((bytes_read == 0),
-                            "%s: Unexpected EOF reading the header!", __func__);
+      if (bytes_read == 0) {
+        // This is only expected if the UART got closed when shutting down.
+        ALOGE("%s: Unexpected EOF reading the header!", __func__);
+        sleep(5);  // Expect to be shut down within 5 seconds.
+        return;
+      }
+      if (bytes_read < 0) {
         LOG_ALWAYS_FATAL("%s: Read header error: %s", __func__,
                          strerror(errno));
       }
@@ -80,10 +92,13 @@ void HciPacketizer::OnDataReady(int fd, HciPacketType packet_type) {
           fd,
           packet_.data() + preamble_size_for_type[packet_type] + bytes_read_,
           bytes_remaining_));
-      if (bytes_read <= 0) {
-        LOG_ALWAYS_FATAL_IF((bytes_read == 0),
-                            "%s: Unexpected EOF reading the payload!",
-                            __func__);
+      if (bytes_read == 0) {
+        // This is only expected if the UART got closed when shutting down.
+        ALOGE("%s: Unexpected EOF reading the payload!", __func__);
+        sleep(5);  // Expect to be shut down within 5 seconds.
+        return;
+      }
+      if (bytes_read < 0) {
         LOG_ALWAYS_FATAL("%s: Read payload error: %s", __func__,
                          strerror(errno));
       }

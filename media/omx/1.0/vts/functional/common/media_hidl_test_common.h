@@ -21,6 +21,9 @@
 #define OMX_ANDROID_COMPILE_AS_32BIT_ON_64BIT_PLATFORMS
 #endif
 
+#include <getopt.h>
+#include <gtest/gtest.h>
+#include <hidl/ServiceManagement.h>
 #include <media/stagefright/foundation/ALooper.h>
 #include <utils/Condition.h>
 #include <utils/List.h>
@@ -33,11 +36,16 @@
 #include <media/openmax/OMX_AudioExt.h>
 #include <media/openmax/OMX_VideoExt.h>
 
+#include <ui/GraphicBufferAllocator.h>
+#include <ui/GraphicBufferMapper.h>
+
 /* TIME OUTS (Wait time in dequeueMessage()) */
 
 /* As component is switching states (loaded<->idle<->execute), dequeueMessage()
  * expects the events to be received within this duration */
 #define DEFAULT_TIMEOUT 100000
+// b/70933963
+#define RELAXED_TIMEOUT 400000
 /* Time interval between successive Input/Output enqueues */
 #define DEFAULT_TIMEOUT_Q 2000
 /* While the component is amidst a process call, asynchronous commands like
@@ -62,6 +70,20 @@ enum bufferOwner {
     component,
     unknown,
 };
+
+// List known and thus tested audio/video roles.
+static std::set<std::string> kKnownRoles{
+        "audio_encoder.aac",      "audio_encoder.amrnb", "audio_encoder.amrwb",
+        "audio_encoder.flac",     "audio_decoder.aac",   "audio_decoder.amrnb",
+        "audio_decoder.amrwb",    "audio_decoder.flac",  "audio_decoder.g711alaw",
+        "audio_decoder.g711mlaw", "audio_decoder.gsm",   "audio_decoder.mp3",
+        "audio_decoder.opus",     "audio_decoder.raw",   "audio_decoder.vorbis",
+        "video_encoder.avc",      "video_encoder.h263",  "video_encoder.mpeg4",
+        "video_encoder.vp8",      "video_encoder.vp9",   "video_decoder.avc",
+        "video_decoder.h263",     "video_decoder.hevc",  "video_decoder.mpeg4",
+        "video_decoder.vp8",      "video_decoder.vp9"};
+
+static std::vector<std::tuple<std::string, std::string, std::string>> kTestParameters;
 
 /*
  * TODO: below definitions are borrowed from Conversion.h.
@@ -93,6 +115,7 @@ inline uint32_t toRawCommandType(OMX_COMMANDTYPE l) {
 struct BufferInfo {
     uint32_t id;
     bufferOwner owner;
+    buffer_handle_t handle;
     android::hardware::media::omx::V1_0::CodecBuffer omxBuffer;
     ::android::sp<IMemory> mMemory;
     int32_t slot;
@@ -283,8 +306,9 @@ Return<android::hardware::media::omx::V1_0::Status> setPortConfig(
 /*
  * common functions declarations
  */
-Return<android::hardware::media::omx::V1_0::Status> setRole(
-    sp<IOmxNode> omxNode, const char* role);
+
+Return<android::hardware::media::omx::V1_0::Status> setRole(sp<IOmxNode> omxNode,
+                                                            const std::string& role);
 
 Return<android::hardware::media::omx::V1_0::Status> setPortBufferSize(
     sp<IOmxNode> omxNode, OMX_U32 portIndex, OMX_U32 size);
@@ -306,6 +330,9 @@ void allocatePortBuffers(sp<IOmxNode> omxNode,
                          PortMode portMode = PortMode::PRESET_BYTE_BUFFER,
                          bool allocGrap = false);
 
+void freePortBuffers(android::Vector<BufferInfo>* buffArray, PortMode portMode,
+                     bool allocGrap = false);
+
 void changeStateLoadedtoIdle(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                              android::Vector<BufferInfo>* iBuffer,
                              android::Vector<BufferInfo>* oBuffer,
@@ -315,8 +342,9 @@ void changeStateLoadedtoIdle(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
 
 void changeStateIdletoLoaded(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                              android::Vector<BufferInfo>* iBuffer,
-                             android::Vector<BufferInfo>* oBuffer,
-                             OMX_U32 kPortIndexInput, OMX_U32 kPortIndexOutput);
+                             android::Vector<BufferInfo>* oBuffer, OMX_U32 kPortIndexInput,
+                             OMX_U32 kPortIndexOutput, PortMode* portMode = nullptr,
+                             bool allocGrap = false);
 
 void changeStateIdletoExecute(sp<IOmxNode> omxNode, sp<CodecObserver> observer);
 
@@ -354,5 +382,11 @@ void testEOS(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
              bool& eosFlag, PortMode* portMode = nullptr,
              portreconfig fptr = nullptr, OMX_U32 kPortIndexInput = 0,
              OMX_U32 kPortIndexOutput = 1, void* args = nullptr);
+
+hidl_vec<IOmx::ComponentInfo> getComponentInfoList(sp<IOmx> omx);
+
+// Return all test parameters, a list of tuple of <instance, component, role>
+const std::vector<std::tuple<std::string, std::string, std::string>>& getTestParameters(
+        const std::string& filter);
 
 #endif  // MEDIA_HIDL_TEST_COMMON_H
