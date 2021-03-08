@@ -48,17 +48,14 @@ public:
 
     /**
      * Subscribe to HAL property events. This method might be called multiple
-     * times for the same vehicle property to update subscribed areas or sample
-     * rate.
+     * times for the same vehicle property to update sample rate.
      *
      * @param property to subscribe
-     * @param areas a bitwise vehicle areas or 0 for all supported areas
      * @param sampleRate sample rate in Hz for properties that support sample
      *                   rate, e.g. for properties with
      *                   VehiclePropertyChangeMode::CONTINUOUS
      */
     virtual StatusCode subscribe(int32_t property,
-                                 int32_t areas,
                                  float sampleRate) = 0;
 
     /**
@@ -72,6 +69,26 @@ public:
      * Override this method if you need to do one-time initialization.
      */
     virtual void onCreate() {}
+
+    /**
+     * Dump method forwarded from HIDL's debug().
+     *
+     * By default it doesn't dump anything and let caller dump its properties, but it could be
+     * override to change the behavior. For example:
+     *
+     * - To augment caller's dump, it should dump its state and return true.
+     * - To not dump anything at all, it should just return false.
+     * - To provide custom dump (like dumping just specific state or executing a custom command),
+     *   it should check if options is not empty, handle the options accordingly, then return false.
+     *
+     * @param handle handle used to dump the contents.
+     * @param options options passed to dump.
+     *
+     * @return whether the caller should dump its state.
+     */
+    virtual bool dump(const hidl_handle& /* handle */, const hidl_vec<hidl_string>& /* options */) {
+        return true;
+    }
 
     void init(
         VehiclePropValuePool* valueObjectPool,

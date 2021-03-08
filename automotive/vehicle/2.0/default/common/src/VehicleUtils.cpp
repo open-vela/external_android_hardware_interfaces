@@ -42,16 +42,17 @@ std::unique_ptr<VehiclePropValue> createVehiclePropValue(
             val->value.floatValues.resize(vecSize);
             break;
         case VehiclePropertyType::INT64:
+        case VehiclePropertyType::INT64_VEC:
             val->value.int64Values.resize(vecSize);
             break;
         case VehiclePropertyType::BYTES:
             val->value.bytes.resize(vecSize);
             break;
         case VehiclePropertyType::STRING:
-        case VehiclePropertyType::COMPLEX:
+        case VehiclePropertyType::MIXED:
             break; // Valid, but nothing to do.
         default:
-            ALOGE("createVehiclePropValue: unknown type: %d", type);
+            ALOGE("createVehiclePropValue: unknown type: %d", toInt(type));
             val.reset(nullptr);
     }
     return val;
@@ -68,18 +69,12 @@ size_t getVehicleRawValueVectorSize(
         case VehiclePropertyType::FLOAT_VEC:
             return value.floatValues.size();
         case VehiclePropertyType::INT64:
+        case VehiclePropertyType::INT64_VEC:
             return value.int64Values.size();
         case VehiclePropertyType::BYTES:
             return value.bytes.size();
         default:
             return 0;
-    }
-}
-
-template<typename T>
-inline void copyHidlVec(hidl_vec <T>* dest, const hidl_vec <T>& src) {
-    for (size_t i = 0; i < std::min(dest->size(), src.size()); i++) {
-        (*dest)[i] = src[i];
     }
 }
 
@@ -90,6 +85,15 @@ void copyVehicleRawValue(VehiclePropValue::RawValue* dest,
     dest->int64Values = src.int64Values;
     dest->bytes = src.bytes;
     dest->stringValue = src.stringValue;
+}
+
+#ifdef __ANDROID__
+
+template<typename T>
+inline void copyHidlVec(hidl_vec <T>* dest, const hidl_vec <T>& src) {
+    for (size_t i = 0; i < std::min(dest->size(), src.size()); i++) {
+        (*dest)[i] = src[i];
+    }
 }
 
 template<typename T>
@@ -112,6 +116,7 @@ void shallowCopyHidlStr(hidl_string* dest, const hidl_string& src) {
 void shallowCopy(VehiclePropValue* dest, const VehiclePropValue& src) {
     dest->prop = src.prop;
     dest->areaId = src.areaId;
+    dest->status = src.status;
     dest->timestamp = src.timestamp;
     shallowCopyHidlVec(&dest->value.int32Values, src.value.int32Values);
     shallowCopyHidlVec(&dest->value.int64Values, src.value.int64Values);
@@ -120,6 +125,7 @@ void shallowCopy(VehiclePropValue* dest, const VehiclePropValue& src) {
     shallowCopyHidlStr(&dest->value.stringValue, src.value.stringValue);
 }
 
+#endif  // __ANDROID__
 
 //}  // namespace utils
 

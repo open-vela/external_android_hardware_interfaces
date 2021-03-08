@@ -112,6 +112,16 @@ protected:
     Return<Status> flush();
     Return<void> close();
 
+    // Helper methods
+    Status constructDefaultRequestSettingsRaw(int type, CameraMetadata *outMetadata);
+
+    bool preProcessConfigurationLocked(const StreamConfiguration& requestedConfiguration,
+            camera3_stream_configuration_t *stream_list /*out*/,
+            hidl_vec<camera3_stream_t*> *streams /*out*/);
+    void postProcessConfigurationLocked(const StreamConfiguration& requestedConfiguration);
+
+    void postProcessConfigurationFailureLocked(const StreamConfiguration& requestedConfiguration);
+
 protected:
 
     // protecting mClosed/mDisconnected/mInitFail
@@ -133,7 +143,8 @@ protected:
     };
 
     camera3_device_t* mDevice;
-    uint32_t mDeviceVersion;
+    const uint32_t mDeviceVersion;
+    const bool mFreeBufEarly;
     bool mIsAELockAvailable;
     bool mDerivePostRawSensKey;
     uint32_t mNumPartialResults;
@@ -150,6 +161,7 @@ protected:
     std::map<uint32_t, bool> mInflightRawBoostPresent;
     ::android::hardware::camera::common::V1_0::helper::CameraMetadata mOverridenRequest;
 
+    static const uint64_t BUFFER_ID_NO_BUFFER = 0;
     // buffers currently ciculating between HAL and camera service
     // key: bufferId sent via HIDL interface
     // value: imported buffer_handle_t
@@ -160,6 +172,7 @@ protected:
     std::map<int, CirculatingBuffers> mCirculatingBuffers;
 
     static HandleImporter sHandleImporter;
+    static buffer_handle_t sEmptyBuffer;
 
     bool mInitFail;
     bool mFirstRequest = false;
@@ -178,11 +191,11 @@ protected:
         void setBatchedStreams(const std::vector<int>& streamsToBatch);
         void setResultMetadataQueue(std::shared_ptr<ResultMetadataQueue> q);
 
-        void registerBatch(const hidl_vec<CaptureRequest>& requests);
+        void registerBatch(uint32_t frameNumber, uint32_t batchSize);
         void notify(NotifyMsg& msg);
         void processCaptureResult(CaptureResult& result);
 
-    private:
+    protected:
         struct InflightBatch {
             // Protect access to entire struct. Acquire this lock before read/write any data or
             // calling any methods. processCaptureResult and notify will compete for this lock
@@ -227,7 +240,6 @@ protected:
             bool mRemoved = false;
         };
 
-        static const int NOT_BATCHED = -1;
 
         // Get the batch index and pointer to InflightBatch (nullptrt if the frame is not batched)
         // Caller must acquire the InflightBatch::mLock before accessing the InflightBatch
@@ -236,6 +248,16 @@ protected:
         // caller must check InflightBatch::mRemoved flag after the lock is acquried.
         // This method will hold ResultBatcher::mLock briefly
         std::pair<int, std::shared_ptr<InflightBatch>> getBatch(uint32_t frameNumber);
+
+        static const int NOT_BATCHED = -1;
+
+        // move/push function avoids "hidl_handle& operator=(hidl_handle&)", which clones native
+        // handle
+        void moveStreamBuffer(StreamBuffer&& src, StreamBuffer& dst);
+        void pushStreamBuffer(StreamBuffer&& src, std::vector<StreamBuffer>& dst);
+
+        void sendBatchMetadataLocked(
+                std::shared_ptr<InflightBatch> batch, uint32_t lastPartialResultIdx);
 
         // Check if the first batch in mInflightBatches is ready to be removed, and remove it if so
         // This method will hold ResultBatcher::mLock briefly
@@ -249,20 +271,13 @@ protected:
         // send buffers for specified streams
         void sendBatchBuffersLocked(
                 std::shared_ptr<InflightBatch> batch, const std::vector<int>& streams);
-        void sendBatchMetadataLocked(
-                std::shared_ptr<InflightBatch> batch, uint32_t lastPartialResultIdx);
-        // End of sendXXXX methods
+       // End of sendXXXX methods
 
         // helper methods
         void freeReleaseFences(hidl_vec<CaptureResult>&);
         void notifySingleMsg(NotifyMsg& msg);
         void processOneCaptureResult(CaptureResult& result);
         void invokeProcessCaptureResultCallback(hidl_vec<CaptureResult> &results, bool tryWriteFmq);
-
-        // move/push function avoids "hidl_handle& operator=(hidl_handle&)", which clones native
-        // handle
-        void moveStreamBuffer(StreamBuffer&& src, StreamBuffer& dst);
-        void pushStreamBuffer(StreamBuffer&& src, std::vector<StreamBuffer>& dst);
 
         // Protect access to mInflightBatches, mNumPartialResults and mStreamsToBatch
         // processCaptureRequest, processCaptureResult, notify will compete for this lock
@@ -283,13 +298,27 @@ protected:
 
     bool initialize();
 
+    static bool shouldFreeBufEarly();
+
     Status initStatus() const;
 
     // Validate and import request's input buffer and acquire fence
-    Status importRequest(
+    virtual Status importRequest(
             const CaptureRequest& request,
             hidl_vec<buffer_handle_t*>& allBufPtrs,
             hidl_vec<int>& allFences);
+
+    Status importRequestImpl(
+            const CaptureRequest& request,
+            hidl_vec<buffer_handle_t*>& allBufPtrs,
+            hidl_vec<int>& allFences,
+            // Optional argument for ICameraDeviceSession@3.5 impl
+            bool allowEmptyBuf = false);
+
+    Status importBuffer(int32_t streamId,
+            uint64_t bufId, buffer_handle_t buf,
+            /*out*/buffer_handle_t** outBufPtr,
+            bool allowEmptyBuf);
 
     static void cleanupInflightFences(
             hidl_vec<int>& allFences, size_t numFences);
@@ -316,6 +345,24 @@ protected:
      */
     static callbacks_process_capture_result_t sProcessCaptureResult;
     static callbacks_notify_t sNotify;
+
+    // By default camera service uses frameNumber/streamId pair to retrieve the buffer that
+    // was sent to HAL. Override this implementation if HAL is using buffers from buffer management
+    // APIs to send output buffer.
+    virtual uint64_t getCapResultBufferId(const buffer_handle_t& buf, int streamId);
+
+    status_t constructCaptureResult(CaptureResult& result,
+                                const camera3_capture_result *hal_result);
+
+    // Static helper method to copy/shrink capture result metadata sent by HAL
+    // Temporarily allocated metadata copy will be hold in mds
+    static void sShrinkCaptureResult(
+            camera3_capture_result* dst, const camera3_capture_result* src,
+            std::vector<::android::hardware::camera::common::V1_0::helper::CameraMetadata>* mds,
+            std::vector<const camera_metadata_t*>* physCamMdArray,
+            bool handlePhysCam);
+    static bool sShouldShrink(const camera_metadata_t* md);
+    static camera_metadata_t* sCreateCompactCopy(const camera_metadata_t* src);
 
 private:
 
