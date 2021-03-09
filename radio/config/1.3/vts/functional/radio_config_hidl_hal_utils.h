@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#pragma once
-
 #include <android-base/logging.h>
 
 #include <chrono>
@@ -51,6 +49,7 @@ using ::android::hardware::radio::config::V1_3::HalDeviceCapabilities;
 using ::android::hardware::radio::config::V1_3::IRadioConfig;
 using ::android::hardware::radio::V1_0::RadioResponseInfo;
 
+#define TIMEOUT_PERIOD 75
 #define RADIO_SERVICE_NAME "slot1"
 
 class RadioConfigHidlTest;
@@ -58,14 +57,13 @@ class RadioConfigHidlTest;
 /* Callback class for radio config response */
 class RadioConfigResponse : public IRadioConfigResponse {
   protected:
-    RadioResponseWaiter& parent;
+    RadioConfigHidlTest& parent;
 
   public:
     RadioResponseInfo rspInfo;
     PhoneCapability phoneCap;
-    HalDeviceCapabilities halDeviceCapabilities;
 
-    RadioConfigResponse(RadioResponseWaiter& parent);
+    RadioConfigResponse(RadioConfigHidlTest& parent);
     virtual ~RadioConfigResponse() = default;
 
     Return<void> getSimSlotsStatusResponse(
@@ -109,12 +107,25 @@ class RadioConfigIndication : public IRadioConfigIndication {
 };
 
 // The main test class for Radio config HIDL.
-class RadioConfigHidlTest : public ::testing::TestWithParam<std::string>,
-                            public RadioResponseWaiter {
+class RadioConfigHidlTest : public ::testing::TestWithParam<std::string> {
+  protected:
+    std::mutex mtx_;
+    std::condition_variable cv_;
+    int count_;
+
   public:
     virtual void SetUp() override;
 
+    /* Used as a mechanism to inform the test about data/event callback */
+    void notify(int receivedSerial);
+
+    /* Test code calls this function to wait for response */
+    std::cv_status wait();
+
     void updateSimCardStatus();
+
+    /* Serial number for radio request */
+    int serial;
 
     /* radio config service handle */
     sp<IRadioConfig> radioConfig;
