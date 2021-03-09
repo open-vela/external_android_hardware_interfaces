@@ -31,7 +31,9 @@ namespace CPP_VERSION {
 namespace implementation {
 
 AcousticEchoCancelerEffect::AcousticEchoCancelerEffect(effect_handle_t handle)
-    : mEffect(new Effect(true /*isInput*/, handle)) {}
+    : mEffect(new Effect(handle)) {}
+
+AcousticEchoCancelerEffect::~AcousticEchoCancelerEffect() {}
 
 // Methods from ::android::hardware::audio::effect::CPP_VERSION::IEffect follow.
 Return<Result> AcousticEchoCancelerEffect::init() {
@@ -56,31 +58,9 @@ Return<Result> AcousticEchoCancelerEffect::disable() {
     return mEffect->disable();
 }
 
-#if MAJOR_VERSION <= 6
-Return<Result> AcousticEchoCancelerEffect::setAudioSource(AudioSource source) {
-    return mEffect->setAudioSource(source);
-}
-
 Return<Result> AcousticEchoCancelerEffect::setDevice(AudioDeviceBitfield device) {
     return mEffect->setDevice(device);
 }
-
-Return<Result> AcousticEchoCancelerEffect::setInputDevice(AudioDeviceBitfield device) {
-    return mEffect->setInputDevice(device);
-}
-#else
-Return<Result> AcousticEchoCancelerEffect::setAudioSource(const AudioSource& source) {
-    return mEffect->setAudioSource(source);
-}
-
-Return<Result> AcousticEchoCancelerEffect::setDevice(const DeviceAddress& device) {
-    return mEffect->setDevice(device);
-}
-
-Return<Result> AcousticEchoCancelerEffect::setInputDevice(const DeviceAddress& device) {
-    return mEffect->setInputDevice(device);
-}
-#endif
 
 Return<void> AcousticEchoCancelerEffect::setAndGetVolume(const hidl_vec<uint32_t>& volumes,
                                                          setAndGetVolume_cb _hidl_cb) {
@@ -100,6 +80,10 @@ Return<Result> AcousticEchoCancelerEffect::setConfigReverse(
     const EffectConfig& config, const sp<IEffectBufferProviderCallback>& inputBufferProvider,
     const sp<IEffectBufferProviderCallback>& outputBufferProvider) {
     return mEffect->setConfigReverse(config, inputBufferProvider, outputBufferProvider);
+}
+
+Return<Result> AcousticEchoCancelerEffect::setInputDevice(AudioDeviceBitfield device) {
+    return mEffect->setInputDevice(device);
 }
 
 Return<void> AcousticEchoCancelerEffect::getConfig(getConfig_cb _hidl_cb) {
@@ -122,6 +106,10 @@ Return<void> AcousticEchoCancelerEffect::getAuxChannelsConfig(getAuxChannelsConf
 Return<Result> AcousticEchoCancelerEffect::setAuxChannelsConfig(
     const EffectAuxChannelsConfig& config) {
     return mEffect->setAuxChannelsConfig(config);
+}
+
+Return<Result> AcousticEchoCancelerEffect::setAudioSource(AudioSource source) {
+    return mEffect->setAudioSource(source);
 }
 
 Return<Result> AcousticEchoCancelerEffect::offload(const EffectOffloadParameter& param) {

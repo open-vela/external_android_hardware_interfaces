@@ -495,7 +495,7 @@ TEST_P(BroadcastRadioHalTest, TuneFailsWithInvalid) {
  *    invoked carrying a proper selector;
  *  - program changes exactly to what was requested.
  */
-TEST_P(BroadcastRadioHalTest, DabTune) {
+TEST_F(BroadcastRadioHalTest, DabTune) {
     ASSERT_TRUE(openSession());
 
     ProgramSelector sel = {};
@@ -869,7 +869,6 @@ TEST_P(BroadcastRadioHalTest, AnnouncementListenerRegistration) {
     closeHandle->close();
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BroadcastRadioHalTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, BroadcastRadioHalTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IBroadcastRadio::descriptor)),
