@@ -30,7 +30,8 @@
 #include "vhal_v2_0/VehiclePropertyStore.h"
 
 #include "DefaultConfig.h"
-#include "GeneratorHub.h"
+#include "FakeValueGenerator.h"
+
 #include "VehicleEmulator.h"
 
 namespace android {
@@ -67,7 +68,6 @@ private:
 
     StatusCode handleGenerateFakeDataRequest(const VehiclePropValue& request);
     void onFakeValueGenerated(const VehiclePropValue& value);
-    VehiclePropValuePtr createApPowerStateReq(VehicleApPowerStateReq req, int32_t param);
     VehiclePropValuePtr createHwInputKeyProp(VehicleHwKeyInputAction action, int32_t keyCode,
                                              int32_t targetDisplay);
 
@@ -85,8 +85,8 @@ private:
     VehiclePropertyStore* mPropStore;
     std::unordered_set<int32_t> mHvacPowerProps;
     RecurrentTimer mRecurrentTimer;
-    GeneratorHub mGeneratorHub;
-    bool mInEmulator;
+    std::unique_ptr<FakeValueGenerator> mLinearFakeValueGenerator;
+    std::unique_ptr<FakeValueGenerator> mJsonFakeValueGenerator;
 };
 
 }  // impl
