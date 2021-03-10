@@ -22,7 +22,6 @@
 #include "wifi_iface_util.h"
 
 #include "mock_interface_tool.h"
-#include "mock_wifi_legacy_hal.h"
 
 using testing::NiceMock;
 using testing::Test;
@@ -49,11 +48,7 @@ class WifiIfaceUtilTest : public Test {
    protected:
     std::shared_ptr<NiceMock<wifi_system::MockInterfaceTool>> iface_tool_{
         new NiceMock<wifi_system::MockInterfaceTool>};
-    legacy_hal::wifi_hal_fn fake_func_table_;
-    std::shared_ptr<NiceMock<legacy_hal::MockWifiLegacyHal>> legacy_hal_{
-        new NiceMock<legacy_hal::MockWifiLegacyHal>(iface_tool_,
-                                                    fake_func_table_, true)};
-    WifiIfaceUtil* iface_util_ = new WifiIfaceUtil(iface_tool_, legacy_hal_);
+    WifiIfaceUtil* iface_util_ = new WifiIfaceUtil(iface_tool_);
 };
 
 TEST_F(WifiIfaceUtilTest, GetOrCreateRandomMacAddress) {
