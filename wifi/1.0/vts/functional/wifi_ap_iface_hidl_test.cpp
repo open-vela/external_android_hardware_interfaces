@@ -30,6 +30,7 @@ using ::android::hardware::wifi::V1_0::WifiStatusCode;
 using ::android::sp;
 
 extern WifiHidlEnvironment* gEnv;
+
 /**
  * Fixture to use for all AP Iface HIDL interface tests.
  */
