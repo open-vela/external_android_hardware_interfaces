@@ -34,6 +34,8 @@ class Fingerprint : public BnFingerprint {
                                      const std::shared_ptr<ISessionCallback>& cb,
                                      std::shared_ptr<ISession>* out) override;
 
+    ndk::ScopedAStatus reset() override;
+
   private:
     std::unique_ptr<FakeFingerprintEngine> mEngine;
     WorkerThread mWorker;
