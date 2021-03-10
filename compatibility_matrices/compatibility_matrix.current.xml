@@ -387,6 +387,14 @@
         </interface>
     </hal>
     <hal format="hidl" optional="true">
+        <name>android.hardware.memtrack</name>
+        <version>1.0</version>
+        <interface>
+            <name>IMemtrack</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="hidl" optional="true">
         <name>android.hardware.neuralnetworks</name>
         <version>1.0-3</version>
         <interface>
@@ -521,7 +529,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.soundtrigger</name>
-        <version>2.3-4</version>
+        <version>2.3</version>
         <interface>
             <name>ISoundTriggerHw</name>
             <instance>default</instance>

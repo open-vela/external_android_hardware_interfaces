@@ -36,7 +36,6 @@ cc_test {
     ],
     static_libs: [
         "RadioVtsTestUtilBase",
-        "RadioConfigVtsTestResponse",
         "android.hardware.radio@1.6",
         "android.hardware.radio@1.5",
         "android.hardware.radio@1.4",
@@ -46,13 +45,8 @@ cc_test {
         "android.hardware.radio@1.0",
         "android.hardware.radio.config@1.0",
         "android.hardware.radio.config@1.1",
-        "android.hardware.radio.config@1.2",
-        "android.hardware.radio.config@1.3",
     ],
-    header_libs: [
-        "radio.util.header@1.0",
-        "radio.config.util.header@1.3",
-    ],
+    header_libs: ["radio.util.header@1.0"],
     test_suites: [
         "general-tests",
         "vts",

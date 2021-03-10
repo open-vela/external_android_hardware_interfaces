@@ -33,7 +33,7 @@
 package android.hardware.gnss;
 @VintfStability
 parcelable CorrelationVector {
-  double frequencyOffsetMps;
+  int frequencyOffsetMps;
   double samplingWidthM;
   double samplingStartM;
   int[] magnitude;
