@@ -41,10 +41,8 @@ namespace implementation {
 namespace iface_util {
 
 WifiIfaceUtil::WifiIfaceUtil(
-    const std::weak_ptr<wifi_system::InterfaceTool> iface_tool,
-    const std::weak_ptr<legacy_hal::WifiLegacyHal> legacy_hal)
+    const std::weak_ptr<wifi_system::InterfaceTool> iface_tool)
     : iface_tool_(iface_tool),
-      legacy_hal_(legacy_hal),
       random_mac_address_(nullptr),
       event_handlers_map_() {}
 
@@ -61,20 +59,14 @@ bool WifiIfaceUtil::setMacAddress(const std::string& iface_name,
         return false;
     }
 #endif
-    bool success = iface_tool_.lock()->SetMacAddress(iface_name.c_str(), mac);
+    if (!iface_tool_.lock()->SetMacAddress(iface_name.c_str(), mac)) {
+        LOG(ERROR) << "SetMacAddress failed.";
+        return false;
+    }
 #ifndef WIFI_AVOID_IFACE_RESET_MAC_CHANGE
     if (!iface_tool_.lock()->SetUpState(iface_name.c_str(), true)) {
-        LOG(ERROR) << "SetUpState(true) failed. Wait for driver ready.";
-        // Wait for driver ready and try to set iface UP again
-        if (legacy_hal_.lock()->waitForDriverReady() !=
-            legacy_hal::WIFI_SUCCESS) {
-            LOG(ERROR) << "SetUpState(true) wait for driver ready failed.";
-            return false;
-        }
-        if (!iface_tool_.lock()->SetUpState(iface_name.c_str(), true)) {
-            LOG(ERROR) << "SetUpState(true) failed after retry.";
-            return false;
-        }
+        LOG(ERROR) << "SetUpState(true) failed.";
+        return false;
     }
 #endif
     IfaceEventHandlers event_handlers = {};
@@ -85,12 +77,8 @@ bool WifiIfaceUtil::setMacAddress(const std::string& iface_name,
     if (event_handlers.on_state_toggle_off_on != nullptr) {
         event_handlers.on_state_toggle_off_on(iface_name);
     }
-    if (!success) {
-        LOG(ERROR) << "SetMacAddress failed.";
-    } else {
-        LOG(DEBUG) << "SetMacAddress succeeded.";
-    }
-    return success;
+    LOG(DEBUG) << "Successfully SetMacAddress.";
+    return true;
 }
 
 std::array<uint8_t, 6> WifiIfaceUtil::getOrCreateRandomMacAddress() {
