@@ -12,15 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package {
-    // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "hardware_interfaces_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_interfaces_license"],
-}
-
 cc_library_shared {
     name: "android.hardware.light@2.0-impl",
     defaults: ["hidl_defaults"],
@@ -32,6 +23,7 @@ cc_library_shared {
         "libbase",
         "liblog",
         "libhidlbase",
+        "libhidltransport",
         "libhardware",
         "libutils",
         "android.hardware.light@2.0",
@@ -39,11 +31,13 @@ cc_library_shared {
 
 }
 
-cc_defaults {
-    name: "light_service_defaults",
+cc_binary {
+    name: "android.hardware.light@2.0-service",
     relative_install_path: "hw",
     defaults: ["hidl_defaults"],
     vendor: true,
+    init_rc: ["android.hardware.light@2.0-service.rc"],
+    srcs: ["service.cpp"],
 
     shared_libs: [
         "liblog",
@@ -52,21 +46,8 @@ cc_defaults {
         "libutils",
         "libhardware",
         "libhidlbase",
+        "libhidltransport",
         "android.hardware.light@2.0",
     ],
-}
 
-cc_binary {
-    name: "android.hardware.light@2.0-service",
-    defaults: ["light_service_defaults"],
-    init_rc: ["android.hardware.light@2.0-service.rc"],
-    srcs: ["service.cpp"],
-}
-
-cc_binary {
-    name: "android.hardware.light@2.0-service-lazy",
-    overrides: ["android.hardware.light@2.0-service"],
-    defaults: ["light_service_defaults"],
-    init_rc: ["android.hardware.light@2.0-service-lazy.rc"],
-    srcs: ["serviceLazy.cpp"],
 }
