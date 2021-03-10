@@ -1,4 +1,0 @@
-service vendor.oemlock_default /vendor/bin/hw/android.hardware.oemlock-service.example
-    class hal
-    user hsm
-    group hsm
