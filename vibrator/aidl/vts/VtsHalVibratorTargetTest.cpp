@@ -18,6 +18,7 @@
 
 #include <android/hardware/vibrator/BnVibratorCallback.h>
 #include <android/hardware/vibrator/IVibrator.h>
+#include <android/hardware/vibrator/IVibratorManager.h>
 #include <binder/IServiceManager.h>
 #include <binder/ProcessState.h>
 
@@ -34,6 +35,8 @@ using android::hardware::vibrator::CompositePrimitive;
 using android::hardware::vibrator::Effect;
 using android::hardware::vibrator::EffectStrength;
 using android::hardware::vibrator::IVibrator;
+using android::hardware::vibrator::IVibratorManager;
+using std::chrono::high_resolution_clock;
 
 const std::vector<Effect> kEffects{android::enum_range<Effect>().begin(),
                                    android::enum_range<Effect>().end()};
@@ -76,10 +79,28 @@ class CompletionCallback : public BnVibratorCallback {
     std::function<void()> mCallback;
 };
 
-class VibratorAidl : public testing::TestWithParam<std::string> {
+class VibratorAidl : public testing::TestWithParam<std::tuple<int32_t, int32_t>> {
   public:
     virtual void SetUp() override {
-        vibrator = android::waitForDeclaredService<IVibrator>(String16(GetParam().c_str()));
+        int32_t managerIdx = std::get<0>(GetParam());
+        int32_t vibratorId = std::get<1>(GetParam());
+        auto managerAidlNames = android::getAidlHalInstanceNames(IVibratorManager::descriptor);
+
+        if (managerIdx < 0) {
+            // Testing a unmanaged vibrator, using vibratorId as index from registered HALs
+            auto vibratorAidlNames = android::getAidlHalInstanceNames(IVibrator::descriptor);
+            ASSERT_LT(vibratorId, vibratorAidlNames.size());
+            auto vibratorName = String16(vibratorAidlNames[vibratorId].c_str());
+            vibrator = android::waitForDeclaredService<IVibrator>(vibratorName);
+        } else {
+            // Testing a managed vibrator, using vibratorId to retrieve it from the manager
+            ASSERT_LT(managerIdx, managerAidlNames.size());
+            auto managerName = String16(managerAidlNames[managerIdx].c_str());
+            auto vibratorManager = android::waitForDeclaredService<IVibratorManager>(managerName);
+            auto vibratorResult = vibratorManager->getVibrator(vibratorId, &vibrator);
+            ASSERT_TRUE(vibratorResult.isOk());
+        }
+
         ASSERT_NE(vibrator, nullptr);
         ASSERT_TRUE(vibrator->getCapabilities(&capabilities).isOk());
     }
@@ -95,7 +116,7 @@ TEST_P(VibratorAidl, OnThenOffBeforeTimeout) {
 }
 
 TEST_P(VibratorAidl, OnWithCallback) {
-    if (!(capabilities & IVibrator::CAP_PERFORM_CALLBACK)) return;
+    if (!(capabilities & IVibrator::CAP_ON_CALLBACK)) return;
 
     std::promise<void> completionPromise;
     std::future<void> completionFuture{completionPromise.get_future()};
@@ -109,7 +130,7 @@ TEST_P(VibratorAidl, OnWithCallback) {
 }
 
 TEST_P(VibratorAidl, OnCallbackNotSupported) {
-    if (!(capabilities & IVibrator::CAP_PERFORM_CALLBACK)) {
+    if (!(capabilities & IVibrator::CAP_ON_CALLBACK)) {
         sp<CompletionCallback> callback = new CompletionCallback([] {});
         EXPECT_EQ(Status::EX_UNSUPPORTED_OPERATION, vibrator->on(250, callback).exceptionCode());
     }
@@ -442,26 +463,52 @@ TEST_P(VibratorAidl, ComposeSizeBoundary) {
 }
 
 TEST_P(VibratorAidl, ComposeCallback) {
+    constexpr std::chrono::milliseconds allowedLatency{10};
+
     if (capabilities & IVibrator::CAP_COMPOSE_EFFECTS) {
-        std::promise<void> completionPromise;
-        std::future<void> completionFuture{completionPromise.get_future()};
-        sp<CompletionCallback> callback =
-                new CompletionCallback([&completionPromise] { completionPromise.set_value(); });
-        CompositePrimitive primitive = CompositePrimitive::CLICK;
-        CompositeEffect effect;
-        std::vector<CompositeEffect> composite;
-        int32_t duration;
+        std::vector<CompositePrimitive> supported;
 
-        effect.delayMs = 0;
-        effect.primitive = primitive;
-        effect.scale = 1.0f;
-        composite.emplace_back(effect);
+        ASSERT_TRUE(vibrator->getSupportedPrimitives(&supported).isOk());
 
-        EXPECT_EQ(Status::EX_NONE,
-                  vibrator->getPrimitiveDuration(primitive, &duration).exceptionCode());
-        EXPECT_EQ(Status::EX_NONE, vibrator->compose(composite, callback).exceptionCode());
-        EXPECT_EQ(completionFuture.wait_for(std::chrono::milliseconds(duration * 2)),
-                  std::future_status::ready);
+        for (auto primitive : supported) {
+            if (primitive == CompositePrimitive::NOOP) {
+                continue;
+            }
+
+            std::promise<void> completionPromise;
+            std::future<void> completionFuture{completionPromise.get_future()};
+            sp<CompletionCallback> callback =
+                    new CompletionCallback([&completionPromise] { completionPromise.set_value(); });
+            CompositeEffect effect;
+            std::vector<CompositeEffect> composite;
+            int32_t durationMs;
+            std::chrono::milliseconds duration;
+            std::chrono::time_point<high_resolution_clock> start, end;
+            std::chrono::milliseconds elapsed;
+
+            effect.delayMs = 0;
+            effect.primitive = primitive;
+            effect.scale = 1.0f;
+            composite.emplace_back(effect);
+
+            EXPECT_EQ(Status::EX_NONE,
+                      vibrator->getPrimitiveDuration(primitive, &durationMs).exceptionCode())
+                    << toString(primitive);
+            duration = std::chrono::milliseconds(durationMs);
+
+            EXPECT_EQ(Status::EX_NONE, vibrator->compose(composite, callback).exceptionCode())
+                    << toString(primitive);
+            start = high_resolution_clock::now();
+
+            EXPECT_EQ(completionFuture.wait_for(duration + allowedLatency),
+                      std::future_status::ready)
+                    << toString(primitive);
+            end = high_resolution_clock::now();
+
+            elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+            EXPECT_LE(elapsed.count(), (duration + allowedLatency).count()) << toString(primitive);
+            EXPECT_GE(elapsed.count(), (duration - allowedLatency).count()) << toString(primitive);
+        }
     }
 }
 
@@ -491,9 +538,63 @@ TEST_P(VibratorAidl, AlwaysOn) {
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(Vibrator, VibratorAidl,
-                         testing::ValuesIn(android::getAidlHalInstanceNames(IVibrator::descriptor)),
-                         android::PrintInstanceNameToString);
+TEST_P(VibratorAidl, GetResonantFrequency) {
+    float resonantFrequency;
+    Status status = vibrator->getResonantFrequency(&resonantFrequency);
+    if (capabilities & IVibrator::CAP_GET_RESONANT_FREQUENCY) {
+        ASSERT_NE(resonantFrequency, 0);
+        EXPECT_EQ(status.exceptionCode(), Status::EX_NONE);
+    } else {
+        EXPECT_EQ(status.exceptionCode(), Status::EX_UNSUPPORTED_OPERATION);
+    }
+}
+
+TEST_P(VibratorAidl, GetQFactor) {
+    float qFactor;
+    Status status = vibrator->getQFactor(&qFactor);
+    if (capabilities & IVibrator::CAP_GET_Q_FACTOR) {
+        ASSERT_NE(qFactor, 0);
+        EXPECT_EQ(status.exceptionCode(), Status::EX_NONE);
+    } else {
+        EXPECT_EQ(status.exceptionCode(), Status::EX_UNSUPPORTED_OPERATION);
+    }
+}
+
+std::vector<std::tuple<int32_t, int32_t>> GenerateVibratorMapping() {
+    std::vector<std::tuple<int32_t, int32_t>> tuples;
+    auto managerAidlNames = android::getAidlHalInstanceNames(IVibratorManager::descriptor);
+    std::vector<int32_t> vibratorIds;
+
+    for (int i = 0; i < managerAidlNames.size(); i++) {
+        auto managerName = String16(managerAidlNames[i].c_str());
+        auto vibratorManager = android::waitForDeclaredService<IVibratorManager>(managerName);
+        if (vibratorManager->getVibratorIds(&vibratorIds).isOk()) {
+            for (auto& vibratorId : vibratorIds) {
+                tuples.push_back(std::make_tuple(i, vibratorId));
+            }
+        }
+    }
+
+    auto vibratorAidlNames = android::getAidlHalInstanceNames(IVibrator::descriptor);
+    for (int i = 0; i < vibratorAidlNames.size(); i++) {
+        tuples.push_back(std::make_tuple(-1, i));
+    }
+
+    return tuples;
+}
+
+std::string PrintGeneratedTest(const testing::TestParamInfo<VibratorAidl::ParamType>& info) {
+    const auto& [managerIdx, vibratorId] = info.param;
+    if (managerIdx < 0) {
+        return std::string("TOP_LEVEL_VIBRATOR_") + std::to_string(vibratorId);
+    }
+    return std::string("MANAGER_") + std::to_string(managerIdx) + "_VIBRATOR_ID_" +
+           std::to_string(vibratorId);
+}
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(VibratorAidl);
+INSTANTIATE_TEST_SUITE_P(Vibrator, VibratorAidl, testing::ValuesIn(GenerateVibratorMapping()),
+                         PrintGeneratedTest);
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
