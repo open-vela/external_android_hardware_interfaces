@@ -55,6 +55,7 @@
 #include <keymaster/contexts/soft_attestation_cert.h>
 #include <keymaster/keymaster_tags.h>
 #include <keymaster/km_openssl/attestation_utils.h>
+#include <keymaster/km_openssl/certificate_utils.h>
 
 namespace android {
 namespace hardware {
@@ -343,15 +344,22 @@ string cborPrettyPrint(const vector<uint8_t>& encodedCbor, size_t maxBStrSize,
 // Crypto functionality / abstraction.
 // ---------------------------------------------------------------------------
 
-struct EVP_CIPHER_CTX_Deleter {
-    void operator()(EVP_CIPHER_CTX* ctx) const {
-        if (ctx != nullptr) {
-            EVP_CIPHER_CTX_free(ctx);
-        }
-    }
-};
-
-using EvpCipherCtxPtr = unique_ptr<EVP_CIPHER_CTX, EVP_CIPHER_CTX_Deleter>;
+using EvpCipherCtxPtr = bssl::UniquePtr<EVP_CIPHER_CTX>;
+using EC_KEY_Ptr = bssl::UniquePtr<EC_KEY>;
+using EVP_PKEY_Ptr = bssl::UniquePtr<EVP_PKEY>;
+using EVP_PKEY_CTX_Ptr = bssl::UniquePtr<EVP_PKEY_CTX>;
+using EC_GROUP_Ptr = bssl::UniquePtr<EC_GROUP>;
+using EC_POINT_Ptr = bssl::UniquePtr<EC_POINT>;
+using ECDSA_SIG_Ptr = bssl::UniquePtr<ECDSA_SIG>;
+using X509_Ptr = bssl::UniquePtr<X509>;
+using PKCS12_Ptr = bssl::UniquePtr<PKCS12>;
+using BIGNUM_Ptr = bssl::UniquePtr<BIGNUM>;
+using ASN1_INTEGER_Ptr = bssl::UniquePtr<ASN1_INTEGER>;
+using ASN1_TIME_Ptr = bssl::UniquePtr<ASN1_TIME>;
+using ASN1_OCTET_STRING_Ptr = bssl::UniquePtr<ASN1_OCTET_STRING>;
+using ASN1_OBJECT_Ptr = bssl::UniquePtr<ASN1_OBJECT>;
+using X509_NAME_Ptr = bssl::UniquePtr<X509_NAME>;
+using X509_EXTENSION_Ptr = bssl::UniquePtr<X509_EXTENSION>;
 
 // bool getRandom(size_t numBytes, vector<uint8_t>& output) {
 optional<vector<uint8_t>> getRandom(size_t numBytes) {
@@ -532,115 +540,6 @@ optional<vector<uint8_t>> encryptAes128Gcm(const vector<uint8_t>& key, const vec
 
     return encryptedData;
 }
-
-struct EC_KEY_Deleter {
-    void operator()(EC_KEY* key) const {
-        if (key != nullptr) {
-            EC_KEY_free(key);
-        }
-    }
-};
-using EC_KEY_Ptr = unique_ptr<EC_KEY, EC_KEY_Deleter>;
-
-struct EVP_PKEY_Deleter {
-    void operator()(EVP_PKEY* key) const {
-        if (key != nullptr) {
-            EVP_PKEY_free(key);
-        }
-    }
-};
-using EVP_PKEY_Ptr = unique_ptr<EVP_PKEY, EVP_PKEY_Deleter>;
-
-struct EVP_PKEY_CTX_Deleter {
-    void operator()(EVP_PKEY_CTX* ctx) const {
-        if (ctx != nullptr) {
-            EVP_PKEY_CTX_free(ctx);
-        }
-    }
-};
-using EVP_PKEY_CTX_Ptr = unique_ptr<EVP_PKEY_CTX, EVP_PKEY_CTX_Deleter>;
-
-struct EC_GROUP_Deleter {
-    void operator()(EC_GROUP* group) const {
-        if (group != nullptr) {
-            EC_GROUP_free(group);
-        }
-    }
-};
-using EC_GROUP_Ptr = unique_ptr<EC_GROUP, EC_GROUP_Deleter>;
-
-struct EC_POINT_Deleter {
-    void operator()(EC_POINT* point) const {
-        if (point != nullptr) {
-            EC_POINT_free(point);
-        }
-    }
-};
-
-using EC_POINT_Ptr = unique_ptr<EC_POINT, EC_POINT_Deleter>;
-
-struct ECDSA_SIG_Deleter {
-    void operator()(ECDSA_SIG* sig) const {
-        if (sig != nullptr) {
-            ECDSA_SIG_free(sig);
-        }
-    }
-};
-using ECDSA_SIG_Ptr = unique_ptr<ECDSA_SIG, ECDSA_SIG_Deleter>;
-
-struct X509_Deleter {
-    void operator()(X509* x509) const {
-        if (x509 != nullptr) {
-            X509_free(x509);
-        }
-    }
-};
-using X509_Ptr = unique_ptr<X509, X509_Deleter>;
-
-struct PKCS12_Deleter {
-    void operator()(PKCS12* pkcs12) const {
-        if (pkcs12 != nullptr) {
-            PKCS12_free(pkcs12);
-        }
-    }
-};
-using PKCS12_Ptr = unique_ptr<PKCS12, PKCS12_Deleter>;
-
-struct BIGNUM_Deleter {
-    void operator()(BIGNUM* bignum) const {
-        if (bignum != nullptr) {
-            BN_free(bignum);
-        }
-    }
-};
-using BIGNUM_Ptr = unique_ptr<BIGNUM, BIGNUM_Deleter>;
-
-struct ASN1_INTEGER_Deleter {
-    void operator()(ASN1_INTEGER* value) const {
-        if (value != nullptr) {
-            ASN1_INTEGER_free(value);
-        }
-    }
-};
-using ASN1_INTEGER_Ptr = unique_ptr<ASN1_INTEGER, ASN1_INTEGER_Deleter>;
-
-struct ASN1_TIME_Deleter {
-    void operator()(ASN1_TIME* value) const {
-        if (value != nullptr) {
-            ASN1_TIME_free(value);
-        }
-    }
-};
-using ASN1_TIME_Ptr = unique_ptr<ASN1_TIME, ASN1_TIME_Deleter>;
-
-struct X509_NAME_Deleter {
-    void operator()(X509_NAME* value) const {
-        if (value != nullptr) {
-            X509_NAME_free(value);
-        }
-    }
-};
-using X509_NAME_Ptr = unique_ptr<X509_NAME, X509_NAME_Deleter>;
 
 vector<uint8_t> certificateChainJoin(const vector<vector<uint8_t>>& certificateChain) {
     vector<uint8_t> ret;
@@ -934,18 +833,26 @@ bool parseAsn1Time(const ASN1_TIME* asn1Time, time_t* outTime) {
 optional<vector<vector<uint8_t>>> createAttestation(
         const EVP_PKEY* key, const vector<uint8_t>& applicationId, const vector<uint8_t>& challenge,
         uint64_t activeTimeMilliSeconds, uint64_t expireTimeMilliSeconds, bool isTestCredential) {
-    const keymaster_cert_chain_t* attestation_chain =
-            ::keymaster::getAttestationChain(KM_ALGORITHM_EC, nullptr);
-    if (attestation_chain == nullptr) {
-        LOG(ERROR) << "Error getting attestation chain";
+    // Pretend to be implemented in a trusted environment just so we can pass
+    // the VTS tests. Of course, this is a pretend-only game since hopefully no
+    // relying party is ever going to trust our batch key and those keys above
+    // it.
+    ::keymaster::PureSoftKeymasterContext context(::keymaster::KmVersion::KEYMASTER_4_1,
+                                                  KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT);
+
+    keymaster_error_t error;
+    ::keymaster::CertificateChain attestation_chain =
+            context.GetAttestationChain(KM_ALGORITHM_EC, &error);
+    if (KM_ERROR_OK != error) {
+        LOG(ERROR) << "Error getting attestation chain " << error;
         return {};
     }
     if (expireTimeMilliSeconds == 0) {
-        if (attestation_chain->entry_count < 1) {
+        if (attestation_chain.entry_count < 1) {
             LOG(ERROR) << "Expected at least one entry in attestation chain";
             return {};
         }
-        keymaster_blob_t* bcBlob = &(attestation_chain->entries[0]);
+        keymaster_blob_t* bcBlob = &(attestation_chain.entries[0]);
         const uint8_t* bcData = bcBlob->data;
         auto bc = X509_Ptr(d2i_X509(nullptr, &bcData, bcBlob->data_length));
         time_t bcNotAfter;
@@ -955,15 +862,24 @@ optional<vector<vector<uint8_t>>> createAttestation(
         }
         expireTimeMilliSeconds = bcNotAfter * 1000;
     }
-    const keymaster_key_blob_t* attestation_signing_key =
-            ::keymaster::getAttestationKey(KM_ALGORITHM_EC, nullptr);
-    if (attestation_signing_key == nullptr) {
-        LOG(ERROR) << "Error getting attestation key";
+
+    ::keymaster::X509_NAME_Ptr subjectName;
+    if (KM_ERROR_OK !=
+        ::keymaster::make_name_from_str("Android Identity Credential Key", &subjectName)) {
+        LOG(ERROR) << "Cannot create attestation subject";
         return {};
     }
 
+    vector<uint8_t> subject(i2d_X509_NAME(subjectName.get(), NULL));
+    unsigned char* subjectPtr = subject.data();
+
+    i2d_X509_NAME(subjectName.get(), &subjectPtr);
+
+    uint64_t nowMilliSeconds = time(nullptr) * 1000;
     ::keymaster::AuthorizationSet auth_set(
             ::keymaster::AuthorizationSetBuilder()
+                    .Authorization(::keymaster::TAG_CERTIFICATE_NOT_BEFORE, nowMilliSeconds)
+                    .Authorization(::keymaster::TAG_CERTIFICATE_NOT_AFTER, expireTimeMilliSeconds)
                     .Authorization(::keymaster::TAG_ATTESTATION_CHALLENGE, challenge.data(),
                                    challenge.size())
                     .Authorization(::keymaster::TAG_ACTIVE_DATETIME, activeTimeMilliSeconds)
@@ -976,6 +892,8 @@ optional<vector<vector<uint8_t>>> createAttestation(
                     // includes app id.
                     .Authorization(::keymaster::TAG_ATTESTATION_APPLICATION_ID,
                                    applicationId.data(), applicationId.size())
+                    .Authorization(::keymaster::TAG_CERTIFICATE_SUBJECT, subject.data(),
+                                   subject.size())
                     .Authorization(::keymaster::TAG_USAGE_EXPIRE_DATETIME, expireTimeMilliSeconds));
 
     // Unique id and device id is not applicable for identity credential attestation,
@@ -1000,34 +918,22 @@ optional<vector<vector<uint8_t>>> createAttestation(
     }
     ::keymaster::AuthorizationSet hwEnforced(hwEnforcedBuilder);
 
-    keymaster_error_t error;
-    ::keymaster::CertChainPtr cert_chain_out;
+    ::keymaster::CertificateChain cert_chain_out = generate_attestation(
+            key, swEnforced, hwEnforced, auth_set, {} /* attest_key */, context, &error);
 
-    // Pretend to be implemented in a trusted environment just so we can pass
-    // the VTS tests. Of course, this is a pretend-only game since hopefully no
-    // relying party is ever going to trust our batch key and those keys above
-    // it.
-    //
-    ::keymaster::PureSoftKeymasterContext context(KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT);
-
-    error = generate_attestation_from_EVP(key, swEnforced, hwEnforced, auth_set, context,
-                                          ::keymaster::kCurrentKeymasterVersion, *attestation_chain,
-                                          *attestation_signing_key,
-                                          "Android Identity Credential Key", &cert_chain_out);
-
-    if (KM_ERROR_OK != error || !cert_chain_out) {
-        LOG(ERROR) << "Error generate attestation from EVP key" << error;
+    if (KM_ERROR_OK != error) {
+        LOG(ERROR) << "Error generating attestation from EVP key: " << error;
         return {};
     }
 
-    // translate certificate format from keymaster_cert_chain_t to vector<uint8_t>.
+    // translate certificate format from keymaster_cert_chain_t to vector<vector<uint8_t>>.
     vector<vector<uint8_t>> attestationCertificate;
-    for (int i = 0; i < cert_chain_out->entry_count; i++) {
+    for (std::size_t i = 0; i < cert_chain_out.entry_count; i++) {
         attestationCertificate.insert(
                 attestationCertificate.end(),
                 vector<uint8_t>(
-                        cert_chain_out->entries[i].data,
-                        cert_chain_out->entries[i].data + cert_chain_out->entries[i].data_length));
+                        cert_chain_out.entries[i].data,
+                        cert_chain_out.entries[i].data + cert_chain_out.entries[i].data_length));
     }
 
     return attestationCertificate;
@@ -1209,8 +1115,19 @@ optional<vector<uint8_t>> ecKeyPairGetPrivateKey(const vector<uint8_t>& keyPair)
         return {};
     }
     vector<uint8_t> privateKey;
-    privateKey.resize(BN_num_bytes(bignum));
-    BN_bn2bin(bignum, privateKey.data());
+
+    // Note that this may return fewer than 32 bytes so pad with zeroes since we
+    // want to always return 32 bytes.
+    size_t numBytes = BN_num_bytes(bignum);
+    if (numBytes > 32) {
+        LOG(ERROR) << "Size is " << numBytes << ", expected this to be 32 or less";
+        return {};
+    }
+    privateKey.resize(32);
+    for (size_t n = 0; n < 32 - numBytes; n++) {
+        privateKey[n] = 0x00;
+    }
+    BN_bn2bin(bignum, privateKey.data() + 32 - numBytes);
     return privateKey;
 }
 
@@ -1367,7 +1284,8 @@ optional<vector<uint8_t>> ecKeyPairGetPkcs12(const vector<uint8_t>& keyPair, con
 optional<vector<uint8_t>> ecPublicKeyGenerateCertificate(
         const vector<uint8_t>& publicKey, const vector<uint8_t>& signingKey,
         const string& serialDecimal, const string& issuer, const string& subject,
-        time_t validityNotBefore, time_t validityNotAfter) {
+        time_t validityNotBefore, time_t validityNotAfter,
+        const map<string, vector<uint8_t>>& extensions) {
     auto group = EC_GROUP_Ptr(EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
     auto point = EC_POINT_Ptr(EC_POINT_new(group.get()));
     if (EC_POINT_oct2point(group.get(), point.get(), publicKey.data(), publicKey.size(), nullptr) !=
@@ -1468,6 +1386,32 @@ optional<vector<uint8_t>> ecPublicKeyGenerateCertificate(
     if (asnNotAfter.get() == nullptr || X509_set_notAfter(x509.get(), asnNotAfter.get()) != 1) {
         LOG(ERROR) << "Error setting notAfter";
         return {};
+    }
+
+    for (auto const& [oidStr, blob] : extensions) {
+        ASN1_OBJECT_Ptr oid(
+                OBJ_txt2obj(oidStr.c_str(), 1));  // accept numerical dotted string form only
+        if (!oid.get()) {
+            LOG(ERROR) << "Error setting OID";
+            return {};
+        }
+        ASN1_OCTET_STRING_Ptr octetString(ASN1_OCTET_STRING_new());
+        if (!ASN1_OCTET_STRING_set(octetString.get(), blob.data(), blob.size())) {
+            LOG(ERROR) << "Error setting octet string for extension";
+            return {};
+        }
+
+        X509_EXTENSION_Ptr extension = X509_EXTENSION_Ptr(X509_EXTENSION_new());
+        extension.reset(X509_EXTENSION_create_by_OBJ(nullptr, oid.get(), 0 /* not critical */,
+                                                     octetString.get()));
+        if (!extension.get()) {
+            LOG(ERROR) << "Error setting extension";
+            return {};
+        }
+        if (!X509_add_ext(x509.get(), extension.get(), -1)) {
+            LOG(ERROR) << "Error adding extension";
+            return {};
+        }
     }
 
     if (X509_sign(x509.get(), privPkey.get(), EVP_sha256()) == 0) {
@@ -1611,12 +1555,6 @@ optional<vector<uint8_t>> certificateChainGetTopMostKey(const vector<uint8_t>& c
         return {};
     }
 
-    int algoId = OBJ_obj2nid(certs[0]->cert_info->key->algor->algorithm);
-    if (algoId != NID_X9_62_id_ecPublicKey) {
-        LOG(ERROR) << "Expected NID_X9_62_id_ecPublicKey, got " << OBJ_nid2ln(algoId);
-        return {};
-    }
-
     auto pkey = EVP_PKEY_Ptr(X509_get_pubkey(certs[0].get()));
     if (pkey.get() == nullptr) {
         LOG(ERROR) << "No public key";
@@ -1642,6 +1580,44 @@ optional<vector<uint8_t>> certificateChainGetTopMostKey(const vector<uint8_t>& c
     EC_POINT_point2oct(ecGroup, ecPoint, POINT_CONVERSION_UNCOMPRESSED, publicKey.data(),
                        publicKey.size(), nullptr);
     return publicKey;
+}
+
+optional<vector<uint8_t>> certificateGetExtension(const vector<uint8_t>& x509Certificate,
+                                                  const string& oidStr) {
+    vector<X509_Ptr> certs;
+    if (!parseX509Certificates(x509Certificate, certs)) {
+        return {};
+    }
+    if (certs.size() < 1) {
+        LOG(ERROR) << "No certificates in chain";
+        return {};
+    }
+
+    ASN1_OBJECT_Ptr oid(
+            OBJ_txt2obj(oidStr.c_str(), 1));  // accept numerical dotted string form only
+    if (!oid.get()) {
+        LOG(ERROR) << "Error setting OID";
+        return {};
+    }
+
+    int location = X509_get_ext_by_OBJ(certs[0].get(), oid.get(), -1 /* search from beginning */);
+    if (location == -1) {
+        return {};
+    }
+
+    X509_EXTENSION* ext = X509_get_ext(certs[0].get(), location);
+    if (ext == nullptr) {
+        return {};
+    }
+
+    ASN1_OCTET_STRING* octetString = X509_EXTENSION_get_data(ext);
+    if (octetString == nullptr) {
+        return {};
+    }
+    vector<uint8_t> result;
+    result.resize(octetString->length);
+    memcpy(result.data(), octetString->data, octetString->length);
+    return result;
 }
 
 optional<pair<size_t, size_t>> certificateFindPublicKey(const vector<uint8_t>& x509Certificate) {
@@ -1870,11 +1846,11 @@ bool ecdsaSignatureDerToCose(const vector<uint8_t>& ecdsaDerSignature,
 
     ecdsaCoseSignature.clear();
     ecdsaCoseSignature.resize(64);
-    if (BN_bn2binpad(sig->r, ecdsaCoseSignature.data(), 32) != 32) {
+    if (BN_bn2binpad(ECDSA_SIG_get0_r(sig), ecdsaCoseSignature.data(), 32) != 32) {
         LOG(ERROR) << "Error encoding r";
         return false;
     }
-    if (BN_bn2binpad(sig->s, ecdsaCoseSignature.data() + 32, 32) != 32) {
+    if (BN_bn2binpad(ECDSA_SIG_get0_s(sig), ecdsaCoseSignature.data() + 32, 32) != 32) {
         LOG(ERROR) << "Error encoding s";
         return false;
     }
@@ -2393,7 +2369,6 @@ vector<vector<uint8_t>> chunkVector(const vector<uint8_t>& content, size_t maxCh
 
     return ret;
 }
-
 
 vector<uint8_t> testHardwareBoundKey = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
