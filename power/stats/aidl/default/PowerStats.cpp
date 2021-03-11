@@ -81,12 +81,14 @@ ndk::ScopedAStatus PowerStats::getStateResidency(const std::vector<int32_t>& in_
         return getStateResidency(v, _aidl_return);
     }
 
+    binder_status_t err = STATUS_OK;
+
     std::unordered_map<std::string, std::vector<StateResidency>> stateResidencies;
 
     for (const int32_t id : in_powerEntityIds) {
-        // check for invalid ids
+        // skip any invalid ids
         if (id < 0 || id >= mPowerEntityInfos.size()) {
-            return ndk::ScopedAStatus(AStatus_fromExceptionCode(EX_ILLEGAL_ARGUMENT));
+            continue;
         }
 
         // Check to see if we already have data for the given id
@@ -104,12 +106,12 @@ ndk::ScopedAStatus PowerStats::getStateResidency(const std::vector<int32_t>& in_
             };
             _aidl_return->emplace_back(res);
         } else {
-            // Failed to get results for the given id.
-            LOG(ERROR) << "Failed to get results for " << powerEntityName;
+            // Failed to retrieve results for the given id.
+            err = STATUS_FAILED_TRANSACTION;
         }
     }
 
-    return ndk::ScopedAStatus::ok();
+    return ndk::ScopedAStatus::fromStatus(err);
 }
 
 ndk::ScopedAStatus PowerStats::getEnergyConsumerInfo(std::vector<EnergyConsumer>* _aidl_return) {
@@ -130,10 +132,12 @@ ndk::ScopedAStatus PowerStats::getEnergyConsumed(const std::vector<int32_t>& in_
         return getEnergyConsumed(v, _aidl_return);
     }
 
+    binder_status_t err = STATUS_OK;
+
     for (const auto id : in_energyConsumerIds) {
-        // check for invalid ids
+        // skip any invalid ids
         if (id < 0 || id >= mEnergyConsumers.size()) {
-            return ndk::ScopedAStatus(AStatus_fromExceptionCode(EX_ILLEGAL_ARGUMENT));
+            continue;
         }
 
         auto optionalResult = mEnergyConsumers[id]->getEnergyConsumed();
@@ -142,12 +146,12 @@ ndk::ScopedAStatus PowerStats::getEnergyConsumed(const std::vector<int32_t>& in_
             result.id = id;
             _aidl_return->emplace_back(result);
         } else {
-            // Failed to get results for the given id.
-            LOG(ERROR) << "Failed to get results for " << mEnergyConsumerInfos[id].name;
+            // Failed to retrieve results for the given id.
+            err = STATUS_FAILED_TRANSACTION;
         }
     }
 
-    return ndk::ScopedAStatus::ok();
+    return ndk::ScopedAStatus::fromStatus(err);
 }
 
 ndk::ScopedAStatus PowerStats::getEnergyMeterInfo(std::vector<Channel>* _aidl_return) {
