@@ -60,12 +60,9 @@ class FakeEnergyMeter : public PowerStats::IEnergyMeter {
             *_aidl_return = mEnergyMeasurements;
         } else {
             for (int32_t id : in_channelIds) {
-                // check for invalid ids
-                if (id < 0 || id >= mEnergyMeasurements.size()) {
-                    return ndk::ScopedAStatus(AStatus_fromExceptionCode(EX_ILLEGAL_ARGUMENT));
+                if (id >= 0 && id < mEnergyMeasurements.size()) {
+                    _aidl_return->push_back(mEnergyMeasurements[id]);
                 }
-
-                _aidl_return->push_back(mEnergyMeasurements[id]);
             }
         }
 
