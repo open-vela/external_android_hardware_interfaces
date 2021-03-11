@@ -58,12 +58,7 @@ class HostapdHidlTest
         ASSERT_NE(hostapd_.get(), nullptr);
     }
 
-    virtual void TearDown() override {
-        HIDL_INVOKE_VOID_WITHOUT_ARGUMENTS(hostapd_, terminate);
-        // Wait 3 seconds to allow terminate processing before kill hostapd.
-        sleep(3);
-        stopHostapd(wifi_instance_name_);
-    }
+    virtual void TearDown() override { stopHostapd(wifi_instance_name_); }
 
    protected:
     std::string getPrimaryWlanIfaceName() {
