@@ -107,14 +107,14 @@ enum DeviceType : int32_t {
     // HAL equivalent of unknown type and a 1.2 HAL implementation must belong
     // to one of the categories below.
     /** The device does not fall into any category below. */
-    OTHER             = 1,
+    OTHER = 1,
     /** The device runs NNAPI models on single or multi-core CPU. */
-    CPU               = 2,
+    CPU = 2,
     /** The device can run NNAPI models and also accelerate graphics APIs such
-      * as OpenGL ES and Vulkan. */
-    GPU               = 3,
+     * as OpenGL ES and Vulkan. */
+    GPU = 3,
     /** Dedicated accelerator for Machine Learning workloads. */
-    ACCELERATOR       = 4,
+    ACCELERATOR = 4,
 };
 
 /**
@@ -251,15 +251,18 @@ struct Operand {
     /**
      * Quantized scale of the operand.
      *
-     * Only applicable if the operand is of type TENSOR_QUANT8_ASYMM or
-     * TENSOR_INT32.
+     * Must be 0 when not applicable to an operand type.
+     *
+     * See {@link OperandType}.
      */
     float scale;
 
     /**
      * Quantized zero-point offset of the operand.
      *
-     * Only applicable if the operand is of type TENSOR_QUANT8_ASYMM.
+     * Must be 0 when not applicable to an operand type.
+     *
+     * See {@link OperandType}.
      */
     int32_t zeroPoint;
 
@@ -288,25 +291,25 @@ struct Operand {
      * Additional parameters specific to a particular operand type.
      */
     safe_union ExtraParams {
-       /**
-        * No additional parameters.
-        */
-       Monostate none;
+        /**
+         * No additional parameters.
+         */
+        Monostate none;
 
-       /**
-        * Symmetric per-channel quantization parameters.
-        *
-        * Only applicable to operands of type TENSOR_QUANT8_SYMM_PER_CHANNEL.
-        */
-       SymmPerChannelQuantParams channelQuant;
+        /**
+         * Symmetric per-channel quantization parameters.
+         *
+         * Only applicable to operands of type TENSOR_QUANT8_SYMM_PER_CHANNEL.
+         */
+        SymmPerChannelQuantParams channelQuant;
 
-       /**
-        * Extension operand parameters.
-        *
-        * The framework treats this as an opaque data blob.
-        * The format is up to individual extensions.
-        */
-       vec<uint8_t> extension;
+        /**
+         * Extension operand parameters.
+         *
+         * The framework treats this as an opaque data blob.
+         * The format is up to individual extensions.
+         */
+        vec<uint8_t> extension;
     } extraParams;
 };
 
@@ -447,7 +450,7 @@ struct OutputShape {
  * Specifies whether or not to measure timing information during execution.
  */
 enum MeasureTiming : int32_t {
-    NO  = 0,
+    NO = 0,
     YES = 1,
 };
 
