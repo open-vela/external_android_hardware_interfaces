@@ -1211,12 +1211,7 @@ bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& r
             return notify;
         }
 
-        // Physical device results are only expected in the last/final
-        // partial result notification.
-        bool expectPhysicalResults = !(request->usePartialResult &&
-                (results.partialResult < request->numPartialResults));
-        if (expectPhysicalResults &&
-                (physicalCameraMetadata.size() != request->expectedPhysicalResults.size())) {
+        if (physicalCameraMetadata.size() != request->expectedPhysicalResults.size()) {
             ALOGE("%s: Frame %d: Returned physical metadata count %zu "
                     "must be equal to expected count %zu", __func__, frameNumber,
                     physicalCameraMetadata.size(), request->expectedPhysicalResults.size());
@@ -1677,7 +1672,7 @@ bool CameraHidlTest::isSecureOnly(sp<ICameraProvider> provider, const hidl_strin
     Return<void> ret;
     ::android::sp<ICameraDevice> device3_x;
     bool retVal = false;
-    if (getCameraDeviceVersion(name, mProviderType) == CAMERA_DEVICE_API_VERSION_1_0) {
+    if (getCameraDeviceVersion(mProviderType, name) == CAMERA_DEVICE_API_VERSION_1_0) {
         return false;
     }
     ret = provider->getCameraDeviceInterface_V3_x(name, [&](auto status, const auto& device) {
@@ -3342,8 +3337,8 @@ TEST_P(CameraHidlTest, configureConcurrentStreamsAvailableOutputs) {
             size_t j = 0;
             for (const auto& it : outputStreams) {
                 V3_2::Stream stream3_2;
-                V3_2::DataspaceFlags dataspaceFlag = getDataspace(
-                        static_cast<PixelFormat>(it.format));
+                V3_2::DataspaceFlags dataspaceFlag =
+                        getDataspace(static_cast<PixelFormat>(it.format));
                 stream3_2 = {streamId++,
                              StreamType::OUTPUT,
                              static_cast<uint32_t>(it.width),
@@ -5894,7 +5889,7 @@ V3_2::DataspaceFlags CameraHidlTest::getDataspace(PixelFormat format) {
         case PixelFormat::RAW_OPAQUE:
         case PixelFormat::RAW10:
         case PixelFormat::RAW12:
-            return  static_cast<V3_2::DataspaceFlags>(Dataspace::ARBITRARY);
+            return static_cast<V3_2::DataspaceFlags>(Dataspace::ARBITRARY);
         default:
             return static_cast<V3_2::DataspaceFlags>(Dataspace::UNKNOWN);
     }
@@ -6274,8 +6269,8 @@ void CameraHidlTest::configureOfflineStillStream(const std::string &name,
     ASSERT_EQ(Status::OK, rc);
     ASSERT_FALSE(outputStreams.empty());
 
-    V3_2::DataspaceFlags dataspaceFlag = getDataspace(
-            static_cast<PixelFormat>(outputStreams[idx].format));
+    V3_2::DataspaceFlags dataspaceFlag =
+            getDataspace(static_cast<PixelFormat>(outputStreams[idx].format));
 
     ::android::hardware::hidl_vec<V3_4::Stream> streams3_4(/*size*/1);
     V3_4::Stream stream3_4 = {{ 0 /*streamId*/, StreamType::OUTPUT,
