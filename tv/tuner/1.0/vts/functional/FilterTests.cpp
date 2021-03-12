@@ -70,6 +70,10 @@ void FilterCallback::filterThreadLoop(DemuxFilterEvent& /* event */) {
 }
 
 bool FilterCallback::readFilterEventData() {
+    if (mFilterMQ == NULL) {
+        ALOGW("[vts] FMQ is not configured and does not need to be tested.");
+        return true;
+    }
     bool result = false;
     DemuxFilterEvent filterEvent = mFilterEvent;
     ALOGW("[vts] reading from filter FMQ or buffer %d", mFilterId);
@@ -91,19 +95,16 @@ bool FilterCallback::readFilterEventData() {
         }
         // EXPECT_TRUE(mDataLength == goldenDataOutputBuffer.size()) << "buffer size does not
         // match";
-        if (mFilterMQ != NULL) {
-            mDataOutputBuffer.resize(mDataLength);
-            result = mFilterMQ->read(mDataOutputBuffer.data(), mDataLength);
-            EXPECT_TRUE(result) << "can't read from Filter MQ";
-        }
+
+        mDataOutputBuffer.resize(mDataLength);
+        result = mFilterMQ->read(mDataOutputBuffer.data(), mDataLength);
+        EXPECT_TRUE(result) << "can't read from Filter MQ";
 
         /*for (int i = 0; i < mDataLength; i++) {
             EXPECT_TRUE(goldenDataOutputBuffer[i] == mDataOutputBuffer[i]) << "data does not match";
         }*/
     }
-    if (mFilterMQ != NULL) {
-        mFilterMQEventFlag->wake(static_cast<uint32_t>(DemuxQueueNotifyBits::DATA_CONSUMED));
-    }
+    mFilterMQEventFlag->wake(static_cast<uint32_t>(DemuxQueueNotifyBits::DATA_CONSUMED));
     return result;
 }
 

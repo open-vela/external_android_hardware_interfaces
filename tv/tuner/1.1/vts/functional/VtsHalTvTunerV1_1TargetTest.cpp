@@ -28,10 +28,6 @@ AssertionResult TunerRecordHidlTest::filterDataOutputTest() {
 
 void TunerFilterHidlTest::configSingleFilterInDemuxTest(FilterConfig filterConf,
                                                         FrontendConfig frontendConf) {
-    if (!frontendConf.enable) {
-        return;
-    }
-
     uint32_t feId;
     uint32_t demuxId;
     sp<IDemux> demux;
@@ -53,7 +49,7 @@ void TunerFilterHidlTest::configSingleFilterInDemuxTest(FilterConfig filterConf,
     if (filterConf.monitorEventTypes > 0) {
         ASSERT_TRUE(mFilterTests.configureMonitorEvent(filterId, filterConf.monitorEventTypes));
     }
-    ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId, filterConf.getMqDesc));
+    ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId));
     ASSERT_TRUE(mFilterTests.startFilter(filterId));
     ASSERT_TRUE(mFilterTests.stopFilter(filterId));
     ASSERT_TRUE(mFilterTests.closeFilter(filterId));
@@ -64,10 +60,6 @@ void TunerFilterHidlTest::configSingleFilterInDemuxTest(FilterConfig filterConf,
 void TunerFilterHidlTest::reconfigSingleFilterInDemuxTest(FilterConfig filterConf,
                                                           FilterConfig filterReconf,
                                                           FrontendConfig frontendConf) {
-    if (!frontendConf.enable) {
-        return;
-    }
-
     uint32_t feId;
     uint32_t demuxId;
     sp<IDemux> demux;
@@ -84,7 +76,7 @@ void TunerFilterHidlTest::reconfigSingleFilterInDemuxTest(FilterConfig filterCon
     ASSERT_TRUE(mFilterTests.openFilterInDemux(filterConf.type, filterConf.bufferSize));
     ASSERT_TRUE(mFilterTests.getNewlyOpenedFilterId_64bit(filterId));
     ASSERT_TRUE(mFilterTests.configFilter(filterConf.settings, filterId));
-    ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId, filterConf.getMqDesc));
+    ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId));
     ASSERT_TRUE(mFilterTests.startFilter(filterId));
     ASSERT_TRUE(mFilterTests.stopFilter(filterId));
     ASSERT_TRUE(mFilterTests.configFilter(filterReconf.settings, filterId));
@@ -100,10 +92,6 @@ void TunerFilterHidlTest::reconfigSingleFilterInDemuxTest(FilterConfig filterCon
 
 void TunerBroadcastHidlTest::mediaFilterUsingSharedMemoryTest(FilterConfig filterConf,
                                                               FrontendConfig frontendConf) {
-    if (!frontendConf.enable) {
-        return;
-    }
-
     uint32_t feId;
     uint32_t demuxId;
     sp<IDemux> demux;
@@ -122,7 +110,7 @@ void TunerBroadcastHidlTest::mediaFilterUsingSharedMemoryTest(FilterConfig filte
     ASSERT_TRUE(mFilterTests.getSharedAvMemoryHandle(filterId));
     ASSERT_TRUE(mFilterTests.configFilter(filterConf.settings, filterId));
     ASSERT_TRUE(mFilterTests.configAvFilterStreamType(filterConf.streamType, filterId));
-    ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId, filterConf.getMqDesc));
+    ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId));
     ASSERT_TRUE(mFilterTests.startFilter(filterId));
     // tune test
     ASSERT_TRUE(mFrontendTests.tuneFrontend(frontendConf, true /*testWithDemux*/));
@@ -137,10 +125,6 @@ void TunerBroadcastHidlTest::mediaFilterUsingSharedMemoryTest(FilterConfig filte
 
 void TunerRecordHidlTest::recordSingleFilterTest(FilterConfig filterConf,
                                                  FrontendConfig frontendConf, DvrConfig dvrConf) {
-    if (!frontendConf.enable) {
-        return;
-    }
-
     uint32_t feId;
     uint32_t demuxId;
     sp<IDemux> demux;
@@ -162,7 +146,7 @@ void TunerRecordHidlTest::recordSingleFilterTest(FilterConfig filterConf,
     ASSERT_TRUE(mFilterTests.openFilterInDemux(filterConf.type, filterConf.bufferSize));
     ASSERT_TRUE(mFilterTests.getNewlyOpenedFilterId_64bit(filterId));
     ASSERT_TRUE(mFilterTests.configFilter(filterConf.settings, filterId));
-    ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId, filterConf.getMqDesc));
+    ASSERT_TRUE(mFilterTests.getFilterMQDescriptor(filterId));
     filter = mFilterTests.getFilterById(filterId);
     ASSERT_TRUE(filter != nullptr);
     mDvrTests.startRecordOutputThread(dvrConf.settings.record());
@@ -186,41 +170,40 @@ void TunerRecordHidlTest::recordSingleFilterTest(FilterConfig filterConf,
 TEST_P(TunerFilterHidlTest, StartFilterInDemux) {
     description("Open and start a filter in Demux.");
     // TODO use parameterized tests
-    configSingleFilterInDemuxTest(filterArray[TS_VIDEO0], frontendArray[defaultFrontend]);
+    configSingleFilterInDemuxTest(filterArray[TS_VIDEO0], frontendArray[DVBT]);
 }
 
 TEST_P(TunerFilterHidlTest, ConfigIpFilterInDemuxWithCid) {
     description("Open and configure an ip filter in Demux.");
     // TODO use parameterized tests
-    configSingleFilterInDemuxTest(filterArray[IP_IP0], frontendArray[defaultFrontend]);
+    configSingleFilterInDemuxTest(filterArray[IP_IP0], frontendArray[DVBT]);
 }
 
 TEST_P(TunerFilterHidlTest, ReconfigFilterToReceiveStartId) {
     description("Recofigure and restart a filter to test start id.");
     // TODO use parameterized tests
     reconfigSingleFilterInDemuxTest(filterArray[TS_VIDEO0], filterArray[TS_VIDEO1],
-                                    frontendArray[defaultFrontend]);
+                                    frontendArray[DVBT]);
 }
 
 TEST_P(TunerRecordHidlTest, RecordDataFlowWithTsRecordFilterTest) {
     description("Feed ts data from frontend to recording and test with ts record filter");
-    recordSingleFilterTest(filterArray[TS_RECORD0], frontendArray[defaultFrontend],
-                           dvrArray[DVR_RECORD0]);
+    recordSingleFilterTest(filterArray[TS_RECORD0], frontendArray[DVBT], dvrArray[DVR_RECORD0]);
 }
 
 TEST_P(TunerFrontendHidlTest, TuneFrontendWithFrontendSettingsExt1_1) {
     description("Tune one Frontend with v1_1 extended setting and check Lock event");
-    mFrontendTests.tuneTest(frontendArray[defaultFrontend]);
+    mFrontendTests.tuneTest(frontendArray[DVBT]);
 }
 
 TEST_P(TunerFrontendHidlTest, BlindScanFrontendWithEndFrequency) {
     description("Run an blind frontend scan with v1_1 extended setting and check lock scanMessage");
-    mFrontendTests.scanTest(frontendScanArray[defaultScanFrontend], FrontendScanType::SCAN_BLIND);
+    mFrontendTests.scanTest(frontendScanArray[SCAN_DVBT], FrontendScanType::SCAN_BLIND);
 }
 
 TEST_P(TunerBroadcastHidlTest, MediaFilterWithSharedMemoryHandle) {
     description("Test the Media Filter with shared memory handle");
-    mediaFilterUsingSharedMemoryTest(filterArray[TS_VIDEO0], frontendArray[defaultFrontend]);
+    mediaFilterUsingSharedMemoryTest(filterArray[TS_VIDEO0], frontendArray[DVBT]);
 }
 
 TEST_P(TunerFrontendHidlTest, GetFrontendDtmbCaps) {

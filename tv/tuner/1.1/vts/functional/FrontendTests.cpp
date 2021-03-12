@@ -130,7 +130,7 @@ void FrontendCallback::scanTest(sp<IFrontend>& frontend, FrontendConfig config,
         return;
     }
 
-    uint32_t targetFrequency = getTargetFrequency(config.settings);
+    uint32_t targetFrequency = getTargetFrequency(config.settings, config.type);
     if (type == FrontendScanType::SCAN_BLIND) {
         // reset the frequency in the scan configuration to test blind scan. The settings param of
         // passed in means the real input config on the transponder connected to the DUT.
@@ -184,59 +184,64 @@ wait:
     mScanMsgProcessed = true;
 }
 
-uint32_t FrontendCallback::getTargetFrequency(FrontendSettings settings) {
-    switch (settings.getDiscriminator()) {
-        case FrontendSettings::hidl_discriminator::analog:
+uint32_t FrontendCallback::getTargetFrequency(FrontendSettings settings, FrontendType type) {
+    switch (type) {
+        case FrontendType::ANALOG:
             return settings.analog().frequency;
-        case FrontendSettings::hidl_discriminator::atsc:
+        case FrontendType::ATSC:
             return settings.atsc().frequency;
-        case FrontendSettings::hidl_discriminator::atsc3:
+        case FrontendType::ATSC3:
             return settings.atsc3().frequency;
-        case FrontendSettings::hidl_discriminator::dvbc:
+        case FrontendType::DVBC:
             return settings.dvbc().frequency;
-        case FrontendSettings::hidl_discriminator::dvbs:
+        case FrontendType::DVBS:
             return settings.dvbs().frequency;
-        case FrontendSettings::hidl_discriminator::dvbt:
+        case FrontendType::DVBT:
             return settings.dvbt().frequency;
-        case FrontendSettings::hidl_discriminator::isdbs:
+        case FrontendType::ISDBS:
             return settings.isdbs().frequency;
-        case FrontendSettings::hidl_discriminator::isdbs3:
+        case FrontendType::ISDBS3:
             return settings.isdbs3().frequency;
-        case FrontendSettings::hidl_discriminator::isdbt:
+        case FrontendType::ISDBT:
             return settings.isdbt().frequency;
+        default:
+            return 0;
     }
 }
 
 void FrontendCallback::resetBlindScanStartingFrequency(FrontendConfig& config,
                                                        uint32_t resetingFreq) {
-    switch (config.settings.getDiscriminator()) {
-        case FrontendSettings::hidl_discriminator::analog:
+    switch (config.type) {
+        case FrontendType::ANALOG:
             config.settings.analog().frequency = resetingFreq;
             break;
-        case FrontendSettings::hidl_discriminator::atsc:
+        case FrontendType::ATSC:
             config.settings.atsc().frequency = resetingFreq;
             break;
-        case FrontendSettings::hidl_discriminator::atsc3:
+        case FrontendType::ATSC3:
             config.settings.atsc3().frequency = resetingFreq;
             break;
-        case FrontendSettings::hidl_discriminator::dvbc:
+        case FrontendType::DVBC:
             config.settings.dvbc().frequency = resetingFreq;
             break;
-        case FrontendSettings::hidl_discriminator::dvbs:
+        case FrontendType::DVBS:
             config.settings.dvbs().frequency = resetingFreq;
             break;
-        case FrontendSettings::hidl_discriminator::dvbt:
+        case FrontendType::DVBT:
             config.settings.dvbt().frequency = resetingFreq;
             break;
-        case FrontendSettings::hidl_discriminator::isdbs:
+        case FrontendType::ISDBS:
             config.settings.isdbs().frequency = resetingFreq;
             break;
-        case FrontendSettings::hidl_discriminator::isdbs3:
+        case FrontendType::ISDBS3:
             config.settings.isdbs3().frequency = resetingFreq;
             break;
-        case FrontendSettings::hidl_discriminator::isdbt:
+        case FrontendType::ISDBT:
             config.settings.isdbt().frequency = resetingFreq;
             break;
+        default:
+            // do nothing
+            return;
     }
 }
 
@@ -485,9 +490,6 @@ void FrontendTests::getFrontendIdByType(FrontendType feType, uint32_t& feId) {
 }
 
 void FrontendTests::tuneTest(FrontendConfig frontendConf) {
-    if (!frontendConf.enable) {
-        return;
-    }
     uint32_t feId;
     getFrontendIdByType(frontendConf.type, feId);
     ASSERT_TRUE(feId != INVALID_ID);
@@ -504,9 +506,6 @@ void FrontendTests::tuneTest(FrontendConfig frontendConf) {
 }
 
 void FrontendTests::scanTest(FrontendConfig frontendConf, FrontendScanType scanType) {
-    if (!frontendConf.enable) {
-        return;
-    }
     uint32_t feId;
     getFrontendIdByType(frontendConf.type, feId);
     ASSERT_TRUE(feId != INVALID_ID);
