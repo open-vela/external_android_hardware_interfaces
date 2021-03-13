@@ -18,8 +18,6 @@
 
 #include "Callbacks.h"
 #include "Conversions.h"
-#include "ExecutionBurstController.h"
-#include "ExecutionBurstUtils.h"
 #include "Utils.h"
 
 #include <android/hardware/neuralnetworks/1.0/types.h>
@@ -29,12 +27,12 @@
 #include <nnapi/IPreparedModel.h>
 #include <nnapi/Result.h>
 #include <nnapi/Types.h>
+#include <nnapi/hal/1.0/Burst.h>
 #include <nnapi/hal/1.0/Conversions.h>
 #include <nnapi/hal/CommonUtils.h>
 #include <nnapi/hal/HandleError.h>
 #include <nnapi/hal/ProtectCallback.h>
 
-#include <chrono>
 #include <memory>
 #include <tuple>
 #include <utility>
@@ -121,14 +119,7 @@ PreparedModel::executeFenced(const nn::Request& /*request*/,
 }
 
 nn::GeneralResult<nn::SharedBurst> PreparedModel::configureExecutionBurst() const {
-    auto self = shared_from_this();
-    auto fallback = [preparedModel = std::move(self)](const nn::Request& request,
-                                                      nn::MeasureTiming measure)
-            -> nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> {
-        return preparedModel->execute(request, measure, {}, {});
-    };
-    const auto pollingTimeWindow = getBurstControllerPollingTimeWindow();
-    return ExecutionBurstController::create(kPreparedModel, std::move(fallback), pollingTimeWindow);
+    return V1_0::utils::Burst::create(shared_from_this());
 }
 
 std::any PreparedModel::getUnderlyingResource() const {
