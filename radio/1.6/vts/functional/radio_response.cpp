@@ -18,7 +18,7 @@
 
 ::android::hardware::radio::V1_5::CardStatus cardStatus;
 
-RadioResponse_v1_6::RadioResponse_v1_6(RadioHidlTest_v1_6& parent) : parent_v1_6(parent) {}
+RadioResponse_v1_6::RadioResponse_v1_6(RadioResponseWaiter& parent) : parent_v1_6(parent) {}
 
 /* 1.0 Apis */
 Return<void> RadioResponse_v1_6::getIccCardStatusResponse(
@@ -849,9 +849,7 @@ Return<void> RadioResponse_v1_6::getModemStackStatusResponse(
 
 /* 1.4 Apis */
 Return<void> RadioResponse_v1_6::emergencyDialResponse(
-        const ::android::hardware::radio::V1_0::RadioResponseInfo& info) {
-    rspInfo_v1_0 = info;
-    parent_v1_6.notify(info.serial);
+        const ::android::hardware::radio::V1_0::RadioResponseInfo& /*info*/) {
     return Void();
 }
 
@@ -1157,14 +1155,14 @@ Return<void> RadioResponse_v1_6::cancelHandoverResponse(
     return Void();
 }
 
-Return<void> RadioResponse_v1_6::setAllowedNetworkTypeBitmapResponse(
+Return<void> RadioResponse_v1_6::setAllowedNetworkTypesBitmapResponse(
         const ::android::hardware::radio::V1_6::RadioResponseInfo& info) {
     rspInfo = info;
     parent_v1_6.notify(info.serial);
     return Void();
 }
 
-Return<void> RadioResponse_v1_6::getAllowedNetworkTypeBitmapResponse(
+Return<void> RadioResponse_v1_6::getAllowedNetworkTypesBitmapResponse(
         const ::android::hardware::radio::V1_6::RadioResponseInfo& /*info*/,
         const ::android::hardware::hidl_bitfield<
                 ::android::hardware::radio::V1_4::RadioAccessFamily>

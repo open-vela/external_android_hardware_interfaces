@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#pragma once
+
 #include <android-base/logging.h>
 
 #include <android/hardware/radio/1.0/types.h>
@@ -24,6 +26,20 @@ using ::android::hardware::radio::V1_0::RadioError;
 using ::android::hardware::radio::V1_0::RegState;
 using ::android::hardware::radio::V1_0::SapResultCode;
 using namespace std;
+
+/*
+ * MACRO used to skip test case when radio response return error REQUEST_NOT_SUPPORTED
+ * on HAL versions which has deprecated the request interfaces. The MACRO can only be used
+ * AFTER receiving radio response.
+ */
+#define SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL(__ver__, __radio__, __radioRsp__)      \
+    do {                                                                                   \
+        sp<::android::hardware::radio::V##__ver__::IRadio> __radio =                       \
+                ::android::hardware::radio::V##__ver__::IRadio::castFrom(__radio__);       \
+        if (__radio && __radioRsp__->rspInfo.error == RadioError::REQUEST_NOT_SUPPORTED) { \
+            GTEST_SKIP() << "REQUEST_NOT_SUPPORTED";                                       \
+        }                                                                                  \
+    } while (0)
 
 enum CheckFlag {
     CHECK_DEFAULT = 0,
@@ -82,3 +98,23 @@ bool isVoiceEmergencyOnly(RegState state);
  * Check if voice status is in service.
  */
 bool isVoiceInService(RegState state);
+
+/**
+ * Used when waiting for an asynchronous response from the HAL.
+ */
+class RadioResponseWaiter {
+  protected:
+    std::mutex mtx_;
+    std::condition_variable cv_;
+    int count_;
+
+  public:
+    /* Serial number for radio request */
+    int serial;
+
+    /* Used as a mechanism to inform the test about data/event callback */
+    void notify(int receivedSerial);
+
+    /* Test code calls this function to wait for response */
+    std::cv_status wait();
+};
