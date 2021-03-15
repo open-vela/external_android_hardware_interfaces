@@ -220,9 +220,9 @@ struct EffectDescriptor {
      */
     uint16_t memoryUsage;
     /** Human readable effect name. */
-    string name;
+    uint8_t[64] name;
     /** Human readable effect implementor name. */
-    string implementor;
+    uint8_t[64] implementor;
 };
 
 /**
