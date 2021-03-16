@@ -1125,15 +1125,12 @@ TEST_P(MemoryDomainExecutionTest, InvalidDimensions) {
                                        utils::toSigned(kTestOperand.dimensions).value());
     if (deviceBuffer.buffer == nullptr) return;
 
-    // Use an incompatible dimension and make sure the length matches with the bad dimension.
+    RequestMemoryPool sharedMemory = createSharedMemoryPool(kTestOperandDataSize);
+    RequestMemoryPool deviceMemory = createDeviceMemoryPool(deviceBuffer.token);
     auto badDimensions = utils::toSigned(kTestOperand.dimensions).value();
     badDimensions[0] = 2;
-    const uint32_t badTestOperandDataSize = kTestOperandDataSize * 2;
-
-    RequestMemoryPool sharedMemory = createSharedMemoryPool(badTestOperandDataSize);
-    RequestMemoryPool deviceMemory = createDeviceMemoryPool(deviceBuffer.token);
     RequestArgument sharedMemoryArg = {
-            .location = {.poolIndex = 0, .offset = 0, .length = badTestOperandDataSize},
+            .location = {.poolIndex = 0, .offset = 0, .length = kTestOperandDataSize},
             .dimensions = badDimensions};
     RequestArgument deviceMemoryArg = {.location = {.poolIndex = 1}};
     RequestArgument deviceMemoryArgWithBadDimensions = {.location = {.poolIndex = 1},
