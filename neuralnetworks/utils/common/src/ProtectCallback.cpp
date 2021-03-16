@@ -35,25 +35,19 @@ void DeathRecipient::serviceDied(uint64_t /*cookie*/, const wp<hidl::base::V1_0:
     std::lock_guard guard(mMutex);
     std::for_each(mObjects.begin(), mObjects.end(),
                   [](IProtectedCallback* killable) { killable->notifyAsDeadObject(); });
-    mObjects.clear();
-    mIsDeadObject = true;
 }
 
 void DeathRecipient::add(IProtectedCallback* killable) const {
     CHECK(killable != nullptr);
     std::lock_guard guard(mMutex);
-    if (mIsDeadObject) {
-        killable->notifyAsDeadObject();
-    } else {
-        mObjects.push_back(killable);
-    }
+    mObjects.push_back(killable);
 }
 
 void DeathRecipient::remove(IProtectedCallback* killable) const {
     CHECK(killable != nullptr);
     std::lock_guard guard(mMutex);
-    const auto newEnd = std::remove(mObjects.begin(), mObjects.end(), killable);
-    mObjects.erase(newEnd, mObjects.end());
+    const auto removedIter = std::remove(mObjects.begin(), mObjects.end(), killable);
+    mObjects.erase(removedIter);
 }
 
 nn::GeneralResult<DeathHandler> DeathHandler::create(sp<hidl::base::V1_0::IBase> object) {
@@ -73,16 +67,19 @@ nn::GeneralResult<DeathHandler> DeathHandler::create(sp<hidl::base::V1_0::IBase>
 }
 
 DeathHandler::DeathHandler(sp<hidl::base::V1_0::IBase> object, sp<DeathRecipient> deathRecipient)
-    : mObject(std::move(object)), mDeathRecipient(std::move(deathRecipient)) {
-    CHECK(mObject != nullptr);
-    CHECK(mDeathRecipient != nullptr);
+    : kObject(std::move(object)), kDeathRecipient(std::move(deathRecipient)) {
+    CHECK(kObject != nullptr);
+    CHECK(kDeathRecipient != nullptr);
 }
 
 DeathHandler::~DeathHandler() {
-    if (mObject != nullptr && mDeathRecipient != nullptr) {
-        const auto successful = mObject->unlinkToDeath(mDeathRecipient).isOk();
-        if (!successful) {
-            LOG(ERROR) << "IBase::linkToDeath failed";
+    if (kObject != nullptr && kDeathRecipient != nullptr) {
+        const auto ret = kObject->unlinkToDeath(kDeathRecipient);
+        const auto maybeSuccess = handleTransportError(ret);
+        if (!maybeSuccess.has_value()) {
+            LOG(ERROR) << maybeSuccess.error().message;
+        } else if (!maybeSuccess.value()) {
+            LOG(ERROR) << "IBase::linkToDeath returned false";
         }
     }
 }
@@ -90,14 +87,9 @@ DeathHandler::~DeathHandler() {
 [[nodiscard]] base::ScopeGuard<DeathHandler::Cleanup> DeathHandler::protectCallback(
         IProtectedCallback* killable) const {
     CHECK(killable != nullptr);
-    mDeathRecipient->add(killable);
+    kDeathRecipient->add(killable);
     return base::make_scope_guard(
-            [deathRecipient = mDeathRecipient, killable] { deathRecipient->remove(killable); });
-}
-
-void DeathHandler::protectCallbackForLifetimeOfDeathHandler(IProtectedCallback* killable) const {
-    CHECK(killable != nullptr);
-    mDeathRecipient->add(killable);
+            [deathRecipient = kDeathRecipient, killable] { deathRecipient->remove(killable); });
 }
 
 }  // namespace android::hardware::neuralnetworks::utils
