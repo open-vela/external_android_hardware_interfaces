@@ -14,19 +14,15 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_AIDL_UTILS_SERVICE_H
-#define ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_AIDL_UTILS_SERVICE_H
+#pragma once
 
-#include <nnapi/IDevice.h>
-#include <nnapi/Result.h>
-#include <nnapi/Types.h>
+#include "../GenericMessageBase.h"
 
-#include <string>
+namespace android::nl::protocols::generic::families {
 
-namespace aidl::android::hardware::neuralnetworks::utils {
+class Mac80211hwsim : public GenericMessageBase {
+  public:
+    Mac80211hwsim(nlmsgtype_t familyId);
+};
 
-::android::nn::GeneralResult<::android::nn::SharedDevice> getDevice(const std::string& name);
-
-}  // namespace aidl::android::hardware::neuralnetworks::utils
-
-#endif  // ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_AIDL_UTILS_SERVICE_H
+}  // namespace android::nl::protocols::generic::families
