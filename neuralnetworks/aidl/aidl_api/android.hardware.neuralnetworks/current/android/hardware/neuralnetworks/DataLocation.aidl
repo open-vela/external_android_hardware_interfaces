@@ -36,5 +36,4 @@ parcelable DataLocation {
   int poolIndex;
   long offset;
   long length;
-  long padding;
 }
