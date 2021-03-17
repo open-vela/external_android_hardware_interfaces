@@ -1,7 +1,5 @@
-%% template file for generating types.hal.
-%% see frameworks/ml/nn/tools/api/README.md.
 /*
- * Copyright (C) 2018 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,25 +14,15 @@
  * limitations under the License.
  */
 
-package android.hardware.neuralnetworks@1.1;
+#pragma once
 
-import @1.0::Operand;
-import @1.0::OperationType;
-import @1.0::PerformanceInfo;
+#include "../GenericMessageBase.h"
 
-/**
- * Operation types.
- *
- * The type of an operation in a model.
- */
-enum OperationType : @1.0::OperationType {
-%insert Operation_1.1
+namespace android::nl::protocols::generic::families {
+
+class Mac80211hwsim : public GenericMessageBase {
+  public:
+    Mac80211hwsim(nlmsgtype_t familyId);
 };
 
-%insert Capabilities
-
-%insert Operation
-
-%insert Model
-
-%insert ExecutionPreference
+}  // namespace android::nl::protocols::generic::families
