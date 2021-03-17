@@ -18,6 +18,28 @@ package android.hardware.neuralnetworks;
 
 /**
  * Describes the location of a data object.
+ *
+ * If the data object is an omitted operand, all of the fields must be 0. If the poolIndex refers to
+ * a driver-managed buffer allocated from IDevice::allocate, or an AHardwareBuffer of a format other
+ * than AHARDWAREBUFFER_FORMAT_BLOB, the offset, length, and padding must be set to 0 indicating
+ * the entire pool is used.
+ *
+ * Otherwise, the offset, length, and padding specify a sub-region of a memory pool. The sum of
+ * offset, length, and padding must not exceed the total size of the specified memory pool. If the
+ * data object is a scalar operand or a tensor operand with fully specified dimensions, the value of
+ * length must be equal to the raw size of the operand (i.e. the size of an element multiplied
+ * by the number of elements). When used in Operand, the value of padding must be 0. When used in
+ * RequestArgument, the value of padding specifies the extra bytes at the end of the memory region
+ * that may be used by the device to access memory in chunks, for efficiency. If the data object is
+ * a Request output whose dimensions are not fully specified, the value of length specifies the
+ * total size of the writable region of the output data, and padding specifies the extra bytes at
+ * the end of the memory region that may be used by the device to access memory in chunks, for
+ * efficiency, but must not be used to hold any output data.
+ *
+ * When used in RequestArgument, clients should prefer to align and pad the sub-region to
+ * 64 bytes when possible; this may allow the device to access the sub-region more efficiently.
+ * The sub-region is aligned to 64 bytes if the value of offset is a multiple of 64.
+ * The sub-region is padded to 64 bytes if the sum of length and padding is a multiple of 64.
  */
 @VintfStability
 parcelable DataLocation {
@@ -33,4 +55,8 @@ parcelable DataLocation {
      * The length of the data in bytes.
      */
     long length;
+    /**
+     * The end padding of the specified memory region in bytes.
+     */
+    long padding;
 }
