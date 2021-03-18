@@ -62,6 +62,5 @@ cc_binary {
     static_libs: [
         "android.hardware.automotive.can@libnetdevice",
         "android.hardware.automotive@libc++fs",
-        "libnl++",
     ],
 }
