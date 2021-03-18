@@ -165,7 +165,7 @@ interface IRemotelyProvisionedComponent {
      *                protected: bstr .cbor {
      *                    1 : -8,                     // Algorithm : EdDSA
      *                },
-     *                unprotected: { },
+     *                unprotected: bstr .size 0
      *                payload: bstr .cbor SignatureKey,
      *                signature: bstr PureEd25519(.cbor SignatureKeySignatureInput)
      *            ]
@@ -190,7 +190,7 @@ interface IRemotelyProvisionedComponent {
      *                protected: bstr .cbor {
      *                    1 : -8,                     // Algorithm : EdDSA
      *                },
-     *                unprotected: { },
+     *                unprotected: bstr .size 0
      *                payload: bstr .cbor Eek,
      *                signature: bstr PureEd25519(.cbor EekSignatureInput)
      *            ]
@@ -239,7 +239,7 @@ interface IRemotelyProvisionedComponent {
      *                protected : bstr .cbor {
      *                    1 : 5,                           // Algorithm : HMAC-256
      *                },
-     *                unprotected : { },
+     *                unprotected : bstr .size 0,
      *                // Payload is PublicKeys from keysToSign argument, in provided order.
      *                payload: bstr .cbor [ * PublicKey ],
      *                tag: bstr
