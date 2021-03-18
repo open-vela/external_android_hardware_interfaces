@@ -29,7 +29,7 @@ parcelable MacedPublicKey {
      *
      *     MacedPublicKey = [                     // COSE_Mac0
      *         protected: bstr .cbor { 1 : 5},    // Algorithm : HMAC-256
-     *         unprotected: { },
+     *         unprotected: bstr .size 0,
      *         payload : bstr .cbor PublicKey,
      *         tag : bstr HMAC-256(K_mac, MAC_structure)
      *     ]
