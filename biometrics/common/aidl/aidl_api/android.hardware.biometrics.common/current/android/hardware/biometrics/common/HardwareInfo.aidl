@@ -33,10 +33,8 @@
 
 package android.hardware.biometrics.common;
 @VintfStability
-parcelable ComponentInfo {
-  String componentId;
+parcelable HardwareInfo {
+  String deviceName;
   String hardwareVersion;
-  String firmwareVersion;
   String serialNumber;
-  String softwareVersion;
 }
