@@ -37,5 +37,6 @@ parcelable CommonProps {
   int sensorId;
   android.hardware.biometrics.common.SensorStrength sensorStrength = android.hardware.biometrics.common.SensorStrength.CONVENIENCE;
   int maxEnrollmentsPerUser;
-  android.hardware.biometrics.common.ComponentInfo[] componentInfo;
+  android.hardware.biometrics.common.HardwareInfo[] hardwareInfo;
+  String softwareInfo;
 }
