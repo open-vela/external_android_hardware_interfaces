@@ -747,13 +747,6 @@ Return<void> WifiChip::getUsableChannels(
                            ifaceModeMask, filterMask);
 }
 
-Return<void> WifiChip::triggerSubsystemRestart(
-    triggerSubsystemRestart_cb hidl_status_cb) {
-    return validateAndCall(this, WifiStatusCode::ERROR_WIFI_CHIP_INVALID,
-                           &WifiChip::triggerSubsystemRestartInternal,
-                           hidl_status_cb);
-}
-
 void WifiChip::invalidateAndRemoveAllIfaces() {
     invalidateAndClearBridgedApAll();
     invalidateAndClearAll(ap_ifaces_);
@@ -1527,11 +1520,6 @@ WifiChip::getUsableChannelsInternal(WifiBand band, uint32_t ifaceModeMask,
         return {createWifiStatus(WifiStatusCode::ERROR_UNKNOWN), {}};
     }
     return {createWifiStatus(WifiStatusCode::SUCCESS), hidl_usable_channels};
-}
-
-WifiStatus WifiChip::triggerSubsystemRestartInternal() {
-    auto legacy_status = legacy_hal_.lock()->triggerSubsystemRestart();
-    return createWifiStatusFromLegacyError(legacy_status);
 }
 
 WifiStatus WifiChip::handleChipConfiguration(
