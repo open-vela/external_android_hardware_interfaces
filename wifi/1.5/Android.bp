@@ -20,7 +20,6 @@ hidl_interface {
         "IWifiNanIface.hal",
         "IWifiNanIfaceEventCallback.hal",
         "IWifiStaIface.hal",
-        "IWifiEventCallback.hal",
     ],
     interfaces: [
         "android.hardware.wifi@1.0",

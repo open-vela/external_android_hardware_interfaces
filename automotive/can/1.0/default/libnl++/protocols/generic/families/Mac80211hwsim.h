@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,15 @@
  * limitations under the License.
  */
 
-package android.hardware.wifi@1.5;
+#pragma once
 
-import @1.4::IWifi;
+#include "../GenericMessageBase.h"
 
-/**
- * This is the root of the HAL module and is the interface returned when
- * loading an implementation of the Wi-Fi HAL. There must be at most one
- * module loaded in the system.
- * IWifi.getChip() must return @1.5::IWifiChip
- */
-interface IWifi extends @1.4::IWifi {};
+namespace android::nl::protocols::generic::families {
+
+class Mac80211hwsim : public GenericMessageBase {
+  public:
+    Mac80211hwsim(nlmsgtype_t familyId);
+};
+
+}  // namespace android::nl::protocols::generic::families

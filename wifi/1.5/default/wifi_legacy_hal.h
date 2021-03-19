@@ -716,8 +716,6 @@ class WifiLegacyHal {
     std::pair<wifi_error, std::vector<wifi_usable_channel>> getUsableChannels(
         uint32_t band_mask, uint32_t iface_mode_mask, uint32_t filter_mask);
 
-    wifi_error triggerSubsystemRestart();
-
    private:
     // Retrieve interface handles for all the available interfaces.
     wifi_error retrieveIfaceHandles();
