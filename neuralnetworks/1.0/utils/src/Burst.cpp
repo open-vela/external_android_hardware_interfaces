@@ -20,7 +20,6 @@
 #include <nnapi/IBurst.h>
 #include <nnapi/IPreparedModel.h>
 #include <nnapi/Result.h>
-#include <nnapi/TypeUtils.h>
 #include <nnapi/Types.h>
 
 #include <memory>
@@ -49,10 +48,8 @@ Burst::OptionalCacheHold Burst::cacheMemory(const nn::SharedMemory& /*memory*/) 
 }
 
 nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> Burst::execute(
-        const nn::Request& request, nn::MeasureTiming measure,
-        const nn::OptionalTimePoint& deadline,
-        const nn::OptionalDuration& loopTimeoutDuration) const {
-    return kPreparedModel->execute(request, measure, deadline, loopTimeoutDuration);
+        const nn::Request& request, nn::MeasureTiming measure) const {
+    return kPreparedModel->execute(request, measure, {}, {});
 }
 
 }  // namespace android::hardware::neuralnetworks::V1_0::utils
