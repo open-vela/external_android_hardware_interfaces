@@ -156,7 +156,6 @@ cc_test {
     srcs: [
         "7.0/AudioPrimaryHidlHalTest.cpp",
         "7.0/Generators.cpp",
-        "7.0/PolicyConfig.cpp",
     ],
     generated_headers: ["audio_policy_configuration_V7_0_parser"],
     generated_sources: ["audio_policy_configuration_V7_0_parser"],
@@ -164,7 +163,6 @@ cc_test {
         "android.hardware.audio@7.0",
         "android.hardware.audio.common@7.0",
         "android.hardware.audio.common@7.0-enums",
-        "android.hardware.audio.common@7.0-util",
     ],
     cflags: [
         "-DMAJOR_VERSION=7",
@@ -180,15 +178,7 @@ cc_test {
 }
 
 // Note: the following aren't VTS tests, but rather unit tests
-// to verify correctness of test utilities.
-cc_test {
-    name: "HalAudioStreamWorkerTest",
-    host_supported: true,
-    srcs: [
-        "tests/streamworker_tests.cpp",
-    ],
-}
-
+// to verify correctness of test parameter generator utilities.
 cc_test {
     name: "HalAudioV6_0GeneratorTest",
     defaults: ["VtsHalAudioTargetTest_defaults"],
@@ -220,7 +210,6 @@ cc_test {
     defaults: ["VtsHalAudioTargetTest_defaults"],
     srcs: [
         "7.0/Generators.cpp",
-        "7.0/PolicyConfig.cpp",
         "tests/generators_tests.cpp",
     ],
     generated_headers: ["audio_policy_configuration_V7_0_parser"],
@@ -229,7 +218,6 @@ cc_test {
         "android.hardware.audio@7.0",
         "android.hardware.audio.common@7.0",
         "android.hardware.audio.common@7.0-enums",
-        "android.hardware.audio.common@7.0-util",
     ],
     cflags: [
         "-DMAJOR_VERSION=7",
