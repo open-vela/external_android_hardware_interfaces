@@ -11,8 +11,7 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * limitations under the License.
- */
-///////////////////////////////////////////////////////////////////////////////
+ *////////////////////////////////////////////////////////////////////////////////
 // THIS FILE IS IMMUTABLE. DO NOT EDIT IN ANY CASE.                          //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -31,7 +30,6 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.security.secureclock;
-/* @hide */
 @VintfStability
 interface ISecureClock {
   android.hardware.security.secureclock.TimeStampToken generateTimeStamp(in long challenge);
