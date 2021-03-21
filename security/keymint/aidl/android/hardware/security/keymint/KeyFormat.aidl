@@ -18,7 +18,6 @@ package android.hardware.security.keymint;
 
 /**
  * Formats for key import and export.
- * @hide
  */
 @VintfStability
 @Backing(type="int")

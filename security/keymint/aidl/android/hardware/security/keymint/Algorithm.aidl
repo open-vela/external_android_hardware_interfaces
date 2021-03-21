@@ -18,7 +18,6 @@ package android.hardware.security.keymint;
 
 /**
  * Algorithms provided by IKeyMintDevice implementations.
- * @hide
  */
 @VintfStability
 @Backing(type="int")
