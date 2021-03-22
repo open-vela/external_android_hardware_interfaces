@@ -19,7 +19,6 @@ package android.hardware.security.keymint;
 /**
  * ProtectedData contains the encrypted BCC and the ephemeral MAC key used to
  * authenticate the keysToSign (see keysToSignMac output argument).
- * @hide
  */
 @VintfStability
 parcelable ProtectedData {

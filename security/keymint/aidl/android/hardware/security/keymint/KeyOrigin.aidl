@@ -21,7 +21,6 @@ package android.hardware.security.keymint;
  * either the hardware-enforced or software-enforced list for a key, indicating whether the key is
  * hardware or software-based.  Specifically, a key with GENERATED in the hardware-enforced list
  * must be guaranteed never to have existed outide the secure hardware.
- * @hide
  */
 @VintfStability
 @Backing(type="int")
