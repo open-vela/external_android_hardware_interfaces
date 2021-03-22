@@ -25,7 +25,6 @@ import android.hardware.security.keymint.TagType;
 /**
  * Tag specifies various kinds of tags that can be set in KeyParameter to identify what kind of
  * data are stored in KeyParameter.
- * @hide
  */
 @VintfStability
 @Backing(type="int")

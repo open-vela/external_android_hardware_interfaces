@@ -18,7 +18,6 @@ package android.hardware.security.keymint;
 
 /**
  * This encodes an IKeyMintDevice certificate, generated for a KeyMint asymmetric public key.
- * @hide
  */
 @VintfStability
 parcelable Certificate {
