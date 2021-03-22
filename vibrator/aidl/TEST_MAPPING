@@ -2,9 +2,6 @@
   "presubmit": [
     {
       "name": "VtsHalVibratorTargetTest"
-    },
-    {
-      "name": "VtsHalVibratorManagerTargetTest"
     }
   ]
 }
