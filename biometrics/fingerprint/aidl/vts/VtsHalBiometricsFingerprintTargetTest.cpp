@@ -119,8 +119,6 @@ class SessionCallback : public BnSessionCallback {
         return ndk::ScopedAStatus::ok();
     }
 
-    ndk::ScopedAStatus onSessionClosed() override { return ndk::ScopedAStatus::ok(); }
-
   private:
     bool mIsPromiseValid;
     std::vector<Invocation> mInvocations;

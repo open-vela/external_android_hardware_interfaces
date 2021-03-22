@@ -219,11 +219,11 @@ ndk::ScopedAStatus Session::resetLockout(int32_t cookie, const keymaster::Hardwa
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus Session::close(int32_t /*cookie*/) {
+ndk::ScopedAStatus Session::close(int32_t cookie) {
     LOG(INFO) << "close";
     CHECK(mCurrentState == SessionState::IDLING) << "Can't close a non-idling session. Crashing.";
     mCurrentState = SessionState::CLOSED;
-    mCb->onSessionClosed();
+    mCb->onStateChanged(cookie, mCurrentState);
     return ndk::ScopedAStatus::ok();
 }
 
