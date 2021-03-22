@@ -469,7 +469,7 @@ TEST_P(OffloadControlTestV1_0_HalStarted, RemoveDownstreamBogusPrefixFails) {
     }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OffloadControlTestV1_0_HalNotStarted);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OffloadControlHidlTestBase);
 INSTANTIATE_TEST_CASE_P(
         PerInstance, OffloadControlTestV1_0_HalNotStarted,
         testing::Combine(testing::ValuesIn(android::hardware::getAllHalInstanceNames(
@@ -478,7 +478,7 @@ INSTANTIATE_TEST_CASE_P(
                                  IOffloadControl::descriptor))),
         android::hardware::PrintInstanceTupleNameToString<>);
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OffloadControlTestV1_0_HalStarted);
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OffloadControlHidlTest);
 INSTANTIATE_TEST_CASE_P(
         PerInstance, OffloadControlTestV1_0_HalStarted,
         testing::Combine(testing::ValuesIn(android::hardware::getAllHalInstanceNames(

@@ -23,7 +23,6 @@ package android.hardware.security.keymint;
  * padding modes for both symmetric and asymmetric algorithms.  Note that implementations should not
  * provide all possible combinations of algorithm and padding, only the
  * cryptographically-appropriate pairs.
- * @hide
  */
 @VintfStability
 @Backing(type="int")
