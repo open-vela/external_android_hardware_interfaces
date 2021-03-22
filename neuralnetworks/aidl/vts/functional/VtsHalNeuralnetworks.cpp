@@ -127,8 +127,6 @@ void validateModel(const std::shared_ptr<IDevice>& device, const Model& model);
 // Forward declaration from ValidateRequest.cpp
 void validateRequest(const std::shared_ptr<IPreparedModel>& preparedModel, const Request& request);
 // Forward declaration from ValidateRequest.cpp
-void validateBurst(const std::shared_ptr<IPreparedModel>& preparedModel, const Request& request);
-// Forward declaration from ValidateRequest.cpp
 void validateRequestFailure(const std::shared_ptr<IPreparedModel>& preparedModel,
                             const Request& request);
 
@@ -142,7 +140,6 @@ void validateEverything(const std::shared_ptr<IDevice>& device, const Model& mod
     if (preparedModel == nullptr) return;
 
     validateRequest(preparedModel, request);
-    validateBurst(preparedModel, request);
     // HIDL also had test that expected executeFenced to fail on received null fd (-1). This is not
     // allowed in AIDL and will result in EX_TRANSACTION_FAILED.
 }
@@ -181,6 +178,8 @@ INSTANTIATE_GENERATED_TEST(ValidationTest, [](const std::string& testName) {
 
 std::string toString(Executor executor) {
     switch (executor) {
+        case Executor::ASYNC:
+            return "ASYNC";
         case Executor::SYNC:
             return "SYNC";
         case Executor::BURST:
