@@ -18,7 +18,6 @@ package android.hardware.security.keymint;
 
 /**
  * Possible purposes of a key (or pair).
- * @hide
  */
 @VintfStability
 @Backing(type="int")
