@@ -87,9 +87,7 @@ Return<void> RadioResponse_v1_6::getIMSIForAppResponse(
 }
 
 Return<void> RadioResponse_v1_6::hangupConnectionResponse(
-        const ::android::hardware::radio::V1_0::RadioResponseInfo& info) {
-    rspInfo_v1_0 = info;
-    parent_v1_6.notify(info.serial);
+        const ::android::hardware::radio::V1_0::RadioResponseInfo& /*info*/) {
     return Void();
 }
 
@@ -751,9 +749,7 @@ Return<void> RadioResponse_v1_6::acknowledgeRequest(int32_t /*serial*/) {
 
 /* 1.1 Apis */
 Return<void> RadioResponse_v1_6::setCarrierInfoForImsiEncryptionResponse(
-        const ::android::hardware::radio::V1_0::RadioResponseInfo& info) {
-    rspInfo_v1_0 = info;
-    parent_v1_6.notify(info.serial);
+        const ::android::hardware::radio::V1_0::RadioResponseInfo& /*info*/) {
     return Void();
 }
 
