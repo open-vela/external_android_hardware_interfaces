@@ -14,21 +14,15 @@
  * limitations under the License.
  */
 
-package android.hardware.soundtrigger@2.4;
+package android.hardware.wifi@1.5;
 
-import @2.0::SoundModelHandle;
-import @2.1::ISoundTriggerHwCallback;
+import @1.0::IWifiEventCallback;
+import @1.0::WifiStatus;
 
-/**
- * SoundTrigger HAL per-model Callback interface.
- */
-interface ISoundTriggerHwCallback extends @2.1::ISoundTriggerHwCallback {
-    /**
-     * Callback method called by the HAL when a model has been unloaded at the HAL implementation's
-     * discretion. Only a stopped model may be unloaded.
-     * This event is NOT sent as part of an unload sequence initiated by the client.
-     *
-     * @param model The model handle.
-     */
-    modelUnloaded(SoundModelHandle model);
+interface IWifiEventCallback extends @1.0::IWifiEventCallback {
+  /**
+    * Must be called when the Wi-Fi subsystem restart completes.
+    * Once this event is received, framework must fully reset the Wi-Fi stack state.
+    */
+  oneway onSubsystemRestart(WifiStatus status);
 };
