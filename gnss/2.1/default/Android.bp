@@ -33,7 +33,6 @@ cc_binary {
         "service.cpp",
     ],
     shared_libs: [
-        "libcutils",
         "libhidlbase",
         "libutils",
         "liblog",
