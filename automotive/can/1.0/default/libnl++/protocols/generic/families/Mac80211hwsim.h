@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,8 +14,15 @@
  * limitations under the License.
  */
 
-package android.hardware.wifi@1.5;
+#pragma once
 
-import @1.0::IWifiEventCallback;
+#include "../GenericMessageBase.h"
 
-interface IWifiEventCallback extends @1.0::IWifiEventCallback {};
+namespace android::nl::protocols::generic::families {
+
+class Mac80211hwsim : public GenericMessageBase {
+  public:
+    Mac80211hwsim(nlmsgtype_t familyId);
+};
+
+}  // namespace android::nl::protocols::generic::families
