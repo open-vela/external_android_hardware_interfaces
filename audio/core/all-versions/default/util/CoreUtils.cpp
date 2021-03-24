@@ -66,13 +66,13 @@ status_t CoreUtils::microphoneInfoFromHal(
     CONVERT_CHECKED(
             deviceAddressFromHal(halMicInfo.device, halMicInfo.address, &micInfo->deviceAddress),
             result);
-    int chCount;
-    for (chCount = AUDIO_CHANNEL_COUNT_MAX - 1; chCount >= 0; --chCount) {
-        if (halMicInfo.channel_mapping[chCount] != AUDIO_MICROPHONE_CHANNEL_MAPPING_UNUSED) {
+    size_t chCount;
+    for (chCount = 0; chCount < AUDIO_CHANNEL_COUNT_MAX; ++chCount) {
+        if (halMicInfo.channel_mapping[chCount] == AUDIO_MICROPHONE_CHANNEL_MAPPING_UNUSED) {
             break;
         }
     }
-    micInfo->channelMapping.resize(chCount + 1);
+    micInfo->channelMapping.resize(chCount);
     for (size_t ch = 0; ch < micInfo->channelMapping.size(); ch++) {
         micInfo->channelMapping[ch] = AudioMicrophoneChannelMapping(halMicInfo.channel_mapping[ch]);
     }
