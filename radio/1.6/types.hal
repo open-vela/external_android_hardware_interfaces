@@ -427,8 +427,7 @@ struct LinkCapacityEstimate {
     * This bandwidth estimate shall be the estimated maximum sustainable link bandwidth
     * (as would be measured at the Upper PDCP or SNDCP SAP). This is valid only
     * in if device is connected to both primary and secodary in dual connected
-    * mode. This must be filled with -1 if secondary is not connected or if
-    * modem does not support this feature.
+    * mode. This must be filled with -1 if secondary is not connected.
     */
    uint32_t secondaryDownlinkCapacityKbps;
 
@@ -437,8 +436,7 @@ struct LinkCapacityEstimate {
     * This bandwidth estimate shall be the estimated
     * maximum sustainable link bandwidth (as would be measured at the Upper PDCP or SNDCP SAP).
     * This is valid only in if device is connected to both primary and secodary in dual connected
-    * mode.This must be filled with -1 if secondary is not connected or if modem
-    * does not support this feature.
+    * mode.This must be filled with -1 if secondary is not connected.
     */
    uint32_t secondaryUplinkCapacityKbps;
 };
@@ -768,6 +766,73 @@ struct Call {
     string forwardedNumber;
 };
 
+struct PhysicalChannelConfig {
+    /** Connection status for cell. Valid values are PRIMARY_SERVING and SECONDARY_SERVING */
+    CellConnectionStatus status;
+
+    /** The radio technology for this physical channel */
+    RadioTechnology rat;
+
+    /** Downlink Absolute Radio Frequency Channel Number */
+    int32_t downlinkChannelNumber;
+
+    /** Uplink Absolute Radio Frequency Channel Number */
+    int32_t uplinkChannelNumber;
+
+    /** Downlink cell bandwidth, in kHz */
+    int32_t cellBandwidthDownlink;
+
+    /** Uplink cell bandwidth, in kHz */
+    int32_t cellBandwidthUplink;
+
+    /**
+     * A list of data calls mapped to this physical channel. The context id must match the cid of
+     * @1.5::SetupDataCallResult. An empty list means the physical channel has no data call mapped
+     * to it.
+     */
+    vec<int32_t> contextIds;
+
+    /**
+     * The physical cell identifier for this cell.
+     *
+     * In UTRAN, this value is primary scrambling code. The range is [0, 511].
+     * Reference: 3GPP TS 25.213 section 5.2.2.
+     *
+     * In EUTRAN, this value is physical layer cell identity. The range is [0, 503].
+     * Reference: 3GPP TS 36.211 section 6.11.
+     *
+     * In 5G RAN, this value is physical layer cell identity. The range is [0, 1007].
+     * Reference: 3GPP TS 38.211 section 7.4.2.1.
+     */
+    uint32_t physicalCellId;
+
+    /**
+     * The frequency band to scan.
+     */
+    safe_union Band {
+        /** Valid only if radioAccessNetwork = GERAN. */
+        GeranBands geranBand;
+        /** Valid only if radioAccessNetwork = UTRAN. */
+        UtranBands utranBand;
+        /** Valid only if radioAccessNetwork = EUTRAN. */
+        EutranBands eutranBand;
+        /** Valid only if radioAccessNetwork = NGRAN. */
+        NgranBands ngranBand;
+    } band;
+};
+
+/**
+ * Extended from @1.5 NgranBands
+ * IRadio 1.6 supports NGRAN bands up to V16.5.0
+ */
+enum NgranBands  : @1.5::NgranBands {
+    /** 3GPP TS 38.101-1, Table 5.2-1: FR1 bands */
+    BAND_26 = 26,
+    BAND_46 = 46,
+    BAND_53 = 53,
+    BAND_96 = 96,
+};
+
 /**
  * This safe_union represents an optional slice info
  */
@@ -858,73 +923,6 @@ enum DataCallFailCause : @1.4::DataCallFailCause {
      * If connection failed for all matching URSP rules.
      */
     ALL_MATCHING_RULES_FAILED = 0x8CE,
-};
-
-struct PhysicalChannelConfig {
-    /** Connection status for cell. Valid values are PRIMARY_SERVING and SECONDARY_SERVING */
-    CellConnectionStatus status;
-
-    /** The radio technology for this physical channel */
-    RadioTechnology rat;
-
-    /** Downlink Absolute Radio Frequency Channel Number */
-    int32_t downlinkChannelNumber;
-
-    /** Uplink Absolute Radio Frequency Channel Number */
-    int32_t uplinkChannelNumber;
-
-    /** Downlink cell bandwidth, in kHz */
-    int32_t cellBandwidthDownlink;
-
-    /** Uplink cell bandwidth, in kHz */
-    int32_t cellBandwidthUplink;
-
-    /**
-     * A list of data calls mapped to this physical channel. The context id must match the cid of
-     * @1.5::SetupDataCallResult. An empty list means the physical channel has no data call mapped
-     * to it.
-     */
-    vec<int32_t> contextIds;
-
-    /**
-     * The physical cell identifier for this cell.
-     *
-     * In UTRAN, this value is primary scrambling code. The range is [0, 511].
-     * Reference: 3GPP TS 25.213 section 5.2.2.
-     *
-     * In EUTRAN, this value is physical layer cell identity. The range is [0, 503].
-     * Reference: 3GPP TS 36.211 section 6.11.
-     *
-     * In 5G RAN, this value is physical layer cell identity. The range is [0, 1007].
-     * Reference: 3GPP TS 38.211 section 7.4.2.1.
-     */
-    uint32_t physicalCellId;
-
-    /**
-     * The frequency band to scan.
-     */
-    safe_union Band {
-        /** Valid only if radioAccessNetwork = GERAN. */
-        GeranBands geranBand;
-        /** Valid only if radioAccessNetwork = UTRAN. */
-        UtranBands utranBand;
-        /** Valid only if radioAccessNetwork = EUTRAN. */
-        EutranBands eutranBand;
-        /** Valid only if radioAccessNetwork = NGRAN. */
-        NgranBands ngranBand;
-    } band;
-};
-
-/**
- * Extended from @1.5 NgranBands
- * IRadio 1.6 supports NGRAN bands up to V16.5.0
- */
-enum NgranBands  : @1.5::NgranBands {
-    /** 3GPP TS 38.101-1, Table 5.2-1: FR1 bands */
-    BAND_26 = 26,
-    BAND_46 = 46,
-    BAND_53 = 53,
-    BAND_96 = 96,
 };
 
 /**
@@ -1027,6 +1025,18 @@ struct RouteSelectionDescriptor {
      */
     uint8_t precedence;
     /**
+     * Parameters defining this RouteSelectionDescriptor. The length of the vector
+     * must be >= 1.
+     */
+    vec<RouteSelectionDescriptorParams> routeSelectionDescriptorParams;
+};
+
+/**
+ * This struct represents a route selection descriptor. A valid struct must have
+ * at least one of the vectors non-empty.
+ */
+struct RouteSelectionDescriptorParams {
+    /**
      * Valid values are IP, IPV6 and IPV4V6.
      */
     OptionalPdpProtocolType sessionType;
@@ -1094,3 +1104,106 @@ struct ImsiEncryptionInfo {
     @1.1::ImsiEncryptionInfo base;
     PublicKeyType keyType;         // Public key type
 };
+
+/**
+ * Phonebook-record-information specified by EF_ADN(Abbreviated dialing numbers)
+ * record of SIM as per 3GPP spec 31.102 v15 Section-4.4.2.3.
+ */
+struct PhonebookRecordInfo {
+    /** Record index. 0 is used to insert a record */
+    uint32_t recordId;
+
+    /** Alpha identifier, empty string if no value */
+    string name;
+
+    /** Dialling number, empty string if no value */
+    string number;
+
+    /** Email addresses */
+    vec<string> emails;
+
+    /** Additional numbers */
+    vec<string> additionalNumbers;
+};
+
+struct PhonebookCapacity {
+    /**
+     * Maximum number of ADN records possible in the SIM phonebook
+     * Needs to be non-negative
+     */
+    int32_t maxAdnRecords;
+
+    /**
+     * Used ADN records in the SIM phonebook
+     * Needs to be non-negative
+     */
+    int32_t usedAdnRecords;
+
+    /**
+     * Maximum email records possible in the SIM phonebook
+     * Needs to be non-negative
+     */
+    int32_t maxEmailRecords;
+
+    /**
+     * Used email records in the SIM phonebook
+     * Needs to be non-negative
+     */
+    int32_t usedEmailRecords;
+
+    /**
+     * Maximum additional number records possible in the SIM phonebook
+     * Needs to be non-negative
+     */
+    int32_t maxAdditionalNumberRecords;
+
+    /**
+     * Used additional number records in the SIM phonebook
+     * Needs to be non-negative
+     */
+    int32_t usedAdditionalNumberRecords;
+
+    /**
+     * Maximum name length possible in the SIM phonebook
+     * Needs to be non-negative
+     */
+    int32_t maxNameLen;
+
+    /**
+     * Maximum number length possible in the SIM phonebook
+     * Needs to be non-negative
+     */
+    int32_t maxNumberLen;
+
+    /**
+     * Maximum email length possible in the SIM phonebook
+     * Needs to be non-negative
+     */
+    int32_t maxEmailLen;
+
+    /**
+     * Maximum additional number length possible in the SIM phonebook
+     * Needs to be non-negative
+     */
+    int32_t maxAdditionalNumberLen;
+};
+
+/**
+ * Enum representing the status of the received PB indication,
+ * PB_RECEIVED_OK indicates this retrieval is fine
+ * PB_RECEIVED_ERROR indicates one error happens, in general, the process
+ *   can't be restored soon.
+ * PB_RECEIVED_ABORT indicates the process is interrupted, in this case,
+ *   modem might need resources and interrupt the current process, or it is
+ *   timed out to receive all indications, and client can retry soon.
+ * PB_RECEIVED_FINAL indicates the whole process is finished with a full
+ *   chunk of phonebook data, means this is a last indication with the left
+ *   data.
+ */
+enum PbReceivedStatus : int32_t {
+    PB_RECEIVED_OK = 1,
+    PB_RECEIVED_ERROR = 2,
+    PB_RECEIVED_ABORT = 3,
+    PB_RECEIVED_FINAL = 4,
+};
+
