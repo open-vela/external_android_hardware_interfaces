@@ -21,31 +21,35 @@
 #include <android/binder_manager.h>
 #include <android/binder_process.h>
 
-#include <chrono>
 #include <future>
 
 namespace aidl::android::hardware::biometrics::face {
 namespace {
 
-using namespace std::literals::chrono_literals;
-
 constexpr int kSensorId = 0;
 constexpr int kUserId = 0;
+constexpr auto kCallbackTimeout = std::chrono::seconds(1);
 
-enum class MethodName {
-    kOnError,
-    kOnSessionClosed,
+enum class SessionCallbackMethodName {
+    kOnStateChanged,
 };
 
-struct Invocation {
-    MethodName methodName;
-    Error error;
-    int32_t vendorCode;
+struct SessionCallbackInvocation {
+    SessionCallbackMethodName method_name;
+    SessionState state;
 };
 
 class SessionCallback : public BnSessionCallback {
   public:
-    explicit SessionCallback(Invocation* inv) : mInv(inv) {}
+    explicit SessionCallback(std::promise<SessionCallbackInvocation> invocation_promise)
+        : invocation_promise_(std::move(invocation_promise)) {}
+    ndk::ScopedAStatus onStateChanged(int32_t /*cookie*/, SessionState state) override {
+        SessionCallbackInvocation invocation = {};
+        invocation.method_name = SessionCallbackMethodName::kOnStateChanged;
+        invocation.state = state;
+        invocation_promise_.set_value(invocation);
+        return ndk::ScopedAStatus::ok();
+    }
 
     ndk::ScopedAStatus onChallengeGenerated(int64_t /*challenge*/) override {
         return ndk::ScopedAStatus::ok();
@@ -63,12 +67,7 @@ class SessionCallback : public BnSessionCallback {
         return ndk::ScopedAStatus::ok();
     }
 
-    ndk::ScopedAStatus onError(Error error, int32_t vendorCode) override {
-        *mInv = {};
-        mInv->methodName = MethodName::kOnError;
-        mInv->error = error;
-        mInv->vendorCode = vendorCode;
-
+    ndk::ScopedAStatus onError(Error /*error*/, int32_t /*vendorCode*/) override {
         return ndk::ScopedAStatus::ok();
     }
 
@@ -121,15 +120,10 @@ class SessionCallback : public BnSessionCallback {
         return ndk::ScopedAStatus::ok();
     }
 
-    ndk::ScopedAStatus onSessionClosed() override {
-        *mInv = {};
-        mInv->methodName = MethodName::kOnSessionClosed;
-
-        return ndk::ScopedAStatus::ok();
-    }
+    ndk::ScopedAStatus onSessionClosed() override { return ndk::ScopedAStatus::ok(); }
 
   private:
-    Invocation* mInv;
+    std::promise<SessionCallbackInvocation> invocation_promise_;
 };
 
 class Face : public testing::TestWithParam<std::string> {
@@ -137,34 +131,28 @@ class Face : public testing::TestWithParam<std::string> {
     void SetUp() override {
         AIBinder* binder = AServiceManager_waitForService(GetParam().c_str());
         ASSERT_NE(binder, nullptr);
-        mHal = IFace::fromBinder(ndk::SpAIBinder(binder));
+        hal_ = IFace::fromBinder(ndk::SpAIBinder(binder));
     }
 
-    std::shared_ptr<IFace> mHal;
-    Invocation mInv;
+    std::shared_ptr<IFace> hal_;
 };
 
 TEST_P(Face, AuthenticateTest) {
-    // Prepare the callback.
-    auto cb = ndk::SharedRefBase::make<SessionCallback>(&mInv);
+    std::promise<SessionCallbackInvocation> invocation_promise;
+    std::future<SessionCallbackInvocation> invocation_future = invocation_promise.get_future();
+    std::shared_ptr<SessionCallback> session_cb =
+            ndk::SharedRefBase::make<SessionCallback>(std::move(invocation_promise));
 
-    // Create a session
     std::shared_ptr<ISession> session;
-    ASSERT_TRUE(mHal->createSession(kSensorId, kUserId, cb, &session).isOk());
+    ASSERT_TRUE(hal_->createSession(kSensorId, kUserId, session_cb, &session).isOk());
 
-    // Call authenticate
-    std::shared_ptr<common::ICancellationSignal> cancellationSignal;
-    ASSERT_TRUE(session->authenticate(0 /* operationId */, &cancellationSignal).isOk());
+    std::shared_ptr<common::ICancellationSignal> cancel_cb;
+    ASSERT_TRUE(session->authenticate(0, 0, &cancel_cb).isOk());
+    ASSERT_EQ(invocation_future.wait_for(kCallbackTimeout), std::future_status::ready);
 
-    // Get the results
-    EXPECT_EQ(mInv.methodName, MethodName::kOnError);
-    EXPECT_EQ(mInv.error, Error::UNABLE_TO_PROCESS);
-    EXPECT_EQ(mInv.vendorCode, 0);
-
-    // Close the session
-    ASSERT_TRUE(session->close().isOk());
-
-    EXPECT_EQ(mInv.methodName, MethodName::kOnSessionClosed);
+    SessionCallbackInvocation invocation = invocation_future.get();
+    EXPECT_EQ(invocation.method_name, SessionCallbackMethodName::kOnStateChanged);
+    EXPECT_EQ(invocation.state, SessionState::AUTHENTICATING);
 }
 
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(Face);
@@ -173,7 +161,6 @@ INSTANTIATE_TEST_SUITE_P(IFace, Face,
                          ::android::PrintInstanceNameToString);
 
 }  // namespace
-}  // namespace aidl::android::hardware::biometrics::face
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
@@ -182,3 +169,4 @@ int main(int argc, char** argv) {
     return RUN_ALL_TESTS();
 }
 
+}  // namespace aidl::android::hardware::biometrics::face
