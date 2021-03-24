@@ -322,8 +322,8 @@ ScopedAStatus RemotelyProvisionedComponent::generateEcdsaP256KeyPair(bool testMo
 
 ScopedAStatus RemotelyProvisionedComponent::generateCertificateRequest(
         bool testMode, const vector<MacedPublicKey>& keysToSign,
-        const bytevec& endpointEncCertChain, const bytevec& challenge, DeviceInfo* deviceInfo,
-        ProtectedData* protectedData, bytevec* keysToSignMac) {
+        const bytevec& endpointEncCertChain, const bytevec& challenge, bytevec* keysToSignMac,
+        ProtectedData* protectedData) {
     auto pubKeysToSign = validateAndExtractPubkeys(testMode, keysToSign,
                                                    testMode ? remote_prov::kTestMacKey : macKey_);
     if (!pubKeysToSign.isOk()) return pubKeysToSign.moveError();
@@ -343,12 +343,11 @@ ScopedAStatus RemotelyProvisionedComponent::generateCertificateRequest(
         bcc = bcc_.clone();
     }
 
-    deviceInfo->deviceInfo = createDeviceInfo();
     auto signedMac = constructCoseSign1(devicePrivKey /* Signing key */,  //
                                         ephemeralMacKey /* Payload */,
                                         cppbor::Array() /* AAD */
                                                 .add(challenge)
-                                                .add(deviceInfo->deviceInfo)
+                                                .add(createDeviceInfo())
                                                 .encode());
     if (!signedMac) return Status(signedMac.moveMessage());
 
