@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2020 The Android Open Source Project
+// Copyright (C) 2021 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,26 +24,15 @@ package {
 }
 
 cc_test {
-    name: "VtsAidlSecureClockTargetTest",
-    defaults: [
-        "VtsHalTargetTestDefaults",
-        "use_libaidlvintf_gtest_helper_static",
-    ],
-    cflags: [
-        "-Wall",
-        "-Wextra",
-    ],
-    srcs: [
-        "SecureClockAidlTest.cpp",
-    ],
-    shared_libs: [
-        "libbinder_ndk",
-        "libcrypto",
-    ],
+    name: "VtsHalSoundtriggerV2_4TargetTest",
+    defaults: ["VtsHalTargetTestDefaults"],
+    srcs: ["VtsHalSoundtriggerV2_4TargetTest.cpp"],
     static_libs: [
-        "android.hardware.security.keymint-V1-ndk_platform",
-        "android.hardware.security.secureclock-V1-ndk_platform",
-        "libkeymint",
+        "android.hardware.soundtrigger@2.0",
+        "android.hardware.soundtrigger@2.1",
+        "android.hardware.soundtrigger@2.2",
+        "android.hardware.soundtrigger@2.3",
+        "android.hardware.soundtrigger@2.4",
     ],
     test_suites: [
         "general-tests",
