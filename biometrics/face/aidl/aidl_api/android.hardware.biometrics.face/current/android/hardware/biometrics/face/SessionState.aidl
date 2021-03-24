@@ -32,19 +32,20 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.biometrics.face;
-@VintfStability
-interface ISession {
-  void generateChallenge(in int cookie);
-  void revokeChallenge(in int cookie, in long challenge);
-  android.hardware.biometrics.common.ICancellationSignal enroll(in int cookie, in android.hardware.keymaster.HardwareAuthToken hat, in android.hardware.biometrics.face.EnrollmentType type, in android.hardware.biometrics.face.Feature[] features, in android.hardware.common.NativeHandle previewSurface);
-  android.hardware.biometrics.common.ICancellationSignal authenticate(in int cookie, in long operationId);
-  android.hardware.biometrics.common.ICancellationSignal detectInteraction(in int cookie);
-  void enumerateEnrollments(in int cookie);
-  void removeEnrollments(in int cookie, in int[] enrollmentIds);
-  void getFeatures(in int cookie, in int enrollmentId);
-  void setFeature(in int cookie, in android.hardware.keymaster.HardwareAuthToken hat, in int enrollmentId, in android.hardware.biometrics.face.Feature feature, boolean enabled);
-  void getAuthenticatorId(in int cookie);
-  void invalidateAuthenticatorId(in int cookie);
-  void resetLockout(in int cookie, in android.hardware.keymaster.HardwareAuthToken hat);
-  void close(in int cookie);
+@Backing(type="byte") @VintfStability
+enum SessionState {
+  IDLING = 0,
+  CLOSED = 1,
+  GENERATING_CHALLENGE = 2,
+  REVOKING_CHALLENGE = 3,
+  ENROLLING = 4,
+  AUTHENTICATING = 5,
+  DETECTING_INTERACTION = 6,
+  ENUMERATING_ENROLLMENTS = 7,
+  REMOVING_ENROLLMENTS = 8,
+  GETTING_FEATURES = 9,
+  SETTING_FEATURE = 10,
+  GETTING_AUTHENTICATOR_ID = 11,
+  INVALIDATING_AUTHENTICATOR_ID = 12,
+  RESETTING_LOCKOUT = 13,
 }
