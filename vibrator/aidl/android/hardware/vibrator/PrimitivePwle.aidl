@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,13 @@
  * limitations under the License.
  */
 
-#pragma once
+package android.hardware.vibrator;
 
-#include <sstream>
+import android.hardware.vibrator.ActivePwle;
+import android.hardware.vibrator.BrakingPwle;
 
-namespace android::nl::protocols {
-
-template <typename T>
-void arrayToStream(std::stringstream& ss, const Buffer<nlattr> attr) {
-    ss << '{';
-    for (const auto it : attr.data<T>().getRaw()) {
-        ss << it << ',';
-    }
-    ss.seekp(-1, std::ios_base::cur);
-    ss << '}';
+@VintfStability
+union PrimitivePwle {
+    ActivePwle active;
+    BrakingPwle braking;
 }
-
-}  // namespace android::nl::protocols

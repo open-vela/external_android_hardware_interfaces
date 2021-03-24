@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,21 @@
  * limitations under the License.
  */
 
-#pragma once
+package android.hardware.vibrator;
 
-#include <sstream>
-
-namespace android::nl::protocols {
-
-template <typename T>
-void arrayToStream(std::stringstream& ss, const Buffer<nlattr> attr) {
-    ss << '{';
-    for (const auto it : attr.data<T>().getRaw()) {
-        ss << it << ',';
-    }
-    ss.seekp(-1, std::ios_base::cur);
-    ss << '}';
+@VintfStability
+@Backing(type="int")
+enum Braking {
+    /**
+     * No braking mechanism used.
+     * This is the default if the hardware does not support any braking mechanism.
+     */
+    NONE,
+    /**
+     * Closed-loop active braking.
+     *
+     * This effect should produce a sharp, crisp end to the waveform
+     * Support is optional.
+     */
+    CLAB,
 }
-
-}  // namespace android::nl::protocols
