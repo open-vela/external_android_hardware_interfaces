@@ -78,6 +78,7 @@ typedef enum {
     TS_VIDEO0,
     TS_VIDEO1,
     TS_AUDIO0,
+    TS_AUDIO1,
     TS_PES0,
     TS_PCR0,
     TS_SECTION0,
@@ -122,7 +123,6 @@ typedef enum {
 typedef enum {
     DVR_RECORD0,
     DVR_PLAYBACK0,
-    DVR_SOFTWARE_FE,
     DVR_MAX,
 } Dvr;
 
@@ -221,7 +221,7 @@ inline void initFrontendConfig() {
     frontendArray[DVBT].tuneStatusTypes = types;
     frontendArray[DVBT].expectTuneStatuses = statuses;
     frontendArray[DVBT].isSoftwareFe = true;
-    frontendArray[DVBS].enable = true;
+    frontendArray[DVBT].enable = true;
     frontendArray[DVBS].type = FrontendType::DVBS;
     frontendArray[DVBS].enable = true;
     frontendArray[DVBS].isSoftwareFe = true;
@@ -281,6 +281,11 @@ inline void initFilterConfig() {
     filterArray[TS_AUDIO0].bufferSize = FMQ_SIZE_16M;
     filterArray[TS_AUDIO0].settings.ts().tpid = 256;
     filterArray[TS_AUDIO0].settings.ts().filterSettings.av({.isPassthrough = false});
+    filterArray[TS_AUDIO1].type.mainType = DemuxFilterMainType::TS;
+    filterArray[TS_AUDIO1].type.subType.tsFilterType(DemuxTsFilterType::AUDIO);
+    filterArray[TS_AUDIO1].bufferSize = FMQ_SIZE_16M;
+    filterArray[TS_AUDIO1].settings.ts().tpid = 257;
+    filterArray[TS_AUDIO1].settings.ts().filterSettings.av({.isPassthrough = false});
     // TS PES filter setting
     filterArray[TS_PES0].type.mainType = DemuxFilterMainType::TS;
     filterArray[TS_PES0].type.subType.tsFilterType(DemuxTsFilterType::PES);
@@ -371,17 +376,6 @@ inline void initDvrConfig() {
     dvrArray[DVR_PLAYBACK0].playbackInputFile = "/data/local/tmp/segment000000.ts";
     dvrArray[DVR_PLAYBACK0].bufferSize = FMQ_SIZE_4M;
     dvrArray[DVR_PLAYBACK0].settings.playback(playbackSettings);
-    PlaybackSettings softwareFePlaybackSettings{
-            .statusMask = 0xf,
-            .lowThreshold = 0x1000,
-            .highThreshold = 0x07fff,
-            .dataFormat = DataFormat::TS,
-            .packetSize = 188,
-    };
-    dvrArray[DVR_SOFTWARE_FE].type = DvrType::PLAYBACK;
-    dvrArray[DVR_SOFTWARE_FE].playbackInputFile = "/data/local/tmp/segment000000.ts";
-    dvrArray[DVR_SOFTWARE_FE].bufferSize = FMQ_SIZE_4M;
-    dvrArray[DVR_SOFTWARE_FE].settings.playback(softwareFePlaybackSettings);
 };
 
 /** Configuration array for the descrambler test */
