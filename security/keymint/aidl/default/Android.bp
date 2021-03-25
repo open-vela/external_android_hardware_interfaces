@@ -39,17 +39,7 @@ cc_binary {
     srcs: [
         "service.cpp",
     ],
-    required: [
-        "RemoteProvisioner",
-        "android.hardware.hardware_keystore.xml",
-    ],
-}
-
-prebuilt_etc {
-    name: "android.hardware.hardware_keystore.xml",
-    sub_dir: "permissions",
-    vendor: true,
-    src: "android.hardware.hardware_keystore.xml",
+    required: ["RemoteProvisioner"],
 }
 
 cc_library {
