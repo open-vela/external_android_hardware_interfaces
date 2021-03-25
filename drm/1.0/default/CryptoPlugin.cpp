@@ -79,7 +79,7 @@ namespace implementation {
             }
         }
 
-        android::CryptoPlugin::Mode legacyMode;
+        android::CryptoPlugin::Mode legacyMode = android::CryptoPlugin::kMode_Unencrypted;
         switch(mode) {
         case Mode::UNENCRYPTED:
             legacyMode = android::CryptoPlugin::kMode_Unencrypted;
@@ -101,11 +101,20 @@ namespace implementation {
         std::unique_ptr<android::CryptoPlugin::SubSample[]> legacySubSamples =
                 std::make_unique<android::CryptoPlugin::SubSample[]>(subSamples.size());
 
+        size_t destSize = 0;
         for (size_t i = 0; i < subSamples.size(); i++) {
-            legacySubSamples[i].mNumBytesOfClearData
-                = subSamples[i].numBytesOfClearData;
-            legacySubSamples[i].mNumBytesOfEncryptedData
-                = subSamples[i].numBytesOfEncryptedData;
+            uint32_t numBytesOfClearData = subSamples[i].numBytesOfClearData;
+            legacySubSamples[i].mNumBytesOfClearData = numBytesOfClearData;
+            uint32_t numBytesOfEncryptedData = subSamples[i].numBytesOfEncryptedData;
+            legacySubSamples[i].mNumBytesOfEncryptedData = numBytesOfEncryptedData;
+            if (__builtin_add_overflow(destSize, numBytesOfClearData, &destSize)) {
+                _hidl_cb(Status::BAD_VALUE, 0, "subsample clear size overflow");
+                return Void();
+            }
+            if (__builtin_add_overflow(destSize, numBytesOfEncryptedData, &destSize)) {
+                _hidl_cb(Status::BAD_VALUE, 0, "subsample encrypted size overflow");
+                return Void();
+            }
         }
 
         AString detailMessage;
@@ -115,7 +124,11 @@ namespace implementation {
             return Void();
         }
 
-        if (source.offset + offset + source.size > sourceBase->getSize()) {
+        size_t totalSize = 0;
+        if (__builtin_add_overflow(source.offset, offset, &totalSize) ||
+            __builtin_add_overflow(totalSize, source.size, &totalSize) ||
+            totalSize > sourceBase->getSize()) {
+            android_errorWriteLog(0x534e4554, "176496160");
             _hidl_cb(Status::ERROR_DRM_CANNOT_HANDLE, 0, "invalid buffer size");
             return Void();
         }
@@ -133,15 +146,32 @@ namespace implementation {
                 return Void();
             }
 
-            if (destBuffer.offset + destBuffer.size > destBase->getSize()) {
+            size_t totalSize = 0;
+            if (__builtin_add_overflow(destBuffer.offset, destBuffer.size, &totalSize) ||
+                totalSize > destBase->getSize()) {
+                android_errorWriteLog(0x534e4554, "176496353");
                 _hidl_cb(Status::ERROR_DRM_CANNOT_HANDLE, 0, "invalid buffer size");
                 return Void();
             }
-            destPtr = static_cast<void *>(base + destination.nonsecureMemory.offset);
+
+            if (destSize > destBuffer.size) {
+                _hidl_cb(Status::BAD_VALUE, 0, "subsample sum too large");
+                return Void();
+            }
+
+            base = static_cast<uint8_t *>(static_cast<void *>(destBase->getPointer()));
+            destPtr = static_cast<void*>(base + destination.nonsecureMemory.offset);
         } else if (destination.type == BufferType::NATIVE_HANDLE) {
+            if (!secure) {
+                _hidl_cb(Status::BAD_VALUE, 0, "native handle destination must be secure");
+                return Void();
+            }
             native_handle_t *handle = const_cast<native_handle_t *>(
                     destination.secureMemory.getNativeHandle());
             destPtr = static_cast<void *>(handle);
+        } else {
+            _hidl_cb(Status::BAD_VALUE, 0, "invalid destination type");
+            return Void();
         }
         ssize_t result = mLegacyPlugin->decrypt(secure, keyId.data(), iv.data(),
                 legacyMode, legacyPattern, srcPtr, legacySubSamples.get(),
