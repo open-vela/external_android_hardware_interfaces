@@ -41,12 +41,14 @@ using ::android::hardware::hidl_string;
 using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
+#if MAJOR_VERSION <= 6
 using ::android::hardware::audio::common::CPP_VERSION::implementation::AudioChannelBitfield;
+#endif
 using namespace ::android::hardware::audio::common::CPP_VERSION;
 using namespace ::android::hardware::audio::CPP_VERSION;
 
 struct Stream : public IStream, public ParametersUtil {
-    explicit Stream(audio_stream_t* stream);
+    Stream(bool isInput, audio_stream_t* stream);
 
     /** 1GiB is the maximum buffer size the HAL client is allowed to request.
      * This value has been chosen to be under SIZE_MAX and still big enough
@@ -59,6 +61,7 @@ struct Stream : public IStream, public ParametersUtil {
     Return<uint64_t> getFrameSize() override;
     Return<uint64_t> getFrameCount() override;
     Return<uint64_t> getBufferSize() override;
+#if MAJOR_VERSION <= 6
     Return<uint32_t> getSampleRate() override;
 #if MAJOR_VERSION == 2
     Return<void> getSupportedSampleRates(getSupportedSampleRates_cb _hidl_cb) override;
@@ -72,6 +75,10 @@ struct Stream : public IStream, public ParametersUtil {
     Return<AudioFormat> getFormat() override;
     Return<void> getSupportedFormats(getSupportedFormats_cb _hidl_cb) override;
     Return<Result> setFormat(AudioFormat format) override;
+#else
+    Return<void> getSupportedProfiles(getSupportedProfiles_cb _hidl_cb) override;
+    Return<Result> setAudioProperties(const AudioConfigBaseOptional& config) override;
+#endif  // MAJOR_VERSION <= 6
     Return<void> getAudioProperties(getAudioProperties_cb _hidl_cb) override;
     Return<Result> addEffect(uint64_t effectId) override;
     Return<Result> removeEffect(uint64_t effectId) override;
@@ -110,13 +117,14 @@ struct Stream : public IStream, public ParametersUtil {
                                 const std::vector<int>& ignoreErrors);
 
    private:
-    audio_stream_t* mStream;
+     const bool mIsInput;
+     audio_stream_t* mStream;
 
-    virtual ~Stream();
+     virtual ~Stream();
 
-    // Methods from ParametersUtil.
-    char* halGetParameters(const char* keys) override;
-    int halSetParameters(const char* keysAndValues) override;
+     // Methods from ParametersUtil.
+     char* halGetParameters(const char* keys) override;
+     int halSetParameters(const char* keysAndValues) override;
 };
 
 template <typename T>
@@ -157,6 +165,10 @@ Return<void> StreamMmap<T>::createMmapBuffer(int32_t minSizeFrames, size_t frame
     native_handle_t* hidlHandle = nullptr;
 
     if (mStream->create_mmap_buffer != NULL) {
+        if (minSizeFrames <= 0) {
+            retval = Result::INVALID_ARGUMENTS;
+            goto exit;
+        }
         struct audio_mmap_buffer_info halInfo;
         retval = Stream::analyzeStatus(
             "create_mmap_buffer", mStream->create_mmap_buffer(mStream, minSizeFrames, &halInfo));
@@ -184,6 +196,7 @@ Return<void> StreamMmap<T>::createMmapBuffer(int32_t minSizeFrames, size_t frame
             info.burstSizeFrames = halInfo.burst_size_frames;
         }
     }
+exit:
     _hidl_cb(retval, info);
     if (hidlHandle != nullptr) {
         native_handle_delete(hidlHandle);
