@@ -32,6 +32,7 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.security.keymint;
+/* @hide */
 @VintfStability
 interface IKeyMintDevice {
   android.hardware.security.keymint.KeyMintHardwareInfo getHardwareInfo();
@@ -46,6 +47,7 @@ interface IKeyMintDevice {
   android.hardware.security.keymint.BeginResult begin(in android.hardware.security.keymint.KeyPurpose purpose, in byte[] keyBlob, in android.hardware.security.keymint.KeyParameter[] params, in android.hardware.security.keymint.HardwareAuthToken authToken);
   void deviceLocked(in boolean passwordOnly, in @nullable android.hardware.security.secureclock.TimeStampToken timestampToken);
   void earlyBootEnded();
+  byte[] convertStorageKeyToEphemeral(in byte[] storageKeyBlob);
   byte[] performOperation(in byte[] request);
   const int AUTH_TOKEN_MAC_LENGTH = 32;
 }
