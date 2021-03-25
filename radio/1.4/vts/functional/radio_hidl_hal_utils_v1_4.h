@@ -16,7 +16,8 @@
 
 #include <android-base/logging.h>
 
-#include <log/log.h>
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -27,7 +28,6 @@
 #include <android/hardware/radio/1.4/IRadioIndication.h>
 #include <android/hardware/radio/1.4/IRadioResponse.h>
 #include <android/hardware/radio/1.4/types.h>
-#include <gtest/gtest.h>
 
 #include "vts_test_util.h"
 
@@ -64,7 +64,6 @@ class RadioResponse_v1_4 : public ::android::hardware::radio::V1_4::IRadioRespon
 
     // Call
     hidl_vec<::android::hardware::radio::V1_2::Call> currentCalls;
-    ::android::hardware::radio::V1_2::VoiceRegStateResult voiceRegResp;
 
     // Modem
     bool isModemEnabled;
@@ -706,9 +705,25 @@ class RadioIndication_v1_4 : public ::android::hardware::radio::V1_4::IRadioIndi
                             const ::android::hardware::hidl_string& reason);
 };
 
+// Test environment for Radio HIDL HAL.
+class RadioHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static RadioHidlEnvironment* Instance() {
+        static RadioHidlEnvironment* instance = new RadioHidlEnvironment;
+        return instance;
+    }
+    virtual void registerTestServices() override {
+        registerTestService<::android::hardware::radio::V1_4::IRadio>();
+    }
+
+   private:
+    RadioHidlEnvironment() {}
+};
+
 // The main test class for Radio HIDL.
-class RadioHidlTest_v1_4 : public ::testing::TestWithParam<std::string> {
-  protected:
+class RadioHidlTest_v1_4 : public ::testing::VtsHalHidlTargetTestBase {
+   protected:
     std::mutex mtx_;
     std::condition_variable cv_;
     int count_;
@@ -722,10 +737,7 @@ class RadioHidlTest_v1_4 : public ::testing::TestWithParam<std::string> {
     /* Update Sim Card Status */
     void updateSimCardStatus();
 
-    /* Stop Network Scan Command */
-    void stopNetworkScan();
-
-  public:
+   public:
     virtual void SetUp() override;
 
     /* Used as a mechanism to inform the test about data/event callback */
