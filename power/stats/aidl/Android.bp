@@ -41,5 +41,4 @@ aidl_interface {
             enabled: true,
         },
     },
-    host_supported: true,
 }
