@@ -472,7 +472,7 @@ GeneralResult<BufferRole> unvalidatedConvert(const aidl_hal::BufferRole& bufferR
     return BufferRole{
             .modelIndex = static_cast<uint32_t>(bufferRole.modelIndex),
             .ioIndex = static_cast<uint32_t>(bufferRole.ioIndex),
-            .frequency = bufferRole.frequency,
+            .probability = bufferRole.probability,
     };
 }
 
@@ -718,7 +718,7 @@ nn::GeneralResult<BufferRole> unvalidatedConvert(const nn::BufferRole& bufferRol
     return BufferRole{
             .modelIndex = static_cast<int32_t>(bufferRole.modelIndex),
             .ioIndex = static_cast<int32_t>(bufferRole.ioIndex),
-            .frequency = bufferRole.frequency,
+            .probability = bufferRole.probability,
     };
 }
 
@@ -964,12 +964,11 @@ nn::GeneralResult<Timing> unvalidatedConvert(const nn::Timing& timing) {
 }
 
 nn::GeneralResult<int64_t> unvalidatedConvert(const nn::Duration& duration) {
-    if (duration < nn::Duration::zero()) {
-        return NN_ERROR() << "Unable to convert invalid (negative) duration";
+    const uint64_t nanoseconds = duration.count();
+    if (nanoseconds > std::numeric_limits<int64_t>::max()) {
+        return std::numeric_limits<int64_t>::max();
     }
-    constexpr std::chrono::nanoseconds::rep kIntMax = std::numeric_limits<int64_t>::max();
-    const auto count = duration.count();
-    return static_cast<int64_t>(std::min(count, kIntMax));
+    return static_cast<int64_t>(nanoseconds);
 }
 
 nn::GeneralResult<int64_t> unvalidatedConvert(const nn::OptionalDuration& optionalDuration) {
