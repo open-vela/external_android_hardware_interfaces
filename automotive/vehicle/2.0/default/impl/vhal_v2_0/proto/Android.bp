@@ -13,9 +13,19 @@
 // limitations under the License.
 
 // Vehicle HAL Protobuf library
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
 cc_library_static {
     name: "android.hardware.automotive.vehicle@2.0-libproto-native",
     vendor: true,
+    host_supported: true,
     proto: {
         export_proto_headers: true,
         type: "lite",
@@ -23,5 +33,51 @@ cc_library_static {
     strip: {
         keep_symbols: true,
     },
-    srcs: ["VehicleHalProto.proto"]
+    cflags: [
+        "-Wall",
+        "-Werror",
+    ],
+    srcs: ["VehicleHalProto.proto"],
+}
+
+filegroup {
+    name: "vhal-proto-src",
+    visibility: [
+        "//device/google/trout/hal/vehicle/2.0:__subpackages__",
+    ],
+    srcs: [
+        "VehicleHalProto.proto",
+    ],
+}
+
+genrule {
+    name: "DefaultVehicleHalProtoStub_h",
+    tools: [
+        "aprotoc",
+        "protoc-gen-grpc-cpp-plugin",
+    ],
+    cmd: "$(location aprotoc) -I$$(dirname $(in)) -Iexternal/protobuf/src --plugin=protoc-gen-grpc=$(location protoc-gen-grpc-cpp-plugin) $(in) --grpc_out=$(genDir) --cpp_out=$(genDir)",
+    srcs: [
+        "VehicleHalProto.proto",
+    ],
+    out: [
+        "VehicleHalProto.pb.h",
+        "VehicleHalProto.grpc.pb.h",
+    ],
+}
+
+genrule {
+    name: "DefaultVehicleHalProtoStub_cc",
+    tools: [
+        "aprotoc",
+        "protoc-gen-grpc-cpp-plugin",
+    ],
+    cmd: "$(location aprotoc) -I$$(dirname $(in)) -Iexternal/protobuf/src --plugin=protoc-gen-grpc=$(location protoc-gen-grpc-cpp-plugin) $(in) --grpc_out=$(genDir) --cpp_out=$(genDir)",
+    srcs: [
+        "VehicleHalProto.proto",
+    ],
+    out: [
+        "VehicleHalProto.pb.cc",
+        "VehicleHalProto.grpc.pb.cc",
+    ],
 }

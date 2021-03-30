@@ -14,10 +14,29 @@
 // limitations under the License.
 //
 
-cc_test {
-    name: "VtsHalSensorsV1_0TargetTest",
-    defaults: ["VtsHalTargetTestDefaults"],
-    srcs: ["VtsHalSensorsV1_0TargetTest.cpp"],
-    static_libs: ["android.hardware.sensors@1.0"],
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
 }
 
+cc_test {
+    name: "VtsHalSensorsV1_0TargetTest",
+    cflags: ["-DLOG_TAG=\"sensors_hidl_hal_test\""],
+    defaults: ["VtsHalTargetTestDefaults"],
+    srcs: [
+        "SensorsHidlEnvironmentV1_0.cpp",
+        "VtsHalSensorsV1_0TargetTest.cpp",
+    ],
+    static_libs: [
+        "android.hardware.sensors@1.0",
+        "VtsHalSensorsTargetTestUtils",
+    ],
+    test_suites: [
+        "general-tests",
+        "vts",
+    ],
+}

@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <android/hardware/oemlock/1.0/IOemLock.h>
-
-#include <VtsHalHidlTargetTestBase.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
 
 using ::android::hardware::oemlock::V1_0::IOemLock;
 using ::android::hardware::oemlock::V1_0::OemLockStatus;
@@ -25,9 +25,9 @@ using ::android::hardware::hidl_string;
 using ::android::hardware::hidl_vec;
 using ::android::sp;
 
-struct OemLockHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+struct OemLockHidlTest : public ::testing::TestWithParam<std::string> {
     virtual void SetUp() override {
-        oemlock = ::testing::VtsHalHidlTargetTestBase::getService<IOemLock>();
+        oemlock = IOemLock::getService(GetParam());
         ASSERT_NE(oemlock, nullptr);
     }
 
@@ -39,7 +39,7 @@ struct OemLockHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 /*
  * Check the name can be retrieved
  */
-TEST_F(OemLockHidlTest, GetName) {
+TEST_P(OemLockHidlTest, GetName) {
     std::string name;
     OemLockStatus status;
 
@@ -59,7 +59,7 @@ TEST_F(OemLockHidlTest, GetName) {
 /*
  * Check the unlock allowed by device state can be queried
  */
-TEST_F(OemLockHidlTest, QueryUnlockAllowedByDevice) {
+TEST_P(OemLockHidlTest, QueryUnlockAllowedByDevice) {
     bool allowed;
     OemLockStatus status;
 
@@ -79,7 +79,7 @@ TEST_F(OemLockHidlTest, QueryUnlockAllowedByDevice) {
 /*
  * Check unlock allowed by device state can be toggled
  */
-TEST_F(OemLockHidlTest, AllowedByDeviceCanBeToggled) {
+TEST_P(OemLockHidlTest, AllowedByDeviceCanBeToggled) {
     bool allowed;
     OemLockStatus status;
 
@@ -116,7 +116,7 @@ TEST_F(OemLockHidlTest, AllowedByDeviceCanBeToggled) {
 /*
  * Check the unlock allowed by device state can be queried
  */
-TEST_F(OemLockHidlTest, QueryUnlockAllowedByCarrier) {
+TEST_P(OemLockHidlTest, QueryUnlockAllowedByCarrier) {
     bool allowed;
     OemLockStatus status;
 
@@ -140,7 +140,7 @@ TEST_F(OemLockHidlTest, QueryUnlockAllowedByCarrier) {
  * is a valid implementation so the test will pass. If there is no signature
  * required, the test will toggle the value.
  */
-TEST_F(OemLockHidlTest, CarrierUnlock) {
+TEST_P(OemLockHidlTest, CarrierUnlock) {
     const hidl_vec<uint8_t> noSignature = {};
     bool allowed;
     OemLockStatus status;
@@ -187,3 +187,9 @@ TEST_F(OemLockHidlTest, CarrierUnlock) {
     ASSERT_EQ(status, OemLockStatus::OK);
     ASSERT_EQ(allowed, originallyAllowed);
 };
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OemLockHidlTest);
+INSTANTIATE_TEST_SUITE_P(
+        PerInstance, OemLockHidlTest,
+        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IOemLock::descriptor)),
+        android::hardware::PrintInstanceNameToString);

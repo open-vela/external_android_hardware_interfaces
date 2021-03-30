@@ -18,7 +18,7 @@
 
 // The main test class for RENDERSCRIPT HIDL HAL.
 void RenderscriptHidlTest::SetUp() {
-    device = ::testing::VtsHalHidlTargetTestBase::getService<IDevice>();
+    device = IDevice::getService(GetParam());
     ASSERT_NE(nullptr, device.get());
 
     uint32_t version = 0;
@@ -34,18 +34,8 @@ void RenderscriptHidlTest::TearDown() {
     }
 }
 
-// A class for test environment setup (kept since this file is a template).
-class RenderscriptHidlEnvironment : public ::testing::Environment {
-public:
-    virtual void SetUp() {}
-    virtual void TearDown() {}
-};
-
-
-int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(new RenderscriptHidlEnvironment);
-    ::testing::InitGoogleTest(&argc, argv);
-    int status = RUN_ALL_TESTS();
-    LOG(INFO) << "Test result = " << status;
-    return status;
-}
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(RenderscriptHidlTest);
+INSTANTIATE_TEST_SUITE_P(
+        PerInstance, RenderscriptHidlTest,
+        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IDevice::descriptor)),
+        android::hardware::PrintInstanceNameToString);
