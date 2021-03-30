@@ -141,6 +141,7 @@ struct FilterConfig {
 };
 
 struct TimeFilterConfig {
+    bool supportTimeFilter;
     uint64_t timeStamp;
 };
 
@@ -154,6 +155,7 @@ struct FrontendConfig {
 };
 
 struct LnbConfig {
+    bool usingLnb;
     string name;
     LnbVoltage voltage;
     LnbTone tone;
@@ -219,9 +221,9 @@ inline void initFrontendConfig() {
     frontendArray[DVBT].tuneStatusTypes = types;
     frontendArray[DVBT].expectTuneStatuses = statuses;
     frontendArray[DVBT].isSoftwareFe = true;
-    frontendArray[DVBT].enable = true;
+    frontendArray[DVBS].enable = true;
     frontendArray[DVBS].type = FrontendType::DVBS;
-    frontendArray[DVBS].enable = false;
+    frontendArray[DVBS].enable = true;
     frontendArray[DVBS].isSoftwareFe = true;
 };
 
@@ -244,9 +246,11 @@ inline void initFrontendScanConfig() {
 
 /** Configuration array for the Lnb test */
 inline void initLnbConfig() {
+    lnbArray[LNB0].usingLnb = true;
     lnbArray[LNB0].voltage = LnbVoltage::VOLTAGE_12V;
     lnbArray[LNB0].tone = LnbTone::NONE;
     lnbArray[LNB0].position = LnbPosition::UNDEFINED;
+    lnbArray[LNB_EXTERNAL].usingLnb = true;
     lnbArray[LNB_EXTERNAL].name = "default_lnb_external";
     lnbArray[LNB_EXTERNAL].voltage = LnbVoltage::VOLTAGE_5V;
     lnbArray[LNB_EXTERNAL].tone = LnbTone::NONE;
@@ -340,6 +344,7 @@ inline void initFilterConfig() {
 
 /** Configuration array for the timer filter test */
 inline void initTimeFilterConfig() {
+    timeFilterArray[TIMER0].supportTimeFilter = true;
     timeFilterArray[TIMER0].timeStamp = 1;
 }
 

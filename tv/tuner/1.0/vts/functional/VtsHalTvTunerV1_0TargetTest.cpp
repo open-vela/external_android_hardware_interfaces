@@ -57,15 +57,13 @@ void TunerFilterHidlTest::configSingleFilterInDemuxTest(FilterConfig filterConf,
 }
 
 void TunerFilterHidlTest::testTimeFilter(TimeFilterConfig filterConf) {
-    uint32_t demuxId;
-    sp<IDemux> demux;
-    DemuxCapabilities caps;
-
-    ASSERT_TRUE(mDemuxTests.openDemux(demux, demuxId));
-    ASSERT_TRUE(mDemuxTests.getDemuxCaps(caps));
-    if (!caps.bTimeFilter) {
+    if (!filterConf.supportTimeFilter) {
         return;
     }
+    uint32_t demuxId;
+    sp<IDemux> demux;
+
+    ASSERT_TRUE(mDemuxTests.openDemux(demux, demuxId));
     mFilterTests.setDemux(demux);
     ASSERT_TRUE(mFilterTests.openTimeFilterInDemux());
     ASSERT_TRUE(mFilterTests.setTimeStamp(filterConf.timeStamp));
@@ -121,7 +119,7 @@ void TunerBroadcastHidlTest::broadcastSingleFilterTestWithLnb(FilterConfig filte
                                                               LnbConfig lnbConf) {
     vector<uint32_t> ids;
     ASSERT_TRUE(mLnbTests.getLnbIds(ids));
-    if (ids.size() == 0) {
+    if (!lnbConf.usingLnb) {
         return;
     }
     ASSERT_TRUE(ids.size() > 0);
@@ -217,9 +215,10 @@ void TunerRecordHidlTest::recordSingleFilterTestWithLnb(FilterConfig filterConf,
                                                         DvrConfig dvrConf, LnbConfig lnbConf) {
     vector<uint32_t> ids;
     ASSERT_TRUE(mLnbTests.getLnbIds(ids));
-    if (ids.size() == 0) {
+    if (!lnbConf.usingLnb) {
         return;
     }
+    ASSERT_TRUE(ids.size() > 0);
     ASSERT_TRUE(mLnbTests.openLnbById(ids[0]));
     *mLnbId = ids[0];
     ASSERT_TRUE(mLnbTests.setLnbCallback());
@@ -353,11 +352,6 @@ TEST_P(TunerFrontendHidlTest, BlindScanFrontend) {
 
 TEST_P(TunerLnbHidlTest, OpenLnbByName) {
     description("Open and configure an Lnb with name then send a diseqc msg to it.");
-    vector<uint32_t> ids;
-    ASSERT_TRUE(mLnbTests.getLnbIds(ids));
-    if (ids.size() == 0) {
-        return;
-    }
     ASSERT_TRUE(mLnbTests.openLnbByName(lnbArray[LNB_EXTERNAL].name));
     ASSERT_TRUE(mLnbTests.setLnbCallback());
     ASSERT_TRUE(mLnbTests.setVoltage(lnbArray[LNB_EXTERNAL].voltage));
@@ -371,7 +365,7 @@ TEST_P(TunerLnbHidlTest, SendDiseqcMessageToLnb) {
     description("Open and configure an Lnb with specific settings then send a diseqc msg to it.");
     vector<uint32_t> ids;
     ASSERT_TRUE(mLnbTests.getLnbIds(ids));
-    if (ids.size() == 0) {
+    if (!lnbArray[LNB0].usingLnb) {
         return;
     }
     ASSERT_TRUE(ids.size() > 0);
@@ -521,8 +515,7 @@ TEST_P(TunerRecordHidlTest, RecordDataFlowWithTsRecordFilterTest) {
 
 TEST_P(TunerRecordHidlTest, LnbRecordDataFlowWithTsRecordFilterTest) {
     description("Feed ts data from Fe with Lnb to recording and test with ts record filter");
-    recordSingleFilterTestWithLnb(filterArray[TS_RECORD0], frontendArray[DVBS],
-                                  dvrArray[DVR_RECORD0], lnbArray[LNB0]);
+    recordSingleFilterTest(filterArray[TS_RECORD0], frontendArray[DVBS], dvrArray[DVR_RECORD0]);
 }
 
 TEST_P(TunerDescramblerHidlTest, CreateDescrambler) {
