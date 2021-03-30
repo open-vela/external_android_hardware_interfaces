@@ -227,12 +227,11 @@ class CertificateRequestTest : public VtsRemotelyProvisionedComponentTests {
 TEST_P(CertificateRequestTest, EmptyRequest_testMode) {
     bool testMode = true;
     bytevec keysToSignMac;
-    DeviceInfo deviceInfo;
     ProtectedData protectedData;
     auto challenge = randomBytes(32);
-    auto status = provisionable_->generateCertificateRequest(
-            testMode, {} /* keysToSign */, eekChain_.chain, challenge, &deviceInfo, &protectedData,
-            &keysToSignMac);
+    auto status = provisionable_->generateCertificateRequest(testMode, {} /* keysToSign */,
+                                                             eekChain_.chain, challenge,
+                                                             &keysToSignMac, &protectedData);
     ASSERT_TRUE(status.isOk()) << status.getMessage();
 
     auto [parsedProtectedData, _, protDataErrMsg] = cppbor::parse(protectedData.protectedData);
@@ -298,12 +297,11 @@ TEST_P(CertificateRequestTest, EmptyRequest_testMode) {
 TEST_P(CertificateRequestTest, EmptyRequest_prodMode) {
     bool testMode = false;
     bytevec keysToSignMac;
-    DeviceInfo deviceInfo;
     ProtectedData protectedData;
     auto challenge = randomBytes(32);
-    auto status = provisionable_->generateCertificateRequest(
-            testMode, {} /* keysToSign */, eekChain_.chain, challenge, &deviceInfo, &protectedData,
-            &keysToSignMac);
+    auto status = provisionable_->generateCertificateRequest(testMode, {} /* keysToSign */,
+                                                             eekChain_.chain, challenge,
+                                                             &keysToSignMac, &protectedData);
     ASSERT_FALSE(status.isOk());
     ASSERT_EQ(status.getServiceSpecificError(), BnRemotelyProvisionedComponent::STATUS_INVALID_EEK);
 }
@@ -316,12 +314,10 @@ TEST_P(CertificateRequestTest, NonEmptyRequest_testMode) {
     generateKeys(testMode, 4 /* numKeys */);
 
     bytevec keysToSignMac;
-    DeviceInfo deviceInfo;
     ProtectedData protectedData;
     auto challenge = randomBytes(32);
-    auto status = provisionable_->generateCertificateRequest(testMode, keysToSign_, eekChain_.chain,
-                                                             challenge, &deviceInfo, &protectedData,
-                                                             &keysToSignMac);
+    auto status = provisionable_->generateCertificateRequest(
+            testMode, keysToSign_, eekChain_.chain, challenge, &keysToSignMac, &protectedData);
     ASSERT_TRUE(status.isOk()) << status.getMessage();
 
     auto [parsedProtectedData, _, protDataErrMsg] = cppbor::parse(protectedData.protectedData);
@@ -388,12 +384,10 @@ TEST_P(CertificateRequestTest, NonEmptyRequest_prodMode) {
     generateKeys(testMode, 4 /* numKeys */);
 
     bytevec keysToSignMac;
-    DeviceInfo deviceInfo;
     ProtectedData protectedData;
     auto challenge = randomBytes(32);
-    auto status = provisionable_->generateCertificateRequest(testMode, keysToSign_, eekChain_.chain,
-                                                             challenge, &deviceInfo, &protectedData,
-                                                             &keysToSignMac);
+    auto status = provisionable_->generateCertificateRequest(
+            testMode, keysToSign_, eekChain_.chain, challenge, &keysToSignMac, &protectedData);
     ASSERT_FALSE(status.isOk());
     ASSERT_EQ(status.getServiceSpecificError(), BnRemotelyProvisionedComponent::STATUS_INVALID_EEK);
 }
@@ -406,12 +400,11 @@ TEST_P(CertificateRequestTest, NonEmptyRequest_prodKeyInTestCert) {
     generateKeys(false /* testMode */, 2 /* numKeys */);
 
     bytevec keysToSignMac;
-    DeviceInfo deviceInfo;
     ProtectedData protectedData;
     auto challenge = randomBytes(32);
-    auto status = provisionable_->generateCertificateRequest(
-            true /* testMode */, keysToSign_, eekChain_.chain, challenge, &deviceInfo,
-            &protectedData, &keysToSignMac);
+    auto status = provisionable_->generateCertificateRequest(true /* testMode */, keysToSign_,
+                                                             eekChain_.chain, challenge,
+                                                             &keysToSignMac, &protectedData);
     ASSERT_FALSE(status.isOk());
     ASSERT_EQ(status.getServiceSpecificError(),
               BnRemotelyProvisionedComponent::STATUS_PRODUCTION_KEY_IN_TEST_REQUEST);
@@ -425,11 +418,10 @@ TEST_P(CertificateRequestTest, NonEmptyRequest_testKeyInProdCert) {
     generateKeys(true /* testMode */, 2 /* numKeys */);
 
     bytevec keysToSignMac;
-    DeviceInfo deviceInfo;
     ProtectedData protectedData;
     auto status = provisionable_->generateCertificateRequest(
             false /* testMode */, keysToSign_, eekChain_.chain, randomBytes(32) /* challenge */,
-            &deviceInfo, &protectedData, &keysToSignMac);
+            &keysToSignMac, &protectedData);
     ASSERT_FALSE(status.isOk());
     ASSERT_EQ(status.getServiceSpecificError(),
               BnRemotelyProvisionedComponent::STATUS_TEST_KEY_IN_PRODUCTION_REQUEST);
