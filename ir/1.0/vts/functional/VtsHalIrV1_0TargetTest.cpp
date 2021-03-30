@@ -21,7 +21,9 @@
 #include <android/hardware/ir/1.0/IConsumerIr.h>
 #include <android/hardware/ir/1.0/types.h>
 
-#include <VtsHalHidlTargetTestBase.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
 #include <algorithm>
 
 using ::android::hardware::ir::V1_0::IConsumerIr;
@@ -30,11 +32,10 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::sp;
 
-// The main test class for IR HIDL HAL.
-class ConsumerIrHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+class ConsumerIrHidlTest : public ::testing::TestWithParam<std::string> {
  public:
   virtual void SetUp() override {
-    ir = ::testing::VtsHalHidlTargetTestBase::getService<IConsumerIr>();
+    ir = IConsumerIr::getService(GetParam());
     ASSERT_NE(ir, nullptr);
   }
 
@@ -44,7 +45,7 @@ class ConsumerIrHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 };
 
 // Test transmit() for the min and max frequency of every available range
-TEST_F(ConsumerIrHidlTest, TransmitTest) {
+TEST_P(ConsumerIrHidlTest, TransmitTest) {
   bool success;
   hidl_vec<ConsumerIrFreqRange> ranges;
   auto cb = [&](bool s, hidl_vec<ConsumerIrFreqRange> v) {
@@ -68,7 +69,7 @@ TEST_F(ConsumerIrHidlTest, TransmitTest) {
 }
 
 // Test transmit() when called with invalid frequencies
-TEST_F(ConsumerIrHidlTest, BadFreqTest) {
+TEST_P(ConsumerIrHidlTest, BadFreqTest) {
   uint32_t len = 16;
   hidl_vec<int32_t> vec;
   vec.resize(len);
@@ -76,9 +77,8 @@ TEST_F(ConsumerIrHidlTest, BadFreqTest) {
   EXPECT_FALSE(ir->transmit(-1, vec));
 }
 
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  int status = RUN_ALL_TESTS();
-  LOG(INFO) << "Test result = " << status;
-  return status;
-}
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(ConsumerIrHidlTest);
+INSTANTIATE_TEST_SUITE_P(
+        PerInstance, ConsumerIrHidlTest,
+        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IConsumerIr::descriptor)),
+        android::hardware::PrintInstanceNameToString);

@@ -17,8 +17,9 @@
 #define LOG_TAG "power_hidl_hal_test"
 #include <android-base/logging.h>
 #include <android/hardware/power/1.1/IPower.h>
-
-#include <VtsHalHidlTargetTestBase.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
 
 using ::android::hardware::power::V1_1::IPower;
 using ::android::hardware::power::V1_1::PowerStateSubsystem;
@@ -28,11 +29,11 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::sp;
 
-class PowerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+class PowerHidlTest : public testing::TestWithParam<std::string> {
  public:
   virtual void SetUp() override {
-    power = ::testing::VtsHalHidlTargetTestBase::getService<IPower>();
-    ASSERT_NE(power, nullptr);
+      power = IPower::getService(GetParam());
+      ASSERT_NE(power, nullptr);
   }
 
   virtual void TearDown() override {}
@@ -40,8 +41,8 @@ class PowerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
   sp<IPower> power;
 };
 
-// Sanity check Power::getSubsystemLowPowerStats().
-TEST_F(PowerHidlTest, GetSubsystemLowPowerStats) {
+// Validate Power::getSubsystemLowPowerStats().
+TEST_P(PowerHidlTest, GetSubsystemLowPowerStats) {
   hidl_vec<PowerStateSubsystem> vec;
   Status s;
   auto cb = [&vec, &s](hidl_vec<PowerStateSubsystem> subsystems,
@@ -55,8 +56,8 @@ TEST_F(PowerHidlTest, GetSubsystemLowPowerStats) {
   ASSERT_TRUE(s == Status::SUCCESS || s == Status::FILESYSTEM_ERROR);
 }
 
-// Sanity check Power::powerHintAsync on good and bad inputs.
-TEST_F(PowerHidlTest, PowerHintAsync) {
+// Validate Power::powerHintAsync on good and bad inputs.
+TEST_P(PowerHidlTest, PowerHintAsync) {
     PowerHint badHint = static_cast<PowerHint>(0xA);
     auto hints = {PowerHint::VSYNC,        PowerHint::INTERACTION, PowerHint::VIDEO_ENCODE,
                   PowerHint::VIDEO_DECODE, PowerHint::LOW_POWER,   PowerHint::SUSTAINED_PERFORMANCE,
@@ -90,9 +91,8 @@ TEST_F(PowerHidlTest, PowerHintAsync) {
     } while (std::next_permutation(hints2.begin(), hints2.end(), compareHints));
 }
 
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  int status = RUN_ALL_TESTS();
-  LOG(INFO) << "Test result = " << status;
-  return status;
-}
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(PowerHidlTest);
+INSTANTIATE_TEST_SUITE_P(
+        PerInstance, PowerHidlTest,
+        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IPower::descriptor)),
+        android::hardware::PrintInstanceNameToString);

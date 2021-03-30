@@ -155,6 +155,12 @@ Return<Result> Contexthub::sendMessageToHub(uint32_t hubId,
         .message = static_cast<const uint8_t *>(msg.msg.data()),
     };
 
+    // Use a placeholder to prevent send_message with empty message from failing prematurely
+    static uint8_t placeholder;
+    if (txMsg.message_len == 0 && txMsg.message == nullptr) {
+        txMsg.message = &placeholder;
+    }
+
     ALOGI("Sending msg of type %" PRIu32 ", size %" PRIu32 " to app 0x%" PRIx64,
           txMsg.message_type,
           txMsg.message_len,
@@ -249,7 +255,7 @@ static bool isValidOsStatus(const uint8_t *msg,
 
     memcpy(rsp, msg, sizeof(*rsp));
 
-    // No sanity checks on return values
+    // No validations on return values
     return true;
 }
 
@@ -275,11 +281,11 @@ int Contexthub::handleOsMessage(sp<IContexthubCallback> cb,
                 result = TransactionResult::FAILURE;
             }
 
+            mIsTransactionPending = false;
             if (cb != nullptr) {
                 cb->handleTxnResult(mTransactionId, result);
             }
             retVal = 0;
-            mIsTransactionPending = false;
             break;
         }
 
@@ -377,6 +383,7 @@ int Contexthub::contextHubCb(uint32_t hubId,
 
         msg.appName = rxMsg->app_name.id;
         msg.msgType = rxMsg->message_type;
+        msg.hostEndPoint = static_cast<uint16_t>(HostEndPoint::BROADCAST);
         msg.msg = std::vector<uint8_t>(static_cast<const uint8_t *>(rxMsg->message),
                                        static_cast<const uint8_t *>(rxMsg->message) +
                                        rxMsg->message_len);

@@ -21,8 +21,8 @@ using namespace ::android::hardware::radio::V1_0;
 /*
  * Test IRadio.getClir() for the response returned.
  */
-TEST_F(RadioHidlTest, getClir) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, getClir) {
+    serial = GetRandomSerialNumber();
 
     radio->getClir(serial);
 
@@ -31,15 +31,16 @@ TEST_F(RadioHidlTest, getClir) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckGeneralError() || radioRsp->rspInfo.error == RadioError::MODEM_ERR);
+        ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::MODEM_ERR},
+                                     CHECK_GENERAL_ERROR));
     }
 }
 
 /*
  * Test IRadio.setClir() for the response returned.
  */
-TEST_F(RadioHidlTest, setClir) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, setClir) {
+    serial = GetRandomSerialNumber();
     int32_t status = 1;
 
     radio->setClir(serial, status);
@@ -56,8 +57,8 @@ TEST_F(RadioHidlTest, setClir) {
 /*
  * Test IRadio.getFacilityLockForApp() for the response returned.
  */
-TEST_F(RadioHidlTest, getFacilityLockForApp) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, getFacilityLockForApp) {
+    serial = GetRandomSerialNumber();
     std::string facility = "";
     std::string password = "";
     int32_t serviceClass = 1;
@@ -70,17 +71,17 @@ TEST_F(RadioHidlTest, getFacilityLockForApp) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckGeneralError() ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
-                    radioRsp->rspInfo.error == RadioError::MODEM_ERR);
+        ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
+                                     {RadioError::INVALID_ARGUMENTS, RadioError::MODEM_ERR},
+                                     CHECK_GENERAL_ERROR));
     }
 }
 
 /*
  * Test IRadio.setFacilityLockForApp() for the response returned.
  */
-TEST_F(RadioHidlTest, setFacilityLockForApp) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, setFacilityLockForApp) {
+    serial = GetRandomSerialNumber();
     std::string facility = "";
     bool lockState = false;
     std::string password = "";
@@ -94,17 +95,17 @@ TEST_F(RadioHidlTest, setFacilityLockForApp) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckGeneralError() ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
-                    radioRsp->rspInfo.error == RadioError::MODEM_ERR);
+        ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
+                                     {RadioError::INVALID_ARGUMENTS, RadioError::MODEM_ERR},
+                                     CHECK_GENERAL_ERROR));
     }
 }
 
 /*
  * Test IRadio.setBarringPassword() for the response returned.
  */
-TEST_F(RadioHidlTest, setBarringPassword) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, setBarringPassword) {
+    serial = GetRandomSerialNumber();
     std::string facility = "";
     std::string oldPassword = "";
     std::string newPassword = "";
@@ -116,19 +117,18 @@ TEST_F(RadioHidlTest, setBarringPassword) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckGeneralError() ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
-                    radioRsp->rspInfo.error == RadioError::NONE ||
-                    radioRsp->rspInfo.error == RadioError::MODEM_ERR ||
-                    radioRsp->rspInfo.error == RadioError::FDN_CHECK_FAILURE);
+        ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
+                                     {RadioError::NONE, RadioError::FDN_CHECK_FAILURE,
+                                      RadioError::INVALID_ARGUMENTS, RadioError::MODEM_ERR},
+                                     CHECK_GENERAL_ERROR));
     }
 }
 
 /*
  * Test IRadio.getClip() for the response returned.
  */
-TEST_F(RadioHidlTest, getClip) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, getClip) {
+    serial = GetRandomSerialNumber();
 
     radio->getClip(serial);
 
@@ -137,15 +137,16 @@ TEST_F(RadioHidlTest, getClip) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckGeneralError() || radioRsp->rspInfo.error == RadioError::MODEM_ERR);
+        ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::MODEM_ERR},
+                                     CHECK_GENERAL_ERROR));
     }
 }
 
 /*
  * Test IRadio.setSuppServiceNotifications() for the response returned.
  */
-TEST_F(RadioHidlTest, setSuppServiceNotifications) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, setSuppServiceNotifications) {
+    serial = GetRandomSerialNumber();
     bool enable = false;
 
     radio->setSuppServiceNotifications(serial, enable);
@@ -155,16 +156,16 @@ TEST_F(RadioHidlTest, setSuppServiceNotifications) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(radioRsp->rspInfo.error == RadioError::NONE ||
-                    radioRsp->rspInfo.error == RadioError::SIM_ABSENT);
+        ASSERT_TRUE(
+            CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::NONE, RadioError::SIM_ABSENT}));
     }
 }
 
 /*
  * Test IRadio.requestIsimAuthentication() for the response returned.
  */
-TEST_F(RadioHidlTest, requestIsimAuthentication) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, requestIsimAuthentication) {
+    serial = GetRandomSerialNumber();
     std::string challenge = "";
 
     radio->requestIsimAuthentication(serial, challenge);
@@ -174,15 +175,19 @@ TEST_F(RadioHidlTest, requestIsimAuthentication) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckGeneralError() || radioRsp->rspInfo.error == RadioError::SIM_ABSENT);
+        ASSERT_TRUE(CheckAnyOfErrors(
+            radioRsp->rspInfo.error,
+            {RadioError::SIM_ABSENT, RadioError::INVALID_ARGUMENTS, RadioError::RADIO_NOT_AVAILABLE,
+             RadioError::NO_MEMORY, RadioError::SYSTEM_ERR, RadioError::REQUEST_NOT_SUPPORTED,
+             RadioError::CANCELLED}));
     }
 }
 
 /*
  * Test IRadio.getImsRegistrationState() for the response returned.
  */
-TEST_F(RadioHidlTest, getImsRegistrationState) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, getImsRegistrationState) {
+    serial = GetRandomSerialNumber();
 
     radio->getImsRegistrationState(serial);
 
@@ -191,8 +196,9 @@ TEST_F(RadioHidlTest, getImsRegistrationState) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckGeneralError() || radioRsp->rspInfo.error == RadioError::NONE ||
-                    radioRsp->rspInfo.error == RadioError::MODEM_ERR ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_MODEM_STATE);
+        ASSERT_TRUE(CheckAnyOfErrors(
+            radioRsp->rspInfo.error,
+            {RadioError::NONE, RadioError::MODEM_ERR, RadioError::INVALID_MODEM_STATE},
+            CHECK_GENERAL_ERROR));
     }
 }

@@ -18,6 +18,7 @@
 
 #include "DumpstateDevice.h"
 
+#include <hidl/HidlBinderSupport.h>
 #include <log/log.h>
 
 #include "DumpstateUtil.h"
@@ -34,8 +35,7 @@ namespace implementation {
 // Methods from ::android::hardware::dumpstate::V1_0::IDumpstateDevice follow.
 Return<void> DumpstateDevice::dumpstateBoard(const hidl_handle& handle) {
     // NOTE: this is just an example on how to use the DumpstateUtil.h functions to implement
-    // this interface - since HIDL_FETCH_IDumpstateDevice() is not defined, this function will never
-    // be called by dumpstate.
+    // this interface.
 
     if (handle == nullptr || handle->numFds < 1) {
         ALOGE("no FDs\n");
@@ -51,9 +51,8 @@ Return<void> DumpstateDevice::dumpstateBoard(const hidl_handle& handle) {
     ALOGI("Dumpstate HIDL not provided by device\n");
     dprintf(fd, "Dumpstate HIDL not provided by device; providing bogus data.\n");
 
-    // Shows some examples on how to use the libdumpstateutil API.
-    RunCommandToFd(fd, "DATE", {"/vendor/bin/date"});
-    DumpFileToFd(fd, "HOSTS", "/system/etc/hosts");
+    // Shows an example on how to use the libdumpstateutil API.
+    DumpFileToFd(fd, "cmdline", "/proc/self/cmdline");
 
     return Void();
 }

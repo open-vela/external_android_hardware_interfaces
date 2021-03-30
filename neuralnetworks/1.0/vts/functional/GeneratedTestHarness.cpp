@@ -14,212 +14,169 @@
  * limitations under the License.
  */
 
-#include "Callbacks.h"
+#include "GeneratedTestHarness.h"
+
+#include "1.0/Callbacks.h"
+#include "1.0/Utils.h"
+#include "MemoryUtils.h"
 #include "TestHarness.h"
-#include "VtsHalNeuralnetworksV1_0TargetTest.h"
+#include "VtsHalNeuralnetworks.h"
 
 #include <android-base/logging.h>
+#include <android/hardware/neuralnetworks/1.0/IDevice.h>
+#include <android/hardware/neuralnetworks/1.0/IPreparedModel.h>
+#include <android/hardware/neuralnetworks/1.0/types.h>
+#include <android/hidl/allocator/1.0/IAllocator.h>
 #include <android/hidl/memory/1.0/IMemory.h>
 #include <hidlmemory/mapping.h>
+
+#include <gtest/gtest.h>
 #include <iostream>
 
-namespace android {
-namespace hardware {
-namespace neuralnetworks {
-namespace V1_0 {
-namespace vts {
-namespace functional {
-// allocator helper
-hidl_memory allocateSharedMemory(int64_t size, const std::string& type = "ashmem");
+namespace android::hardware::neuralnetworks::V1_0::vts::functional {
 
-namespace generated_tests {
-using ::android::hardware::neuralnetworks::V1_0::implementation::ExecutionCallback;
-using ::android::hardware::neuralnetworks::V1_0::implementation::PreparedModelCallback;
-using ::generated_tests::filter;
-using ::generated_tests::for_all;
-using ::generated_tests::for_each;
-using ::generated_tests::resize_accordingly;
-using ::generated_tests::MixedTyped;
-using ::generated_tests::MixedTypedExampleType;
-using ::generated_tests::Float32Operands;
-using ::generated_tests::Int32Operands;
-using ::generated_tests::Quant8Operands;
-using ::generated_tests::compare;
+using namespace test_helper;
+using hidl::memory::V1_0::IMemory;
+using implementation::ExecutionCallback;
+using implementation::PreparedModelCallback;
 
-template <typename T>
-void copy_back_(MixedTyped* dst, const std::vector<RequestArgument>& ra, char* src) {
-    MixedTyped& test = *dst;
-    for_each<T>(test, [&ra, src](int index, std::vector<T>& m) {
-        ASSERT_EQ(m.size(), ra[index].location.length / sizeof(T));
-        char* begin = src + ra[index].location.offset;
-        memcpy(m.data(), begin, ra[index].location.length);
-    });
-}
+Model createModel(const TestModel& testModel) {
+    // Model operands.
+    CHECK_EQ(testModel.referenced.size(), 0u);  // Not supported in 1.0.
+    hidl_vec<Operand> operands(testModel.main.operands.size());
+    size_t constCopySize = 0, constRefSize = 0;
+    for (uint32_t i = 0; i < testModel.main.operands.size(); i++) {
+        const auto& op = testModel.main.operands[i];
 
-void copy_back(MixedTyped* dst, const std::vector<RequestArgument>& ra, char* src) {
-    copy_back_<float>(dst, ra, src);
-    copy_back_<int32_t>(dst, ra, src);
-    copy_back_<uint8_t>(dst, ra, src);
+        DataLocation loc = {};
+        if (op.lifetime == TestOperandLifeTime::CONSTANT_COPY) {
+            loc = {.poolIndex = 0,
+                   .offset = static_cast<uint32_t>(constCopySize),
+                   .length = static_cast<uint32_t>(op.data.size())};
+            constCopySize += op.data.alignedSize();
+        } else if (op.lifetime == TestOperandLifeTime::CONSTANT_REFERENCE) {
+            loc = {.poolIndex = 0,
+                   .offset = static_cast<uint32_t>(constRefSize),
+                   .length = static_cast<uint32_t>(op.data.size())};
+            constRefSize += op.data.alignedSize();
+        }
+
+        operands[i] = {.type = static_cast<OperandType>(op.type),
+                       .dimensions = op.dimensions,
+                       .numberOfConsumers = op.numberOfConsumers,
+                       .scale = op.scale,
+                       .zeroPoint = op.zeroPoint,
+                       .lifetime = static_cast<OperandLifeTime>(op.lifetime),
+                       .location = loc};
+    }
+
+    // Model operations.
+    hidl_vec<Operation> operations(testModel.main.operations.size());
+    std::transform(testModel.main.operations.begin(), testModel.main.operations.end(),
+                   operations.begin(), [](const TestOperation& op) -> Operation {
+                       return {.type = static_cast<OperationType>(op.type),
+                               .inputs = op.inputs,
+                               .outputs = op.outputs};
+                   });
+
+    // Constant copies.
+    hidl_vec<uint8_t> operandValues(constCopySize);
+    for (uint32_t i = 0; i < testModel.main.operands.size(); i++) {
+        const auto& op = testModel.main.operands[i];
+        if (op.lifetime == TestOperandLifeTime::CONSTANT_COPY) {
+            const uint8_t* begin = op.data.get<uint8_t>();
+            const uint8_t* end = begin + op.data.size();
+            std::copy(begin, end, operandValues.data() + operands[i].location.offset);
+        }
+    }
+
+    // Shared memory.
+    hidl_vec<hidl_memory> pools;
+    if (constRefSize > 0) {
+        hidl_vec_push_back(&pools, nn::allocateSharedMemory(constRefSize));
+        CHECK_NE(pools[0].size(), 0u);
+
+        // load data
+        sp<IMemory> mappedMemory = mapMemory(pools[0]);
+        CHECK(mappedMemory.get() != nullptr);
+        uint8_t* mappedPtr =
+                reinterpret_cast<uint8_t*>(static_cast<void*>(mappedMemory->getPointer()));
+        CHECK(mappedPtr != nullptr);
+
+        for (uint32_t i = 0; i < testModel.main.operands.size(); i++) {
+            const auto& op = testModel.main.operands[i];
+            if (op.lifetime == TestOperandLifeTime::CONSTANT_REFERENCE) {
+                const uint8_t* begin = op.data.get<uint8_t>();
+                const uint8_t* end = begin + op.data.size();
+                std::copy(begin, end, mappedPtr + operands[i].location.offset);
+            }
+        }
+    }
+
+    return {.operands = std::move(operands),
+            .operations = std::move(operations),
+            .inputIndexes = testModel.main.inputIndexes,
+            .outputIndexes = testModel.main.outputIndexes,
+            .operandValues = std::move(operandValues),
+            .pools = std::move(pools)};
 }
 
 // Top level driver for models and examples generated by test_generator.py
 // Test driver for those generated from ml/nn/runtime/test/spec
-void Execute(const sp<IDevice>& device, std::function<Model(void)> create_model,
-             std::function<bool(int)> is_ignored,
-             const std::vector<MixedTypedExampleType>& examples) {
-    const uint32_t INPUT = 0;
-    const uint32_t OUTPUT = 1;
-    Model model = create_model();
+void Execute(const sp<IDevice>& device, const TestModel& testModel) {
+    const Model model = createModel(testModel);
 
-    // see if service can handle model
-    bool fullySupportsModel = false;
-    Return<void> supportedCall = device->getSupportedOperations(
-        model, [&fullySupportsModel](ErrorStatus status, const hidl_vec<bool>& supported) {
-            ASSERT_EQ(ErrorStatus::NONE, status);
-            ASSERT_NE(0ul, supported.size());
-            fullySupportsModel =
-                std::all_of(supported.begin(), supported.end(), [](bool valid) { return valid; });
-        });
-    ASSERT_TRUE(supportedCall.isOk());
+    ExecutionContext context;
+    const Request request = context.createRequest(testModel);
 
-    // launch prepare model
-    sp<PreparedModelCallback> preparedModelCallback = new PreparedModelCallback();
-    ASSERT_NE(nullptr, preparedModelCallback.get());
-    Return<ErrorStatus> prepareLaunchStatus = device->prepareModel(model, preparedModelCallback);
-    ASSERT_TRUE(prepareLaunchStatus.isOk());
-    ASSERT_EQ(ErrorStatus::NONE, static_cast<ErrorStatus>(prepareLaunchStatus));
+    // Create IPreparedModel.
+    sp<IPreparedModel> preparedModel;
+    createPreparedModel(device, model, &preparedModel);
+    if (preparedModel == nullptr) return;
 
-    // retrieve prepared model
-    preparedModelCallback->wait();
-    ErrorStatus prepareReturnStatus = preparedModelCallback->getStatus();
-    sp<IPreparedModel> preparedModel = preparedModelCallback->getPreparedModel();
+    // Launch execution.
+    sp<ExecutionCallback> executionCallback = new ExecutionCallback();
+    Return<ErrorStatus> executionLaunchStatus = preparedModel->execute(request, executionCallback);
+    ASSERT_TRUE(executionLaunchStatus.isOk());
+    EXPECT_EQ(ErrorStatus::NONE, static_cast<ErrorStatus>(executionLaunchStatus));
 
-    // early termination if vendor service cannot fully prepare model
-    if (!fullySupportsModel && prepareReturnStatus != ErrorStatus::NONE) {
-        ASSERT_EQ(nullptr, preparedModel.get());
-        LOG(INFO) << "NN VTS: Early termination of test because vendor service cannot "
-                     "prepare model that it does not support.";
-        std::cout << "[          ]   Early termination of test because vendor service cannot "
-                     "prepare model that it does not support."
-                  << std::endl;
-        return;
-    }
-    EXPECT_EQ(ErrorStatus::NONE, prepareReturnStatus);
-    ASSERT_NE(nullptr, preparedModel.get());
+    // Retrieve execution status.
+    executionCallback->wait();
+    ASSERT_EQ(ErrorStatus::NONE, executionCallback->getStatus());
 
-    int example_no = 1;
-    for (auto& example : examples) {
-        SCOPED_TRACE(example_no++);
+    // Retrieve execution results.
+    const std::vector<TestBuffer> outputs = context.getOutputBuffers(request);
 
-        const MixedTyped& inputs = example.first;
-        const MixedTyped& golden = example.second;
-
-        std::vector<RequestArgument> inputs_info, outputs_info;
-        uint32_t inputSize = 0, outputSize = 0;
-
-        // This function only partially specifies the metadata (vector of RequestArguments).
-        // The contents are copied over below.
-        for_all(inputs, [&inputs_info, &inputSize](int index, auto, auto s) {
-            if (inputs_info.size() <= static_cast<size_t>(index)) inputs_info.resize(index + 1);
-            RequestArgument arg = {
-                .location = {.poolIndex = INPUT, .offset = 0, .length = static_cast<uint32_t>(s)},
-                .dimensions = {},
-            };
-            RequestArgument arg_empty = {
-                .hasNoValue = true,
-            };
-            inputs_info[index] = s ? arg : arg_empty;
-            inputSize += s;
-        });
-        // Compute offset for inputs 1 and so on
-        {
-            size_t offset = 0;
-            for (auto& i : inputs_info) {
-                if (!i.hasNoValue) i.location.offset = offset;
-                offset += i.location.length;
-            }
-        }
-
-        MixedTyped test;  // holding test results
-
-        // Go through all outputs, initialize RequestArgument descriptors
-        resize_accordingly(golden, test);
-        for_all(golden, [&outputs_info, &outputSize](int index, auto, auto s) {
-            if (outputs_info.size() <= static_cast<size_t>(index)) outputs_info.resize(index + 1);
-            RequestArgument arg = {
-                .location = {.poolIndex = OUTPUT, .offset = 0, .length = static_cast<uint32_t>(s)},
-                .dimensions = {},
-            };
-            outputs_info[index] = arg;
-            outputSize += s;
-        });
-        // Compute offset for outputs 1 and so on
-        {
-            size_t offset = 0;
-            for (auto& i : outputs_info) {
-                i.location.offset = offset;
-                offset += i.location.length;
-            }
-        }
-        std::vector<hidl_memory> pools = {allocateSharedMemory(inputSize),
-                                          allocateSharedMemory(outputSize)};
-        ASSERT_NE(0ull, pools[INPUT].size());
-        ASSERT_NE(0ull, pools[OUTPUT].size());
-
-        // load data
-        sp<IMemory> inputMemory = mapMemory(pools[INPUT]);
-        sp<IMemory> outputMemory = mapMemory(pools[OUTPUT]);
-        ASSERT_NE(nullptr, inputMemory.get());
-        ASSERT_NE(nullptr, outputMemory.get());
-        char* inputPtr = reinterpret_cast<char*>(static_cast<void*>(inputMemory->getPointer()));
-        char* outputPtr = reinterpret_cast<char*>(static_cast<void*>(outputMemory->getPointer()));
-        ASSERT_NE(nullptr, inputPtr);
-        ASSERT_NE(nullptr, outputPtr);
-        inputMemory->update();
-        outputMemory->update();
-
-        // Go through all inputs, copy the values
-        for_all(inputs, [&inputs_info, inputPtr](int index, auto p, auto s) {
-            char* begin = (char*)p;
-            char* end = begin + s;
-            // TODO: handle more than one input
-            std::copy(begin, end, inputPtr + inputs_info[index].location.offset);
-        });
-
-        inputMemory->commit();
-        outputMemory->commit();
-
-        // launch execution
-        sp<ExecutionCallback> executionCallback = new ExecutionCallback();
-        ASSERT_NE(nullptr, executionCallback.get());
-        Return<ErrorStatus> executionLaunchStatus = preparedModel->execute(
-            {.inputs = inputs_info, .outputs = outputs_info, .pools = pools}, executionCallback);
-        ASSERT_TRUE(executionLaunchStatus.isOk());
-        EXPECT_EQ(ErrorStatus::NONE, static_cast<ErrorStatus>(executionLaunchStatus));
-
-        // retrieve execution status
-        executionCallback->wait();
-        ErrorStatus executionReturnStatus = executionCallback->getStatus();
-        EXPECT_EQ(ErrorStatus::NONE, executionReturnStatus);
-
-        // validate results
-        outputMemory->read();
-        copy_back(&test, outputs_info, outputPtr);
-        outputMemory->commit();
-        // Filter out don't cares
-        MixedTyped filtered_golden = filter(golden, is_ignored);
-        MixedTyped filtered_test = filter(test, is_ignored);
-
-        // We want "close-enough" results for float
-        compare(filtered_golden, filtered_test);
-    }
+    // We want "close-enough" results.
+    checkResults(testModel, outputs);
 }
 
-}  // namespace generated_tests
+void GeneratedTestBase::SetUp() {
+    testing::TestWithParam<GeneratedTestParam>::SetUp();
+    ASSERT_NE(kDevice, nullptr);
+}
 
-}  // namespace functional
-}  // namespace vts
-}  // namespace V1_0
-}  // namespace neuralnetworks
-}  // namespace hardware
-}  // namespace android
+std::vector<NamedModel> getNamedModels(const FilterFn& filter) {
+    return TestModelManager::get().getTestModels(filter);
+}
+
+std::vector<NamedModel> getNamedModels(const FilterNameFn& filter) {
+    return TestModelManager::get().getTestModels(filter);
+}
+
+std::string printGeneratedTest(const testing::TestParamInfo<GeneratedTestParam>& info) {
+    const auto& [namedDevice, namedModel] = info.param;
+    return gtestCompliantName(getName(namedDevice) + "_" + getName(namedModel));
+}
+
+// Tag for the generated tests
+class GeneratedTest : public GeneratedTestBase {};
+
+TEST_P(GeneratedTest, Test) {
+    Execute(kDevice, kTestModel);
+}
+
+INSTANTIATE_GENERATED_TEST(GeneratedTest,
+                           [](const TestModel& testModel) { return !testModel.expectFailure; });
+
+}  // namespace android::hardware::neuralnetworks::V1_0::vts::functional

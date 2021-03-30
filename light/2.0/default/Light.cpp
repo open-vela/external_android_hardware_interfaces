@@ -18,6 +18,8 @@
 
 #include <log/log.h>
 
+#include <stdio.h>
+
 #include "Light.h"
 
 namespace android {
@@ -107,6 +109,28 @@ const static std::map<Type, const char*> kLogicalLights = {
     {Type::WIFI,          LIGHT_ID_WIFI}
 };
 
+Return<void> Light::debug(const hidl_handle& handle, const hidl_vec<hidl_string>& /* options */) {
+    if (handle == nullptr || handle->numFds < 1) {
+        ALOGE("debug called with no handle\n");
+        return Void();
+    }
+
+    int fd = handle->data[0];
+    if (fd < 0) {
+        ALOGE("invalid FD: %d\n", handle->data[0]);
+        return Void();
+    }
+
+    dprintf(fd, "The following lights are registered: ");
+    for (auto const& pair : mLights) {
+        const Type type = pair.first;
+        dprintf(fd, "%s,", kLogicalLights.at(type));
+    }
+    dprintf(fd, ".\n");
+    fsync(fd);
+    return Void();
+}
+
 light_device_t* getLightDevice(const char* name) {
     light_device_t* lightDevice;
     const hw_module_t* hwModule = NULL;
@@ -116,7 +140,7 @@ light_device_t* getLightDevice(const char* name) {
         ret = hwModule->methods->open(hwModule, name,
             reinterpret_cast<hw_device_t**>(&lightDevice));
         if (ret != 0) {
-            ALOGE("light_open %s %s failed: %d", LIGHTS_HARDWARE_MODULE_ID, name, ret);
+            ALOGI("light_open %s %s failed: %d", LIGHTS_HARDWARE_MODULE_ID, name, ret);
         }
     } else {
         ALOGE("hw_get_module %s %s failed: %d", LIGHTS_HARDWARE_MODULE_ID, name, ret);
