@@ -50,6 +50,7 @@ using android::hardware::tv::tuner::V1_0::FrontendDvbtCoderate;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtConstellation;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtGuardInterval;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtHierarchy;
+using android::hardware::tv::tuner::V1_0::FrontendDvbtPlpMode;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtSettings;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtStandard;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtTransmissionMode;
@@ -120,6 +121,7 @@ struct DescramblerConfig {
 };
 
 struct LiveBroadcastHardwareConnections {
+    bool hasFrontendConnection;
     string frontendId;
     string dvrSoftwareFeId;
     string audioFilterId;
@@ -130,6 +132,7 @@ struct LiveBroadcastHardwareConnections {
 };
 
 struct ScanHardwareConnections {
+    bool hasFrontendConnection;
     string frontendId;
 };
 
@@ -145,19 +148,23 @@ struct DvrPlaybackHardwareConnections {
 
 struct DvrRecordHardwareConnections {
     bool support;
+    bool hasFrontendConnection;
     string frontendId;
     string dvrRecordId;
     string dvrSoftwareFeId;
     string recordFilterId;
+    string dvrSourceId;
 };
 
 struct DescramblingHardwareConnections {
     bool support;
+    bool hasFrontendConnection;
     string frontendId;
     string dvrSoftwareFeId;
     string audioFilterId;
     string videoFilterId;
     string descramblerId;
+    string dvrSourceId;
     /* list string of extra filters; */
 };
 
@@ -362,8 +369,6 @@ struct TunerTestingConfigReader {
                     int size = privateData.size();
                     descramblerMap[id].hidlPvtData.resize(size);
                     memcpy(descramblerMap[id].hidlPvtData.data(), privateData.data(), size);
-                } else {
-                    descramblerMap[id].hidlPvtData.resize(256);
                 }
             }
         }
@@ -395,7 +400,14 @@ struct TunerTestingConfigReader {
     }
 
     static void connectLiveBroadcast(LiveBroadcastHardwareConnections& live) {
-        auto liveConfig = *getDataFlowConfiguration().getFirstClearLiveBroadcast();
+        auto dataFlow = getDataFlowConfiguration();
+        if (dataFlow.hasClearLiveBroadcast()) {
+            live.hasFrontendConnection = true;
+        } else {
+            live.hasFrontendConnection = false;
+            return;
+        }
+        auto liveConfig = *dataFlow.getFirstClearLiveBroadcast();
         live.frontendId = liveConfig.getFrontendConnection();
 
         live.audioFilterId = liveConfig.getAudioFilterConnection();
@@ -416,8 +428,15 @@ struct TunerTestingConfigReader {
     }
 
     static void connectScan(ScanHardwareConnections& scan) {
-        auto scanConfig = getDataFlowConfiguration().getFirstScan();
-        scan.frontendId = scanConfig->getFrontendConnection();
+        auto dataFlow = getDataFlowConfiguration();
+        if (dataFlow.hasScan()) {
+            scan.hasFrontendConnection = true;
+        } else {
+            scan.hasFrontendConnection = false;
+            return;
+        }
+        auto scanConfig = *dataFlow.getFirstScan();
+        scan.frontendId = scanConfig.getFrontendConnection();
     }
 
     static void connectDvrPlayback(DvrPlaybackHardwareConnections& playback) {
@@ -425,6 +444,7 @@ struct TunerTestingConfigReader {
         if (dataFlow.hasDvrPlayback()) {
             playback.support = true;
         } else {
+            playback.support = false;
             return;
         }
         auto playbackConfig = *dataFlow.getFirstDvrPlayback();
@@ -443,14 +463,22 @@ struct TunerTestingConfigReader {
         if (dataFlow.hasDvrRecord()) {
             record.support = true;
         } else {
+            record.support = false;
             return;
         }
         auto recordConfig = *dataFlow.getFirstDvrRecord();
-        record.frontendId = recordConfig.getFrontendConnection();
         record.recordFilterId = recordConfig.getRecordFilterConnection();
         record.dvrRecordId = recordConfig.getDvrRecordConnection();
         if (recordConfig.hasDvrSoftwareFeConnection()) {
             record.dvrSoftwareFeId = recordConfig.getDvrSoftwareFeConnection();
+        }
+        if (recordConfig.getHasFrontendConnection()) {
+            record.hasFrontendConnection = true;
+            record.dvrSourceId = emptyHardwareId;
+            record.frontendId = recordConfig.getFrontendConnection();
+        } else {
+            record.hasFrontendConnection = false;
+            record.dvrSourceId = recordConfig.getDvrSourceConnection();
         }
     }
 
@@ -459,15 +487,23 @@ struct TunerTestingConfigReader {
         if (dataFlow.hasDescrambling()) {
             descrambling.support = true;
         } else {
+            descrambling.support = false;
             return;
         }
         auto descConfig = *dataFlow.getFirstDescrambling();
-        descrambling.frontendId = descConfig.getFrontendConnection();
         descrambling.descramblerId = descConfig.getDescramblerConnection();
         descrambling.audioFilterId = descConfig.getAudioFilterConnection();
         descrambling.videoFilterId = descConfig.getVideoFilterConnection();
         if (descConfig.hasDvrSoftwareFeConnection()) {
             descrambling.dvrSoftwareFeId = descConfig.getDvrSoftwareFeConnection();
+        }
+        if (descConfig.getHasFrontendConnection()) {
+            descrambling.hasFrontendConnection = true;
+            descrambling.dvrSourceId = emptyHardwareId;
+            descrambling.frontendId = descConfig.getFrontendConnection();
+        } else {
+            descrambling.hasFrontendConnection = false;
+            descrambling.dvrSourceId = descConfig.getDvrSourceConnection();
         }
     }
 
@@ -476,6 +512,7 @@ struct TunerTestingConfigReader {
         if (dataFlow.hasLnbLive()) {
             lnbLive.support = true;
         } else {
+            lnbLive.support = false;
             return;
         }
         auto lnbLiveConfig = *dataFlow.getFirstLnbLive();
@@ -495,6 +532,7 @@ struct TunerTestingConfigReader {
         if (dataFlow.hasLnbRecord()) {
             lnbRecord.support = true;
         } else {
+            lnbRecord.support = false;
             return;
         }
         auto lnbRecordConfig = *dataFlow.getFirstLnbRecord();
@@ -514,6 +552,7 @@ struct TunerTestingConfigReader {
         if (dataFlow.hasTimeFilter()) {
             timeFilter.support = true;
         } else {
+            timeFilter.support = false;
             return;
         }
         auto timeFilterConfig = *dataFlow.getFirstTimeFilter();
@@ -534,8 +573,26 @@ struct TunerTestingConfigReader {
                 feConfig.getFirstDvbtFrontendSettings_optional()->getTransmissionMode());
         dvbtSettings.bandwidth = static_cast<FrontendDvbtBandwidth>(
                 feConfig.getFirstDvbtFrontendSettings_optional()->getBandwidth());
+        dvbtSettings.constellation = static_cast<FrontendDvbtConstellation>(
+                feConfig.getFirstDvbtFrontendSettings_optional()->getConstellation());
+        dvbtSettings.hierarchy = static_cast<FrontendDvbtHierarchy>(
+                feConfig.getFirstDvbtFrontendSettings_optional()->getHierarchy());
+        dvbtSettings.hpCoderate = static_cast<FrontendDvbtCoderate>(
+                feConfig.getFirstDvbtFrontendSettings_optional()->getHpCoderate());
+        dvbtSettings.lpCoderate = static_cast<FrontendDvbtCoderate>(
+                feConfig.getFirstDvbtFrontendSettings_optional()->getLpCoderate());
+        dvbtSettings.guardInterval = static_cast<FrontendDvbtGuardInterval>(
+                feConfig.getFirstDvbtFrontendSettings_optional()->getGuardInterval());
         dvbtSettings.isHighPriority =
                 feConfig.getFirstDvbtFrontendSettings_optional()->getIsHighPriority();
+        dvbtSettings.standard = static_cast<FrontendDvbtStandard>(
+                feConfig.getFirstDvbtFrontendSettings_optional()->getStandard());
+        dvbtSettings.isMiso = feConfig.getFirstDvbtFrontendSettings_optional()->getIsMiso();
+        dvbtSettings.plpMode = static_cast<FrontendDvbtPlpMode>(
+                feConfig.getFirstDvbtFrontendSettings_optional()->getPlpMode());
+        dvbtSettings.plpId = feConfig.getFirstDvbtFrontendSettings_optional()->getPlpId();
+        dvbtSettings.plpGroupId = feConfig.getFirstDvbtFrontendSettings_optional()->getPlpGroupId();
+
         return dvbtSettings;
     }
 

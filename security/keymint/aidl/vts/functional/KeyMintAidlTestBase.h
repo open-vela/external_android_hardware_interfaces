@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <string_view>
+
 #include <aidl/Gtest.h>
 #include <aidl/Vintf.h>
 #include <binder/IServiceManager.h>
@@ -71,6 +73,7 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
     IKeyMintDevice& keyMint() { return *keymint_; }
     uint32_t os_version() { return os_version_; }
     uint32_t os_patch_level() { return os_patch_level_; }
+    uint32_t vendor_patch_level() { return vendor_patch_level_; }
 
     ErrorCode GetReturnErrorCode(const Status& result);
 
@@ -94,12 +97,33 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
 
     ErrorCode ImportWrappedKey(string wrapped_key, string wrapping_key,
                                const AuthorizationSet& wrapping_key_desc, string masking_key,
-                               const AuthorizationSet& unwrapping_params);
+                               const AuthorizationSet& unwrapping_params, int64_t password_sid,
+                               int64_t biometric_sid);
+    ErrorCode ImportWrappedKey(string wrapped_key, string wrapping_key,
+                               const AuthorizationSet& wrapping_key_desc, string masking_key,
+                               const AuthorizationSet& unwrapping_params) {
+        return ImportWrappedKey(wrapped_key, wrapping_key, wrapping_key_desc, masking_key,
+                                unwrapping_params, 0 /* password_sid */, 0 /* biometric_sid */);
+    }
+
+    ErrorCode GetCharacteristics(const vector<uint8_t>& key_blob, const vector<uint8_t>& app_id,
+                                 const vector<uint8_t>& app_data,
+                                 vector<KeyCharacteristics>* key_characteristics);
+    ErrorCode GetCharacteristics(const vector<uint8_t>& key_blob,
+                                 vector<KeyCharacteristics>* key_characteristics);
+
+    void CheckCharacteristics(const vector<uint8_t>& key_blob,
+                              const vector<KeyCharacteristics>& generate_characteristics);
+    void CheckAppIdCharacteristics(const vector<uint8_t>& key_blob, std::string_view app_id_string,
+                                   std::string_view app_data_string,
+                                   const vector<KeyCharacteristics>& generate_characteristics);
 
     ErrorCode DeleteKey(vector<uint8_t>* key_blob, bool keep_key_blob = false);
     ErrorCode DeleteKey(bool keep_key_blob = false);
 
     ErrorCode DeleteAllKeys();
+
+    ErrorCode DestroyAttestationIds();
 
     void CheckedDeleteKey(vector<uint8_t>* key_blob, bool keep_key_blob = false);
     void CheckedDeleteKey();
@@ -152,7 +176,10 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
                        const string& signature, const AuthorizationSet& params);
     void VerifyMessage(const string& message, const string& signature,
                        const AuthorizationSet& params);
+    void LocalVerifyMessage(const string& message, const string& signature,
+                            const AuthorizationSet& params);
 
+    string LocalRsaEncryptMessage(const string& message, const AuthorizationSet& params);
     string EncryptMessage(const vector<uint8_t>& key_blob, const string& message,
                           const AuthorizationSet& in_params, AuthorizationSet* out_params);
     string EncryptMessage(const string& message, const AuthorizationSet& params,
@@ -165,6 +192,8 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
                           const vector<uint8_t>& iv_in);
     string EncryptMessage(const string& message, BlockMode block_mode, PaddingMode padding,
                           uint8_t mac_length_bits, const vector<uint8_t>& iv_in);
+    string EncryptMessage(const string& message, BlockMode block_mode, PaddingMode padding,
+                          uint8_t mac_length_bits);
 
     string DecryptMessage(const vector<uint8_t>& key_blob, const string& ciphertext,
                           const AuthorizationSet& params);
@@ -230,6 +259,10 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
     vector<uint32_t> ValidKeySizes(Algorithm algorithm);
     vector<uint32_t> InvalidKeySizes(Algorithm algorithm);
 
+    vector<BlockMode> ValidBlockModes(Algorithm algorithm);
+    vector<PaddingMode> ValidPaddingModes(Algorithm algorithm, BlockMode blockMode);
+    vector<PaddingMode> InvalidPaddingModes(Algorithm algorithm, BlockMode blockMode);
+
     vector<EcCurve> ValidCurves();
     vector<EcCurve> InvalidCurves();
 
@@ -262,6 +295,8 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
     std::shared_ptr<IKeyMintDevice> keymint_;
     uint32_t os_version_;
     uint32_t os_patch_level_;
+    uint32_t vendor_patch_level_;
+    bool timestamp_token_required_;
 
     SecurityLevel securityLevel_;
     string name_;
@@ -269,12 +304,20 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
     long challenge_;
 };
 
+vector<uint8_t> build_serial_blob(const uint64_t serial_int);
+void verify_subject(const X509* cert, const string& subject, bool self_signed);
+void verify_serial(X509* cert, const uint64_t expected_serial);
+void verify_subject_and_serial(const Certificate& certificate,  //
+                               const uint64_t expected_serial,  //
+                               const string& subject, bool self_signed);
+
 bool verify_attestation_record(const string& challenge,                //
                                const string& app_id,                   //
                                AuthorizationSet expected_sw_enforced,  //
                                AuthorizationSet expected_hw_enforced,  //
                                SecurityLevel security_level,
                                const vector<uint8_t>& attestation_cert);
+
 string bin2hex(const vector<uint8_t>& data);
 X509_Ptr parse_cert_blob(const vector<uint8_t>& blob);
 vector<uint8_t> make_name_from_str(const string& name);
