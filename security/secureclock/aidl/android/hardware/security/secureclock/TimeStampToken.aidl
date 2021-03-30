@@ -39,20 +39,18 @@ parcelable TimeStampToken {
      * 32-byte HMAC-SHA256 of the above values, computed as:
      *
      *    HMAC(H,
-     *         ISecureClock.TIME_STAMP_MAC_LABEL || challenge || timestamp || securityLevel )
+     *         ISecureClock.TIME_STAMP_MAC_LABEL || challenge || timestamp || 1 )
      *
      * where:
      *
-     *   ``ISecureClock.TIME_STAMP_MAC_LABEL'' is a sting constant defined in ISecureClock.aidl.
+     *   ``ISecureClock.TIME_STAMP_MAC_LABEL'' is a string constant defined in ISecureClock.aidl.
      *
      *   ``H'' is the shared HMAC key (see computeSharedHmac() in ISharedSecret).
      *
      *   ``||'' represents concatenation
      *
      * The representation of challenge and timestamp is as 64-bit unsigned integers in big-endian
-     * order. SecurityLevel is represented as a 32-bit unsigned integer in big-endian order as
-     * described in android.hardware.security.keymint.SecurityLevel. It represents the security
-     * level of the secure clock environment.
+     * order.  1, above, is a 32-bit unsigned integer, also big-endian.
      */
     byte[] mac;
 }

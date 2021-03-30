@@ -44,10 +44,10 @@ interface IKeyMintDevice {
   void deleteKey(in byte[] keyBlob);
   void deleteAllKeys();
   void destroyAttestationIds();
-  android.hardware.security.keymint.BeginResult begin(in android.hardware.security.keymint.KeyPurpose purpose, in byte[] keyBlob, in android.hardware.security.keymint.KeyParameter[] params, in android.hardware.security.keymint.HardwareAuthToken authToken);
+  android.hardware.security.keymint.BeginResult begin(in android.hardware.security.keymint.KeyPurpose purpose, in byte[] keyBlob, in android.hardware.security.keymint.KeyParameter[] params, in @nullable android.hardware.security.keymint.HardwareAuthToken authToken);
   void deviceLocked(in boolean passwordOnly, in @nullable android.hardware.security.secureclock.TimeStampToken timestampToken);
   void earlyBootEnded();
   byte[] convertStorageKeyToEphemeral(in byte[] storageKeyBlob);
-  byte[] performOperation(in byte[] request);
+  android.hardware.security.keymint.KeyCharacteristics[] getKeyCharacteristics(in byte[] keyBlob, in byte[] appId, in byte[] appData);
   const int AUTH_TOKEN_MAC_LENGTH = 32;
 }
