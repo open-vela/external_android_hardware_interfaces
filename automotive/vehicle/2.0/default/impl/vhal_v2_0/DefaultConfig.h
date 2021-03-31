@@ -1222,7 +1222,7 @@ const ConfigDeclaration kVehicleProperties[]{
         {
                 .config =
                         {
-                                .prop = toInt(VehicleProperty::CLUSTER_NAVIGATION_STATE),
+                                .prop = toInt(VehicleProperty::CLUSTER_NAVIGATION_STATE_LEGACY),
                                 .access = VehiclePropertyAccess::WRITE,
                                 .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                         },
