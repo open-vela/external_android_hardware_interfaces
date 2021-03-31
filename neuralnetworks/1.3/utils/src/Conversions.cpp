@@ -38,8 +38,6 @@
 #include <type_traits>
 #include <utility>
 
-#include "Utils.h"
-
 namespace {
 
 template <typename Type>
@@ -47,21 +45,48 @@ constexpr std::underlying_type_t<Type> underlyingType(Type value) {
     return static_cast<std::underlying_type_t<Type>>(value);
 }
 
+constexpr auto kVersion = android::nn::Version::ANDROID_R;
+
 }  // namespace
 
 namespace android::nn {
 namespace {
 
+constexpr auto validOperandType(nn::OperandType operandType) {
+    switch (operandType) {
+        case nn::OperandType::FLOAT32:
+        case nn::OperandType::INT32:
+        case nn::OperandType::UINT32:
+        case nn::OperandType::TENSOR_FLOAT32:
+        case nn::OperandType::TENSOR_INT32:
+        case nn::OperandType::TENSOR_QUANT8_ASYMM:
+        case nn::OperandType::BOOL:
+        case nn::OperandType::TENSOR_QUANT16_SYMM:
+        case nn::OperandType::TENSOR_FLOAT16:
+        case nn::OperandType::TENSOR_BOOL8:
+        case nn::OperandType::FLOAT16:
+        case nn::OperandType::TENSOR_QUANT8_SYMM_PER_CHANNEL:
+        case nn::OperandType::TENSOR_QUANT16_ASYMM:
+        case nn::OperandType::TENSOR_QUANT8_SYMM:
+        case nn::OperandType::TENSOR_QUANT8_ASYMM_SIGNED:
+        case nn::OperandType::SUBGRAPH:
+        case nn::OperandType::OEM:
+        case nn::OperandType::TENSOR_OEM_BYTE:
+            return true;
+    }
+    return nn::isExtension(operandType);
+}
+
 using hardware::hidl_vec;
 
 template <typename Input>
-using UnvalidatedConvertOutput =
+using unvalidatedConvertOutput =
         std::decay_t<decltype(unvalidatedConvert(std::declval<Input>()).value())>;
 
 template <typename Type>
-GeneralResult<std::vector<UnvalidatedConvertOutput<Type>>> unvalidatedConvert(
+GeneralResult<std::vector<unvalidatedConvertOutput<Type>>> unvalidatedConvertVec(
         const hidl_vec<Type>& arguments) {
-    std::vector<UnvalidatedConvertOutput<Type>> canonical;
+    std::vector<unvalidatedConvertOutput<Type>> canonical;
     canonical.reserve(arguments.size());
     for (const auto& argument : arguments) {
         canonical.push_back(NN_TRY(nn::unvalidatedConvert(argument)));
@@ -70,16 +95,29 @@ GeneralResult<std::vector<UnvalidatedConvertOutput<Type>>> unvalidatedConvert(
 }
 
 template <typename Type>
-GeneralResult<UnvalidatedConvertOutput<Type>> validatedConvert(const Type& halObject) {
+GeneralResult<std::vector<unvalidatedConvertOutput<Type>>> unvalidatedConvert(
+        const hidl_vec<Type>& arguments) {
+    return unvalidatedConvertVec(arguments);
+}
+
+template <typename Type>
+decltype(nn::unvalidatedConvert(std::declval<Type>())) validatedConvert(const Type& halObject) {
     auto canonical = NN_TRY(nn::unvalidatedConvert(halObject));
-    NN_TRY(hal::V1_3::utils::compliantVersion(canonical));
+    const auto maybeVersion = validate(canonical);
+    if (!maybeVersion.has_value()) {
+        return error() << maybeVersion.error();
+    }
+    const auto version = maybeVersion.value();
+    if (version > kVersion) {
+        return NN_ERROR() << "Insufficient version: " << version << " vs required " << kVersion;
+    }
     return canonical;
 }
 
 template <typename Type>
-GeneralResult<std::vector<UnvalidatedConvertOutput<Type>>> validatedConvert(
+GeneralResult<std::vector<unvalidatedConvertOutput<Type>>> validatedConvert(
         const hidl_vec<Type>& arguments) {
-    std::vector<UnvalidatedConvertOutput<Type>> canonical;
+    std::vector<unvalidatedConvertOutput<Type>> canonical;
     canonical.reserve(arguments.size());
     for (const auto& argument : arguments) {
         canonical.push_back(NN_TRY(validatedConvert(argument)));
@@ -105,7 +143,8 @@ GeneralResult<Capabilities> unvalidatedConvert(const hal::V1_3::Capabilities& ca
     const bool validOperandTypes = std::all_of(
             capabilities.operandPerformance.begin(), capabilities.operandPerformance.end(),
             [](const hal::V1_3::Capabilities::OperandPerformance& operandPerformance) {
-                return validatedConvert(operandPerformance.type).has_value();
+                const auto maybeType = unvalidatedConvert(operandPerformance.type);
+                return !maybeType.has_value() ? false : validOperandType(maybeType.value());
             });
     if (!validOperandTypes) {
         return NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE)
@@ -205,7 +244,7 @@ GeneralResult<BufferRole> unvalidatedConvert(const hal::V1_3::BufferRole& buffer
     return BufferRole{
             .modelIndex = bufferRole.modelIndex,
             .ioIndex = bufferRole.ioIndex,
-            .probability = bufferRole.frequency,
+            .frequency = bufferRole.frequency,
     };
 }
 
@@ -362,17 +401,23 @@ nn::GeneralResult<V1_2::Model::ExtensionNameAndPrefix> unvalidatedConvert(
 }
 
 template <typename Input>
-using UnvalidatedConvertOutput =
+using unvalidatedConvertOutput =
         std::decay_t<decltype(unvalidatedConvert(std::declval<Input>()).value())>;
 
 template <typename Type>
-nn::GeneralResult<hidl_vec<UnvalidatedConvertOutput<Type>>> unvalidatedConvert(
+nn::GeneralResult<hidl_vec<unvalidatedConvertOutput<Type>>> unvalidatedConvertVec(
         const std::vector<Type>& arguments) {
-    hidl_vec<UnvalidatedConvertOutput<Type>> halObject(arguments.size());
+    hidl_vec<unvalidatedConvertOutput<Type>> halObject(arguments.size());
     for (size_t i = 0; i < arguments.size(); ++i) {
         halObject[i] = NN_TRY(unvalidatedConvert(arguments[i]));
     }
     return halObject;
+}
+
+template <typename Type>
+nn::GeneralResult<hidl_vec<unvalidatedConvertOutput<Type>>> unvalidatedConvert(
+        const std::vector<Type>& arguments) {
+    return unvalidatedConvertVec(arguments);
 }
 
 nn::GeneralResult<Request::MemoryPool> makeMemoryPool(const nn::SharedMemory& memory) {
@@ -394,15 +439,22 @@ nn::GeneralResult<Request::MemoryPool> makeMemoryPool(const nn::SharedBuffer& /*
 using utils::unvalidatedConvert;
 
 template <typename Type>
-nn::GeneralResult<UnvalidatedConvertOutput<Type>> validatedConvert(const Type& canonical) {
-    NN_TRY(compliantVersion(canonical));
+decltype(unvalidatedConvert(std::declval<Type>())) validatedConvert(const Type& canonical) {
+    const auto maybeVersion = nn::validate(canonical);
+    if (!maybeVersion.has_value()) {
+        return nn::error() << maybeVersion.error();
+    }
+    const auto version = maybeVersion.value();
+    if (version > kVersion) {
+        return NN_ERROR() << "Insufficient version: " << version << " vs required " << kVersion;
+    }
     return unvalidatedConvert(canonical);
 }
 
 template <typename Type>
-nn::GeneralResult<hidl_vec<UnvalidatedConvertOutput<Type>>> validatedConvert(
+nn::GeneralResult<hidl_vec<unvalidatedConvertOutput<Type>>> validatedConvert(
         const std::vector<Type>& arguments) {
-    hidl_vec<UnvalidatedConvertOutput<Type>> halObject(arguments.size());
+    hidl_vec<unvalidatedConvertOutput<Type>> halObject(arguments.size());
     for (size_t i = 0; i < arguments.size(); ++i) {
         halObject[i] = NN_TRY(validatedConvert(arguments[i]));
     }
@@ -430,7 +482,7 @@ nn::GeneralResult<Capabilities> unvalidatedConvert(const nn::Capabilities& capab
                  capabilities.operandPerformance.asVector().end(),
                  std::back_inserter(operandPerformance),
                  [](const nn::Capabilities::OperandPerformance& operandPerformance) {
-                     return compliantVersion(operandPerformance.type).has_value();
+                     return nn::validOperandType(operandPerformance.type);
                  });
 
     return Capabilities{
@@ -525,7 +577,7 @@ nn::GeneralResult<BufferRole> unvalidatedConvert(const nn::BufferRole& bufferRol
     return BufferRole{
             .modelIndex = bufferRole.modelIndex,
             .ioIndex = bufferRole.ioIndex,
-            .frequency = bufferRole.probability,
+            .frequency = bufferRole.frequency,
     };
 }
 
