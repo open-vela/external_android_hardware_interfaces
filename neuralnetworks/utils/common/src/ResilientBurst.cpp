@@ -100,11 +100,9 @@ ResilientBurst::OptionalCacheHold ResilientBurst::cacheMemory(
 }
 
 nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> ResilientBurst::execute(
-        const nn::Request& request, nn::MeasureTiming measure,
-        const nn::OptionalTimePoint& deadline,
-        const nn::OptionalDuration& loopTimeoutDuration) const {
-    const auto fn = [&request, measure, deadline, loopTimeoutDuration](const nn::IBurst& burst) {
-        return burst.execute(request, measure, deadline, loopTimeoutDuration);
+        const nn::Request& request, nn::MeasureTiming measure) const {
+    const auto fn = [&request, measure](const nn::IBurst& burst) {
+        return burst.execute(request, measure);
     };
     return protect(*this, fn);
 }
