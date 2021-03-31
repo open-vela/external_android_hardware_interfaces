@@ -358,13 +358,12 @@ ScopedAStatus RemotelyProvisionedComponent::generateCertificateRequest(
         bcc = bcc_.clone();
     }
 
-    std::unique_ptr<cppbor::Map> deviceInfoMap = createDeviceInfo();
-    deviceInfo->deviceInfo = deviceInfoMap->encode();
+    deviceInfo->deviceInfo = createDeviceInfo();
     auto signedMac = constructCoseSign1(devicePrivKey /* Signing key */,  //
                                         ephemeralMacKey /* Payload */,
                                         cppbor::Array() /* AAD */
                                                 .add(challenge)
-                                                .add(std::move(deviceInfoMap))
+                                                .add(deviceInfo->deviceInfo)
                                                 .encode());
     if (!signedMac) return Status(signedMac.moveMessage());
 
@@ -410,24 +409,8 @@ bytevec RemotelyProvisionedComponent::deriveBytesFromHbk(const string& context,
     return result;
 }
 
-std::unique_ptr<cppbor::Map> RemotelyProvisionedComponent::createDeviceInfo() const {
-    auto result = std::make_unique<cppbor::Map>(cppbor::Map());
-
-    // The following placeholders show how the DeviceInfo map would be populated.
-    // result->add(cppbor::Tstr("brand"), cppbor::Tstr("Google"));
-    // result->add(cppbor::Tstr("manufacturer"), cppbor::Tstr("Google"));
-    // result->add(cppbor::Tstr("product"), cppbor::Tstr("Fake"));
-    // result->add(cppbor::Tstr("model"), cppbor::Tstr("Imaginary"));
-    // result->add(cppbor::Tstr("board"), cppbor::Tstr("Chess"));
-    // result->add(cppbor::Tstr("vb_state"), cppbor::Tstr("orange"));
-    // result->add(cppbor::Tstr("bootloader_state"), cppbor::Tstr("unlocked"));
-    // result->add(cppbor::Tstr("os_version"), cppbor::Tstr("SC"));
-    // result->add(cppbor::Tstr("system_patch_level"), cppbor::Uint(20210331));
-    // result->add(cppbor::Tstr("boot_patch_level"), cppbor::Uint(20210331));
-    // result->add(cppbor::Tstr("vendor_patch_level"), cppbor::Uint(20210331));
-
-    result->canonicalize();
-    return result;
+bytevec RemotelyProvisionedComponent::createDeviceInfo() const {
+    return cppbor::Map().encode();
 }
 
 std::pair<bytevec /* privKey */, cppbor::Array /* BCC */>
