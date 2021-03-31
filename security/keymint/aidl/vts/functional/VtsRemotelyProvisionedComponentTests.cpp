@@ -370,7 +370,7 @@ class CertificateRequestTest : public VtsRemotelyProvisionedComponentTests {
         }
     }
 
-    void checkProtectedData(const DeviceInfo& deviceInfo, const cppbor::Array& keysToSign,
+    void checkProtectedData(bool testMode, const cppbor::Array& keysToSign,
                             const bytevec& keysToSignMac, const ProtectedData& protectedData) {
         auto [parsedProtectedData, _, protDataErrMsg] = cppbor::parse(protectedData.protectedData);
         ASSERT_TRUE(parsedProtectedData) << protDataErrMsg;
@@ -404,16 +404,11 @@ class CertificateRequestTest : public VtsRemotelyProvisionedComponentTests {
         ASSERT_TRUE(bccContents) << "\n" << bccContents.message() << "\n" << prettyPrint(bcc.get());
         ASSERT_GT(bccContents->size(), 0U);
 
-        auto [deviceInfoMap, __2, deviceInfoErrMsg] = cppbor::parse(deviceInfo.deviceInfo);
-        ASSERT_TRUE(deviceInfoMap) << "Failed to parse deviceInfo: " << deviceInfoErrMsg;
-        ASSERT_TRUE(deviceInfoMap->asMap());
-
         auto& signingKey = bccContents->back().pubKey;
-        auto macKey = verifyAndParseCoseSign1(/* ignore_signature = */ false, signedMac->asArray(),
-                                              signingKey,
-                                              cppbor::Array()  // SignedMacAad
+        auto macKey = verifyAndParseCoseSign1(testMode, signedMac->asArray(), signingKey,
+                                              cppbor::Array()  // DeviceInfo
                                                       .add(challenge_)
-                                                      .add(std::move(deviceInfoMap))
+                                                      .add(cppbor::Map())
                                                       .encode());
         ASSERT_TRUE(macKey) << macKey.message();
 
@@ -456,7 +451,7 @@ TEST_P(CertificateRequestTest, EmptyRequest_testMode) {
                 &protectedData, &keysToSignMac);
         ASSERT_TRUE(status.isOk()) << status.getMessage();
 
-        checkProtectedData(deviceInfo, cppbor::Array(), keysToSignMac, protectedData);
+        checkProtectedData(testMode, cppbor::Array(), keysToSignMac, protectedData);
     }
 }
 
@@ -504,7 +499,7 @@ TEST_P(CertificateRequestTest, NonEmptyRequest_testMode) {
                 &keysToSignMac);
         ASSERT_TRUE(status.isOk()) << status.getMessage();
 
-        checkProtectedData(deviceInfo, cborKeysToSign_, keysToSignMac, protectedData);
+        checkProtectedData(testMode, cborKeysToSign_, keysToSignMac, protectedData);
     }
 }
 
