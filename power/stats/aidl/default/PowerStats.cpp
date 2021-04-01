@@ -32,19 +32,15 @@ void PowerStats::addStateResidencyDataProvider(std::unique_ptr<IStateResidencyDa
     }
 
     int32_t id = mPowerEntityInfos.size();
-    auto info = p->getInfo();
 
-    size_t index = mStateResidencyDataProviders.size();
-    mStateResidencyDataProviders.emplace_back(std::move(p));
-
-    for (const auto& [entityName, states] : info) {
+    for (const auto& [entityName, states] : p->getInfo()) {
         PowerEntity i = {
                 .id = id++,
                 .name = entityName,
                 .states = states,
         };
         mPowerEntityInfos.emplace_back(i);
-        mStateResidencyDataProviderIndex.emplace_back(index);
+        mStateResidencyDataProviders.emplace_back(std::move(p));
     }
 }
 
@@ -96,8 +92,7 @@ ndk::ScopedAStatus PowerStats::getStateResidency(const std::vector<int32_t>& in_
         // Check to see if we already have data for the given id
         std::string powerEntityName = mPowerEntityInfos[id].name;
         if (stateResidencies.find(powerEntityName) == stateResidencies.end()) {
-            mStateResidencyDataProviders.at(mStateResidencyDataProviderIndex.at(id))
-                    ->getStateResidencies(&stateResidencies);
+            mStateResidencyDataProviders[id]->getStateResidencies(&stateResidencies);
         }
 
         // Append results if we have them
