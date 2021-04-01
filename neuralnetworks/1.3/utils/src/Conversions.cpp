@@ -244,7 +244,7 @@ GeneralResult<BufferRole> unvalidatedConvert(const hal::V1_3::BufferRole& buffer
     return BufferRole{
             .modelIndex = bufferRole.modelIndex,
             .ioIndex = bufferRole.ioIndex,
-            .probability = bufferRole.frequency,
+            .frequency = bufferRole.frequency,
     };
 }
 
@@ -577,7 +577,7 @@ nn::GeneralResult<BufferRole> unvalidatedConvert(const nn::BufferRole& bufferRol
     return BufferRole{
             .modelIndex = bufferRole.modelIndex,
             .ioIndex = bufferRole.ioIndex,
-            .frequency = bufferRole.probability,
+            .frequency = bufferRole.frequency,
     };
 }
 
