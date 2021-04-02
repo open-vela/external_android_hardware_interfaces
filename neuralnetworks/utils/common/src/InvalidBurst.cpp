@@ -32,9 +32,7 @@ InvalidBurst::OptionalCacheHold InvalidBurst::cacheMemory(
 }
 
 nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> InvalidBurst::execute(
-        const nn::Request& /*request*/, nn::MeasureTiming /*measure*/,
-        const nn::OptionalTimePoint& /*deadline*/,
-        const nn::OptionalDuration& /*loopTimeoutDuration*/) const {
+        const nn::Request& /*request*/, nn::MeasureTiming /*measure*/) const {
     return NN_ERROR() << "InvalidBurst";
 }
 
