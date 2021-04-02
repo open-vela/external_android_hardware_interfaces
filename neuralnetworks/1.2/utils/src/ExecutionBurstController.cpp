@@ -276,9 +276,7 @@ ExecutionBurstController::OptionalCacheHold ExecutionBurstController::cacheMemor
 }
 
 nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>>
-ExecutionBurstController::execute(const nn::Request& request, nn::MeasureTiming measure,
-                                  const nn::OptionalTimePoint& deadline,
-                                  const nn::OptionalDuration& loopTimeoutDuration) const {
+ExecutionBurstController::execute(const nn::Request& request, nn::MeasureTiming measure) const {
     // This is the first point when we know an execution is occurring, so begin to collect
     // systraces. Note that the first point we can begin collecting systraces in
     // ExecutionBurstServer is when the RequestChannelReceiver realizes there is data in the FMQ, so
@@ -291,7 +289,7 @@ ExecutionBurstController::execute(const nn::Request& request, nn::MeasureTiming 
         version > nn::Version::ANDROID_Q) {
         // fallback to another execution path if the packet could not be sent
         if (kFallback) {
-            return kFallback(request, measure, deadline, loopTimeoutDuration);
+            return kFallback(request, measure);
         }
         return NN_ERROR() << "Request object has features not supported by IBurst::execute";
     }
@@ -325,7 +323,7 @@ ExecutionBurstController::execute(const nn::Request& request, nn::MeasureTiming 
     if (!sendStatus.ok()) {
         // fallback to another execution path if the packet could not be sent
         if (kFallback) {
-            return kFallback(request, measure, deadline, loopTimeoutDuration);
+            return kFallback(request, measure);
         }
         return NN_ERROR() << "Error sending FMQ packet: " << sendStatus.error();
     }
