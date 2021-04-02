@@ -284,8 +284,7 @@ AuthorizationSet SwEnforcedAuthorizations(const vector<KeyCharacteristics>& key_
 #define INSTANTIATE_KEYMINT_AIDL_TEST(name)                                          \
     INSTANTIATE_TEST_SUITE_P(PerInstance, name,                                      \
                              testing::ValuesIn(KeyMintAidlTestBase::build_params()), \
-                             ::android::PrintInstanceNameToString);                  \
-    GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(name);
+                             ::android::PrintInstanceNameToString)
 
 }  // namespace test
 
