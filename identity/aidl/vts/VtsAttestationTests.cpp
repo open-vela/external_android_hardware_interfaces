@@ -29,7 +29,8 @@
 #include <future>
 #include <map>
 
-#include "Util.h"
+#include "VtsAttestationParserSupport.h"
+#include "VtsIdentityTestUtils.h"
 
 namespace android::hardware::identity {
 
@@ -43,6 +44,7 @@ using ::android::sp;
 using ::android::String16;
 using ::android::binder::Status;
 
+using test_utils::AttestationCertificateParser;
 using test_utils::setupWritableCredential;
 using test_utils::validateAttestationCertificate;
 
@@ -59,12 +61,38 @@ class VtsAttestationTests : public testing::TestWithParam<std::string> {
     sp<IIdentityCredentialStore> credentialStore_;
 };
 
+TEST_P(VtsAttestationTests, verifyAttestationWithNonemptyChallengeEmptyId) {
+    Status result;
+
+    HardwareInformation hwInfo;
+    ASSERT_TRUE(credentialStore_->getHardwareInformation(&hwInfo).isOk());
+
+    sp<IWritableIdentityCredential> writableCredential;
+    ASSERT_TRUE(setupWritableCredential(writableCredential, credentialStore_));
+
+    string challenge = "NotSoRandomChallenge";
+    vector<uint8_t> attestationChallenge(challenge.begin(), challenge.end());
+    vector<Certificate> attestationCertificate;
+    vector<uint8_t> attestationApplicationId = {};
+
+    result = writableCredential->getAttestationCertificate(
+            attestationApplicationId, attestationChallenge, &attestationCertificate);
+
+    ASSERT_TRUE(result.isOk()) << result.exceptionCode() << "; " << result.exceptionMessage()
+                               << endl;
+
+    EXPECT_TRUE(validateAttestationCertificate(attestationCertificate, attestationChallenge,
+                                               attestationApplicationId, hwInfo));
+}
+
 TEST_P(VtsAttestationTests, verifyAttestationWithNonemptyChallengeNonemptyId) {
     Status result;
 
+    HardwareInformation hwInfo;
+    ASSERT_TRUE(credentialStore_->getHardwareInformation(&hwInfo).isOk());
+
     sp<IWritableIdentityCredential> writableCredential;
-    ASSERT_TRUE(setupWritableCredential(writableCredential, credentialStore_,
-                                        false /* testCredential */));
+    ASSERT_TRUE(setupWritableCredential(writableCredential, credentialStore_));
 
     string challenge = "NotSoRandomChallenge1NotSoRandomChallenge1NotSoRandomChallenge1";
     vector<uint8_t> attestationChallenge(challenge.begin(), challenge.end());
@@ -78,16 +106,18 @@ TEST_P(VtsAttestationTests, verifyAttestationWithNonemptyChallengeNonemptyId) {
     ASSERT_TRUE(result.isOk()) << result.exceptionCode() << "; " << result.exceptionMessage()
                                << endl;
 
-    validateAttestationCertificate(attestationCertificate, attestationChallenge,
-                                   attestationApplicationId, false);
+    EXPECT_TRUE(validateAttestationCertificate(attestationCertificate, attestationChallenge,
+                                               attestationApplicationId, hwInfo));
 }
 
 TEST_P(VtsAttestationTests, verifyAttestationWithVeryShortChallengeAndId) {
     Status result;
 
+    HardwareInformation hwInfo;
+    ASSERT_TRUE(credentialStore_->getHardwareInformation(&hwInfo).isOk());
+
     sp<IWritableIdentityCredential> writableCredential;
-    ASSERT_TRUE(setupWritableCredential(writableCredential, credentialStore_,
-                                        false /* testCredential */));
+    ASSERT_TRUE(setupWritableCredential(writableCredential, credentialStore_));
 
     string challenge = "c";
     vector<uint8_t> attestationChallenge(challenge.begin(), challenge.end());
@@ -101,11 +131,10 @@ TEST_P(VtsAttestationTests, verifyAttestationWithVeryShortChallengeAndId) {
     ASSERT_TRUE(result.isOk()) << result.exceptionCode() << "; " << result.exceptionMessage()
                                << endl;
 
-    validateAttestationCertificate(attestationCertificate, attestationChallenge,
-                                   attestationApplicationId, false);
+    EXPECT_TRUE(validateAttestationCertificate(attestationCertificate, attestationChallenge,
+                                               attestationApplicationId, hwInfo));
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(VtsAttestationTests);
 INSTANTIATE_TEST_SUITE_P(
         Identity, VtsAttestationTests,
         testing::ValuesIn(android::getAidlHalInstanceNames(IIdentityCredentialStore::descriptor)),
