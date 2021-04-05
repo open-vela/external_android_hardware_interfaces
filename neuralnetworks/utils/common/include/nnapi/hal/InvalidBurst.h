@@ -32,9 +32,7 @@ class InvalidBurst final : public nn::IBurst {
     OptionalCacheHold cacheMemory(const nn::SharedMemory& memory) const override;
 
     nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> execute(
-            const nn::Request& request, nn::MeasureTiming measure,
-            const nn::OptionalTimePoint& deadline,
-            const nn::OptionalDuration& loopTimeoutDuration) const override;
+            const nn::Request& request, nn::MeasureTiming measure) const override;
 };
 
 }  // namespace android::hardware::neuralnetworks::utils
