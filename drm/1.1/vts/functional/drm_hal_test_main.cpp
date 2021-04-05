@@ -48,6 +48,5 @@ static const std::vector<DrmHalTestParam> kAllInstances = [] {
     return allInstancesWithClearKeyUuid;
 }();
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(DrmHalClearkeyTest);
 INSTANTIATE_TEST_SUITE_P(PerInstance, DrmHalClearkeyTest, testing::ValuesIn(kAllInstances),
                          PrintParamInstanceToString);

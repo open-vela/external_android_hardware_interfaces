@@ -656,9 +656,8 @@ void CameraDeviceSession::ResultBatcher_3_4::processCaptureResult_3_4(CaptureRes
             auto it = batch->mBatchBufs.find(buffer.streamId);
             if (it != batch->mBatchBufs.end()) {
                 InflightBatch::BufferBatch& bb = it->second;
-                auto id = buffer.streamId;
                 pushStreamBuffer(std::move(buffer), bb.mBuffers);
-                filledStreams.push_back(id);
+                filledStreams.push_back(buffer.streamId);
             } else {
                 pushStreamBuffer(std::move(buffer), nonBatchedBuffers);
             }
