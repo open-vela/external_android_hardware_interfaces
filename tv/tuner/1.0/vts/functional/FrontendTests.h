@@ -132,7 +132,6 @@ class FrontendTests {
     static AssertionResult failure() { return ::testing::AssertionFailure(); }
     static AssertionResult success() { return ::testing::AssertionSuccess(); }
 
-    // TODO: replace with customized dvr input
     void getDefaultSoftwareFrontendPlaybackConfig(DvrConfig& dvrConfig) {
         PlaybackSettings playbackSettings{
                 .statusMask = 0xf,
