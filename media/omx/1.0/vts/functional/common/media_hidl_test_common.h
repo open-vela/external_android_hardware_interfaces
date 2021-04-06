@@ -71,8 +71,8 @@ enum bufferOwner {
     unknown,
 };
 
-// List known and thus tested audio/video roles.
-static std::set<std::string> kKnownRoles{
+// White list audio/video roles to be tested.
+static std::set<std::string> kWhiteListRoles{
         "audio_encoder.aac",      "audio_encoder.amrnb", "audio_encoder.amrwb",
         "audio_encoder.flac",     "audio_decoder.aac",   "audio_decoder.amrnb",
         "audio_decoder.amrwb",    "audio_decoder.flac",  "audio_decoder.g711alaw",
@@ -115,7 +115,6 @@ inline uint32_t toRawCommandType(OMX_COMMANDTYPE l) {
 struct BufferInfo {
     uint32_t id;
     bufferOwner owner;
-    buffer_handle_t handle;
     android::hardware::media::omx::V1_0::CodecBuffer omxBuffer;
     ::android::sp<IMemory> mMemory;
     int32_t slot;
@@ -330,9 +329,6 @@ void allocatePortBuffers(sp<IOmxNode> omxNode,
                          PortMode portMode = PortMode::PRESET_BYTE_BUFFER,
                          bool allocGrap = false);
 
-void freePortBuffers(android::Vector<BufferInfo>* buffArray, PortMode portMode,
-                     bool allocGrap = false);
-
 void changeStateLoadedtoIdle(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                              android::Vector<BufferInfo>* iBuffer,
                              android::Vector<BufferInfo>* oBuffer,
@@ -342,9 +338,8 @@ void changeStateLoadedtoIdle(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
 
 void changeStateIdletoLoaded(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                              android::Vector<BufferInfo>* iBuffer,
-                             android::Vector<BufferInfo>* oBuffer, OMX_U32 kPortIndexInput,
-                             OMX_U32 kPortIndexOutput, PortMode* portMode = nullptr,
-                             bool allocGrap = false);
+                             android::Vector<BufferInfo>* oBuffer,
+                             OMX_U32 kPortIndexInput, OMX_U32 kPortIndexOutput);
 
 void changeStateIdletoExecute(sp<IOmxNode> omxNode, sp<CodecObserver> observer);
 
