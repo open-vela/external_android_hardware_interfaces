@@ -18,20 +18,21 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE := android.hardware.soundtrigger@2.0-impl
-LOCAL_VENDOR_MODULE := true
+LOCAL_PROPRIETARY_MODULE := true
 LOCAL_MODULE_RELATIVE_PATH := hw
 LOCAL_SRC_FILES := \
-    FetchISoundTriggerHw.cpp
-
-LOCAL_CFLAGS := -Wall -Werror
+    SoundTriggerHalImpl.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-        libhardware \
+        libhidlbase \
+        libhidltransport \
+        liblog \
         libutils \
+        libhardware \
         android.hardware.soundtrigger@2.0 \
-        android.hardware.soundtrigger@2.0-core
+        android.hardware.audio.common@2.0
 
-LOCAL_C_INCLUDE_DIRS := $(LOCAL_PATH)
+LOCAL_EXPORT_C_INCLUDE_DIRS := $(LOCAL_PATH)
 
 ifeq ($(strip $(AUDIOSERVER_MULTILIB)),)
 LOCAL_MULTILIB := 32

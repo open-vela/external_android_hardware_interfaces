@@ -35,7 +35,7 @@ cc_library_headers {
 }
 
 // Vehicle reference implementation lib
-cc_library {
+cc_library_static {
     name: "android.hardware.automotive.vehicle@2.0-manager-lib",
     vendor: true,
     defaults: ["vhal_v2_0_defaults"],
@@ -46,10 +46,16 @@ cc_library {
         "common/src/VehicleObjectPool.cpp",
         "common/src/VehiclePropertyStore.cpp",
         "common/src/VehicleUtils.cpp",
-        "common/src/VmsUtils.cpp",
     ],
     local_include_dirs: ["common/include/vhal_v2_0"],
     export_include_dirs: ["common/include"],
+}
+
+cc_library_shared {
+    name: "android.hardware.automotive.vehicle@2.0-manager-lib-shared",
+    vendor: true,
+    static_libs: ["android.hardware.automotive.vehicle@2.0-manager-lib"],
+    export_static_lib_headers: ["android.hardware.automotive.vehicle@2.0-manager-lib"],
 }
 
 // Vehicle default VehicleHAL implementation
@@ -58,14 +64,10 @@ cc_library_static {
     vendor: true,
     defaults: ["vhal_v2_0_defaults"],
     srcs: [
-        "impl/vhal_v2_0/CommConn.cpp",
         "impl/vhal_v2_0/EmulatedVehicleHal.cpp",
         "impl/vhal_v2_0/VehicleEmulator.cpp",
         "impl/vhal_v2_0/PipeComm.cpp",
         "impl/vhal_v2_0/SocketComm.cpp",
-        "impl/vhal_v2_0/LinearFakeValueGenerator.cpp",
-        "impl/vhal_v2_0/JsonFakeValueGenerator.cpp",
-        "impl/vhal_v2_0/GeneratorHub.cpp",
     ],
     local_include_dirs: ["common/include/vhal_v2_0"],
     export_include_dirs: ["impl"],
@@ -75,7 +77,6 @@ cc_library_static {
         "libprotobuf-cpp-lite",
     ],
     static_libs: [
-        "libjsoncpp",
         "libqemu_pipe",
         "android.hardware.automotive.vehicle@2.0-libproto-native",
     ],
@@ -92,10 +93,8 @@ cc_test {
         "tests/VehicleHalManager_test.cpp",
         "tests/VehicleObjectPool_test.cpp",
         "tests/VehiclePropConfigIndex_test.cpp",
-        "tests/VmsUtils_test.cpp",
     ],
     header_libs: ["libbase_headers"],
-    test_suites: ["general-tests"],
 }
 
 cc_binary {
@@ -113,7 +112,6 @@ cc_binary {
         "android.hardware.automotive.vehicle@2.0-manager-lib",
         "android.hardware.automotive.vehicle@2.0-default-impl-lib",
         "android.hardware.automotive.vehicle@2.0-libproto-native",
-        "libjsoncpp",
         "libqemu_pipe",
     ],
 }

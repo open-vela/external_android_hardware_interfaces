@@ -17,10 +17,11 @@
 #include <radio_hidl_hal_utils_v1_1.h>
 
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(RadioHidlEnvironment::Instance());
+    ::testing::AddGlobalTestEnvironment(new RadioHidlEnvironment);
     ::testing::InitGoogleTest(&argc, argv);
-    RadioHidlEnvironment::Instance()->init(&argc, argv);
+
     int status = RUN_ALL_TESTS();
     LOG(INFO) << "Test result = " << status;
+
     return status;
 }

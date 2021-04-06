@@ -17,7 +17,6 @@
 #define LOG_TAG "contexthub_hidl_hal_test"
 
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/logging.h>
 #include <android/hardware/contexthub/1.0/IContexthub.h>
 #include <android/hardware/contexthub/1.0/IContexthubCallback.h>
@@ -83,7 +82,7 @@ std::vector<uint32_t> getHubIds() {
     sp<IContexthub> hubApi = ::testing::VtsHalHidlTargetTestBase::getService<IContexthub>();
 
     if (hubApi != nullptr) {
-      for (const ContextHub& hub : getHubsSync(hubApi)) {
+      for (ContextHub hub : getHubsSync(hubApi)) {
         hubIds.push_back(hub.hubId);
       }
     }
@@ -93,27 +92,12 @@ std::vector<uint32_t> getHubIds() {
   return hubIds;
 }
 
-// Test environment for Contexthub HIDL HAL.
-class ContexthubHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
- public:
-  // get the test environment singleton
-  static ContexthubHidlEnvironment* Instance() {
-    static ContexthubHidlEnvironment* instance = new ContexthubHidlEnvironment;
-    return instance;
-  }
-
-  virtual void registerTestServices() override { registerTestService<IContexthub>(); }
- private:
-  ContexthubHidlEnvironment() {}
-};
-
 // Base test fixture that initializes the HAL and makes the context hub API
 // handle available
 class ContexthubHidlTestBase : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
-    hubApi = ::testing::VtsHalHidlTargetTestBase::getService<IContexthub>(
-        ContexthubHidlEnvironment::Instance()->getServiceName<IContexthub>());
+    hubApi = ::testing::VtsHalHidlTargetTestBase::getService<IContexthub>();
     ASSERT_NE(hubApi, nullptr);
 
     // getHubs() must be called at least once for proper initialization of the
@@ -206,7 +190,7 @@ TEST_F(ContexthubHidlTestBase, TestGetHubs) {
   hidl_vec<ContextHub> hubs = getHubsSync(hubApi);
   ALOGD("System reports %zu hubs", hubs.size());
 
-  for (const ContextHub& hub : hubs) {
+  for (ContextHub hub : hubs) {
     ALOGD("Checking hub ID %" PRIu32, hub.hubId);
 
     EXPECT_FALSE(hub.name.empty());
@@ -397,11 +381,7 @@ INSTANTIATE_TEST_CASE_P(HubIdSpecificTests, ContexthubTxnTest,
 } // anonymous namespace
 
 int main(int argc, char **argv) {
-  ::testing::AddGlobalTestEnvironment(ContexthubHidlEnvironment::Instance());
   ::testing::InitGoogleTest(&argc, argv);
-  ContexthubHidlEnvironment::Instance()->init(&argc, argv);
-  int status = RUN_ALL_TESTS();
-  ALOGI ("Test result = %d", status);
-  return status;
+  return RUN_ALL_TESTS();
 }
 

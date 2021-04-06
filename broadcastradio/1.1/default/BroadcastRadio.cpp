@@ -33,11 +33,6 @@ using V1_0::BandConfig;
 using V1_0::Class;
 using V1_0::Deemphasis;
 using V1_0::Rds;
-using V1_1::IdentifierType;
-using V1_1::ProgramSelector;
-using V1_1::ProgramType;
-using V1_1::Properties;
-using V1_1::VendorKeyValue;
 
 using std::lock_guard;
 using std::map;
@@ -107,7 +102,7 @@ Return<void> BroadcastRadio::getProperties_1_1(getProperties_1_1_cb _hidl_cb) {
     prop10.numTuners = 1;
     prop10.numAudioSources = 1;
     prop10.supportsCapture = false;
-    prop11.supportsBackgroundScanning = true;
+    prop11.supportsBackgroundScanning = false;
     prop11.supportedProgramTypes = hidl_vec<uint32_t>({
         static_cast<uint32_t>(ProgramType::AM), static_cast<uint32_t>(ProgramType::FM),
         static_cast<uint32_t>(ProgramType::AM_HD), static_cast<uint32_t>(ProgramType::FM_HD),
@@ -122,7 +117,28 @@ Return<void> BroadcastRadio::getProperties_1_1(getProperties_1_1_cb _hidl_cb) {
         {"com.google.dummy", "dummy"},
     });
 
-    prop10.bands = getAmFmBands();
+    prop10.bands.resize(mConfig.amFmBands.size());
+    for (size_t i = 0; i < mConfig.amFmBands.size(); i++) {
+        auto& src = mConfig.amFmBands[i];
+        auto& dst = prop10.bands[i];
+
+        dst.type = src.type;
+        dst.antennaConnected = true;
+        dst.lowerLimit = src.lowerLimit;
+        dst.upperLimit = src.upperLimit;
+        dst.spacings = src.spacings;
+
+        if (utils::isAm(src.type)) {
+            dst.ext.am.stereo = true;
+        } else if (utils::isFm(src.type)) {
+            dst.ext.fm.deemphasis = static_cast<Deemphasis>(Deemphasis::D50 | Deemphasis::D75);
+            dst.ext.fm.stereo = true;
+            dst.ext.fm.rds = static_cast<Rds>(Rds::WORLD | Rds::US);
+            dst.ext.fm.ta = true;
+            dst.ext.fm.af = true;
+            dst.ext.fm.ea = true;
+        }
+    }
 
     _hidl_cb(prop11);
     return Void();
@@ -141,7 +157,7 @@ Return<void> BroadcastRadio::openTuner(const BandConfig& config, bool audio __un
         mTuner = nullptr;
     }
 
-    sp<Tuner> newTuner = new Tuner(this, mClassId, callback);
+    sp<Tuner> newTuner = new Tuner(mClassId, callback);
     mTuner = newTuner;
     if (mClassId == Class::AM_FM) {
         auto ret = newTuner->setConfiguration(config);
@@ -166,33 +182,6 @@ Return<void> BroadcastRadio::getImage(int32_t id, getImage_cb _hidl_cb) {
     ALOGI("Image %x doesn't exists", id);
     _hidl_cb({});
     return Void();
-}
-
-std::vector<V1_0::BandConfig> BroadcastRadio::getAmFmBands() const {
-    std::vector<V1_0::BandConfig> out;
-    for (auto&& src : mConfig.amFmBands) {
-        V1_0::BandConfig dst;
-
-        dst.type = src.type;
-        dst.antennaConnected = true;
-        dst.lowerLimit = src.lowerLimit;
-        dst.upperLimit = src.upperLimit;
-        dst.spacings = src.spacings;
-
-        if (utils::isAm(src.type)) {
-            dst.ext.am.stereo = true;
-        } else if (utils::isFm(src.type)) {
-            dst.ext.fm.deemphasis = static_cast<Deemphasis>(Deemphasis::D50 | Deemphasis::D75);
-            dst.ext.fm.stereo = true;
-            dst.ext.fm.rds = static_cast<Rds>(Rds::WORLD | Rds::US);
-            dst.ext.fm.ta = true;
-            dst.ext.fm.af = true;
-            dst.ext.fm.ea = true;
-        }
-
-        out.push_back(dst);
-    }
-    return out;
 }
 
 }  // namespace implementation
