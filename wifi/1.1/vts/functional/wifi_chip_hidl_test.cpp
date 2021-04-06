@@ -18,6 +18,7 @@
 
 #include <android/hardware/wifi/1.1/IWifi.h>
 #include <android/hardware/wifi/1.1/IWifiChip.h>
+#include <android/hardware/wifi/1.3/IWifiChip.h>
 #include <gtest/gtest.h>
 #include <hidl/GtestPrinter.h>
 #include <hidl/ServiceManagement.h>
@@ -63,7 +64,20 @@ class WifiChipHidlTest : public ::testing::TestWithParam<std::string> {
         EXPECT_TRUE(configureChipToSupportIfaceType(
             wifi_chip_, IfaceType::STA, &mode_id));
 
-        return getChipCapabilitiesLatest(wifi_chip_);
+        sp<::android::hardware::wifi::V1_3::IWifiChip> chip_converted =
+            ::android::hardware::wifi::V1_3::IWifiChip::castFrom(wifi_chip_);
+
+        std::pair<WifiStatus, uint32_t> status_and_caps;
+
+        if (chip_converted != nullptr) {
+            // Call the newer HAL version
+            status_and_caps = HIDL_INVOKE(chip_converted, getCapabilities_1_3);
+        } else {
+            status_and_caps = HIDL_INVOKE(wifi_chip_, getCapabilities);
+        }
+
+        EXPECT_EQ(WifiStatusCode::SUCCESS, status_and_caps.first.code);
+        return status_and_caps.second;
     }
 
     sp<IWifiChip> wifi_chip_;
@@ -100,7 +114,6 @@ TEST_P(WifiChipHidlTest, ResetTxPowerScenario) {
     }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(WifiChipHidlTest);
 INSTANTIATE_TEST_SUITE_P(
     PerInstance, WifiChipHidlTest,
     testing::ValuesIn(
