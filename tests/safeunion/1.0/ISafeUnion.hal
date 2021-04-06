@@ -16,6 +16,8 @@
 
 package android.hardware.tests.safeunion@1.0;
 
+import IOtherInterface;
+
 import android.hidl.safe_union@1.0::Monostate;
 
 interface ISafeUnion {
@@ -71,7 +73,7 @@ interface ISafeUnion {
 
         uint32_t a;
         int8_t[7] b;
-        interface c;
+        IOtherInterface c;
         string d;
         vec<string> e;
         handle f;
@@ -105,7 +107,7 @@ interface ISafeUnion {
     newInterfaceTypeSafeUnion() generates (InterfaceTypeSafeUnion myUnion);
     setInterfaceA(InterfaceTypeSafeUnion myUnion, uint32_t a) generates (InterfaceTypeSafeUnion myUnion);
     setInterfaceB(InterfaceTypeSafeUnion myUnion, int8_t[7] b) generates (InterfaceTypeSafeUnion myUnion);
-    setInterfaceC(InterfaceTypeSafeUnion myUnion, interface c) generates (InterfaceTypeSafeUnion myUnion);
+    setInterfaceC(InterfaceTypeSafeUnion myUnion, IOtherInterface c) generates (InterfaceTypeSafeUnion myUnion);
     setInterfaceD(InterfaceTypeSafeUnion myUnion, string d) generates (InterfaceTypeSafeUnion myUnion);
     setInterfaceE(InterfaceTypeSafeUnion myUnion, vec<string> e) generates (InterfaceTypeSafeUnion myUnion);
     setInterfaceF(InterfaceTypeSafeUnion myUnion, handle f) generates (InterfaceTypeSafeUnion myUnion);
