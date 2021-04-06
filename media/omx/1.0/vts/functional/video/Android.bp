@@ -14,44 +14,25 @@
 // limitations under the License.
 //
 
-package {
-    // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "hardware_interfaces_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_interfaces_license"],
-}
-
 cc_test {
     name: "VtsHalMediaOmxV1_0TargetVideoDecTest",
-    stem: "vts_hal_media_omx_v1_0_video_dec_test",
     defaults: ["VtsHalMediaOmxV1_0Defaults"],
     srcs: [
         "VtsHalMediaOmxV1_0TargetVideoDecTest.cpp",
-        "media_video_hidl_test_common.cpp",
+        "media_video_hidl_test_common.cpp"
     ],
-    data: [":media_omx_video_res"],
-    test_config: "VtsHalMediaOmxV1_0TargetVideoDecTest.xml",
-    test_suites: [
-        "vts",
-    ],
+    test_suites: ["general-tests"],
 }
 
 cc_test {
     name: "VtsHalMediaOmxV1_0TargetVideoEncTest",
-    stem: "vts_hal_media_omx_v1_0_video_enc_test",
     defaults: ["VtsHalMediaOmxV1_0Defaults"],
     srcs: [
         "VtsHalMediaOmxV1_0TargetVideoEncTest.cpp",
-        "media_video_hidl_test_common.cpp",
+        "media_video_hidl_test_common.cpp"
     ],
     static_libs: [
         "libnativewindow",
     ],
-    data: [":media_omx_video_res"],
-    test_config: "VtsHalMediaOmxV1_0TargetVideoEncTest.xml",
-    test_suites: [
-        "vts",
-    ],
+    test_suites: ["general-tests"],
 }
