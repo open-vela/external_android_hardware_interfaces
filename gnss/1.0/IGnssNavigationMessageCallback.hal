@@ -119,8 +119,7 @@ interface IGnssNavigationMessageCallback {
          *
          * - For Galileo F/NAV, this refers to the page type in the range 1-6
          *
-         * - For Galileo I/NAV, this refers to the word type in the range 0-10+
-         * A value of 0 is only allowed if the Satellite is transmiting a Spare Word.
+         * - For Galileo I/NAV, this refers to the word type in the range 1-10+
          */
         int16_t submessageId;
 

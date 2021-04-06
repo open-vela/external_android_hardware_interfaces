@@ -16,7 +16,6 @@
 
 #define LOG_TAG "vr_hidl_hal_test"
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/logging.h>
 #include <android/hardware/vr/1.0/IVr.h>
 #include <hardware/vr.h>
@@ -27,30 +26,27 @@ using ::android::hardware::Return;
 using ::android::hardware::Void;
 using ::android::sp;
 
-// Test environment for Vr HIDL HAL.
-class VrHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
- public:
-  // get the test environment singleton
-  static VrHidlEnvironment* Instance() {
-    static VrHidlEnvironment* instance = new VrHidlEnvironment;
-    return instance;
-  }
-
-  virtual void registerTestServices() override { registerTestService<IVr>(); }
-};
-
 // The main test class for VR HIDL HAL.
 class VrHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   void SetUp() override {
-    vr = ::testing::VtsHalHidlTargetTestBase::getService<IVr>(
-        VrHidlEnvironment::Instance()->getServiceName<IVr>());
+    vr = ::testing::VtsHalHidlTargetTestBase::getService<IVr>();
     ASSERT_NE(vr, nullptr);
   }
 
   void TearDown() override {}
 
   sp<IVr> vr;
+};
+
+
+// A class for test environment setup (kept since this file is a template).
+class VrHidlEnvironment : public ::testing::Environment {
+ public:
+  void SetUp() {}
+  void TearDown() {}
+
+ private:
 };
 
 // Sanity check that Vr::init does not crash.
@@ -76,9 +72,8 @@ TEST_F(VrHidlTest, ReInit) {
 }
 
 int main(int argc, char **argv) {
-  ::testing::AddGlobalTestEnvironment(VrHidlEnvironment::Instance());
+  ::testing::AddGlobalTestEnvironment(new VrHidlEnvironment);
   ::testing::InitGoogleTest(&argc, argv);
-  VrHidlEnvironment::Instance()->init(&argc, argv);
   int status = RUN_ALL_TESTS();
   ALOGI("Test result = %d", status);
   return status;

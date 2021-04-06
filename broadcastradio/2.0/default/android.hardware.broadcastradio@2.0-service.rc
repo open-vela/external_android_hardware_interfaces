@@ -1,4 +1,0 @@
-service broadcastradio-hal2 /vendor/bin/hw/android.hardware.broadcastradio@2.0-service
-    class hal
-    user audioserver
-    group audio

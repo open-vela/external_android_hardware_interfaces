@@ -16,13 +16,12 @@
 
 #define LOG_TAG "light_hidl_hal_test"
 
-#include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/logging.h>
 #include <android/hardware/light/2.0/ILight.h>
 #include <android/hardware/light/2.0/types.h>
-#include <unistd.h>
+#include <VtsHalHidlTargetTestBase.h>
 #include <set>
+#include <unistd.h>
 
 using ::android::hardware::light::V2_0::Brightness;
 using ::android::hardware::light::V2_0::Flash;
@@ -73,25 +72,10 @@ const static std::set<Type> kAllTypes = {
     Type::WIFI
 };
 
-// Test environment for Light HIDL HAL.
-class LightHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static LightHidlEnvironment* Instance() {
-        static LightHidlEnvironment* instance = new LightHidlEnvironment;
-        return instance;
-    }
-
-    virtual void registerTestServices() override { registerTestService<ILight>(); }
-   private:
-    LightHidlEnvironment() {}
-};
-
 class LightHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 public:
     virtual void SetUp() override {
-        light = ::testing::VtsHalHidlTargetTestBase::getService<ILight>(
-            LightHidlEnvironment::Instance()->getServiceName<ILight>());
+        light = ::testing::VtsHalHidlTargetTestBase::getService<ILight>();
 
         ASSERT_NE(light, nullptr);
         LOG(INFO) << "Test is remote " << light->isRemote();
@@ -165,9 +149,7 @@ TEST_F(LightHidlTest, TestUnsupported) {
 }
 
 int main(int argc, char **argv) {
-    ::testing::AddGlobalTestEnvironment(LightHidlEnvironment::Instance());
     ::testing::InitGoogleTest(&argc, argv);
-    LightHidlEnvironment::Instance()->init(&argc, argv);
     int status = RUN_ALL_TESTS();
     LOG(INFO) << "Test result = " << status;
     return status;

@@ -17,8 +17,7 @@
 #include <sap_hidl_hal_utils.h>
 
 void SapHidlTest::SetUp() {
-    sap = ::testing::VtsHalHidlTargetTestBase::getService<ISap>(
-        SapHidlEnvironment::Instance()->getServiceName<ISap>(hidl_string(SAP_SERVICE_NAME)));
+    sap = ::testing::VtsHalHidlTargetTestBase::getService<ISap>(hidl_string(SAP_SERVICE_NAME));
     ASSERT_NE(sap, nullptr);
 
     sapCb = new SapCallback(*this);
@@ -31,25 +30,23 @@ void SapHidlTest::SetUp() {
 
 void SapHidlTest::TearDown() {}
 
-void SapHidlTest::notify(int receivedToken) {
+void SapHidlTest::notify() {
     std::unique_lock<std::mutex> lock(mtx);
     count++;
-    if (token == receivedToken) {
-        cv.notify_one();
+    cv.notify_one();
     }
-}
 
-std::cv_status SapHidlTest::wait() {
-    std::unique_lock<std::mutex> lock(mtx);
+    std::cv_status SapHidlTest::wait() {
+        std::unique_lock<std::mutex> lock(mtx);
 
-    std::cv_status status = std::cv_status::no_timeout;
-    auto now = std::chrono::system_clock::now();
-    while (count == 0) {
-        status = cv.wait_until(lock, now + std::chrono::seconds(TIMEOUT_PERIOD));
-        if (status == std::cv_status::timeout) {
-            return status;
+        std::cv_status status = std::cv_status::no_timeout;
+        auto now = std::chrono::system_clock::now();
+        while (count == 0) {
+            status = cv.wait_until(lock, now + std::chrono::seconds(TIMEOUT_PERIOD));
+            if (status == std::cv_status::timeout) {
+                return status;
+            }
         }
+        count--;
+        return status;
     }
-    count--;
-    return status;
-}
