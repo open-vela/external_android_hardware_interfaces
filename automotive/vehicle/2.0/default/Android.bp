@@ -12,6 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
 cc_defaults {
     name: "vhal_v2_0_defaults",
     shared_libs: [
@@ -32,7 +41,7 @@ cc_defaults {
     defaults: ["vhal_v2_0_defaults"],
     shared_libs: [
         "libbinder_ndk",
-        "carwatchdog_aidl_interface-ndk_platform",
+        "carwatchdog_aidl_interface-V2-ndk_platform",
     ],
 }
 
@@ -88,6 +97,7 @@ cc_library_static {
     whole_static_libs: [
         "android.hardware.automotive.vehicle@2.0-emulated-user-hal-lib",
         "android.hardware.automotive.vehicle@2.0-manager-lib",
+        "libqemu_pipe",
     ],
     shared_libs: [
         "libbase",
@@ -95,7 +105,6 @@ cc_library_static {
         "libprotobuf-cpp-lite",
     ],
     static_libs: [
-        "libqemu_pipe",
         "android.hardware.automotive.vehicle@2.0-libproto-native",
     ],
 }
@@ -107,6 +116,9 @@ cc_library_static {
     defaults: ["vhal_v2_0_target_defaults"],
     srcs: [
         "impl/vhal_v2_0/EmulatedUserHal.cpp",
+    ],
+    whole_static_libs: [
+        "android.hardware.automotive.vehicle@2.0-user-hal-helper-lib",
     ],
 }
 
@@ -134,7 +146,6 @@ cc_library_static {
     local_include_dirs: ["common/include/vhal_v2_0"],
     export_include_dirs: ["impl"],
     srcs: [
-        "impl/vhal_v2_0/EmulatedUserHal.cpp",
         "impl/vhal_v2_0/GeneratorHub.cpp",
         "impl/vhal_v2_0/JsonFakeValueGenerator.cpp",
         "impl/vhal_v2_0/LinearFakeValueGenerator.cpp",
@@ -143,6 +154,7 @@ cc_library_static {
     ],
     whole_static_libs: [
         "android.hardware.automotive.vehicle@2.0-server-common-lib",
+        "android.hardware.automotive.vehicle@2.0-user-hal-helper-lib",
     ],
     static_libs: [
         "android.hardware.automotive.vehicle@2.0-libproto-native",
@@ -207,6 +219,31 @@ cc_binary {
         "android.hardware.automotive.vehicle@2.0-manager-lib",
         "android.hardware.automotive.vehicle@2.0-default-impl-lib",
         "android.hardware.automotive.vehicle@2.0-libproto-native",
-        "libqemu_pipe",
     ],
+}
+
+cc_fuzz {
+    name: "vehicleManager_fuzzer",
+    vendor: true,
+    defaults: ["vhal_v2_0_target_defaults"],
+    whole_static_libs: ["android.hardware.automotive.vehicle@2.0-manager-lib"],
+    srcs: [
+        "tests/fuzzer/VehicleManager_fuzzer.cpp",
+    ],
+    shared_libs: [
+        "libbase",
+        "libcutils",
+        "libbinder_ndk",
+    ],
+    header_libs: ["libbase_headers"],
+    local_include_dirs: [
+        "common/include",
+        "tests",
+    ],
+    fuzz_config: {
+        cc: [
+            "android-media-fuzzing-reports@google.com",
+        ],
+        componentid: 533764,
+    },
 }
