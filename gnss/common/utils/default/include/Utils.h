@@ -17,11 +17,12 @@
 #ifndef android_hardware_gnss_common_default_Utils_H_
 #define android_hardware_gnss_common_default_Utils_H_
 
+#include <aidl/android/hardware/gnss/BnGnssMeasurementInterface.h>
 #include <android/hardware/gnss/1.0/IGnss.h>
+#include <android/hardware/gnss/2.0/IGnss.h>
+#include <android/hardware/gnss/2.1/IGnss.h>
 
-using GnssConstellationType = ::android::hardware::gnss::V1_0::GnssConstellationType;
-using GnssLocation = ::android::hardware::gnss::V1_0::GnssLocation;
-using GnssSvInfo = ::android::hardware::gnss::V1_0::IGnssCallback::GnssSvInfo;
+using ::android::hardware::hidl_vec;
 
 namespace android {
 namespace hardware {
@@ -29,9 +30,22 @@ namespace gnss {
 namespace common {
 
 struct Utils {
-    static GnssLocation getMockLocation();
-    static GnssSvInfo getSvInfo(int16_t svid, GnssConstellationType type, float cN0DbHz,
-                                float elevationDegrees, float azimuthDegrees);
+    static aidl::android::hardware::gnss::GnssData getMockMeasurement(
+            const bool enableCorrVecOutputs);
+    static V2_0::IGnssMeasurementCallback::GnssData getMockMeasurementV2_0();
+    static V2_1::IGnssMeasurementCallback::GnssData getMockMeasurementV2_1();
+    static V2_0::GnssLocation getMockLocationV2_0();
+    static V1_0::GnssLocation getMockLocationV1_0();
+    static hidl_vec<V2_1::IGnssCallback::GnssSvInfo> getMockSvInfoListV2_1();
+    static V2_1::IGnssCallback::GnssSvInfo getMockSvInfoV2_1(
+            V2_0::IGnssCallback::GnssSvInfo gnssSvInfoV2_0, float basebandCN0DbHz);
+    static V2_0::IGnssCallback::GnssSvInfo getMockSvInfoV2_0(
+            V1_0::IGnssCallback::GnssSvInfo gnssSvInfoV1_0, V2_0::GnssConstellationType type);
+    static V1_0::IGnssCallback::GnssSvInfo getMockSvInfoV1_0(int16_t svid,
+                                                             V1_0::GnssConstellationType type,
+                                                             float cN0DbHz, float elevationDegrees,
+                                                             float azimuthDegrees);
+    static hidl_vec<V2_1::IGnssAntennaInfoCallback::GnssAntennaInfo> getMockAntennaInfos();
 };
 
 }  // namespace common
