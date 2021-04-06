@@ -14,82 +14,22 @@
 // limitations under the License.
 //
 
-package {
-    // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "hardware_interfaces_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_interfaces_license"],
-}
-
-cc_library_static {
-    name: "android.hardware.drm@1.1-vts",
-    defaults: ["VtsHalTargetTestDefaults"],
-    include_dirs: [
-        "hardware/interfaces/drm/1.0/vts/functional",
-    ],
-    local_include_dirs: [
-        "include",
-    ],
-    srcs: [
-        "drm_hal_clearkey_test.cpp",
-    ],
-    shared_libs: [
-        "android.hardware.drm@1.0",
-        "android.hardware.drm@1.1",
-        "android.hidl.allocator@1.0",
-        "android.hidl.memory@1.0",
-        "libhidlmemory",
-        "libnativehelper",
-    ],
-    static_libs: [
-        "libdrmvtshelper",
-    ],
-    export_shared_lib_headers: [
-        "android.hardware.drm@1.0",
-        "android.hardware.drm@1.1",
-        "android.hidl.allocator@1.0",
-        "android.hidl.memory@1.0",
-        "libhidlmemory",
-        "libnativehelper",
-    ],
-    export_static_lib_headers: [
-        "libdrmvtshelper",
-    ],
-    export_include_dirs: [
-        "include",
-    ],
-}
-
 cc_test {
     name: "VtsHalDrmV1_1TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
     srcs: [
-        "drm_hal_test_main.cpp",
+        "drm_hal_clearkey_test.cpp"
     ],
-    whole_static_libs: [
-        "android.hardware.drm@1.1-vts",
-    ],
-    shared_libs: [
+    static_libs: [
+        "android.hardware.drm@1.0",
         "android.hardware.drm@1.1",
+        "android.hardware.drm@1.0-helper",
+        "android.hidl.allocator@1.0",
+        "android.hidl.memory@1.0",
+        "libhidlmemory",
+        "libnativehelper",
+        "libssl",
+        "libcrypto",
     ],
-    arch: {
-        arm: {
-            data: [":libvtswidevine-arm-prebuilts"],
-        },
-        arm64: {
-            data: [":libvtswidevine-arm64-prebuilts"],
-        },
-        x86: {
-            data: [":libvtswidevine-x86-prebuilts"],
-        },
-        x86_64: {
-            data: [":libvtswidevine-x86_64-prebuilts"],
-        },
-    },
-    test_suites: [
-        "general-tests",
-        "vts",
-    ],
+    test_suites: ["general-tests"],
 }
