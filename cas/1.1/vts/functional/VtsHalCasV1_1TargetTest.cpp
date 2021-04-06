@@ -16,21 +16,19 @@
 
 #define LOG_TAG "mediacas_hidl_hal_test"
 
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/logging.h>
 #include <android/hardware/cas/1.0/IDescramblerBase.h>
 #include <android/hardware/cas/1.0/types.h>
 #include <android/hardware/cas/1.1/ICas.h>
 #include <android/hardware/cas/1.1/ICasListener.h>
 #include <android/hardware/cas/1.1/IMediaCasService.h>
-#include <android/hardware/cas/1.2/IMediaCasService.h>
 #include <android/hardware/cas/native/1.0/IDescrambler.h>
 #include <android/hardware/cas/native/1.0/types.h>
 #include <binder/MemoryDealer.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
 #include <hidl/HidlSupport.h>
 #include <hidl/HidlTransportSupport.h>
-#include <hidl/ServiceManagement.h>
 #include <hidl/Status.h>
 #include <hidlmemory/FrameworkUtils.h>
 #include <utils/Condition.h>
@@ -253,18 +251,27 @@ void MediaCasListener::testSessionEventEcho(sp<ICas>& mediaCas, const hidl_vec<u
     EXPECT_TRUE(mEventData == eventData);
 }
 
-class MediaCasHidlTest : public testing::TestWithParam<std::string> {
+// Test environment for Cas HIDL HAL.
+class CasHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+  public:
+    // get the test environment singleton
+    static CasHidlEnvironment* Instance() {
+        static CasHidlEnvironment* instance = new CasHidlEnvironment;
+        return instance;
+    }
+
+    virtual void registerTestServices() override { registerTestService<IMediaCasService>(); }
+};
+
+class MediaCasHidlTest : public ::testing::VtsHalHidlTargetTestBase {
   public:
     virtual void SetUp() override {
-        if (android::hardware::cas::V1_2::IMediaCasService::getService(GetParam()) == nullptr) {
-            ALOGI("Descrambler is need to be tested before cas@1.2.");
-            mIsTestDescrambler = true;
-        }
-        mService = IMediaCasService::getService(GetParam());
+        mService = ::testing::VtsHalHidlTargetTestBase::getService<IMediaCasService>(
+                CasHidlEnvironment::Instance()->getServiceName<IMediaCasService>());
         ASSERT_NE(mService, nullptr);
     }
 
-    sp<IMediaCasService> mService = nullptr;
+    sp<IMediaCasService> mService;
 
   protected:
     static void description(const std::string& description) {
@@ -274,7 +281,6 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
     sp<ICas> mMediaCas;
     sp<IDescramblerBase> mDescramblerBase;
     sp<MediaCasListener> mCasListener;
-    bool mIsTestDescrambler = false;
     typedef struct _OobInputTestParams {
         const SubSample* subSamples;
         uint32_t numSubSamples;
@@ -297,19 +303,12 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
 
 ::testing::AssertionResult MediaCasHidlTest::createCasPlugin(int32_t caSystemId) {
     auto status = mService->isSystemIdSupported(caSystemId);
-    bool skipDescrambler = false;
     if (!status.isOk() || !status) {
         return ::testing::AssertionFailure();
     }
     status = mService->isDescramblerSupported(caSystemId);
     if (!status.isOk() || !status) {
-        if (mIsTestDescrambler) {
-            return ::testing::AssertionFailure();
-        } else {
-            ALOGI("Skip Descrambler test since it's not required in cas@1.2.");
-            mDescramblerBase = nullptr;
-            skipDescrambler = true;
-        }
+        return ::testing::AssertionFailure();
     }
 
     mCasListener = new MediaCasListener();
@@ -322,15 +321,10 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
         return ::testing::AssertionFailure();
     }
 
-    if (skipDescrambler) {
-        return ::testing::AssertionSuccess();
-    }
-
     auto descramblerStatus = mService->createDescrambler(caSystemId);
     if (!descramblerStatus.isOk()) {
         return ::testing::AssertionFailure();
     }
-
     mDescramblerBase = descramblerStatus;
     return ::testing::AssertionResult(mDescramblerBase != nullptr);
 }
@@ -372,7 +366,7 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
         return ::testing::AssertionFailure();
     }
 
-    uint8_t* ipBuffer = static_cast<uint8_t*>(static_cast<void*>(mem->unsecurePointer()));
+    uint8_t* ipBuffer = static_cast<uint8_t*>(static_cast<void*>(mem->pointer()));
     memcpy(ipBuffer, kInBinaryBuffer, sizeof(kInBinaryBuffer));
 
     // hidlMemory is not to be passed out of scope!
@@ -459,7 +453,7 @@ class MediaCasHidlTest : public testing::TestWithParam<std::string> {
     return ::testing::AssertionResult(returnVoid.isOk());
 }
 
-TEST_P(MediaCasHidlTest, TestClearKeyApisWithSession) {
+TEST_F(MediaCasHidlTest, TestClearKeyApisWithSession) {
     description("Test that valid call sequences with SessionEvent send and receive");
 
     ASSERT_TRUE(createCasPlugin(CLEAR_KEY_SYSTEM_ID));
@@ -486,15 +480,13 @@ TEST_P(MediaCasHidlTest, TestClearKeyApisWithSession) {
     EXPECT_TRUE(returnStatus.isOk());
     EXPECT_EQ(Status::OK, returnStatus);
 
-    if (mDescramblerBase != nullptr) {
-        returnStatus = mDescramblerBase->setMediaCasSession(sessionId);
-        EXPECT_TRUE(returnStatus.isOk());
-        EXPECT_EQ(Status::OK, returnStatus);
+    returnStatus = mDescramblerBase->setMediaCasSession(sessionId);
+    EXPECT_TRUE(returnStatus.isOk());
+    EXPECT_EQ(Status::OK, returnStatus);
 
-        returnStatus = mDescramblerBase->setMediaCasSession(streamSessionId);
-        EXPECT_TRUE(returnStatus.isOk());
-        EXPECT_EQ(Status::OK, returnStatus);
-    }
+    returnStatus = mDescramblerBase->setMediaCasSession(streamSessionId);
+    EXPECT_TRUE(returnStatus.isOk());
+    EXPECT_EQ(Status::OK, returnStatus);
 
     hidl_vec<uint8_t> hidlNullPtr;
     hidlNullPtr.setToExternal(static_cast<uint8_t*>(nullptr), 0);
@@ -538,31 +530,29 @@ TEST_P(MediaCasHidlTest, TestClearKeyApisWithSession) {
     EXPECT_TRUE(returnStatus.isOk());
     EXPECT_EQ(Status::OK, returnStatus);
 
-    if (mDescramblerBase != nullptr) {
-        EXPECT_FALSE(mDescramblerBase->requiresSecureDecoderComponent("video/avc"));
+    EXPECT_FALSE(mDescramblerBase->requiresSecureDecoderComponent("video/avc"));
 
-        sp<IDescrambler> descrambler;
-        descrambler = IDescrambler::castFrom(mDescramblerBase);
-        ASSERT_NE(descrambler, nullptr);
+    sp<IDescrambler> descrambler;
+    descrambler = IDescrambler::castFrom(mDescramblerBase);
+    ASSERT_NE(descrambler, nullptr);
 
-        Status descrambleStatus = Status::OK;
-        sp<IMemory> dataMemory;
+    Status descrambleStatus = Status::OK;
+    sp<IMemory> dataMemory;
 
-        ASSERT_TRUE(descrambleTestInputBuffer(descrambler, &descrambleStatus, &dataMemory));
-        EXPECT_EQ(Status::OK, descrambleStatus);
+    ASSERT_TRUE(descrambleTestInputBuffer(descrambler, &descrambleStatus, &dataMemory));
+    EXPECT_EQ(Status::OK, descrambleStatus);
 
-        ASSERT_NE(nullptr, dataMemory.get());
-        uint8_t* opBuffer = static_cast<uint8_t*>(static_cast<void*>(dataMemory->unsecurePointer()));
+    ASSERT_NE(nullptr, dataMemory.get());
+    uint8_t* opBuffer = static_cast<uint8_t*>(static_cast<void*>(dataMemory->pointer()));
 
-        int compareResult =
-                memcmp(static_cast<const void*>(opBuffer),
-                       static_cast<const void*>(kOutRefBinaryBuffer), sizeof(kOutRefBinaryBuffer));
-        EXPECT_EQ(0, compareResult);
+    int compareResult =
+            memcmp(static_cast<const void*>(opBuffer),
+                   static_cast<const void*>(kOutRefBinaryBuffer), sizeof(kOutRefBinaryBuffer));
+    EXPECT_EQ(0, compareResult);
 
-        returnStatus = mDescramblerBase->release();
-        EXPECT_TRUE(returnStatus.isOk());
-        EXPECT_EQ(Status::OK, returnStatus);
-    }
+    returnStatus = mDescramblerBase->release();
+    EXPECT_TRUE(returnStatus.isOk());
+    EXPECT_EQ(Status::OK, returnStatus);
 
     returnStatus = mMediaCas->release();
     EXPECT_TRUE(returnStatus.isOk());
@@ -571,8 +561,11 @@ TEST_P(MediaCasHidlTest, TestClearKeyApisWithSession) {
 
 }  // anonymous namespace
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(MediaCasHidlTest);
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, MediaCasHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IMediaCasService::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(CasHidlEnvironment::Instance());
+    ::testing::InitGoogleTest(&argc, argv);
+    CasHidlEnvironment::Instance()->init(&argc, argv);
+    int status = RUN_ALL_TESTS();
+    LOG(INFO) << "Test result = " << status;
+    return status;
+}

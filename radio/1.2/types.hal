@@ -161,8 +161,7 @@ struct NetworkScanRequest {
     ScanType type;
 
     /**
-     * Time interval in seconds between the completion of one scan and the start of a subsequent scan.
-     * This field is only valid when 'type' is 'PERIODIC'.
+     * Time interval in seconds between periodic scans, only valid when type = PERIODIC
      * Range: ScanIntervalRange:MIN to ScanIntervalRange:MAX
      */
     int32_t interval;
