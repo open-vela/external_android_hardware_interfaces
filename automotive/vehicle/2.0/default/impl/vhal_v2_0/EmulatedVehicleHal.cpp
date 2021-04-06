@@ -15,15 +15,8 @@
  */
 #define LOG_TAG "DefaultVehicleHal_v2_0"
 
-#include <android-base/chrono_utils.h>
-#include <android-base/macros.h>
-#include <android-base/properties.h>
 #include <android/log.h>
-#include <dirent.h>
-#include <sys/system_properties.h>
-#include <utils/SystemClock.h>
-#include <fstream>
-#include <regex>
+#include <android-base/macros.h>
 
 #include "EmulatedVehicleHal.h"
 #include "JsonFakeValueGenerator.h"
@@ -37,8 +30,6 @@ namespace vehicle {
 namespace V2_0 {
 
 namespace impl {
-
-static constexpr std::chrono::nanoseconds kHeartBeatIntervalNs = 3s;
 
 static std::unique_ptr<Obd2SensorStore> fillDefaultObd2Frame(size_t numVendorIntegerSensors,
                                                              size_t numVendorFloatSensors) {
@@ -111,30 +102,6 @@ EmulatedVehicleHal::EmulatedVehicleHal(VehiclePropertyStore* propStore, VehicleH
     mVehicleClient->registerPropertyValueCallback(std::bind(&EmulatedVehicleHal::onPropertyValue,
                                                             this, std::placeholders::_1,
                                                             std::placeholders::_2));
-
-    mInitVhalValueOverride =
-            android::base::GetBoolProperty("persist.vendor.vhal_init_value_override", false);
-    if (mInitVhalValueOverride) {
-        getAllPropertiesOverride();
-    }
-}
-
-void EmulatedVehicleHal::getAllPropertiesOverride() {
-    if (auto dir = opendir("/vendor/etc/vhaloverride/")) {
-        std::regex reg_json(".*[.]json", std::regex::icase);
-        while (auto f = readdir(dir)) {
-            if (!regex_match(f->d_name, reg_json)) {
-                continue;
-            }
-            std::string file = "/vendor/etc/vhaloverride/" + std::string(f->d_name);
-            JsonFakeValueGenerator tmpGenerator(file);
-
-            std::vector<VehiclePropValue> propvalues = tmpGenerator.getAllEvents();
-            mVehiclePropertiesOverride.insert(std::end(mVehiclePropertiesOverride),
-                                              std::begin(propvalues), std::end(propvalues));
-        }
-        closedir(dir);
-    }
 }
 
 VehicleHal::VehiclePropValuePtr EmulatedVehicleHal::get(
@@ -243,14 +210,6 @@ StatusCode EmulatedVehicleHal::set(const VehiclePropValue& propValue) {
         return StatusCode::NOT_AVAILABLE;
     }
 
-    if (mInEmulator && propValue.prop == toInt(VehicleProperty::DISPLAY_BRIGHTNESS)) {
-        // Emulator does not support remote brightness control, b/139959479
-        // do not send it down so that it does not bring unnecessary property change event
-        // return other error code, such NOT_AVAILABLE, causes Emulator to be freezing
-        // TODO: return StatusCode::NOT_AVAILABLE once the above issue is fixed
-        return StatusCode::OK;
-    }
-
     /**
      * After checking all conditions, such as the property is available, a real vhal will
      * sent the events to Car ECU to take actions.
@@ -320,23 +279,12 @@ void EmulatedVehicleHal::onCreate() {
                 }
             } else {
                 prop.value = it.initialValue;
-                if (mInitVhalValueOverride) {
-                    for (auto& itOverride : mVehiclePropertiesOverride) {
-                        if (itOverride.prop == cfg.prop) {
-                            prop.value = itOverride.value;
-                        }
-                    }
-                }
             }
             mPropStore->writeValue(prop, shouldUpdateStatus);
         }
     }
     initObd2LiveFrame(*mPropStore->getConfigOrDie(OBD2_LIVE_FRAME));
     initObd2FreezeFrame(*mPropStore->getConfigOrDie(OBD2_FREEZE_FRAME));
-    mInEmulator = isInEmulator();
-    ALOGD("mInEmulator=%s", mInEmulator ? "true" : "false");
-    mRecurrentTimer.registerRecurrentEvent(kHeartBeatIntervalNs,
-                                           static_cast<int32_t>(VehicleProperty::VHAL_HEARTBEAT));
 }
 
 std::vector<VehiclePropConfig> EmulatedVehicleHal::listProperties()  {
@@ -354,10 +302,6 @@ void EmulatedVehicleHal::onContinuousPropertyTimer(const std::vector<int32_t>& p
             if (internalPropValue != nullptr) {
                 v = pool.obtain(*internalPropValue);
             }
-        } else if (property == static_cast<int32_t>(VehicleProperty::VHAL_HEARTBEAT)) {
-            // VHAL_HEARTBEAT is not a continuous value, but it needs to be updated periodically.
-            // So, the update is done through onContinuousPropertyTimer.
-            v = doInternalHealthCheck();
         } else {
             ALOGE("Unexpected onContinuousPropertyTimer for property: 0x%x", property);
         }
@@ -509,31 +453,6 @@ StatusCode EmulatedVehicleHal::fillObd2DtcInfo(VehiclePropValue* outValue) {
     outValue->value.int64Values = timestamps;
     outValue->prop = OBD2_FREEZE_FRAME_INFO;
     return StatusCode::OK;
-}
-
-VehicleHal::VehiclePropValuePtr EmulatedVehicleHal::doInternalHealthCheck() {
-    VehicleHal::VehiclePropValuePtr v = nullptr;
-
-    // This is an example of very simpe health checking. VHAL is considered healthy if we can read
-    // PERF_VEHICLE_SPEED. The more comprehensive health checking is required.
-    VehiclePropValue propValue = {
-            .prop = static_cast<int32_t>(VehicleProperty::PERF_VEHICLE_SPEED),
-    };
-    auto internalPropValue = mPropStore->readValueOrNull(propValue);
-    if (internalPropValue != nullptr) {
-        v = createVhalHeartBeatProp();
-    } else {
-        ALOGW("VHAL health check failed");
-    }
-    return v;
-}
-
-VehicleHal::VehiclePropValuePtr EmulatedVehicleHal::createVhalHeartBeatProp() {
-    VehicleHal::VehiclePropValuePtr v = getValuePool()->obtainInt64(uptimeMillis());
-    v->prop = static_cast<int32_t>(VehicleProperty::VHAL_HEARTBEAT);
-    v->areaId = 0;
-    v->status = VehiclePropertyStatus::AVAILABLE;
-    return v;
 }
 
 }  // impl
