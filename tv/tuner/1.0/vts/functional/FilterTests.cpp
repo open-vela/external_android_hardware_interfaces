@@ -74,36 +74,37 @@ bool FilterCallback::readFilterEventData() {
     DemuxFilterEvent filterEvent = mFilterEvent;
     ALOGW("[vts] reading from filter FMQ or buffer %d", mFilterId);
     // todo separate filter handlers
-    for (auto event : filterEvent.events) {
-        switch (event.getDiscriminator()) {
-            case DemuxFilterEvent::Event::hidl_discriminator::section:
-                mDataLength = event.section().dataLength;
+    for (int i = 0; i < filterEvent.events.size(); i++) {
+        switch (mFilterEventType) {
+            case FilterEventType::SECTION:
+                mDataLength = filterEvent.events[i].section().dataLength;
                 break;
-            case DemuxFilterEvent::Event::hidl_discriminator::pes:
-                mDataLength = event.pes().dataLength;
+            case FilterEventType::PES:
+                mDataLength = filterEvent.events[i].pes().dataLength;
                 break;
-            case DemuxFilterEvent::Event::hidl_discriminator::media:
-                return dumpAvData(event.media());
-            case DemuxFilterEvent::Event::hidl_discriminator::tsRecord:
-                return readRecordData(event.tsRecord());
+            case FilterEventType::MEDIA:
+                return dumpAvData(filterEvent.events[i].media());
+            case FilterEventType::RECORD:
+                break;
+            case FilterEventType::MMTPRECORD:
+                break;
+            case FilterEventType::DOWNLOAD:
+                break;
             default:
-                continue;
+                break;
         }
         // EXPECT_TRUE(mDataLength == goldenDataOutputBuffer.size()) << "buffer size does not
         // match";
-        if (mFilterMQ != NULL) {
-            mDataOutputBuffer.resize(mDataLength);
-            result = mFilterMQ->read(mDataOutputBuffer.data(), mDataLength);
-            EXPECT_TRUE(result) << "can't read from Filter MQ";
-        }
+
+        mDataOutputBuffer.resize(mDataLength);
+        result = mFilterMQ->read(mDataOutputBuffer.data(), mDataLength);
+        EXPECT_TRUE(result) << "can't read from Filter MQ";
 
         /*for (int i = 0; i < mDataLength; i++) {
             EXPECT_TRUE(goldenDataOutputBuffer[i] == mDataOutputBuffer[i]) << "data does not match";
         }*/
     }
-    if (mFilterMQ != NULL) {
-        mFilterMQEventFlag->wake(static_cast<uint32_t>(DemuxQueueNotifyBits::DATA_CONSUMED));
-    }
+    mFilterMQEventFlag->wake(static_cast<uint32_t>(DemuxQueueNotifyBits::DATA_CONSUMED));
     return result;
 }
 
@@ -127,11 +128,6 @@ bool FilterCallback::dumpAvData(DemuxFilterMediaEvent event) {
     return true;
 }
 
-bool FilterCallback::readRecordData(DemuxFilterTsRecordEvent event) {
-    ALOGD("[vts] got DemuxFilterTsRecordEvent with pid=%d.", event.pid.tPid());
-    return true;
-}
-
 AssertionResult FilterTests::openFilterInDemux(DemuxFilterType type, uint32_t bufferSize) {
     Result status;
     EXPECT_TRUE(mDemux) << "Test with openDemux first.";
@@ -145,6 +141,11 @@ AssertionResult FilterTests::openFilterInDemux(DemuxFilterType type, uint32_t bu
                            mFilter = filter;
                            status = result;
                        });
+
+    if (status == Result::SUCCESS) {
+        mFilterCallback->setFilterEventType(getFilterEventType(type));
+    }
+
     return AssertionResult(status == Result::SUCCESS);
 }
 
@@ -217,11 +218,7 @@ AssertionResult FilterTests::configFilter(DemuxFilterSettings setting, uint32_t 
     return AssertionResult(status == Result::SUCCESS);
 }
 
-AssertionResult FilterTests::getFilterMQDescriptor(uint32_t filterId, bool getMqDesc) {
-    if (!getMqDesc) {
-        ALOGE("[vts] Filter does not need FMQ.");
-        return success();
-    }
+AssertionResult FilterTests::getFilterMQDescriptor(uint32_t filterId) {
     Result status;
     EXPECT_TRUE(mFilters[filterId]) << "Test with getNewlyOpenedFilterId first.";
     EXPECT_TRUE(mFilterCallbacks[filterId]) << "Test with getNewlyOpenedFilterId first.";
@@ -282,14 +279,16 @@ AssertionResult FilterTests::clearTimeStamp() {
 AssertionResult FilterTests::closeFilter(uint32_t filterId) {
     EXPECT_TRUE(mFilters[filterId]) << "Test with getNewlyOpenedFilterId first.";
     Result status = mFilters[filterId]->close();
-    for (int i = 0; i < mUsedFilterIds.size(); i++) {
-        if (mUsedFilterIds[i] == filterId) {
-            mUsedFilterIds.erase(mUsedFilterIds.begin() + i);
-            break;
+    if (status == Result::SUCCESS) {
+        for (int i = 0; i < mUsedFilterIds.size(); i++) {
+            if (mUsedFilterIds[i] == filterId) {
+                mUsedFilterIds.erase(mUsedFilterIds.begin() + i);
+                break;
+            }
         }
+        mFilterCallbacks.erase(filterId);
+        mFilters.erase(filterId);
     }
-    mFilterCallbacks.erase(filterId);
-    mFilters.erase(filterId);
     return AssertionResult(status == Result::SUCCESS);
 }
 

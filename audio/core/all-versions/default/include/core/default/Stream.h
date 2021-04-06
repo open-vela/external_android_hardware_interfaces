@@ -41,14 +41,12 @@ using ::android::hardware::hidl_string;
 using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
-#if MAJOR_VERSION <= 6
 using ::android::hardware::audio::common::CPP_VERSION::implementation::AudioChannelBitfield;
-#endif
 using namespace ::android::hardware::audio::common::CPP_VERSION;
 using namespace ::android::hardware::audio::CPP_VERSION;
 
 struct Stream : public IStream, public ParametersUtil {
-    Stream(bool isInput, audio_stream_t* stream);
+    explicit Stream(audio_stream_t* stream);
 
     /** 1GiB is the maximum buffer size the HAL client is allowed to request.
      * This value has been chosen to be under SIZE_MAX and still big enough
@@ -61,7 +59,6 @@ struct Stream : public IStream, public ParametersUtil {
     Return<uint64_t> getFrameSize() override;
     Return<uint64_t> getFrameCount() override;
     Return<uint64_t> getBufferSize() override;
-#if MAJOR_VERSION <= 6
     Return<uint32_t> getSampleRate() override;
 #if MAJOR_VERSION == 2
     Return<void> getSupportedSampleRates(getSupportedSampleRates_cb _hidl_cb) override;
@@ -75,10 +72,6 @@ struct Stream : public IStream, public ParametersUtil {
     Return<AudioFormat> getFormat() override;
     Return<void> getSupportedFormats(getSupportedFormats_cb _hidl_cb) override;
     Return<Result> setFormat(AudioFormat format) override;
-#else
-    Return<void> getSupportedProfiles(getSupportedProfiles_cb _hidl_cb) override;
-    Return<Result> setAudioProperties(const AudioConfigBaseOptional& config) override;
-#endif  // MAJOR_VERSION <= 6
     Return<void> getAudioProperties(getAudioProperties_cb _hidl_cb) override;
     Return<Result> addEffect(uint64_t effectId) override;
     Return<Result> removeEffect(uint64_t effectId) override;
@@ -117,14 +110,13 @@ struct Stream : public IStream, public ParametersUtil {
                                 const std::vector<int>& ignoreErrors);
 
    private:
-     const bool mIsInput;
-     audio_stream_t* mStream;
+    audio_stream_t* mStream;
 
-     virtual ~Stream();
+    virtual ~Stream();
 
-     // Methods from ParametersUtil.
-     char* halGetParameters(const char* keys) override;
-     int halSetParameters(const char* keysAndValues) override;
+    // Methods from ParametersUtil.
+    char* halGetParameters(const char* keys) override;
+    int halSetParameters(const char* keysAndValues) override;
 };
 
 template <typename T>
