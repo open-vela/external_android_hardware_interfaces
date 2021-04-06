@@ -28,14 +28,24 @@ static AssertionResult success() {
 
 namespace {
 
-void initConfiguration() {
+bool initConfiguration() {
+    if (!TunerTestingConfigReader::checkConfigFileExists()) {
+        return false;
+    }
     initFrontendConfig();
-    initFrontendScanConfig();
+    connectHardwaresToTestCases();
+    if (!validateConnections()) {
+        ALOGW("[vts] failed to validate connections.");
+        return false;
+    }
+
     initLnbConfig();
     initFilterConfig();
     initTimeFilterConfig();
     initDvrConfig();
     initDescramblerConfig();
+
+    return true;
 }
 
 AssertionResult filterDataOutputTestBase(FilterTests tests) {
@@ -53,7 +63,7 @@ class TunerFrontendHidlTest : public testing::TestWithParam<std::string> {
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        initConfiguration();
+        ASSERT_TRUE(initConfiguration());
 
         mFrontendTests.setService(mService);
     }
@@ -67,12 +77,15 @@ class TunerFrontendHidlTest : public testing::TestWithParam<std::string> {
     FrontendTests mFrontendTests;
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerFrontendHidlTest);
+
 class TunerLnbHidlTest : public testing::TestWithParam<std::string> {
   public:
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        initConfiguration();
+        ASSERT_TRUE(initConfiguration());
 
         mLnbTests.setService(mService);
     }
@@ -86,12 +99,15 @@ class TunerLnbHidlTest : public testing::TestWithParam<std::string> {
     LnbTests mLnbTests;
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerLnbHidlTest);
+
 class TunerDemuxHidlTest : public testing::TestWithParam<std::string> {
   public:
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        initConfiguration();
+        ASSERT_TRUE(initConfiguration());
 
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
@@ -109,12 +125,15 @@ class TunerDemuxHidlTest : public testing::TestWithParam<std::string> {
     FilterTests mFilterTests;
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerDemuxHidlTest);
+
 class TunerFilterHidlTest : public testing::TestWithParam<std::string> {
   public:
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        initConfiguration();
+        ASSERT_TRUE(initConfiguration());
 
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
@@ -135,12 +154,15 @@ class TunerFilterHidlTest : public testing::TestWithParam<std::string> {
     FilterTests mFilterTests;
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerFilterHidlTest);
+
 class TunerBroadcastHidlTest : public testing::TestWithParam<std::string> {
   public:
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        initConfiguration();
+        ASSERT_TRUE(initConfiguration());
 
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
@@ -161,7 +183,7 @@ class TunerBroadcastHidlTest : public testing::TestWithParam<std::string> {
     LnbTests mLnbTests;
     DvrTests mDvrTests;
 
-    AssertionResult filterDataOutputTest(vector<string> goldenOutputFiles);
+    AssertionResult filterDataOutputTest();
 
     void broadcastSingleFilterTest(FilterConfig filterConf, FrontendConfig frontendConf);
     void broadcastSingleFilterTestWithLnb(FilterConfig filterConf, FrontendConfig frontendConf,
@@ -171,12 +193,15 @@ class TunerBroadcastHidlTest : public testing::TestWithParam<std::string> {
     uint32_t* mLnbId = nullptr;
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerBroadcastHidlTest);
+
 class TunerPlaybackHidlTest : public testing::TestWithParam<std::string> {
   public:
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        initConfiguration();
+        ASSERT_TRUE(initConfiguration());
 
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
@@ -195,17 +220,20 @@ class TunerPlaybackHidlTest : public testing::TestWithParam<std::string> {
     FilterTests mFilterTests;
     DvrTests mDvrTests;
 
-    AssertionResult filterDataOutputTest(vector<string> goldenOutputFiles);
+    AssertionResult filterDataOutputTest();
 
     void playbackSingleFilterTest(FilterConfig filterConf, DvrConfig dvrConf);
 };
+
+// TODO remove from the allow list once the cf tv target is enabled for testing
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerPlaybackHidlTest);
 
 class TunerRecordHidlTest : public testing::TestWithParam<std::string> {
   public:
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        initConfiguration();
+        ASSERT_TRUE(initConfiguration());
 
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
@@ -237,6 +265,9 @@ class TunerRecordHidlTest : public testing::TestWithParam<std::string> {
     uint32_t* mLnbId = nullptr;
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerRecordHidlTest);
+
 class TunerDescramblerHidlTest : public testing::TestWithParam<std::string> {
   public:
     virtual void SetUp() override {
@@ -244,7 +275,7 @@ class TunerDescramblerHidlTest : public testing::TestWithParam<std::string> {
         mCasService = IMediaCasService::getService();
         ASSERT_NE(mService, nullptr);
         ASSERT_NE(mCasService, nullptr);
-        initConfiguration();
+        ASSERT_TRUE(initConfiguration());
 
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
@@ -260,7 +291,7 @@ class TunerDescramblerHidlTest : public testing::TestWithParam<std::string> {
 
     void scrambledBroadcastTest(set<struct FilterConfig> mediaFilterConfs,
                                 FrontendConfig frontendConf, DescramblerConfig descConfig);
-    AssertionResult filterDataOutputTest(vector<string> /*goldenOutputFiles*/);
+    AssertionResult filterDataOutputTest();
 
     sp<ITuner> mService;
     sp<IMediaCasService> mCasService;
@@ -270,4 +301,7 @@ class TunerDescramblerHidlTest : public testing::TestWithParam<std::string> {
     DescramblerTests mDescramblerTests;
     DvrTests mDvrTests;
 };
+
+// TODO remove from the allow list once the cf tv target is enabled for testing
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerDescramblerHidlTest);
 }  // namespace

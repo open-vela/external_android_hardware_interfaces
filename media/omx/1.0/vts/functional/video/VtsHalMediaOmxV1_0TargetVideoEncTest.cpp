@@ -287,11 +287,11 @@ struct CodecProducerListener : public IProducerListener {
 };
 
 // Mock IOmxBufferSource class. GraphicBufferSource.cpp in libstagefright/omx/
-// implements this class. Below is dummy class introduced to test if callback
+// implements this class. Below class is introduced to test if callback
 // functions are actually being called or not
-struct DummyBufferSource : public IOmxBufferSource {
+struct MockBufferSource : public IOmxBufferSource {
    public:
-    DummyBufferSource(sp<IOmxNode> node) {
+    MockBufferSource(sp<IOmxNode> node) {
         callback = 0;
         executing = false;
         omxNode = node;
@@ -309,7 +309,7 @@ struct DummyBufferSource : public IOmxBufferSource {
     android::Vector<BufferInfo> iBuffer, oBuffer;
 };
 
-Return<void> DummyBufferSource::onOmxExecuting() {
+Return<void> MockBufferSource::onOmxExecuting() {
     executing = true;
     callback |= 0x1;
     size_t index;
@@ -330,25 +330,25 @@ Return<void> DummyBufferSource::onOmxExecuting() {
     return Void();
 };
 
-Return<void> DummyBufferSource::onOmxIdle() {
+Return<void> MockBufferSource::onOmxIdle() {
     callback |= 0x2;
     executing = false;
     return Void();
 };
 
-Return<void> DummyBufferSource::onOmxLoaded() {
+Return<void> MockBufferSource::onOmxLoaded() {
     callback |= 0x4;
     return Void();
 };
 
-Return<void> DummyBufferSource::onInputBufferAdded(uint32_t buffer) {
+Return<void> MockBufferSource::onInputBufferAdded(uint32_t buffer) {
     (void)buffer;
     EXPECT_EQ(executing, false);
     callback |= 0x8;
     return Void();
 };
 
-Return<void> DummyBufferSource::onInputBufferEmptied(
+Return<void> MockBufferSource::onInputBufferEmptied(
     uint32_t buffer, const ::android::hardware::hidl_handle& fence) {
     (void)fence;
     callback |= 0x10;
@@ -1031,7 +1031,7 @@ TEST_P(VideoEncHidlTest, BufferSourceCallBacks) {
     setupRAWPort(omxNode, kPortIndexInput, nFrameWidth, nFrameHeight, 0,
                  xFramerate, eColorFormat);
 
-    sp<DummyBufferSource> buffersource = new DummyBufferSource(omxNode);
+    sp<MockBufferSource> buffersource = new MockBufferSource(omxNode);
     ASSERT_NE(buffersource, nullptr);
     status = omxNode->setInputSurface(buffersource);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
@@ -1057,9 +1057,9 @@ TEST_P(VideoEncHidlTest, BufferSourceCallBacks) {
     ASSERT_NO_FATAL_FAILURE(changeStateExecutetoIdle(
         omxNode, observer, &buffersource->iBuffer, &buffersource->oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(
-        omxNode, observer, &buffersource->iBuffer, &buffersource->oBuffer,
-        kPortIndexInput, kPortIndexOutput));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &buffersource->iBuffer,
+                                                    &buffersource->oBuffer, kPortIndexInput,
+                                                    kPortIndexOutput, portMode));
     // test for callbacks
     EXPECT_EQ(buffersource->callback, 31);
 }
@@ -1174,9 +1174,8 @@ TEST_P(VideoEncHidlTest, EncodeTest) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
-                                                    &oBuffer, kPortIndexInput,
-                                                    kPortIndexOutput));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
+                                                    kPortIndexInput, kPortIndexOutput, portMode));
 }
 
 // test raw stream encode (input is ANW buffers)
@@ -1337,9 +1336,8 @@ TEST_P(VideoEncHidlTest, EncodeTestBufferMetaModes) {
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     EXPECT_EQ(portDef.nBufferCountActual, listener->freeBuffers);
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
-                                                    &oBuffer, kPortIndexInput,
-                                                    kPortIndexOutput));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
+                                                    kPortIndexInput, kPortIndexOutput, portMode));
 
     returnval = producer->disconnect(
         NATIVE_WINDOW_API_CPU, IGraphicBufferProducer::DisconnectMode::API);
@@ -1452,15 +1450,15 @@ TEST_P(VideoEncHidlTest, EncodeTestEOS) {
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     EXPECT_EQ(portDef.nBufferCountActual, listener->freeBuffers);
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
-                                                    &oBuffer, kPortIndexInput,
-                                                    kPortIndexOutput));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
+                                                    kPortIndexInput, kPortIndexOutput, portMode));
 
     returnval = producer->disconnect(
         NATIVE_WINDOW_API_CPU, IGraphicBufferProducer::DisconnectMode::API);
     ASSERT_EQ(returnval, 0);
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(VideoEncHidlTest);
 INSTANTIATE_TEST_SUITE_P(PerInstance, VideoEncHidlTest, testing::ValuesIn(kTestParameters),
                          android::hardware::PrintInstanceTupleNameToString<>);
 
