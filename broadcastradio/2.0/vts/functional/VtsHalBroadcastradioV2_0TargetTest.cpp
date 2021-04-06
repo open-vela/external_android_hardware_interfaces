@@ -16,6 +16,7 @@
 
 #define EGMOCK_VERBOSE 1
 
+#include <VtsHalHidlTargetTestBase.h>
 #include <android-base/logging.h>
 #include <android-base/strings.h>
 #include <android/hardware/broadcastradio/2.0/IBroadcastRadio.h>
@@ -24,13 +25,11 @@
 #include <android/hardware/broadcastradio/2.0/types.h>
 #include <broadcastradio-utils-2x/Utils.h>
 #include <broadcastradio-vts-utils/call-barrier.h>
+#include <broadcastradio-vts-utils/environment-utils.h>
 #include <broadcastradio-vts-utils/mock-timeout.h>
 #include <broadcastradio-vts-utils/pointer-utils.h>
 #include <cutils/bitops.h>
 #include <gmock/gmock.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 
 #include <chrono>
 #include <optional>
@@ -53,6 +52,7 @@ using testing::DoAll;
 using testing::Invoke;
 using testing::SaveArg;
 
+using broadcastradio::vts::BroadcastRadioHidlEnvironment;
 using broadcastradio::vts::CallBarrier;
 using broadcastradio::vts::clearAndWait;
 using utils::make_identifier;
@@ -100,8 +100,10 @@ struct AnnouncementListenerMock : public IAnnouncementListener {
     MOCK_METHOD1(onListUpdated, Return<void>(const hidl_vec<Announcement>&));
 };
 
-class BroadcastRadioHalTest : public ::testing::TestWithParam<std::string> {
-  protected:
+static BroadcastRadioHidlEnvironment<IBroadcastRadio>* gEnv = nullptr;
+
+class BroadcastRadioHalTest : public ::testing::VtsHalHidlTargetTestBase {
+   protected:
     virtual void SetUp() override;
     virtual void TearDown() override;
 
@@ -116,10 +118,7 @@ class BroadcastRadioHalTest : public ::testing::TestWithParam<std::string> {
 };
 
 static void printSkipped(std::string msg) {
-    const auto testInfo = testing::UnitTest::GetInstance()->current_test_info();
-    std::cout << "[  SKIPPED ] " << testInfo->test_case_name() << "." << testInfo->name()
-              << std::endl;
-    std::cout << msg << std::endl;
+    std::cout << "[  SKIPPED ] " << msg << std::endl;
 }
 
 MATCHER_P(InfoHasId, id,
@@ -186,7 +185,7 @@ void BroadcastRadioHalTest::SetUp() {
     EXPECT_EQ(nullptr, mModule.get()) << "Module is already open";
 
     // lookup HIDL service (radio module)
-    mModule = IBroadcastRadio::getService(GetParam());
+    mModule = getService<IBroadcastRadio>(gEnv->getServiceName<IBroadcastRadio>());
     ASSERT_NE(nullptr, mModule.get()) << "Couldn't find broadcast radio HAL implementation";
 
     // get module properties
@@ -244,10 +243,10 @@ std::optional<utils::ProgramInfoSet> BroadcastRadioHalTest::getProgramList() {
     auto startResult = mSession->startProgramListUpdates({});
     if (startResult == Result::NOT_SUPPORTED) {
         printSkipped("Program list not supported");
-        return std::nullopt;
+        return nullopt;
     }
     EXPECT_EQ(Result::OK, startResult);
-    if (startResult != Result::OK) return std::nullopt;
+    if (startResult != Result::OK) return nullopt;
 
     EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onProgramListReady, timeout::programListScan);
 
@@ -265,7 +264,7 @@ std::optional<utils::ProgramInfoSet> BroadcastRadioHalTest::getProgramList() {
  *  - the method succeeds when called for the second time without
  *    closing previous session.
  */
-TEST_P(BroadcastRadioHalTest, OpenSession) {
+TEST_F(BroadcastRadioHalTest, OpenSession) {
     // simply open session for the first time
     ASSERT_TRUE(openSession());
 
@@ -309,7 +308,7 @@ static bool supportsFM(const AmFmRegionConfig& config) {
  *  - all channel grids (frequency ranges and spacings) are valid;
  *  - seek spacing is a multiple of the manual spacing value.
  */
-TEST_P(BroadcastRadioHalTest, GetAmFmRegionConfig) {
+TEST_F(BroadcastRadioHalTest, GetAmFmRegionConfig) {
     AmFmRegionConfig config;
     bool supported = getAmFmRegionConfig(false, &config);
     if (!supported) {
@@ -342,7 +341,7 @@ TEST_P(BroadcastRadioHalTest, GetAmFmRegionConfig) {
  *  - all channel grids (frequency ranges and spacings) are valid;
  *  - seek spacing is not set.
  */
-TEST_P(BroadcastRadioHalTest, GetAmFmRegionConfigCapabilities) {
+TEST_F(BroadcastRadioHalTest, GetAmFmRegionConfigCapabilities) {
     AmFmRegionConfig config;
     bool supported = getAmFmRegionConfig(true, &config);
     if (!supported) {
@@ -370,7 +369,7 @@ TEST_P(BroadcastRadioHalTest, GetAmFmRegionConfigCapabilities) {
  *  - all channel labels match correct format;
  *  - all channel frequencies are in correct range.
  */
-TEST_P(BroadcastRadioHalTest, GetDabRegionConfig) {
+TEST_F(BroadcastRadioHalTest, GetDabRegionConfig) {
     Result halResult;
     hidl_vec<DabTableEntry> config;
     auto cb = [&](Result result, hidl_vec<DabTableEntry> configCb) {
@@ -412,10 +411,10 @@ TEST_P(BroadcastRadioHalTest, GetDabRegionConfig) {
  *    invoked carrying a proper selector;
  *  - program changes exactly to what was requested.
  */
-TEST_P(BroadcastRadioHalTest, FmTune) {
+TEST_F(BroadcastRadioHalTest, FmTune) {
     ASSERT_TRUE(openSession());
 
-    uint64_t freq = 90900;  // 90.9 FM
+    uint64_t freq = 100100;  // 100.1 FM
     auto sel = make_selector_amfm(freq);
 
     /* TODO(b/69958777): there is a race condition between tune() and onCurrentProgramInfoChanged
@@ -431,9 +430,8 @@ TEST_P(BroadcastRadioHalTest, FmTune) {
     ProgramInfo infoCb = {};
     EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_,
                         InfoHasId(utils::make_identifier(IdentifierType::AMFM_FREQUENCY, freq)))
-            .Times(AnyNumber())
-            .WillOnce(DoAll(SaveArg<0>(&infoCb), testing::Return(ByMove(Void()))))
-            .WillRepeatedly(testing::InvokeWithoutArgs([] { return Void(); }));
+        .Times(AnyNumber())
+        .WillOnce(DoAll(SaveArg<0>(&infoCb), testing::Return(ByMove(Void()))));
     auto result = mSession->tune(sel);
 
     // expect a failure if it's not supported
@@ -460,7 +458,7 @@ TEST_P(BroadcastRadioHalTest, FmTune) {
  *  - if the selector is not supported, it's ignored;
  *  - if it is supported, an invalid value results with INVALID_ARGUMENTS;
  */
-TEST_P(BroadcastRadioHalTest, TuneFailsWithInvalid) {
+TEST_F(BroadcastRadioHalTest, TuneFailsWithInvalid) {
     ASSERT_TRUE(openSession());
 
     vector<ProgramIdentifier> invalid = {
@@ -486,56 +484,12 @@ TEST_P(BroadcastRadioHalTest, TuneFailsWithInvalid) {
 }
 
 /**
- * Test tuning with DAB selector.
- *
- * Verifies that:
- *  - if DAB selector is not supported, the method returns NOT_SUPPORTED;
- *  - if it is supported, the method succeeds;
- *  - after a successful tune call, onCurrentProgramInfoChanged callback is
- *    invoked carrying a proper selector;
- *  - program changes exactly to what was requested.
- */
-TEST_P(BroadcastRadioHalTest, DabTune) {
-    ASSERT_TRUE(openSession());
-
-    ProgramSelector sel = {};
-    uint64_t freq = 178352;
-    sel.primaryId = make_identifier(IdentifierType::DAB_FREQUENCY,freq);
-
-    std::this_thread::sleep_for(gTuneWorkaround);
-
-    // try tuning
-    ProgramInfo infoCb = {};
-    EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_,
-                        InfoHasId(utils::make_identifier(IdentifierType::DAB_FREQUENCY, freq)))
-        .Times(AnyNumber())
-        .WillOnce(DoAll(SaveArg<0>(&infoCb), testing::Return(ByMove(Void()))));
-    auto result = mSession->tune(sel);
-
-    // expect a failure if it's not supported
-    if (!utils::isSupported(mProperties, sel)) {
-        EXPECT_EQ(Result::NOT_SUPPORTED, result);
-        return;
-    }
-
-    // expect a callback if it succeeds
-    EXPECT_EQ(Result::OK, result);
-    EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onCurrentProgramInfoChanged_, timeout::tune);
-
-    LOG(DEBUG) << "current program info: " << toString(infoCb);
-
-    // it should tune exactly to what was requested
-    auto freqs = utils::getAllIds(infoCb.selector, IdentifierType::DAB_FREQUENCY);
-    EXPECT_NE(freqs.end(), find(freqs.begin(), freqs.end(), freq));
-}
-
-/**
  * Test tuning with empty program selector.
  *
  * Verifies that:
  *  - tune fails with NOT_SUPPORTED when program selector is not initialized.
  */
-TEST_P(BroadcastRadioHalTest, TuneFailsWithEmpty) {
+TEST_F(BroadcastRadioHalTest, TuneFailsWithEmpty) {
     ASSERT_TRUE(openSession());
 
     // Program type is 1-based, so 0 will always be invalid.
@@ -552,7 +506,7 @@ TEST_P(BroadcastRadioHalTest, TuneFailsWithEmpty) {
  *  - the program info is changed within timeout::tune;
  *  - works both directions and with or without skipping sub-channel.
  */
-TEST_P(BroadcastRadioHalTest, Seek) {
+TEST_F(BroadcastRadioHalTest, Seek) {
     ASSERT_TRUE(openSession());
 
     // TODO(b/69958777): see FmTune workaround
@@ -560,12 +514,6 @@ TEST_P(BroadcastRadioHalTest, Seek) {
 
     EXPECT_TIMEOUT_CALL(*mCallback, onCurrentProgramInfoChanged_, _).Times(AnyNumber());
     auto result = mSession->scan(true /* up */, true /* skip subchannel */);
-
-    if (result == Result::NOT_SUPPORTED) {
-        printSkipped("seek not supported");
-        return;
-    }
-
     EXPECT_EQ(Result::OK, result);
     EXPECT_TIMEOUT_CALL_WAIT(*mCallback, onCurrentProgramInfoChanged_, timeout::tune);
 
@@ -583,7 +531,7 @@ TEST_P(BroadcastRadioHalTest, Seek) {
  *  - the program info is changed within timeout::tune if the method succeeded;
  *  - works both directions.
  */
-TEST_P(BroadcastRadioHalTest, Step) {
+TEST_F(BroadcastRadioHalTest, Step) {
     ASSERT_TRUE(openSession());
 
     // TODO(b/69958777): see FmTune workaround
@@ -610,17 +558,11 @@ TEST_P(BroadcastRadioHalTest, Step) {
  * Verifies that:
  *  - the method does not crash after being invoked multiple times.
  */
-TEST_P(BroadcastRadioHalTest, Cancel) {
+TEST_F(BroadcastRadioHalTest, Cancel) {
     ASSERT_TRUE(openSession());
 
     for (int i = 0; i < 10; i++) {
         auto result = mSession->scan(true /* up */, true /* skip subchannel */);
-
-        if (result == Result::NOT_SUPPORTED) {
-            printSkipped("cancel is skipped because of seek not supported");
-            return;
-        }
-
         ASSERT_EQ(Result::OK, result);
 
         auto cancelResult = mSession->cancel();
@@ -634,7 +576,7 @@ TEST_P(BroadcastRadioHalTest, Cancel) {
  * Verifies that:
  *  - callback is called for empty parameters set.
  */
-TEST_P(BroadcastRadioHalTest, NoParameters) {
+TEST_F(BroadcastRadioHalTest, NoParameters) {
     ASSERT_TRUE(openSession());
 
     hidl_vec<VendorKeyValue> halResults = {};
@@ -663,7 +605,7 @@ TEST_P(BroadcastRadioHalTest, NoParameters) {
  *  - unknown parameters are ignored;
  *  - callback is called also for empty results set.
  */
-TEST_P(BroadcastRadioHalTest, UnknownParameters) {
+TEST_F(BroadcastRadioHalTest, UnknownParameters) {
     ASSERT_TRUE(openSession());
 
     hidl_vec<VendorKeyValue> halResults = {};
@@ -691,7 +633,7 @@ TEST_P(BroadcastRadioHalTest, UnknownParameters) {
  * Verifies that:
  *  - the method does not crash after being invoked multiple times.
  */
-TEST_P(BroadcastRadioHalTest, Close) {
+TEST_F(BroadcastRadioHalTest, Close) {
     ASSERT_TRUE(openSession());
 
     for (int i = 0; i < 10; i++) {
@@ -706,7 +648,7 @@ TEST_P(BroadcastRadioHalTest, Close) {
  * Verifies that:
  * - getImage call handles argument 0 gracefully.
  */
-TEST_P(BroadcastRadioHalTest, GetNoImage) {
+TEST_F(BroadcastRadioHalTest, GetNoImage) {
     size_t len = 0;
     auto result = mModule->getImage(0, [&](hidl_vec<uint8_t> rawImage) { len = rawImage.size(); });
 
@@ -721,7 +663,7 @@ TEST_P(BroadcastRadioHalTest, GetNoImage) {
  * - isConfigFlagSet either succeeds or ends with NOT_SUPPORTED or INVALID_STATE;
  * - call success or failure is consistent with setConfigFlag.
  */
-TEST_P(BroadcastRadioHalTest, FetchConfigFlags) {
+TEST_F(BroadcastRadioHalTest, FetchConfigFlags) {
     ASSERT_TRUE(openSession());
 
     for (auto flag : gConfigFlagValues) {
@@ -749,7 +691,7 @@ TEST_P(BroadcastRadioHalTest, FetchConfigFlags) {
  * - setConfigFlag either succeeds or ends with NOT_SUPPORTED or INVALID_STATE;
  * - isConfigFlagSet reflects the state requested immediately after the set call.
  */
-TEST_P(BroadcastRadioHalTest, SetConfigFlags) {
+TEST_F(BroadcastRadioHalTest, SetConfigFlags) {
     ASSERT_TRUE(openSession());
 
     auto get = [&](ConfigFlag flag) {
@@ -801,7 +743,7 @@ TEST_P(BroadcastRadioHalTest, SetConfigFlags) {
  * - the complete list is fetched within timeout::programListScan;
  * - stopProgramListUpdates does not crash.
  */
-TEST_P(BroadcastRadioHalTest, GetProgramList) {
+TEST_F(BroadcastRadioHalTest, GetProgramList) {
     ASSERT_TRUE(openSession());
 
     getProgramList();
@@ -815,7 +757,7 @@ TEST_P(BroadcastRadioHalTest, GetProgramList) {
  *  - the identifier matches the name;
  *  - there is only one identifier of that type.
  */
-TEST_P(BroadcastRadioHalTest, HdRadioStationNameId) {
+TEST_F(BroadcastRadioHalTest, HdRadioStationNameId) {
     ASSERT_TRUE(openSession());
 
     auto list = getProgramList();
@@ -843,7 +785,7 @@ TEST_P(BroadcastRadioHalTest, HdRadioStationNameId) {
  *  - if it succeeds, it returns a valid close handle (which is a nullptr otherwise);
  *  - closing handle does not crash.
  */
-TEST_P(BroadcastRadioHalTest, AnnouncementListenerRegistration) {
+TEST_F(BroadcastRadioHalTest, AnnouncementListenerRegistration) {
     sp<AnnouncementListenerMock> listener = new AnnouncementListenerMock();
 
     Result halResult = Result::UNKNOWN_ERROR;
@@ -869,12 +811,6 @@ TEST_P(BroadcastRadioHalTest, AnnouncementListenerRegistration) {
     closeHandle->close();
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BroadcastRadioHalTest);
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, BroadcastRadioHalTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IBroadcastRadio::descriptor)),
-        android::hardware::PrintInstanceNameToString);
-
 }  // namespace vts
 }  // namespace V2_0
 }  // namespace broadcastradio
@@ -882,8 +818,14 @@ INSTANTIATE_TEST_SUITE_P(
 }  // namespace android
 
 int main(int argc, char** argv) {
+    using android::hardware::broadcastradio::V2_0::vts::gEnv;
+    using android::hardware::broadcastradio::V2_0::IBroadcastRadio;
+    using android::hardware::broadcastradio::vts::BroadcastRadioHidlEnvironment;
     android::base::SetDefaultTag("BcRadio.vts");
     android::base::SetMinimumLogSeverity(android::base::VERBOSE);
+    gEnv = new BroadcastRadioHidlEnvironment<IBroadcastRadio>;
+    ::testing::AddGlobalTestEnvironment(gEnv);
     ::testing::InitGoogleTest(&argc, argv);
+    gEnv->init(&argc, argv);
     return RUN_ALL_TESTS();
 }

@@ -16,7 +16,8 @@
 
 #include <android-base/logging.h>
 
-#include <log/log.h>
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -29,7 +30,6 @@
 #include <android/hardware/radio/1.2/IRadioIndication.h>
 #include <android/hardware/radio/1.2/IRadioResponse.h>
 #include <android/hardware/radio/1.2/types.h>
-#include <gtest/gtest.h>
 
 #include "vts_test_util.h"
 
@@ -50,8 +50,6 @@ using ::android::hardware::radio::V1_0::RadioResponseType;
 
 #define TIMEOUT_PERIOD 75
 #define RADIO_SERVICE_NAME "slot1"
-#define SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(__ver__) \
-    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL(__ver__, radio_v1_2, radioRsp_v1_2)
 
 class RadioHidlTest_v1_2;
 extern ::android::hardware::radio::V1_2::CardStatus cardStatus;
@@ -633,9 +631,25 @@ class RadioIndication_v1_2 : public ::android::hardware::radio::V1_2::IRadioIndi
                             const ::android::hardware::hidl_string& reason);
 };
 
+// Test environment for Radio HIDL HAL.
+class RadioHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static RadioHidlEnvironment* Instance() {
+        static RadioHidlEnvironment* instance = new RadioHidlEnvironment;
+        return instance;
+    }
+    virtual void registerTestServices() override {
+        registerTestService<::android::hardware::radio::V1_2::IRadio>();
+    }
+
+   private:
+    RadioHidlEnvironment() {}
+};
+
 // The main test class for Radio HIDL.
-class RadioHidlTest_v1_2 : public ::testing::TestWithParam<std::string> {
-  protected:
+class RadioHidlTest_v1_2 : public ::testing::VtsHalHidlTargetTestBase {
+   protected:
     std::mutex mtx_;
     std::condition_variable cv_;
     int count_;

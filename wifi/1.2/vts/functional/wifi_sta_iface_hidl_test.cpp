@@ -19,11 +19,9 @@
 
 #include <android-base/logging.h>
 
-#include <android/hardware/wifi/1.2/IWifi.h>
 #include <android/hardware/wifi/1.2/IWifiStaIface.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+
+#include <VtsHalHidlTargetTestBase.h>
 
 #include "wifi_hidl_call_util.h"
 #include "wifi_hidl_test_utils.h"
@@ -36,18 +34,14 @@ using ::android::hardware::wifi::V1_2::IWifiStaIface;
 /**
  * Fixture to use for all STA Iface HIDL interface tests.
  */
-class WifiStaIfaceHidlTest : public ::testing::TestWithParam<std::string> {
+class WifiStaIfaceHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        // Make sure to start with a clean state
-        stopWifi(GetInstanceName());
-
-        wifi_sta_iface_ =
-            IWifiStaIface::castFrom(getWifiStaIface(GetInstanceName()));
+        wifi_sta_iface_ = IWifiStaIface::castFrom(getWifiStaIface());
         ASSERT_NE(nullptr, wifi_sta_iface_.get());
     }
 
-    virtual void TearDown() override { stopWifi(GetInstanceName()); }
+    virtual void TearDown() override { stopWifi(); }
 
    protected:
     bool isCapabilitySupported(IWifiStaIface::StaIfaceCapabilityMask cap_mask) {
@@ -58,9 +52,6 @@ class WifiStaIfaceHidlTest : public ::testing::TestWithParam<std::string> {
     }
 
     sp<IWifiStaIface> wifi_sta_iface_;
-
-   private:
-    std::string GetInstanceName() { return GetParam(); }
 };
 
 /*
@@ -68,7 +59,7 @@ class WifiStaIfaceHidlTest : public ::testing::TestWithParam<std::string> {
  * Ensures that calls to set MAC address will return a success status
  * code.
  */
-TEST_P(WifiStaIfaceHidlTest, SetMacAddress) {
+TEST_F(WifiStaIfaceHidlTest, SetMacAddress) {
     const android::hardware::hidl_array<uint8_t, 6> kMac{
         std::array<uint8_t, 6>{{0x12, 0x22, 0x33, 0x52, 0x10, 0x41}}};
     EXPECT_EQ(WifiStatusCode::SUCCESS,
@@ -85,7 +76,7 @@ TEST_P(WifiStaIfaceHidlTest, SetMacAddress) {
  * TODO: We can't execute APF opcodes from this test because there's no way
  * to loop test packets through the wifi firmware (b/73804303#comment29).
  */
-TEST_P(WifiStaIfaceHidlTest, DISABLED_ReadApfPacketFilterData) {
+TEST_F(WifiStaIfaceHidlTest, DISABLED_ReadApfPacketFilterData) {
     if (!isCapabilitySupported(IWifiStaIface::StaIfaceCapabilityMask::APF)) {
         // Disable test if APF packet filer is not supported.
         LOG(WARNING) << "TEST SKIPPED: APF packet filtering not supported";
@@ -116,10 +107,3 @@ TEST_P(WifiStaIfaceHidlTest, DISABLED_ReadApfPacketFilterData) {
 
     EXPECT_EQ(status_and_data.second, data);
 }
-
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(WifiStaIfaceHidlTest);
-INSTANTIATE_TEST_SUITE_P(
-    PerInstance, WifiStaIfaceHidlTest,
-    testing::ValuesIn(android::hardware::getAllHalInstanceNames(
-        ::android::hardware::wifi::V1_2::IWifi::descriptor)),
-    android::hardware::PrintInstanceNameToString);

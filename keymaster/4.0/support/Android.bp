@@ -14,15 +14,6 @@
 // limitations under the License.
 //
 
-package {
-    // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "hardware_interfaces_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_interfaces_license"],
-}
-
 cc_library {
     name: "libkeymaster4support",
     vendor_available: true,
@@ -36,10 +27,11 @@ cc_library {
         "authorization_set.cpp",
         "key_param_output.cpp",
         "keymaster_utils.cpp",
+        "Keymaster.cpp",
+        "Keymaster3.cpp",
+        "Keymaster4.cpp",
     ],
-    export_include_dirs: [
-        "include",
-    ],
+    export_include_dirs: ["include"],
     shared_libs: [
         "android.hardware.keymaster@3.0",
         "android.hardware.keymaster@4.0",
@@ -47,5 +39,7 @@ cc_library {
         "libcrypto",
         "libhardware",
         "libhidlbase",
-    ],
+        "libhidltransport",
+        "libutils",
+    ]
 }
