@@ -28,24 +28,14 @@ static AssertionResult success() {
 
 namespace {
 
-bool initConfiguration() {
-    if (!TunerTestingConfigReader::checkConfigFileExists()) {
-        return false;
-    }
+void initConfiguration() {
     initFrontendConfig();
-    connectHardwaresToTestCases();
-    if (!validateConnections()) {
-        ALOGW("[vts] failed to validate connections.");
-        return false;
-    }
-
+    initFrontendScanConfig();
     initLnbConfig();
     initFilterConfig();
     initTimeFilterConfig();
     initDvrConfig();
     initDescramblerConfig();
-
-    return true;
 }
 
 AssertionResult filterDataOutputTestBase(FilterTests tests) {
@@ -63,7 +53,7 @@ class TunerFrontendHidlTest : public testing::TestWithParam<std::string> {
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        ASSERT_TRUE(initConfiguration());
+        initConfiguration();
 
         mFrontendTests.setService(mService);
     }
@@ -85,7 +75,7 @@ class TunerLnbHidlTest : public testing::TestWithParam<std::string> {
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        ASSERT_TRUE(initConfiguration());
+        initConfiguration();
 
         mLnbTests.setService(mService);
     }
@@ -107,7 +97,7 @@ class TunerDemuxHidlTest : public testing::TestWithParam<std::string> {
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        ASSERT_TRUE(initConfiguration());
+        initConfiguration();
 
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
@@ -133,7 +123,7 @@ class TunerFilterHidlTest : public testing::TestWithParam<std::string> {
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        ASSERT_TRUE(initConfiguration());
+        initConfiguration();
 
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
@@ -162,7 +152,7 @@ class TunerBroadcastHidlTest : public testing::TestWithParam<std::string> {
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        ASSERT_TRUE(initConfiguration());
+        initConfiguration();
 
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
@@ -183,7 +173,7 @@ class TunerBroadcastHidlTest : public testing::TestWithParam<std::string> {
     LnbTests mLnbTests;
     DvrTests mDvrTests;
 
-    AssertionResult filterDataOutputTest();
+    AssertionResult filterDataOutputTest(vector<string> goldenOutputFiles);
 
     void broadcastSingleFilterTest(FilterConfig filterConf, FrontendConfig frontendConf);
     void broadcastSingleFilterTestWithLnb(FilterConfig filterConf, FrontendConfig frontendConf,
@@ -201,7 +191,7 @@ class TunerPlaybackHidlTest : public testing::TestWithParam<std::string> {
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        ASSERT_TRUE(initConfiguration());
+        initConfiguration();
 
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
@@ -220,7 +210,7 @@ class TunerPlaybackHidlTest : public testing::TestWithParam<std::string> {
     FilterTests mFilterTests;
     DvrTests mDvrTests;
 
-    AssertionResult filterDataOutputTest();
+    AssertionResult filterDataOutputTest(vector<string> goldenOutputFiles);
 
     void playbackSingleFilterTest(FilterConfig filterConf, DvrConfig dvrConf);
 };
@@ -233,7 +223,7 @@ class TunerRecordHidlTest : public testing::TestWithParam<std::string> {
     virtual void SetUp() override {
         mService = ITuner::getService(GetParam());
         ASSERT_NE(mService, nullptr);
-        ASSERT_TRUE(initConfiguration());
+        initConfiguration();
 
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
@@ -275,7 +265,7 @@ class TunerDescramblerHidlTest : public testing::TestWithParam<std::string> {
         mCasService = IMediaCasService::getService();
         ASSERT_NE(mService, nullptr);
         ASSERT_NE(mCasService, nullptr);
-        ASSERT_TRUE(initConfiguration());
+        initConfiguration();
 
         mFrontendTests.setService(mService);
         mDemuxTests.setService(mService);
@@ -291,7 +281,7 @@ class TunerDescramblerHidlTest : public testing::TestWithParam<std::string> {
 
     void scrambledBroadcastTest(set<struct FilterConfig> mediaFilterConfs,
                                 FrontendConfig frontendConf, DescramblerConfig descConfig);
-    AssertionResult filterDataOutputTest();
+    AssertionResult filterDataOutputTest(vector<string> /*goldenOutputFiles*/);
 
     sp<ITuner> mService;
     sp<IMediaCasService> mCasService;
