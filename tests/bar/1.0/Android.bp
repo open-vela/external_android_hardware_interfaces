@@ -15,6 +15,9 @@ hidl_interface {
         "android.hardware.tests.foo@1.0",
         "android.hidl.base@1.0",
     ],
+    types: [
+        "Def",
+    ],
     gen_java: false,
 }
 

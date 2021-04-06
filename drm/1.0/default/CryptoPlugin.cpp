@@ -52,8 +52,9 @@ namespace implementation {
     Return<void> CryptoPlugin::setSharedBufferBase(const hidl_memory& base,
             uint32_t bufferId) {
         sp<IMemory> hidlMemory = mapMemory(base);
+        ALOGE_IF(hidlMemory == nullptr, "mapMemory returns nullptr");
 
-        std::unique_lock<std::mutex> lock(mSharedBufferLock);
+        std::lock_guard<std::mutex> shared_buffer_lock(mSharedBufferLock);
 
         // allow mapMemory to return nullptr
         mSharedBufferMap[bufferId] = hidlMemory;
