@@ -31,6 +31,7 @@ using ::android::hardware::wifi::supplicant::V1_0::SupplicantStatusCode;
 using ::android::hardware::wifi::supplicant::V1_0::IfaceType;
 
 extern WifiSupplicantHidlEnvironment* gEnv;
+
 class SupplicantHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
@@ -73,7 +74,6 @@ TEST_F(SupplicantHidlTest, ListInterfaces) {
               std::find_if(ifaces.begin(), ifaces.end(), [](const auto& iface) {
                   return iface.type == IfaceType::STA;
               }));
-
     if (gEnv->isP2pOn) {
         EXPECT_NE(
             ifaces.end(),
@@ -183,7 +183,6 @@ TEST_F(SupplicantHidlTest, SetConcurrencyPriority) {
         IfaceType::STA, [](const SupplicantStatus& status) {
             EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
         });
-
     if (gEnv->isP2pOn) {
         supplicant_->setConcurrencyPriority(
             IfaceType::P2P, [](const SupplicantStatus& status) {
