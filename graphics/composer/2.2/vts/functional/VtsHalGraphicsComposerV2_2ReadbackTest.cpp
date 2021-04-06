@@ -103,7 +103,8 @@ class GraphicsCompositionTestBase : public ::testing::Test {
 
         mTestRenderEngine->initGraphicBuffer(
                 static_cast<uint32_t>(mDisplayWidth), static_cast<uint32_t>(mDisplayHeight), 1,
-                static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN));
+                static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN |
+                                      BufferUsage::GPU_RENDER_TARGET));
         mTestRenderEngine->setDisplaySettings(clientCompositionDisplay);
     }
 
@@ -1381,11 +1382,13 @@ TEST_P(GraphicsTransformCompositionTest, ROT_180) {
     }
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GraphicsCompositionTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, GraphicsCompositionTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IComposer::descriptor)),
         android::hardware::PrintInstanceNameToString);
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GraphicsBlendModeCompositionTest);
 INSTANTIATE_TEST_CASE_P(
         BlendModeTest, GraphicsBlendModeCompositionTest,
         testing::Combine(
@@ -1393,6 +1396,7 @@ INSTANTIATE_TEST_CASE_P(
                 testing::Values("0.2", "1.0")),
         android::hardware::PrintInstanceTupleNameToString<>);
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GraphicsTransformCompositionTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, GraphicsTransformCompositionTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IComposer::descriptor)),
