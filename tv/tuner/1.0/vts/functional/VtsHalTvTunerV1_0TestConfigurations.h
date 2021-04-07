@@ -21,9 +21,6 @@
 #include <hidl/Status.h>
 #include <hidlmemory/FrameworkUtils.h>
 
-#include "../../../config/TunerTestingConfigReader.h"
-
-// TODO: remove unnecessary imports after config reader refactoring is done.
 using android::hardware::tv::tuner::V1_0::DataFormat;
 using android::hardware::tv::tuner::V1_0::DemuxAlpFilterType;
 using android::hardware::tv::tuner::V1_0::DemuxFilterEvent;
@@ -57,9 +54,7 @@ using android::hardware::tv::tuner::V1_0::PlaybackSettings;
 using android::hardware::tv::tuner::V1_0::RecordSettings;
 
 using namespace std;
-using namespace android::media::tuner::testing::configuration::V1_0;
 
-// TODO: remove all the constants and structs after config reader refactoring is done.
 const uint32_t FMQ_SIZE_512K = 0x80000;
 const uint32_t FMQ_SIZE_1M = 0x100000;
 const uint32_t FMQ_SIZE_4M = 0x400000;
@@ -83,7 +78,6 @@ typedef enum {
     TS_VIDEO0,
     TS_VIDEO1,
     TS_AUDIO0,
-    TS_AUDIO1,
     TS_PES0,
     TS_PCR0,
     TS_SECTION0,
@@ -104,6 +98,12 @@ typedef enum {
 } Linkage;
 
 typedef enum {
+    DVBT,
+    DVBS,
+    FRONTEND_MAX,
+} Frontend;
+
+typedef enum {
     LNB0,
     LNB_EXTERNAL,
     LNB_MAX,
@@ -113,6 +113,18 @@ typedef enum {
     DISEQC_POWER_ON,
     DISEQC_MAX,
 } Diseqc;
+
+typedef enum {
+    SCAN_DVBT,
+    SCAN_MAX,
+} FrontendScan;
+
+typedef enum {
+    DVR_RECORD0,
+    DVR_PLAYBACK0,
+    DVR_SOFTWARE_FE,
+    DVR_MAX,
+} Dvr;
 
 typedef enum {
     DESC_0,
@@ -133,6 +145,15 @@ struct TimeFilterConfig {
     uint64_t timeStamp;
 };
 
+struct FrontendConfig {
+    bool enable;
+    bool isSoftwareFe;
+    FrontendType type;
+    FrontendSettings settings;
+    vector<FrontendStatusType> tuneStatusTypes;
+    vector<FrontendStatus> expectTuneStatuses;
+};
+
 struct LnbConfig {
     bool usingLnb;
     string name;
@@ -141,119 +162,88 @@ struct LnbConfig {
     LnbPosition position;
 };
 
+struct ChannelConfig {
+    int32_t frontendId;
+    int32_t channelId;
+    std::string channelName;
+    DemuxTpid videoPid;
+    DemuxTpid audioPid;
+};
+
+struct DvrConfig {
+    DvrType type;
+    uint32_t bufferSize;
+    DvrSettings settings;
+    string playbackInputFile;
+};
+
 struct DescramblerConfig {
     uint32_t casSystemId;
     string provisionStr;
     vector<uint8_t> hidlPvtData;
 };
 
-// TODO: remove all the manual config array after the dynamic config refactoring is done.
+static FrontendConfig frontendArray[FILTER_MAX];
+static FrontendConfig frontendScanArray[SCAN_MAX];
 static LnbConfig lnbArray[LNB_MAX];
 static vector<uint8_t> diseqcMsgArray[DISEQC_MAX];
+static ChannelConfig channelArray[FRONTEND_MAX];
 static FilterConfig filterArray[FILTER_MAX];
 static TimeFilterConfig timeFilterArray[TIMER_MAX];
 static DemuxFilterType filterLinkageTypes[LINKAGE_DIR][FILTER_MAIN_TYPE_BIT_COUNT];
+static DvrConfig dvrArray[DVR_MAX];
 static DescramblerConfig descramblerArray[DESC_MAX];
+static vector<string> goldenOutputFiles;
+static int defaultFrontend = DVBT;
+static int defaultScanFrontend = SCAN_DVBT;
 
-// Hardware configs
-static map<string, FrontendConfig> frontendMap;
-static map<string, DvrConfig> dvrMap;
-
-// Hardware and test cases connections
-static LiveBroadcastHardwareConnections live;
-static ScanHardwareConnections scan;
-static DvrPlaybackHardwareConnections playback;
-static DvrRecordHardwareConnections record;
-static DescramblingHardwareConnections descrambling;
-static LnbLiveHardwareConnections lnbLive;
-static LnbRecordHardwareConnections lnbRecord;
-
-/** Config all the frontends that would be used in the tests */
+/** Configuration array for the frontend tune test */
 inline void initFrontendConfig() {
-    // The test will use the internal default fe when default fe is connected to any data flow
-    // without overriding in the xml config.
-    string defaultFeId = "FE_DEFAULT";
     FrontendDvbtSettings dvbtSettings{
             .frequency = 578000,
             .transmissionMode = FrontendDvbtTransmissionMode::AUTO,
             .bandwidth = FrontendDvbtBandwidth::BANDWIDTH_8MHZ,
+            .constellation = FrontendDvbtConstellation::AUTO,
+            .hierarchy = FrontendDvbtHierarchy::AUTO,
+            .hpCoderate = FrontendDvbtCoderate::AUTO,
+            .lpCoderate = FrontendDvbtCoderate::AUTO,
+            .guardInterval = FrontendDvbtGuardInterval::AUTO,
             .isHighPriority = true,
+            .standard = FrontendDvbtStandard::T,
     };
-    frontendMap[defaultFeId].type = FrontendType::DVBT;
-    frontendMap[defaultFeId].settings.dvbt(dvbtSettings);
-
+    frontendArray[DVBT].type = FrontendType::DVBT, frontendArray[DVBT].settings.dvbt(dvbtSettings);
     vector<FrontendStatusType> types;
     types.push_back(FrontendStatusType::DEMOD_LOCK);
     FrontendStatus status;
     status.isDemodLocked(true);
     vector<FrontendStatus> statuses;
     statuses.push_back(status);
-    frontendMap[defaultFeId].tuneStatusTypes = types;
-    frontendMap[defaultFeId].expectTuneStatuses = statuses;
-    frontendMap[defaultFeId].isSoftwareFe = true;
-
-    // Read customized config
-    TunerTestingConfigReader::readFrontendConfig1_0(frontendMap);
+    frontendArray[DVBT].tuneStatusTypes = types;
+    frontendArray[DVBT].expectTuneStatuses = statuses;
+    frontendArray[DVBT].isSoftwareFe = true;
+    frontendArray[DVBS].enable = true;
+    frontendArray[DVBS].type = FrontendType::DVBS;
+    frontendArray[DVBS].enable = true;
+    frontendArray[DVBS].isSoftwareFe = true;
 };
 
-/** Config all the dvrs that would be used in the tests */
-inline void initDvrConfig() {
-    // Read customized config
-    TunerTestingConfigReader::readDvrConfig1_0(dvrMap);
+/** Configuration array for the frontend scan test */
+inline void initFrontendScanConfig() {
+    frontendScanArray[SCAN_DVBT].type = FrontendType::DVBT;
+    frontendScanArray[SCAN_DVBT].settings.dvbt({
+            .frequency = 578000,
+            .transmissionMode = FrontendDvbtTransmissionMode::MODE_8K,
+            .bandwidth = FrontendDvbtBandwidth::BANDWIDTH_8MHZ,
+            .constellation = FrontendDvbtConstellation::AUTO,
+            .hierarchy = FrontendDvbtHierarchy::AUTO,
+            .hpCoderate = FrontendDvbtCoderate::AUTO,
+            .lpCoderate = FrontendDvbtCoderate::AUTO,
+            .guardInterval = FrontendDvbtGuardInterval::AUTO,
+            .isHighPriority = true,
+            .standard = FrontendDvbtStandard::T,
+    });
 };
 
-/** Read the vendor configurations of which hardware to use for each test cases/data flows */
-inline void connectHardwaresToTestCases() {
-    TunerTestingConfigReader::connectLiveBroadcast(live);
-    TunerTestingConfigReader::connectScan(scan);
-    TunerTestingConfigReader::connectDvrPlayback(playback);
-    TunerTestingConfigReader::connectDvrRecord(record);
-    TunerTestingConfigReader::connectDescrambling(descrambling);
-    TunerTestingConfigReader::connectLnbLive(lnbLive);
-    TunerTestingConfigReader::connectLnbRecord(lnbRecord);
-};
-
-inline bool validateConnections() {
-    bool feIsValid = frontendMap.find(live.frontendId) != frontendMap.end() &&
-                     frontendMap.find(scan.frontendId) != frontendMap.end();
-    feIsValid &= record.support ? frontendMap.find(record.frontendId) != frontendMap.end() : true;
-    feIsValid &= descrambling.support
-                         ? frontendMap.find(descrambling.frontendId) != frontendMap.end()
-                         : true;
-    feIsValid &= lnbLive.support ? frontendMap.find(lnbLive.frontendId) != frontendMap.end() : true;
-    feIsValid &=
-            lnbRecord.support ? frontendMap.find(lnbRecord.frontendId) != frontendMap.end() : true;
-
-    if (!feIsValid) {
-        ALOGW("[vts config] dynamic config fe connection is invalid.");
-        return false;
-    }
-
-    bool dvrIsValid = frontendMap[live.frontendId].isSoftwareFe
-                              ? dvrMap.find(live.dvrSoftwareFeId) != dvrMap.end()
-                              : true;
-    dvrIsValid &= playback.support ? dvrMap.find(playback.dvrId) != dvrMap.end() : true;
-
-    if (record.support) {
-        if (frontendMap[record.frontendId].isSoftwareFe) {
-            dvrIsValid &= dvrMap.find(record.dvrSoftwareFeId) != dvrMap.end();
-        }
-        dvrIsValid &= dvrMap.find(record.dvrRecordId) != dvrMap.end();
-    }
-
-    if (descrambling.support && frontendMap[descrambling.frontendId].isSoftwareFe) {
-        dvrIsValid &= dvrMap.find(descrambling.dvrSoftwareFeId) != dvrMap.end();
-    }
-
-    if (!dvrIsValid) {
-        ALOGW("[vts config] dynamic config dvr connection is invalid.");
-        return false;
-    }
-
-    return true;
-}
-
-// TODO: remove all the manual configs after the dynamic config refactoring is done.
 /** Configuration array for the Lnb test */
 inline void initLnbConfig() {
     lnbArray[LNB0].usingLnb = true;
@@ -291,11 +281,6 @@ inline void initFilterConfig() {
     filterArray[TS_AUDIO0].bufferSize = FMQ_SIZE_16M;
     filterArray[TS_AUDIO0].settings.ts().tpid = 256;
     filterArray[TS_AUDIO0].settings.ts().filterSettings.av({.isPassthrough = false});
-    filterArray[TS_AUDIO1].type.mainType = DemuxFilterMainType::TS;
-    filterArray[TS_AUDIO1].type.subType.tsFilterType(DemuxTsFilterType::AUDIO);
-    filterArray[TS_AUDIO1].bufferSize = FMQ_SIZE_16M;
-    filterArray[TS_AUDIO1].settings.ts().tpid = 257;
-    filterArray[TS_AUDIO1].settings.ts().filterSettings.av({.isPassthrough = false});
     // TS PES filter setting
     filterArray[TS_PES0].type.mainType = DemuxFilterMainType::TS;
     filterArray[TS_PES0].type.subType.tsFilterType(DemuxTsFilterType::PES);
@@ -362,6 +347,42 @@ inline void initTimeFilterConfig() {
     timeFilterArray[TIMER0].supportTimeFilter = true;
     timeFilterArray[TIMER0].timeStamp = 1;
 }
+
+/** Configuration array for the dvr test */
+inline void initDvrConfig() {
+    RecordSettings recordSettings{
+            .statusMask = 0xf,
+            .lowThreshold = 0x1000,
+            .highThreshold = 0x07fff,
+            .dataFormat = DataFormat::TS,
+            .packetSize = 188,
+    };
+    dvrArray[DVR_RECORD0].type = DvrType::RECORD;
+    dvrArray[DVR_RECORD0].bufferSize = FMQ_SIZE_4M;
+    dvrArray[DVR_RECORD0].settings.record(recordSettings);
+    PlaybackSettings playbackSettings{
+            .statusMask = 0xf,
+            .lowThreshold = 0x1000,
+            .highThreshold = 0x07fff,
+            .dataFormat = DataFormat::TS,
+            .packetSize = 188,
+    };
+    dvrArray[DVR_PLAYBACK0].type = DvrType::PLAYBACK;
+    dvrArray[DVR_PLAYBACK0].playbackInputFile = "/data/local/tmp/segment000000.ts";
+    dvrArray[DVR_PLAYBACK0].bufferSize = FMQ_SIZE_4M;
+    dvrArray[DVR_PLAYBACK0].settings.playback(playbackSettings);
+    PlaybackSettings softwareFePlaybackSettings{
+            .statusMask = 0xf,
+            .lowThreshold = 0x1000,
+            .highThreshold = 0x07fff,
+            .dataFormat = DataFormat::TS,
+            .packetSize = 188,
+    };
+    dvrArray[DVR_SOFTWARE_FE].type = DvrType::PLAYBACK;
+    dvrArray[DVR_SOFTWARE_FE].playbackInputFile = "/data/local/tmp/segment000000.ts";
+    dvrArray[DVR_SOFTWARE_FE].bufferSize = FMQ_SIZE_4M;
+    dvrArray[DVR_SOFTWARE_FE].settings.playback(softwareFePlaybackSettings);
+};
 
 /** Configuration array for the descrambler test */
 inline void initDescramblerConfig() {
