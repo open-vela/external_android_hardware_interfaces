@@ -163,10 +163,6 @@ ndk::ScopedAStatus Vibrator::compose(const std::vector<CompositeEffect>& composi
             }
             LOG(INFO) << "triggering primitive " << static_cast<int>(e.primitive) << " @ scale "
                       << e.scale;
-
-            int32_t durationMs;
-            getPrimitiveDuration(e.primitive, &durationMs);
-            usleep(durationMs * 1000);
         }
 
         if (callback != nullptr) {
