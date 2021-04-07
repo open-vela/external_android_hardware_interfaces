@@ -22,7 +22,6 @@ import android.hardware.security.secureclock.TimeStampToken;
 
 /** @hide */
 @VintfStability
-@SensitiveData
 interface IKeyMintOperation {
     /**
      * Provides additional authentication data (AAD) to a cryptographic operation begun with
