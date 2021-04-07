@@ -239,22 +239,12 @@ TEST_P(PowerStatsAidl, TestGetEnergyMeterInfo) {
     ASSERT_OK(powerstats->getEnergyMeterInfo(&info));
 }
 
-// Each channel must have a valid name
+// Each channel must have a valid name and subsystem
 TEST_P(PowerStatsAidl, ValidateChannelNames) {
     std::vector<Channel> channels;
     ASSERT_OK(powerstats->getEnergyMeterInfo(&channels));
-
     for (auto channel : channels) {
         testNameValid(channel.name);
-    }
-}
-
-// Each channel must have a valid subsystem
-TEST_P(PowerStatsAidl, ValidateSubsystemNames) {
-    std::vector<Channel> channels;
-    ASSERT_OK(powerstats->getEnergyMeterInfo(&channels));
-
-    for (auto channel : channels) {
         testNameValid(channel.subsystem);
     }
 }

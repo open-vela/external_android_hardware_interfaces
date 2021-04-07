@@ -214,6 +214,7 @@ import android.hardware.security.secureclock.TimeStampToken;
  * @hide
  */
 @VintfStability
+@SensitiveData
 interface IKeyMintDevice {
     const int AUTH_TOKEN_MAC_LENGTH = 32;
 
@@ -321,8 +322,8 @@ interface IKeyMintDevice {
      *        but `attestationKey` is non-null, the IKeyMintDevice must return
      *        ErrorCode::INVALID_ARGUMENT.  If the provided AttestationKey does not contain a key
      *        blob containing an asymmetric key with KeyPurpose::ATTEST_KEY, the IKeyMintDevice must
-     *        return ErrorCode::INVALID_PURPOSE.  If the provided AttestationKey has an empty issuer
-     *        subject name, the IKeyMintDevice must return ErrorCode::INVALID_ARGUMENT.
+     *        return ErrorCode::INCOMPATIBLE_PURPOSE.  If the provided AttestationKey has an empty
+     *        issuer subject name, the IKeyMintDevice must return ErrorCode::INVALID_ARGUMENT.
      *
      * @return The result of key creation.  See KeyCreationResult.aidl.
      */
@@ -360,8 +361,8 @@ interface IKeyMintDevice {
      *        but `attestationKey` is non-null, the IKeyMintDevice must return
      *        ErrorCode::INVALID_ARGUMENT.  If the provided AttestationKey does not contain a key
      *        blob containing an asymmetric key with KeyPurpose::ATTEST_KEY, the IKeyMintDevice must
-     *        return ErrorCode::INVALID_PURPOSE.  If the provided AttestationKey has an empty issuer
-     *        subject name, the IKeyMintDevice must return ErrorCode::INVALID_ARGUMENT.
+     *        return ErrorCode::INCOMPATIBLE_PURPOSE.  If the provided AttestationKey has an empty
+     *        issuer subject name, the IKeyMintDevice must return ErrorCode::INVALID_ARGUMENT.
      *
      * @return The result of key creation.  See KeyCreationResult.aidl.
      */
