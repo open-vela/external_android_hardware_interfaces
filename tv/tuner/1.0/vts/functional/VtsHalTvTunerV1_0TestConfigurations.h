@@ -21,27 +21,84 @@
 #include <hidl/Status.h>
 #include <hidlmemory/FrameworkUtils.h>
 
-#include "../../../config/TunerTestingConfigReaderV1_0.h"
+#include "../../../config/TunerTestingConfigReader.h"
 
+// TODO: remove unnecessary imports after config reader refactoring is done.
+using android::hardware::tv::tuner::V1_0::DataFormat;
+using android::hardware::tv::tuner::V1_0::DemuxAlpFilterType;
+using android::hardware::tv::tuner::V1_0::DemuxFilterEvent;
 using android::hardware::tv::tuner::V1_0::DemuxFilterMainType;
+using android::hardware::tv::tuner::V1_0::DemuxFilterSettings;
+using android::hardware::tv::tuner::V1_0::DemuxFilterType;
+using android::hardware::tv::tuner::V1_0::DemuxIpFilterType;
+using android::hardware::tv::tuner::V1_0::DemuxMmtpFilterType;
+using android::hardware::tv::tuner::V1_0::DemuxRecordScIndexType;
+using android::hardware::tv::tuner::V1_0::DemuxTlvFilterType;
+using android::hardware::tv::tuner::V1_0::DemuxTpid;
 using android::hardware::tv::tuner::V1_0::DemuxTsFilterType;
+using android::hardware::tv::tuner::V1_0::DvrSettings;
+using android::hardware::tv::tuner::V1_0::DvrType;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtBandwidth;
+using android::hardware::tv::tuner::V1_0::FrontendDvbtCoderate;
+using android::hardware::tv::tuner::V1_0::FrontendDvbtConstellation;
+using android::hardware::tv::tuner::V1_0::FrontendDvbtGuardInterval;
+using android::hardware::tv::tuner::V1_0::FrontendDvbtHierarchy;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtSettings;
+using android::hardware::tv::tuner::V1_0::FrontendDvbtStandard;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtTransmissionMode;
 using android::hardware::tv::tuner::V1_0::FrontendSettings;
 using android::hardware::tv::tuner::V1_0::FrontendStatus;
 using android::hardware::tv::tuner::V1_0::FrontendStatusType;
 using android::hardware::tv::tuner::V1_0::FrontendType;
+using android::hardware::tv::tuner::V1_0::LnbPosition;
+using android::hardware::tv::tuner::V1_0::LnbTone;
+using android::hardware::tv::tuner::V1_0::LnbVoltage;
+using android::hardware::tv::tuner::V1_0::PlaybackSettings;
+using android::hardware::tv::tuner::V1_0::RecordSettings;
 
 using namespace std;
 using namespace android::media::tuner::testing::configuration::V1_0;
 
+// TODO: remove all the constants and structs after config reader refactoring is done.
+const uint32_t FMQ_SIZE_512K = 0x80000;
+const uint32_t FMQ_SIZE_1M = 0x100000;
 const uint32_t FMQ_SIZE_4M = 0x400000;
 const uint32_t FMQ_SIZE_16M = 0x1000000;
 
-const string configFilePath = "/vendor/etc/tuner_vts_config_1_0.xml";
+#define CLEAR_KEY_SYSTEM_ID 0xF6D8
+#define FILTER_MAIN_TYPE_BIT_COUNT 32
+#define PROVISION_STR                                      \
+    "{                                                   " \
+    "  \"id\": 21140844,                                 " \
+    "  \"name\": \"Test Title\",                         " \
+    "  \"lowercase_organization_name\": \"Android\",     " \
+    "  \"asset_key\": {                                  " \
+    "  \"encryption_key\": \"nezAr3CHFrmBR9R8Tedotw==\"  " \
+    "  },                                                " \
+    "  \"cas_type\": 1,                                  " \
+    "  \"track_types\": [ ]                              " \
+    "}                                                   "
 
-#define FILTER_MAIN_TYPE_BIT_COUNT 5
+typedef enum {
+    SOURCE,
+    SINK,
+    LINKAGE_DIR,
+} Linkage;
+
+typedef enum {
+    DESC_0,
+    DESC_MAX,
+} Descrambler;
+
+struct DescramblerConfig {
+    uint32_t casSystemId;
+    string provisionStr;
+    vector<uint8_t> hidlPvtData;
+};
+
+// TODO: remove all the manual config array after the dynamic config refactoring is done.
+static DemuxFilterType filterLinkageTypes[LINKAGE_DIR][FILTER_MAIN_TYPE_BIT_COUNT];
+static DescramblerConfig descramblerArray[DESC_MAX];
 
 // Hardware configs
 static map<string, FrontendConfig> frontendMap;
@@ -50,7 +107,6 @@ static map<string, DvrConfig> dvrMap;
 static map<string, LnbConfig> lnbMap;
 static map<string, TimeFilterConfig> timeFilterMap;
 static map<string, vector<uint8_t>> diseqcMsgMap;
-static map<string, DescramblerConfig> descramblerMap;
 
 // Hardware and test cases connections
 static LiveBroadcastHardwareConnections live;
@@ -87,7 +143,7 @@ inline void initFrontendConfig() {
     frontendMap[defaultFeId].isSoftwareFe = true;
 
     // Read customized config
-    TunerTestingConfigReader1_0::readFrontendConfig1_0(frontendMap);
+    TunerTestingConfigReader::readFrontendConfig1_0(frontendMap);
 };
 
 inline void initFilterConfig() {
@@ -109,44 +165,38 @@ inline void initFilterConfig() {
     filterMap[defaultAudioFilterId].settings.ts().filterSettings.av({.isPassthrough = false});
 
     // Read customized config
-    TunerTestingConfigReader1_0::readFilterConfig1_0(filterMap);
+    TunerTestingConfigReader::readFilterConfig1_0(filterMap);
 };
 
 /** Config all the dvrs that would be used in the tests */
 inline void initDvrConfig() {
     // Read customized config
-    TunerTestingConfigReader1_0::readDvrConfig1_0(dvrMap);
+    TunerTestingConfigReader::readDvrConfig1_0(dvrMap);
 };
 
 /** Config all the lnbs that would be used in the tests */
 inline void initLnbConfig() {
     // Read customized config
-    TunerTestingConfigReader1_0::readLnbConfig1_0(lnbMap);
-    TunerTestingConfigReader1_0::readDiseqcMessages(diseqcMsgMap);
+    TunerTestingConfigReader::readLnbConfig1_0(lnbMap);
+    TunerTestingConfigReader::readDiseqcMessages(diseqcMsgMap);
 };
 
 /** Config all the time filters that would be used in the tests */
 inline void initTimeFilterConfig() {
     // Read customized config
-    TunerTestingConfigReader1_0::readTimeFilterConfig1_0(timeFilterMap);
-};
-
-/** Config all the descramblers that would be used in the tests */
-inline void initDescramblerConfig() {
-    // Read customized config
-    TunerTestingConfigReader1_0::readDescramblerConfig1_0(descramblerMap);
+    TunerTestingConfigReader::readTimeFilterConfig1_0(timeFilterMap);
 };
 
 /** Read the vendor configurations of which hardware to use for each test cases/data flows */
 inline void connectHardwaresToTestCases() {
-    TunerTestingConfigReader1_0::connectLiveBroadcast(live);
-    TunerTestingConfigReader1_0::connectScan(scan);
-    TunerTestingConfigReader1_0::connectDvrPlayback(playback);
-    TunerTestingConfigReader1_0::connectDvrRecord(record);
-    TunerTestingConfigReader1_0::connectDescrambling(descrambling);
-    TunerTestingConfigReader1_0::connectLnbLive(lnbLive);
-    TunerTestingConfigReader1_0::connectLnbRecord(lnbRecord);
-    TunerTestingConfigReader1_0::connectTimeFilter(timeFilter);
+    TunerTestingConfigReader::connectLiveBroadcast(live);
+    TunerTestingConfigReader::connectScan(scan);
+    TunerTestingConfigReader::connectDvrPlayback(playback);
+    TunerTestingConfigReader::connectDvrRecord(record);
+    TunerTestingConfigReader::connectDescrambling(descrambling);
+    TunerTestingConfigReader::connectLnbLive(lnbLive);
+    TunerTestingConfigReader::connectLnbRecord(lnbRecord);
+    TunerTestingConfigReader::connectTimeFilter(timeFilter);
 };
 
 inline bool validateConnections() {
@@ -215,16 +265,6 @@ inline bool validateConnections() {
         return false;
     }
 
-    bool descramblerIsValid =
-            descrambling.support
-                    ? descramblerMap.find(descrambling.descramblerId) != descramblerMap.end()
-                    : true;
-
-    if (!descramblerIsValid) {
-        ALOGW("[vts config] dynamic config descrambler connection is invalid.");
-        return false;
-    }
-
     bool diseqcMsgIsValid = true;
     if (lnbLive.support) {
         for (auto msgName : lnbLive.diseqcMsgs) {
@@ -244,3 +284,11 @@ inline bool validateConnections() {
 
     return true;
 }
+
+// TODO: remove all the manual configs after the dynamic config refactoring is done.
+/** Configuration array for the descrambler test */
+inline void initDescramblerConfig() {
+    descramblerArray[DESC_0].casSystemId = CLEAR_KEY_SYSTEM_ID;
+    descramblerArray[DESC_0].provisionStr = PROVISION_STR;
+    descramblerArray[DESC_0].hidlPvtData.resize(256);
+};
