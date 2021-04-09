@@ -34,7 +34,6 @@ aidl_interface {
             apex_available: [
                 "//apex_available:platform",
                 "com.android.media.swcodec",
-                "com.android.neuralnetworks",
             ],
             min_sdk_version: "29",
         },
