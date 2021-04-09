@@ -33,16 +33,16 @@ bool initConfiguration() {
         return false;
     }
     initFrontendConfig();
+    initFilterConfig();
     initDvrConfig();
+    initLnbConfig();
+    initTimeFilterConfig();
     connectHardwaresToTestCases();
     if (!validateConnections()) {
         ALOGW("[vts] failed to validate connections.");
         return false;
     }
 
-    initLnbConfig();
-    initFilterConfig();
-    initTimeFilterConfig();
     initDescramblerConfig();
 
     return true;
