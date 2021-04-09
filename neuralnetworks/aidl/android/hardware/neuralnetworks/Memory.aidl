@@ -15,16 +15,26 @@
  */
 
 package android.hardware.neuralnetworks;
-import android.hardware.common.NativeHandle;
-import android.os.ParcelFileDescriptor;
+
+import android.hardware.common.Ashmem;
+import android.hardware.common.MappableFile;
+import android.hardware.graphics.common.HardwareBuffer;
 
 /**
- * A type that is used to pass pieces of shared memory between processes.
- * The type structure mimics hidl_memory type from HIDL.
+ * The different types of memory that can be shared across processes.
  */
 @VintfStability
-parcelable Memory {
-    NativeHandle handle;
-    long size;
-    String name;
+union Memory {
+    /**
+     * Ashmem hidl_memory type from HIDL.
+     */
+    Ashmem ashmem;
+    /**
+     * File that can be mapped.
+     */
+    MappableFile mappableFile;
+    /**
+     * AIDL representation of AHardwareBuffer.
+     */
+    HardwareBuffer hardwareBuffer;
 }
