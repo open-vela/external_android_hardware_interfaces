@@ -180,12 +180,7 @@ TEST_P(RadioHidlTest_v1_6, getSlicingConfig) {
                 radioRsp_v1_6->rspInfo.error,
                 {::android::hardware::radio::V1_6::RadioError::REQUEST_NOT_SUPPORTED}));
     } else {
-        ASSERT_TRUE(
-                CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
-                                 {::android::hardware::radio::V1_6::RadioError::NONE,
-                                  ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
-                                  ::android::hardware::radio::V1_6::RadioError::INTERNAL_ERR,
-                                  ::android::hardware::radio::V1_6::RadioError::MODEM_ERR}));
+        EXPECT_EQ(::android::hardware::radio::V1_6::RadioError::NONE, radioRsp_v1_6->rspInfo.error);
     }
 }
 
