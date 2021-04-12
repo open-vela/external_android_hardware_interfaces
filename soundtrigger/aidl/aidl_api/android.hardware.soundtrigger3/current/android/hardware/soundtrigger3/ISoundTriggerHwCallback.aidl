@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 The Android Open Source Project
+ * Copyright 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *////////////////////////////////////////////////////////////////////////////////
+ */
+///////////////////////////////////////////////////////////////////////////////
 // THIS FILE IS IMMUTABLE. DO NOT EDIT IN ANY CASE.                          //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -30,10 +31,10 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.weaver;
+package android.hardware.soundtrigger3;
 @VintfStability
-parcelable WeaverConfig {
-  long slots;
-  long keySize;
-  long valueSize;
+interface ISoundTriggerHwCallback {
+  void modelUnloaded(in int model);
+  void phraseRecognitionCallback(in int model, in android.media.soundtrigger.PhraseRecognitionEvent event);
+  void recognitionCallback(in int model, in android.media.soundtrigger.RecognitionEvent event);
 }
