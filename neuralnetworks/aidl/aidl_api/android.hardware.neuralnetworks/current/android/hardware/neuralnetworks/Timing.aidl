@@ -34,6 +34,6 @@
 package android.hardware.neuralnetworks;
 @VintfStability
 parcelable Timing {
-  long timeOnDeviceNs;
-  long timeInDriverNs;
+  long timeOnDevice;
+  long timeInDriver;
 }
