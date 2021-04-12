@@ -16,7 +16,6 @@
 
 #include "Service.h"
 
-#include <AndroidVersionUtil.h>
 #include <aidl/android/hardware/neuralnetworks/IDevice.h>
 #include <android-base/logging.h>
 #include <android/binder_manager.h>
@@ -83,7 +82,7 @@ void getAidlDevices(std::vector<nn::SharedDevice>* devices,
 
     // Devices with SDK level lower than 31 (Android S) don't have any AIDL drivers available, so
     // there is no need for a workaround supported on lower levels.
-    if (__builtin_available(android __NNAPI_AIDL_MIN_ANDROID_API__, *)) {
+    if (__builtin_available(android __ANDROID_API_S__, *)) {
         AServiceManager_forEachDeclaredInstance(aidl_hal::IDevice::descriptor,
                                                 static_cast<void*>(&names), callback);
     }
