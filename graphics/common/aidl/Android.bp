@@ -21,7 +21,7 @@ aidl_interface {
     ],
     stability: "vintf",
     imports: [
-        "android.hardware.common-V2",
+        "android.hardware.common",
     ],
     backend: {
         java: {
@@ -39,5 +39,8 @@ aidl_interface {
             min_sdk_version: "29",
         },
     },
-    versions: ["1"],
+    versions: [
+        "1",
+        "2",
+    ],
 }
