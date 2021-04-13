@@ -20,7 +20,6 @@
 #include <unistd.h>
 
 #include <functional>
-#include <tuple>
 #include <vector>
 
 #include <android/hardware/dumpstate/1.1/IDumpstateDevice.h>
@@ -28,7 +27,6 @@
 #include <cutils/native_handle.h>
 #include <gtest/gtest.h>
 #include <hidl/GtestPrinter.h>
-#include <hidl/HidlSupport.h>
 #include <hidl/ServiceManagement.h>
 #include <log/log.h>
 
@@ -41,18 +39,13 @@ using ::android::hardware::dumpstate::V1_1::DumpstateStatus;
 using ::android::hardware::dumpstate::V1_1::IDumpstateDevice;
 using ::android::hardware::dumpstate::V1_1::toString;
 
-// Base class common to all dumpstate HAL v1.1 tests.
-template <typename T>
-class DumpstateHidl1_1TestBase : public ::testing::TestWithParam<T> {
+class DumpstateHidl1_1Test : public ::testing::TestWithParam<std::string> {
   protected:
     virtual void SetUp() override { GetService(); }
 
-    virtual std::string GetInstanceName() = 0;
-
     void GetService() {
-        const std::string instance_name = GetInstanceName();
-        dumpstate = IDumpstateDevice::getService(instance_name);
-        ASSERT_NE(dumpstate, nullptr) << "Could not get HIDL instance " << instance_name;
+        dumpstate = IDumpstateDevice::getService(GetParam());
+        ASSERT_NE(dumpstate, nullptr) << "Could not get HIDL instance";
     }
 
     void ToggleVerboseLogging(bool enable) {
@@ -85,76 +78,77 @@ class DumpstateHidl1_1TestBase : public ::testing::TestWithParam<T> {
     sp<IDumpstateDevice> dumpstate;
 };
 
-// Tests that don't need to iterate every single DumpstateMode value for dumpstateBoard_1_1.
-class DumpstateHidl1_1GeneralTest : public DumpstateHidl1_1TestBase<std::string> {
-  protected:
-    virtual std::string GetInstanceName() override { return GetParam(); }
-};
+#define TEST_FOR_DUMPSTATE_MODE(name, body, mode) \
+    TEST_P(DumpstateHidl1_1Test, name##_##mode) { body(DumpstateMode::mode); }
 
-// Tests that iterate every single DumpstateMode value for dumpstateBoard_1_1.
-class DumpstateHidl1_1PerModeTest
-    : public DumpstateHidl1_1TestBase<std::tuple<std::string, DumpstateMode>> {
-  protected:
-    virtual std::string GetInstanceName() override { return std::get<0>(GetParam()); }
-
-    DumpstateMode GetMode() { return std::get<1>(GetParam()); }
-
-    // Will only execute additional_assertions when status == expected.
-    void AssertStatusForMode(const Return<DumpstateStatus>& status, const DumpstateStatus expected,
-                             std::function<void()> additional_assertions = nullptr) {
-        ASSERT_TRUE(status.isOk())
-                << "Status should be ok and return a more specific DumpstateStatus: "
-                << status.description();
-        if (GetMode() == DumpstateMode::DEFAULT) {
-            ASSERT_EQ(expected, status)
-                    << "Required mode (DumpstateMode::" << toString(GetMode())
-                    << "): status should be DumpstateStatus::" << toString(expected)
-                    << ", but got DumpstateStatus::" << toString(status);
-        } else {
-            // The rest of the modes are optional to support, but they MUST return either the
-            // expected value or UNSUPPORTED_MODE.
-            ASSERT_TRUE(status == expected || status == DumpstateStatus::UNSUPPORTED_MODE)
-                    << "Optional mode (DumpstateMode::" << toString(GetMode())
-                    << "): status should be DumpstateStatus::" << toString(expected)
-                    << " or DumpstateStatus::UNSUPPORTED_MODE, but got DumpstateStatus::"
-                    << toString(status);
-        }
-        if (status == expected && additional_assertions != nullptr) {
-            additional_assertions();
-        }
-    }
-};
+// We use a macro to define individual test cases instead of hidl_enum_range<> because some HAL
+// implementations are lazy and may call exit() at the end of dumpstateBoard(), which would cause
+// DEAD_OBJECT errors after the first iteration. Separate cases re-get the service each time as part
+// of SetUp(), and also provide better separation of concerns when specific modes are problematic.
+#define TEST_FOR_ALL_DUMPSTATE_MODES(name, body)       \
+    TEST_FOR_DUMPSTATE_MODE(name, body, FULL);         \
+    TEST_FOR_DUMPSTATE_MODE(name, body, INTERACTIVE);  \
+    TEST_FOR_DUMPSTATE_MODE(name, body, REMOTE);       \
+    TEST_FOR_DUMPSTATE_MODE(name, body, WEAR);         \
+    TEST_FOR_DUMPSTATE_MODE(name, body, CONNECTIVITY); \
+    TEST_FOR_DUMPSTATE_MODE(name, body, WIFI);         \
+    TEST_FOR_DUMPSTATE_MODE(name, body, DEFAULT);      \
+    TEST_FOR_DUMPSTATE_MODE(name, body, PROTO);
 
 constexpr uint64_t kDefaultTimeoutMillis = 30 * 1000;  // 30 seconds
 
+// Will only execute additional_assertions when status == expected.
+void AssertStatusForMode(const DumpstateMode mode, const Return<DumpstateStatus>& status,
+                         const DumpstateStatus expected,
+                         std::function<void()> additional_assertions = nullptr) {
+    ASSERT_TRUE(status.isOk()) << "Status should be ok and return a more specific DumpstateStatus: "
+                               << status.description();
+    if (mode == DumpstateMode::DEFAULT) {
+        ASSERT_EQ(expected, status) << "Required mode (DumpstateMode::" << toString(mode)
+                                    << "): status should be DumpstateStatus::" << toString(expected)
+                                    << ", but got DumpstateStatus::" << toString(status);
+    } else {
+        // The rest of the modes are optional to support, but they MUST return either the expected
+        // value or UNSUPPORTED_MODE.
+        ASSERT_TRUE(status == expected || status == DumpstateStatus::UNSUPPORTED_MODE)
+                << "Optional mode (DumpstateMode::" << toString(mode)
+                << "): status should be DumpstateStatus::" << toString(expected)
+                << " or DumpstateStatus::UNSUPPORTED_MODE, but got DumpstateStatus::"
+                << toString(status);
+    }
+    if (status == expected && additional_assertions != nullptr) {
+        additional_assertions();
+    }
+}
+
 // Negative test: make sure dumpstateBoard() doesn't crash when passed a null pointer.
-TEST_P(DumpstateHidl1_1PerModeTest, TestNullHandle) {
+TEST_FOR_ALL_DUMPSTATE_MODES(TestNullHandle, [this](DumpstateMode mode) {
     EnableVerboseLogging();
 
     Return<DumpstateStatus> status =
-            dumpstate->dumpstateBoard_1_1(nullptr, GetMode(), kDefaultTimeoutMillis);
+            dumpstate->dumpstateBoard_1_1(nullptr, mode, kDefaultTimeoutMillis);
 
-    AssertStatusForMode(status, DumpstateStatus::ILLEGAL_ARGUMENT);
-}
+    AssertStatusForMode(mode, status, DumpstateStatus::ILLEGAL_ARGUMENT);
+});
 
 // Negative test: make sure dumpstateBoard() ignores a handle with no FD.
-TEST_P(DumpstateHidl1_1PerModeTest, TestHandleWithNoFd) {
+TEST_FOR_ALL_DUMPSTATE_MODES(TestHandleWithNoFd, [this](DumpstateMode mode) {
     EnableVerboseLogging();
 
     native_handle_t* handle = native_handle_create(0, 0);
     ASSERT_NE(handle, nullptr) << "Could not create native_handle";
 
     Return<DumpstateStatus> status =
-            dumpstate->dumpstateBoard_1_1(handle, GetMode(), kDefaultTimeoutMillis);
+            dumpstate->dumpstateBoard_1_1(handle, mode, kDefaultTimeoutMillis);
 
-    AssertStatusForMode(status, DumpstateStatus::ILLEGAL_ARGUMENT);
+    AssertStatusForMode(mode, status, DumpstateStatus::ILLEGAL_ARGUMENT);
 
     native_handle_close(handle);
     native_handle_delete(handle);
-}
+});
 
 // Positive test: make sure dumpstateBoard() writes something to the FD.
-TEST_P(DumpstateHidl1_1PerModeTest, TestOk) {
+TEST_FOR_ALL_DUMPSTATE_MODES(TestOk, [this](DumpstateMode mode) {
     EnableVerboseLogging();
 
     // Index 0 corresponds to the read end of the pipe; 1 to the write end.
@@ -166,9 +160,9 @@ TEST_P(DumpstateHidl1_1PerModeTest, TestOk) {
     handle->data[0] = fds[1];
 
     Return<DumpstateStatus> status =
-            dumpstate->dumpstateBoard_1_1(handle, GetMode(), kDefaultTimeoutMillis);
+            dumpstate->dumpstateBoard_1_1(handle, mode, kDefaultTimeoutMillis);
 
-    AssertStatusForMode(status, DumpstateStatus::OK, [&fds]() {
+    AssertStatusForMode(mode, status, DumpstateStatus::OK, [&fds]() {
         // Check that at least one byte was written.
         char buff;
         ASSERT_EQ(1, read(fds[0], &buff, 1)) << "Dumped nothing";
@@ -176,10 +170,10 @@ TEST_P(DumpstateHidl1_1PerModeTest, TestOk) {
 
     native_handle_close(handle);
     native_handle_delete(handle);
-}
+});
 
 // Positive test: make sure dumpstateBoard() doesn't crash with two FDs.
-TEST_P(DumpstateHidl1_1PerModeTest, TestHandleWithTwoFds) {
+TEST_FOR_ALL_DUMPSTATE_MODES(TestHandleWithTwoFds, [this](DumpstateMode mode) {
     EnableVerboseLogging();
 
     int fds1[2];
@@ -193,9 +187,9 @@ TEST_P(DumpstateHidl1_1PerModeTest, TestHandleWithTwoFds) {
     handle->data[1] = fds2[1];
 
     Return<DumpstateStatus> status =
-            dumpstate->dumpstateBoard_1_1(handle, GetMode(), kDefaultTimeoutMillis);
+            dumpstate->dumpstateBoard_1_1(handle, mode, kDefaultTimeoutMillis);
 
-    AssertStatusForMode(status, DumpstateStatus::OK, [&fds1, &fds2]() {
+    AssertStatusForMode(mode, status, DumpstateStatus::OK, [&fds1, &fds2]() {
         // Check that at least one byte was written to one of the FDs.
         char buff;
         size_t read1 = read(fds1[0], &buff, 1);
@@ -206,10 +200,10 @@ TEST_P(DumpstateHidl1_1PerModeTest, TestHandleWithTwoFds) {
 
     native_handle_close(handle);
     native_handle_delete(handle);
-}
+});
 
 // Make sure dumpstateBoard_1_1 actually validates its arguments.
-TEST_P(DumpstateHidl1_1GeneralTest, TestInvalidModeArgument_Negative) {
+TEST_P(DumpstateHidl1_1Test, TestInvalidModeArgument_Negative) {
     EnableVerboseLogging();
 
     int fds[2];
@@ -231,7 +225,7 @@ TEST_P(DumpstateHidl1_1GeneralTest, TestInvalidModeArgument_Negative) {
     native_handle_delete(handle);
 }
 
-TEST_P(DumpstateHidl1_1GeneralTest, TestInvalidModeArgument_Undefined) {
+TEST_P(DumpstateHidl1_1Test, TestInvalidModeArgument_Undefined) {
     EnableVerboseLogging();
 
     int fds[2];
@@ -254,7 +248,7 @@ TEST_P(DumpstateHidl1_1GeneralTest, TestInvalidModeArgument_Undefined) {
 }
 
 // Positive test: make sure dumpstateBoard() from 1.0 doesn't fail.
-TEST_P(DumpstateHidl1_1GeneralTest, Test1_0MethodOk) {
+TEST_P(DumpstateHidl1_1Test, Test1_0MethodOk) {
     EnableVerboseLogging();
 
     int fds[2];
@@ -278,7 +272,7 @@ TEST_P(DumpstateHidl1_1GeneralTest, Test1_0MethodOk) {
 
 // Make sure disabling verbose logging behaves correctly. Some info is still allowed to be emitted,
 // but it can't have privacy/storage/battery impacts.
-TEST_P(DumpstateHidl1_1PerModeTest, TestDeviceLoggingDisabled) {
+TEST_FOR_ALL_DUMPSTATE_MODES(TestVerboseLoggingDisabled, [this](DumpstateMode mode) {
     DisableVerboseLogging();
 
     // Index 0 corresponds to the read end of the pipe; 1 to the write end.
@@ -290,57 +284,40 @@ TEST_P(DumpstateHidl1_1PerModeTest, TestDeviceLoggingDisabled) {
     handle->data[0] = fds[1];
 
     Return<DumpstateStatus> status =
-            dumpstate->dumpstateBoard_1_1(handle, GetMode(), kDefaultTimeoutMillis);
+            dumpstate->dumpstateBoard_1_1(handle, mode, kDefaultTimeoutMillis);
 
     // We don't include additional assertions here about the file passed in. If verbose logging is
     // disabled, the OEM may choose to include nothing at all, but it is allowed to include some
     // essential information based on the mode as long as it isn't private user information.
-    AssertStatusForMode(status, DumpstateStatus::OK);
+    AssertStatusForMode(mode, status, DumpstateStatus::OK);
 
     native_handle_close(handle);
     native_handle_delete(handle);
-}
+});
 
 // Double-enable is perfectly valid, but the second call shouldn't do anything.
-TEST_P(DumpstateHidl1_1GeneralTest, TestRepeatedEnable) {
+TEST_P(DumpstateHidl1_1Test, TestRepeatedEnable) {
     EnableVerboseLogging();
     EnableVerboseLogging();
 }
 
 // Double-disable is perfectly valid, but the second call shouldn't do anything.
-TEST_P(DumpstateHidl1_1GeneralTest, TestRepeatedDisable) {
+TEST_P(DumpstateHidl1_1Test, TestRepeatedDisable) {
     DisableVerboseLogging();
     DisableVerboseLogging();
 }
 
 // Toggling in short order is perfectly valid.
-TEST_P(DumpstateHidl1_1GeneralTest, TestRepeatedToggle) {
+TEST_P(DumpstateHidl1_1Test, TestRepeatedToggle) {
     EnableVerboseLogging();
     DisableVerboseLogging();
     EnableVerboseLogging();
     DisableVerboseLogging();
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(DumpstateHidl1_1GeneralTest);
 INSTANTIATE_TEST_SUITE_P(
-        PerInstance, DumpstateHidl1_1GeneralTest,
+        PerInstance, DumpstateHidl1_1Test,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IDumpstateDevice::descriptor)),
         android::hardware::PrintInstanceNameToString);
-
-// Includes the mode's name as part of the description string.
-static inline std::string PrintInstanceNameToStringWithMode(
-        const testing::TestParamInfo<std::tuple<std::string, DumpstateMode>>& info) {
-    return android::hardware::PrintInstanceNameToString(
-                   testing::TestParamInfo(std::get<0>(info.param), info.index)) +
-           "_" + toString(std::get<1>(info.param));
-}
-
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(DumpstateHidl1_1PerModeTest);
-INSTANTIATE_TEST_SUITE_P(
-        PerInstanceAndMode, DumpstateHidl1_1PerModeTest,
-        testing::Combine(testing::ValuesIn(android::hardware::getAllHalInstanceNames(
-                                 IDumpstateDevice::descriptor)),
-                         testing::ValuesIn(android::hardware::hidl_enum_range<DumpstateMode>())),
-        PrintInstanceNameToStringWithMode);
 
 }  // namespace

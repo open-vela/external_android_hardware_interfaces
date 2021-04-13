@@ -41,6 +41,10 @@ VehiclePropValuePool* VehicleHalServer::getValuePool() const {
     return mValuePool;
 }
 
+EmulatedUserHal* VehicleHalServer::getEmulatedUserHal() {
+    return &mEmulatedUserHal;
+}
+
 void VehicleHalServer::setValuePool(VehiclePropValuePool* valuePool) {
     if (!valuePool) {
         LOG(WARNING) << __func__ << ": Setting value pool to nullptr!";
@@ -181,6 +185,22 @@ VehicleHalServer::VehiclePropValuePtr VehicleHalServer::createHwInputKeyProp(
 }
 
 StatusCode VehicleHalServer::onSetProperty(const VehiclePropValue& value, bool updateStatus) {
+    if (mEmulatedUserHal.isSupported(value.prop)) {
+        LOG(INFO) << "onSetProperty(): property " << value.prop << " will be handled by UserHal";
+
+        const auto& ret = mEmulatedUserHal.onSetProperty(value);
+        if (!ret.ok()) {
+            LOG(ERROR) << "onSetProperty(): HAL returned error: " << ret.error().message();
+            return StatusCode(ret.error().code());
+        }
+        auto updatedValue = ret.value().get();
+        if (updatedValue != nullptr) {
+            LOG(INFO) << "onSetProperty(): updating property returned by HAL: "
+                      << toString(*updatedValue);
+            onPropertyValueFromCar(*updatedValue, updateStatus);
+        }
+        return StatusCode::OK;
+    }
     LOG(DEBUG) << "onSetProperty(" << value.prop << ")";
 
     // Some properties need to be treated non-trivially
@@ -247,28 +267,6 @@ StatusCode VehicleHalServer::onSetProperty(const VehiclePropValue& value, bool u
                     break;
             }
             break;
-
-#ifdef ENABLE_VENDOR_CLUSTER_PROPERTY_FOR_TESTING
-        case toInt(VehicleProperty::CLUSTER_REPORT_STATE):
-        case toInt(VehicleProperty::CLUSTER_REQUEST_DISPLAY):
-        case toInt(VehicleProperty::CLUSTER_NAVIGATION_STATE):
-        case VENDOR_CLUSTER_SWITCH_UI:
-        case VENDOR_CLUSTER_DISPLAY_STATE: {
-            auto updatedPropValue = createVehiclePropValue(getPropType(value.prop), 0);
-            updatedPropValue->prop = value.prop & ~toInt(VehiclePropertyGroup::MASK);
-            if (isSystemProperty(value.prop)) {
-                updatedPropValue->prop |= toInt(VehiclePropertyGroup::VENDOR);
-            } else {
-                updatedPropValue->prop |= toInt(VehiclePropertyGroup::SYSTEM);
-            }
-            updatedPropValue->value = value.value;
-            updatedPropValue->timestamp = elapsedRealtimeNano();
-            updatedPropValue->areaId = value.areaId;
-            onPropertyValueFromCar(*updatedPropValue, updateStatus);
-            return StatusCode::OK;
-        }
-#endif  // ENABLE_VENDOR_CLUSTER_PROPERTY_FOR_TESTING
-
         default:
             break;
     }
