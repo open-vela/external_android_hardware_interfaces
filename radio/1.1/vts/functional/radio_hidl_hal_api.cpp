@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-#include <android/hardware/radio/1.2/IRadio.h>
 #include <radio_hidl_hal_utils_v1_1.h>
 #include <vector>
 
 /*
  * Test IRadio.setSimCardPower() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_1, setSimCardPower_1_1) {
+TEST_F(RadioHidlTest_v1_1, setSimCardPower_1_1) {
     /* Record the sim card state for the testing environment */
     CardState cardStateForTest = cardStatus.cardState;
 
@@ -86,7 +85,7 @@ TEST_P(RadioHidlTest_v1_1, setSimCardPower_1_1) {
 /*
  * Test IRadio.startNetworkScan() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_1, startNetworkScan) {
+TEST_F(RadioHidlTest_v1_1, startNetworkScan) {
     serial = GetRandomSerialNumber();
 
     NetworkScanRequest request;
@@ -108,9 +107,6 @@ TEST_P(RadioHidlTest_v1_1, startNetworkScan) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_1->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_1->rspInfo.serial);
 
-    // startNetworkScan is deprecated on radio::V1_2 with startNetworkScan_1_2
-    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_2);
-
     if (cardStatus.cardState == CardState::ABSENT) {
         ALOGI("startNetworkScan, rspInfo.error = %d\n", (int32_t)radioRsp_v1_1->rspInfo.error);
         ASSERT_TRUE(CheckAnyOfErrors(
@@ -123,7 +119,7 @@ TEST_P(RadioHidlTest_v1_1, startNetworkScan) {
 /*
  * Test IRadio.startNetworkScan() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_1, startNetworkScan_InvalidArgument) {
+TEST_F(RadioHidlTest_v1_1, startNetworkScan_InvalidArgument) {
     serial = GetRandomSerialNumber();
 
     NetworkScanRequest request;
@@ -134,9 +130,6 @@ TEST_P(RadioHidlTest_v1_1, startNetworkScan_InvalidArgument) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_1->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_1->rspInfo.serial);
-
-    // startNetworkScan is deprecated on radio::V1_2 with startNetworkScan_1_2
-    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_2);
 
     if (cardStatus.cardState == CardState::ABSENT) {
         ALOGI("startNetworkScan_InvalidArgument, rspInfo.error = %d\n",
@@ -150,7 +143,7 @@ TEST_P(RadioHidlTest_v1_1, startNetworkScan_InvalidArgument) {
 /*
  * Test IRadio.stopNetworkScan() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_1, stopNetworkScan) {
+TEST_F(RadioHidlTest_v1_1, stopNetworkScan) {
     serial = GetRandomSerialNumber();
 
     radio_v1_1->stopNetworkScan(serial);
@@ -169,7 +162,7 @@ TEST_P(RadioHidlTest_v1_1, stopNetworkScan) {
 /*
  * Test IRadio.setCarrierInfoForImsiEncryption() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_1, setCarrierInfoForImsiEncryption) {
+TEST_F(RadioHidlTest_v1_1, setCarrierInfoForImsiEncryption) {
     serial = GetRandomSerialNumber();
     ImsiEncryptionInfo imsiInfo;
     imsiInfo.mcc = "310";
@@ -192,7 +185,7 @@ TEST_P(RadioHidlTest_v1_1, setCarrierInfoForImsiEncryption) {
 /*
  * Test IRadio.startKeepalive() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_1, startKeepalive) {
+TEST_F(RadioHidlTest_v1_1, startKeepalive) {
     std::vector<KeepaliveRequest> requests = {
         {
             // Invalid IPv4 source address
@@ -290,7 +283,7 @@ TEST_P(RadioHidlTest_v1_1, startKeepalive) {
 /*
  * Test IRadio.stopKeepalive() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_1, stopKeepalive) {
+TEST_F(RadioHidlTest_v1_1, stopKeepalive) {
     serial = GetRandomSerialNumber();
 
     radio_v1_1->stopKeepalive(serial, 0xBAD);

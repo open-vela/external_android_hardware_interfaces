@@ -14,15 +14,6 @@
 // limitations under the License.
 //
 
-package {
-    // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "hardware_interfaces_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_interfaces_license"],
-}
-
 cc_test {
     name: "VtsHalCameraProviderV2_4TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
@@ -47,18 +38,17 @@ cc_test {
         "android.hardware.camera.device@3.3",
         "android.hardware.camera.device@3.4",
         "android.hardware.camera.device@3.5",
-        "android.hardware.camera.device@3.6",
-        "android.hardware.camera.device@3.7",
-        "android.hardware.camera.metadata@3.4",
+	"android.hardware.camera.metadata@3.4",
         "android.hardware.camera.provider@2.4",
         "android.hardware.camera.provider@2.5",
-        "android.hardware.camera.provider@2.6",
-        "android.hardware.camera.provider@2.7",
+        "android.hardware.graphics.allocator@2.0",
+        "android.hardware.graphics.allocator@3.0",
         "android.hardware.graphics.common@1.0",
+        "android.hardware.graphics.mapper@2.0",
+        "android.hardware.graphics.mapper@3.0",
         "android.hidl.allocator@1.0",
         "libgrallocusage",
         "libhidlmemory",
-        "libgralloctypes",
     ],
-    test_suites: ["general-tests", "vts"],
+    test_suites: ["general-tests"],
 }

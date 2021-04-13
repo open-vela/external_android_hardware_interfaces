@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <android/hardware/radio/1.4/IRadio.h>
 #include <radio_hidl_hal_utils_v1_2.h>
 #include <vector>
 
@@ -32,7 +31,7 @@ const RadioAccessSpecifier GERAN_SPECIFIER_850 = {.radioAccessNetwork = RadioAcc
 /*
  * Test IRadio.startNetworkScan() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_2, startNetworkScan) {
+TEST_F(RadioHidlTest_v1_2, startNetworkScan) {
     serial = GetRandomSerialNumber();
 
     if (radioConfig != NULL && DDS_LOGICAL_SLOT_INDEX != logicalSlotId) {
@@ -47,19 +46,13 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan) {
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {
             .type = ScanType::ONE_SHOT,
             .interval = 60,
-            .specifiers = {::GERAN_SPECIFIER_P900, ::GERAN_SPECIFIER_850},
-            .maxSearchTime = 60,
-            .incrementalResults = false,
-            .incrementalResultsPeriodicity = 1};
+            .specifiers = {::GERAN_SPECIFIER_P900, ::GERAN_SPECIFIER_850}};
 
     Return<void> res = radio_v1_2->startNetworkScan_1_2(serial, request);
     ASSERT_OK(res);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_2->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_2->rspInfo.serial);
-
-    // startNetworkScan_1_2 is deprecated in radio::V1_4 with startNetworkScan_1_4
-    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_4);
 
     ALOGI("startNetworkScan, rspInfo.error = %s\n", toString(radioRsp_v1_2->rspInfo.error).c_str());
     if (cardStatus.base.cardState == CardState::ABSENT) {
@@ -86,7 +79,7 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan) {
 /*
  * Test IRadio.startNetworkScan() with invalid specifier.
  */
-TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidArgument) {
+TEST_F(RadioHidlTest_v1_2, startNetworkScan_InvalidArgument) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {.type = ScanType::ONE_SHOT,
@@ -97,9 +90,6 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidArgument) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_2->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_2->rspInfo.serial);
-
-    // startNetworkScan_1_2 is deprecated in radio::V1_4 with startNetworkScan_1_4
-    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_4);
 
     ALOGI("startNetworkScan_InvalidArgument, rspInfo.error = %s\n",
           toString(radioRsp_v1_2->rspInfo.error).c_str());
@@ -116,7 +106,7 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidArgument) {
 /*
  * Test IRadio.startNetworkScan() with invalid interval (lower boundary).
  */
-TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidInterval1) {
+TEST_F(RadioHidlTest_v1_2, startNetworkScan_InvalidInterval1) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {
@@ -133,9 +123,6 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidInterval1) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_2->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_2->rspInfo.serial);
 
-    // startNetworkScan_1_2 is deprecated in radio::V1_4 with startNetworkScan_1_4
-    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_4);
-
     ALOGI("startNetworkScan_InvalidInterval1, rspInfo.error = %s\n",
           toString(radioRsp_v1_2->rspInfo.error).c_str());
     if (cardStatus.base.cardState == CardState::ABSENT) {
@@ -151,7 +138,7 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidInterval1) {
 /*
  * Test IRadio.startNetworkScan() with invalid interval (upper boundary).
  */
-TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidInterval2) {
+TEST_F(RadioHidlTest_v1_2, startNetworkScan_InvalidInterval2) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {
@@ -168,9 +155,6 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidInterval2) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_2->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_2->rspInfo.serial);
 
-    // startNetworkScan_1_2 is deprecated in radio::V1_4 with startNetworkScan_1_4
-    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_4);
-
     ALOGI("startNetworkScan_InvalidInterval2, rspInfo.error = %s\n",
           toString(radioRsp_v1_2->rspInfo.error).c_str());
     if (cardStatus.base.cardState == CardState::ABSENT) {
@@ -186,7 +170,7 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidInterval2) {
 /*
  * Test IRadio.startNetworkScan() with invalid max search time (lower boundary).
  */
-TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidMaxSearchTime1) {
+TEST_F(RadioHidlTest_v1_2, startNetworkScan_InvalidMaxSearchTime1) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {
@@ -203,9 +187,6 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidMaxSearchTime1) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_2->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_2->rspInfo.serial);
 
-    // startNetworkScan_1_2 is deprecated in radio::V1_4 with startNetworkScan_1_4
-    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_4);
-
     ALOGI("startNetworkScan_InvalidMaxSearchTime1, rspInfo.error = %s\n",
           toString(radioRsp_v1_2->rspInfo.error).c_str());
     if (cardStatus.base.cardState == CardState::ABSENT) {
@@ -221,7 +202,7 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidMaxSearchTime1) {
 /*
  * Test IRadio.startNetworkScan() with invalid max search time (upper boundary).
  */
-TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidMaxSearchTime2) {
+TEST_F(RadioHidlTest_v1_2, startNetworkScan_InvalidMaxSearchTime2) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {
@@ -238,9 +219,6 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidMaxSearchTime2) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_2->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_2->rspInfo.serial);
 
-    // startNetworkScan_1_2 is deprecated in radio::V1_4 with startNetworkScan_1_4
-    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_4);
-
     ALOGI("startNetworkScan_InvalidMaxSearchTime2, rspInfo.error = %s\n",
           toString(radioRsp_v1_2->rspInfo.error).c_str());
     if (cardStatus.base.cardState == CardState::ABSENT) {
@@ -256,7 +234,7 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidMaxSearchTime2) {
 /*
  * Test IRadio.startNetworkScan() with invalid periodicity (lower boundary).
  */
-TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidPeriodicity1) {
+TEST_F(RadioHidlTest_v1_2, startNetworkScan_InvalidPeriodicity1) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {
@@ -273,9 +251,6 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidPeriodicity1) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_2->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_2->rspInfo.serial);
 
-    // startNetworkScan_1_2 is deprecated in radio::V1_4 with startNetworkScan_1_4
-    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_4);
-
     ALOGI("startNetworkScan_InvalidPeriodicity1, rspInfo.error = %s\n",
           toString(radioRsp_v1_2->rspInfo.error).c_str());
     if (cardStatus.base.cardState == CardState::ABSENT) {
@@ -291,7 +266,7 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidPeriodicity1) {
 /*
  * Test IRadio.startNetworkScan() with invalid periodicity (upper boundary).
  */
-TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidPeriodicity2) {
+TEST_F(RadioHidlTest_v1_2, startNetworkScan_InvalidPeriodicity2) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {
@@ -308,9 +283,6 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidPeriodicity2) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_2->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_2->rspInfo.serial);
 
-    // startNetworkScan_1_2 is deprecated in radio::V1_4 with startNetworkScan_1_4
-    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_4);
-
     ALOGI("startNetworkScan_InvalidPeriodicity2, rspInfo.error = %s\n",
           toString(radioRsp_v1_2->rspInfo.error).c_str());
     if (cardStatus.base.cardState == CardState::ABSENT) {
@@ -324,11 +296,9 @@ TEST_P(RadioHidlTest_v1_2, startNetworkScan_InvalidPeriodicity2) {
 }
 
 /*
- * The following test is disabled due to b/112206766
- *
  * Test IRadio.startNetworkScan() with valid periodicity
  */
-TEST_P(RadioHidlTest_v1_2, DISABLED_startNetworkScan_GoodRequest1) {
+TEST_F(RadioHidlTest_v1_2, startNetworkScan_GoodRequest1) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {
@@ -347,9 +317,6 @@ TEST_P(RadioHidlTest_v1_2, DISABLED_startNetworkScan_GoodRequest1) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_2->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_2->rspInfo.serial);
 
-    // startNetworkScan_1_2 is deprecated in radio::V1_4 with startNetworkScan_1_4
-    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_4);
-
     ALOGI("startNetworkScan_InvalidArgument, rspInfo.error = %s\n",
           toString(radioRsp_v1_2->rspInfo.error).c_str());
     if (cardStatus.base.cardState == CardState::ABSENT) {
@@ -363,11 +330,9 @@ TEST_P(RadioHidlTest_v1_2, DISABLED_startNetworkScan_GoodRequest1) {
 }
 
 /*
- * The following test is disabled due to b/112206766
- *
  * Test IRadio.startNetworkScan() with valid periodicity and plmns
  */
-TEST_P(RadioHidlTest_v1_2, DISABLED_startNetworkScan_GoodRequest2) {
+TEST_F(RadioHidlTest_v1_2, startNetworkScan_GoodRequest2) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_2::NetworkScanRequest request = {
@@ -387,9 +352,6 @@ TEST_P(RadioHidlTest_v1_2, DISABLED_startNetworkScan_GoodRequest2) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_2->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_2->rspInfo.serial);
 
-    // startNetworkScan_1_2 is deprecated in radio::V1_4 with startNetworkScan_1_4
-    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_4);
-
     ALOGI("startNetworkScan_InvalidArgument, rspInfo.error = %s\n",
           toString(radioRsp_v1_2->rspInfo.error).c_str());
     if (cardStatus.base.cardState == CardState::ABSENT) {
@@ -405,7 +367,7 @@ TEST_P(RadioHidlTest_v1_2, DISABLED_startNetworkScan_GoodRequest2) {
 /*
  * Test IRadio.setIndicationFilter_1_2()
  */
-TEST_P(RadioHidlTest_v1_2, setIndicationFilter_1_2) {
+TEST_F(RadioHidlTest_v1_2, setIndicationFilter_1_2) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->setIndicationFilter_1_2(
@@ -423,7 +385,7 @@ TEST_P(RadioHidlTest_v1_2, setIndicationFilter_1_2) {
 /*
  * Test IRadio.setSignalStrengthReportingCriteria() with invalid hysteresisDb
  */
-TEST_P(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_invalidHysteresisDb) {
+TEST_F(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_invalidHysteresisDb) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->setSignalStrengthReportingCriteria(
@@ -443,7 +405,7 @@ TEST_P(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_invalidHysteresisD
 /*
  * Test IRadio.setSignalStrengthReportingCriteria() with empty parameters
  */
-TEST_P(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_EmptyParams) {
+TEST_F(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_EmptyParams) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->setSignalStrengthReportingCriteria(
@@ -461,7 +423,7 @@ TEST_P(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_EmptyParams) {
 /*
  * Test IRadio.setSignalStrengthReportingCriteria() for GERAN
  */
-TEST_P(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_Geran) {
+TEST_F(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_Geran) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->setSignalStrengthReportingCriteria(
@@ -480,7 +442,7 @@ TEST_P(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_Geran) {
 /*
  * Test IRadio.setSignalStrengthReportingCriteria() for UTRAN
  */
-TEST_P(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_Utran) {
+TEST_F(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_Utran) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->setSignalStrengthReportingCriteria(
@@ -499,7 +461,7 @@ TEST_P(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_Utran) {
 /*
  * Test IRadio.setSignalStrengthReportingCriteria() for EUTRAN
  */
-TEST_P(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_Eutran) {
+TEST_F(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_Eutran) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->setSignalStrengthReportingCriteria(
@@ -518,7 +480,7 @@ TEST_P(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_Eutran) {
 /*
  * Test IRadio.setSignalStrengthReportingCriteria() for CDMA2000
  */
-TEST_P(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_Cdma2000) {
+TEST_F(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_Cdma2000) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->setSignalStrengthReportingCriteria(
@@ -537,7 +499,7 @@ TEST_P(RadioHidlTest_v1_2, setSignalStrengthReportingCriteria_Cdma2000) {
 /*
  * Test IRadio.setLinkCapacityReportingCriteria() invalid hysteresisDlKbps
  */
-TEST_P(RadioHidlTest_v1_2, setLinkCapacityReportingCriteria_invalidHysteresisDlKbps) {
+TEST_F(RadioHidlTest_v1_2, setLinkCapacityReportingCriteria_invalidHysteresisDlKbps) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->setLinkCapacityReportingCriteria(
@@ -562,7 +524,7 @@ TEST_P(RadioHidlTest_v1_2, setLinkCapacityReportingCriteria_invalidHysteresisDlK
 /*
  * Test IRadio.setLinkCapacityReportingCriteria() invalid hysteresisUlKbps
  */
-TEST_P(RadioHidlTest_v1_2, setLinkCapacityReportingCriteria_invalidHysteresisUlKbps) {
+TEST_F(RadioHidlTest_v1_2, setLinkCapacityReportingCriteria_invalidHysteresisUlKbps) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->setLinkCapacityReportingCriteria(
@@ -587,7 +549,7 @@ TEST_P(RadioHidlTest_v1_2, setLinkCapacityReportingCriteria_invalidHysteresisUlK
 /*
  * Test IRadio.setLinkCapacityReportingCriteria() empty params
  */
-TEST_P(RadioHidlTest_v1_2, setLinkCapacityReportingCriteria_emptyParams) {
+TEST_F(RadioHidlTest_v1_2, setLinkCapacityReportingCriteria_emptyParams) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->setLinkCapacityReportingCriteria(
@@ -608,7 +570,7 @@ TEST_P(RadioHidlTest_v1_2, setLinkCapacityReportingCriteria_emptyParams) {
 /*
  * Test IRadio.setLinkCapacityReportingCriteria() GERAN
  */
-TEST_P(RadioHidlTest_v1_2, setLinkCapacityReportingCriteria_Geran) {
+TEST_F(RadioHidlTest_v1_2, setLinkCapacityReportingCriteria_Geran) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->setLinkCapacityReportingCriteria(
@@ -630,7 +592,7 @@ TEST_P(RadioHidlTest_v1_2, setLinkCapacityReportingCriteria_Geran) {
 /*
  * Test IRadio.setupDataCall_1_2() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_2, setupDataCall_1_2) {
+TEST_F(RadioHidlTest_v1_2, setupDataCall_1_2) {
     serial = GetRandomSerialNumber();
 
     ::android::hardware::radio::V1_2::AccessNetwork accessNetwork =
@@ -690,7 +652,7 @@ TEST_P(RadioHidlTest_v1_2, setupDataCall_1_2) {
 /*
  * Test IRadio.deactivateDataCall_1_2() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_2, deactivateDataCall_1_2) {
+TEST_F(RadioHidlTest_v1_2, deactivateDataCall_1_2) {
     serial = GetRandomSerialNumber();
     int cid = 1;
     ::android::hardware::radio::V1_2::DataRequestReason reason =
@@ -721,7 +683,7 @@ TEST_P(RadioHidlTest_v1_2, deactivateDataCall_1_2) {
 /*
  * Test IRadio.getCellInfoList() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_2, getCellInfoList_1_2) {
+TEST_F(RadioHidlTest_v1_2, getCellInfoList_1_2) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->getCellInfoList(serial);
@@ -739,7 +701,7 @@ TEST_P(RadioHidlTest_v1_2, getCellInfoList_1_2) {
 /*
  * Test IRadio.getVoiceRegistrationState() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_2, getVoiceRegistrationState) {
+TEST_F(RadioHidlTest_v1_2, getVoiceRegistrationState) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->getVoiceRegistrationState(serial);
@@ -757,7 +719,7 @@ TEST_P(RadioHidlTest_v1_2, getVoiceRegistrationState) {
 /*
  * Test IRadio.getDataRegistrationState() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_2, getDataRegistrationState) {
+TEST_F(RadioHidlTest_v1_2, getDataRegistrationState) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->getDataRegistrationState(serial);
@@ -766,7 +728,7 @@ TEST_P(RadioHidlTest_v1_2, getDataRegistrationState) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_2->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_2->rspInfo.serial);
 
-    ALOGI("getDataRegistrationStateResponse_1_2, rspInfo.error = %s\n",
+    ALOGI("getVoiceRegistrationStateResponse_1_2, rspInfo.error = %s\n",
           toString(radioRsp_v1_2->rspInfo.error).c_str());
     ASSERT_TRUE(CheckAnyOfErrors(
         radioRsp_v1_2->rspInfo.error,
@@ -832,7 +794,7 @@ TEST_P(RadioHidlTest_v1_2, getDataRegistrationState) {
 /*
  * Test IRadio.getAvailableBandModes() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_2, getAvailableBandModes) {
+TEST_F(RadioHidlTest_v1_2, getAvailableBandModes) {
     serial = GetRandomSerialNumber();
 
     Return<void> res = radio_v1_2->getAvailableBandModes(serial);
