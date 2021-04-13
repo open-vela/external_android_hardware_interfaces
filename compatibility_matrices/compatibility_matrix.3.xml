@@ -111,7 +111,7 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="hidl" optional="true">
+    <hal format="hidl" optional="false">
         <name>android.hardware.configstore</name>
         <version>1.0-1</version>
         <interface>
@@ -310,10 +310,6 @@
             <instance>slot2</instance>
             <instance>slot3</instance>
         </interface>
-    </hal>
-    <hal format="hidl" optional="true">
-        <name>android.hardware.radio</name>
-        <version>1.0-2</version>
         <interface>
             <name>ISap</name>
             <instance>slot1</instance>

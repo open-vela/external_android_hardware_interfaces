@@ -16,13 +16,12 @@
 
 #define LOG_TAG "VtsHalGnssV1_0TargetTest"
 #include <android/hardware/gnss/1.0/IGnss.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 #include <log/log.h>
 
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
+
 #include <chrono>
-#include <cmath>
 #include <condition_variable>
 #include <mutex>
 
@@ -39,14 +38,10 @@ using android::hardware::gnss::V1_0::IGnssDebug;
 using android::hardware::gnss::V1_0::IGnssMeasurement;
 using android::sp;
 
-/*
- * Since Utils.cpp depends on Gnss Hal 2.0, the tests for Gnss Hal 1.0 will use
- * there own version of IsAutomotiveDevice() instead of the common version.
- */
 static bool IsAutomotiveDevice() {
-    char buffer[PROPERTY_VALUE_MAX] = {0};
-    property_get("ro.hardware.type", buffer, "");
-    return strncmp(buffer, "automotive", PROPERTY_VALUE_MAX) == 0;
+  char buffer[PROPERTY_VALUE_MAX] = {0};
+  property_get("ro.hardware.type", buffer, "");
+  return strncmp(buffer, "automotive", PROPERTY_VALUE_MAX) == 0;
 }
 
 #define TIMEOUT_SEC 2  // for basic commands/responses
@@ -55,8 +50,23 @@ static bool IsAutomotiveDevice() {
 bool sAgpsIsPresent = false;  // if SUPL or XTRA assistance available
 bool sSignalIsWeak = false;   // if GNSS signals are weak (e.g. light indoor)
 
+// Test environment for GNSS HIDL HAL.
+class GnssHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+ public:
+  // get the test environment singleton
+  static GnssHidlEnvironment* Instance() {
+    static GnssHidlEnvironment* instance = new GnssHidlEnvironment;
+    return instance;
+  }
+
+  virtual void registerTestServices() override { registerTestService<IGnss>(); }
+
+ private:
+  GnssHidlEnvironment() {}
+};
+
 // The main test class for GNSS HAL.
-class GnssHalTest : public testing::TestWithParam<std::string> {
+class GnssHalTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
     // Clean between tests
@@ -65,7 +75,8 @@ class GnssHalTest : public testing::TestWithParam<std::string> {
     info_called_count_ = 0;
     notify_count_ = 0;
 
-    gnss_hal_ = IGnss::getService(GetParam());
+    gnss_hal_ = ::testing::VtsHalHidlTargetTestBase::getService<IGnss>(
+        GnssHidlEnvironment::Instance()->getServiceName<IGnss>());
     ASSERT_NE(gnss_hal_, nullptr);
 
     gnss_cb_ = new GnssCallback(*this);
@@ -341,14 +352,14 @@ class GnssHalTest : public testing::TestWithParam<std::string> {
  * Since this is just the basic operation of SetUp() and TearDown(),
  * the function definition is intentionally empty
  */
-TEST_P(GnssHalTest, SetCallbackCapabilitiesCleanup) {}
+TEST_F(GnssHalTest, SetCallbackCapabilitiesCleanup) {}
 
 /*
  * GetLocation:
  * Turns on location, waits 45 second for at least 5 locations,
  * and checks them for reasonable validity.
  */
-TEST_P(GnssHalTest, GetLocation) {
+TEST_F(GnssHalTest, GetLocation) {
 #define MIN_INTERVAL_MSEC 500
 #define PREFERRED_ACCURACY 0   // Ideally perfect (matches GnssLocationProvider)
 #define PREFERRED_TIME_MSEC 0  // Ideally immediate
@@ -388,7 +399,7 @@ TEST_P(GnssHalTest, GetLocation) {
  * InjectDelete:
  * Ensures that calls to inject and/or delete information state are handled.
  */
-TEST_P(GnssHalTest, InjectDelete) {
+TEST_F(GnssHalTest, InjectDelete) {
   // confidently, well north of Alaska
   auto result = gnss_hal_->injectLocation(80.0, -170.0, 1000.0);
 
@@ -416,40 +427,12 @@ TEST_P(GnssHalTest, InjectDelete) {
 }
 
 /*
- * InjectSeedLocation:
- * Injects a seed location and ensures the injected seed location is not fused in the resulting
- * GNSS location.
- */
-TEST_P(GnssHalTest, InjectSeedLocation) {
-    // An arbitrary position in North Pacific Ocean (where no VTS labs will ever likely be located).
-    const double seedLatDegrees = 32.312894;
-    const double seedLngDegrees = -172.954117;
-    const float seedAccuracyMeters = 150.0;
-
-    auto result = gnss_hal_->injectLocation(seedLatDegrees, seedLngDegrees, seedAccuracyMeters);
-    ASSERT_TRUE(result.isOk());
-    EXPECT_TRUE(result);
-
-    StartAndGetSingleLocation(false);
-
-    // Ensure we don't get a location anywhere within 111km (1 degree of lat or lng) of the seed
-    // location.
-    EXPECT_TRUE(std::abs(last_location_.latitudeDegrees - seedLatDegrees) > 1.0 ||
-                std::abs(last_location_.longitudeDegrees - seedLngDegrees) > 1.0);
-
-    StopAndClearLocations();
-
-    auto resultVoid = gnss_hal_->deleteAidingData(IGnss::GnssAidingData::DELETE_POSITION);
-    ASSERT_TRUE(resultVoid.isOk());
-}
-
-/*
  * GetAllExtentions:
  * Tries getting all optional extensions, and ensures a valid return
  *   null or actual extension, no crash.
  * Confirms year-based required extensions (Measurement & Debug) are present
  */
-TEST_P(GnssHalTest, GetAllExtensions) {
+TEST_F(GnssHalTest, GetAllExtensions) {
   // Basic call-is-handled checks
   auto gnssXtra = gnss_hal_->getExtensionXtra();
   ASSERT_TRUE(gnssXtra.isOk());
@@ -495,30 +478,26 @@ TEST_P(GnssHalTest, GetAllExtensions) {
  * MeasurementCapabilities:
  * Verifies that modern hardware supports measurement capabilities.
  */
-TEST_P(GnssHalTest, MeasurementCapabilites) {
-    if (!IsAutomotiveDevice() && info_called_count_ > 0 && last_info_.yearOfHw >= 2016) {
-        EXPECT_TRUE(last_capabilities_ & IGnssCallback::Capabilities::MEASUREMENTS);
-    }
+TEST_F(GnssHalTest, MeasurementCapabilites) {
+  if (info_called_count_ > 0 && last_info_.yearOfHw >= 2016) {
+    EXPECT_TRUE(last_capabilities_ & IGnssCallback::Capabilities::MEASUREMENTS);
+  }
 }
 
 /*
  * SchedulingCapabilities:
  * Verifies that 2018+ hardware supports Scheduling capabilities.
  */
-TEST_P(GnssHalTest, SchedulingCapabilities) {
+TEST_F(GnssHalTest, SchedulingCapabilities) {
     if (info_called_count_ > 0 && last_info_.yearOfHw >= 2018) {
         EXPECT_TRUE(last_capabilities_ & IGnssCallback::Capabilities::SCHEDULING);
     }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GnssHalTest);
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, GnssHalTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IGnss::descriptor)),
-        android::hardware::PrintInstanceNameToString);
-
 int main(int argc, char** argv) {
+  ::testing::AddGlobalTestEnvironment(GnssHidlEnvironment::Instance());
   ::testing::InitGoogleTest(&argc, argv);
+  GnssHidlEnvironment::Instance()->init(&argc, argv);
   /*
    * These arguments not used by automated VTS testing.
    * Only for use in manual testing, when wanting to run
@@ -531,6 +510,7 @@ int main(int argc, char** argv) {
         sSignalIsWeak = true;
     }
   }
-
-  return RUN_ALL_TESTS();
+  int status = RUN_ALL_TESTS();
+  ALOGI("Test result = %d", status);
+  return status;
 }
