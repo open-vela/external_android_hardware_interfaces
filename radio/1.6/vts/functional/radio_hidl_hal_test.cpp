@@ -86,14 +86,16 @@ void RadioHidlTest_v1_6::getDataCallList() {
  * disabled.
  * <p/>
  * Typical usage within VTS:
- * if (getRadioHalCapabilities()) return;
+ * if (getRadioHalCapabilities().modemReducedFeatureSet) return;
  */
-bool RadioHidlTest_v1_6::getRadioHalCapabilities() {
+HalDeviceCapabilities RadioHidlTest_v1_6::getRadioHalCapabilities() {
     sp<::android::hardware::radio::config::V1_3::IRadioConfig> radioConfig_v1_3 =
             ::android::hardware::radio::config::V1_3::IRadioConfig::getService();
     if (radioConfig_v1_3.get() == nullptr) {
         // If v1_3 isn't present, the values are initialized to false
-        return false;
+        HalDeviceCapabilities radioHalCapabilities;
+        memset(&radioHalCapabilities, 0, sizeof(radioHalCapabilities));
+        return radioHalCapabilities;
     } else {
         // Get radioHalDeviceCapabilities from the radio config
         sp<RadioConfigResponse> radioConfigRsp = new (std::nothrow) RadioConfigResponse(*this);
@@ -102,6 +104,6 @@ bool RadioHidlTest_v1_6::getRadioHalCapabilities() {
 
         radioConfig_v1_3->getHalDeviceCapabilities(serial);
         EXPECT_EQ(std::cv_status::no_timeout, wait());
-        return radioConfigRsp->modemReducedFeatureSet1;
+        return radioConfigRsp->halDeviceCapabilities;
     }
 }
