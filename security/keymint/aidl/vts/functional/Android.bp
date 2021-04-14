@@ -43,8 +43,6 @@ cc_test {
         "android.hardware.security.keymint-V1-ndk_platform",
         "android.hardware.security.secureclock-V1-ndk_platform",
         "libcppbor_external",
-        "libcppcose_rkp",
-        "libkeymint_remote_prov_support",
         "libkeymint_vts_test_utils",
     ],
     test_suites: [
@@ -75,9 +73,6 @@ cc_test_library {
         "android.hardware.security.keymint-V1-ndk_platform",
         "android.hardware.security.secureclock-V1-ndk_platform",
         "libcppbor_external",
-        "libcppcose_rkp",
-        "libgmock_ndk",
-        "libkeymint_remote_prov_support",
     ],
 }
 
@@ -92,20 +87,20 @@ cc_test {
     ],
     shared_libs: [
         "libbinder_ndk",
+        "libcppbor_external",
         "libcrypto",
+        "libkeymaster_portable",
+        "libpuresoftkeymasterdevice",
     ],
     static_libs: [
         "android.hardware.security.keymint-V1-ndk_platform",
         "android.hardware.security.secureclock-V1-ndk_platform",
-        "libcppbor_external",
-        "libcppcose_rkp",
+        "libcppcose",
         "libgmock_ndk",
-        "libkeymaster_portable",
         "libkeymint",
         "libkeymint_support",
         "libkeymint_remote_prov_support",
         "libkeymint_vts_test_utils",
-        "libpuresoftkeymasterdevice",
         "libremote_provisioner",
     ],
     test_suites: [
