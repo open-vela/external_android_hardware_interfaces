@@ -150,7 +150,6 @@ TEST_P(WifiChipHidlTest, registerEventCallback_1_4) {
     }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(WifiChipHidlTest);
 INSTANTIATE_TEST_SUITE_P(
     PerInstance, WifiChipHidlTest,
     testing::ValuesIn(android::hardware::getAllHalInstanceNames(
