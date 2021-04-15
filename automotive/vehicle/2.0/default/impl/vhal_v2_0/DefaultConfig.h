@@ -115,6 +115,28 @@ const int32_t kSetBooleanPropertyFromVehicleForTest =
  */
 const int32_t kMixedTypePropertyForTest =
         0x1111 | VehiclePropertyGroup::VENDOR | VehicleArea::GLOBAL | VehiclePropertyType::MIXED;
+
+#ifdef ENABLE_VENDOR_CLUSTER_PROPERTY_FOR_TESTING
+/**
+ * Converts the system property to the vendor property.
+ * WARNING: This is only for the end-to-end testing, Should NOT include in the
+ * user build */
+inline constexpr int32_t toVendor(VehicleProperty prop) {
+    return (toInt(prop) & ~toInt(VehiclePropertyGroup::MASK)) | VehiclePropertyGroup::VENDOR;
+}
+
+/**
+ * These properties are used for the end-to-end testing of ClusterHomeService.
+ */
+constexpr int32_t VENDOR_CLUSTER_SWITCH_UI = toVendor(VehicleProperty::CLUSTER_SWITCH_UI);
+constexpr int32_t VENDOR_CLUSTER_DISPLAY_STATE = toVendor(VehicleProperty::CLUSTER_DISPLAY_STATE);
+constexpr int32_t VENDOR_CLUSTER_REPORT_STATE = toVendor(VehicleProperty::CLUSTER_REPORT_STATE);
+constexpr int32_t VENDOR_CLUSTER_REQUEST_DISPLAY =
+        toVendor(VehicleProperty::CLUSTER_REQUEST_DISPLAY);
+constexpr int32_t VENDOR_CLUSTER_NAVIGATION_STATE =
+        toVendor(VehicleProperty::CLUSTER_NAVIGATION_STATE);
+#endif  // ENABLE_VENDOR_CLUSTER_PROPERTY_FOR_TESTING
+
 /**
  * FakeDataCommand enum defines the supported command type for kGenerateFakeDataControllingProperty.
  * All those commands can be send independently with each other. And each will override the one sent
@@ -308,6 +330,19 @@ const ConfigDeclaration kVehicleProperties[]{
 
         {.config =
                  {
+                         .prop = toInt(VehicleProperty::SEAT_OCCUPANCY),
+                         .access = VehiclePropertyAccess::READ,
+                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .areaConfigs = {VehicleAreaConfig{.areaId = (SEAT_1_LEFT)},
+                                         VehicleAreaConfig{.areaId = (SEAT_1_RIGHT)}},
+                 },
+         .initialAreaValues = {{SEAT_1_LEFT,
+                                {.int32Values = {(int)VehicleSeatOccupancyState::VACANT}}},
+                               {SEAT_1_RIGHT,
+                                {.int32Values = {(int)VehicleSeatOccupancyState::VACANT}}}}},
+
+        {.config =
+                 {
                          .prop = toInt(VehicleProperty::INFO_DRIVER_SEAT),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::STATIC,
@@ -477,6 +512,14 @@ const ConfigDeclaration kVehicleProperties[]{
 
         {.config =
                  {
+                         .prop = toInt(VehicleProperty::PARKING_BRAKE_AUTO_APPLY),
+                         .access = VehiclePropertyAccess::READ,
+                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                 },
+         .initialValue = {.int32Values = {1}}},
+
+        {.config =
+                 {
                          .prop = toInt(VehicleProperty::FUEL_LEVEL_LOW),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
@@ -498,6 +541,18 @@ const ConfigDeclaration kVehicleProperties[]{
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                  },
          .initialValue = {.int32Values = {0, 0, 0}}},
+
+        {.config =
+                 {
+                         .prop = toInt(VehicleProperty::HW_CUSTOM_INPUT),
+                         .access = VehiclePropertyAccess::READ,
+                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                         .configArray = {0, 0, 0, 3, 0, 0, 0, 0, 0},
+                 },
+         .initialValue =
+                 {
+                         .int32Values = {0, 0, 0},
+                 }},
 
         {.config = {.prop = toInt(VehicleProperty::HVAC_POWER_ON),
                     .access = VehiclePropertyAccess::READ_WRITE,
@@ -971,6 +1026,15 @@ const ConfigDeclaration kVehicleProperties[]{
                  },
          .initialValue = {.int32Values = {LIGHT_SWITCH_AUTO}}},
 
+        {.config =
+                 {
+                         .prop = toInt(VehicleProperty::EVS_SERVICE_REQUEST),
+                         .access = VehiclePropertyAccess::READ,
+                         .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                 },
+         .initialValue = {.int32Values = {toInt(EvsServiceType::REARVIEW),
+                                          toInt(EvsServiceState::OFF)}}},
+
         {.config = {.prop = VEHICLE_MAP_SERVICE,
                     .access = VehiclePropertyAccess::READ_WRITE,
                     .changeMode = VehiclePropertyChangeMode::ON_CHANGE}},
@@ -1022,10 +1086,20 @@ const ConfigDeclaration kVehicleProperties[]{
                     .changeMode = VehiclePropertyChangeMode::ON_CHANGE},
          .initialValue = {.stringValue = "Vendor String Property"}},
 
+        {.config = {.prop = toInt(VehicleProperty::ELECTRONIC_TOLL_COLLECTION_CARD_TYPE),
+                    .access = VehiclePropertyAccess::READ,
+                    .changeMode = VehiclePropertyChangeMode::ON_CHANGE},
+         .initialValue = {.int32Values = {0}}},
+
+        {.config = {.prop = toInt(VehicleProperty::ELECTRONIC_TOLL_COLLECTION_CARD_STATUS),
+                    .access = VehiclePropertyAccess::READ,
+                    .changeMode = VehiclePropertyChangeMode::ON_CHANGE},
+         .initialValue = {.int32Values = {0}}},
+
         {.config =
                  {
                          .prop = toInt(VehicleProperty::SUPPORT_CUSTOMIZE_VENDOR_PERMISSION),
-                         .access = VehiclePropertyAccess::READ_WRITE,
+                         .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                          .configArray =
                                  {kMixedTypePropertyForTest,
@@ -1080,6 +1154,155 @@ const ConfigDeclaration kVehicleProperties[]{
                                 .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                         },
         },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::POWER_POLICY_REQ),
+                                .access = VehiclePropertyAccess::READ,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::POWER_POLICY_GROUP_REQ),
+                                .access = VehiclePropertyAccess::READ,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::CURRENT_POWER_POLICY),
+                                .access = VehiclePropertyAccess::READ_WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::UNIX_TIME),
+                                .access = VehiclePropertyAccess::READ_WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::STORAGE_ENCRYPTION_BINDING_SEED),
+                                .access = VehiclePropertyAccess::READ_WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::WATCHDOG_ALIVE),
+                                .access = VehiclePropertyAccess::WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::WATCHDOG_TERMINATED_PROCESS),
+                                .access = VehiclePropertyAccess::WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::VHAL_HEARTBEAT),
+                                .access = VehiclePropertyAccess::READ,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::CLUSTER_SWITCH_UI),
+                                .access = VehiclePropertyAccess::READ,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::CLUSTER_DISPLAY_STATE),
+                                .access = VehiclePropertyAccess::READ,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::CLUSTER_REPORT_STATE),
+                                .access = VehiclePropertyAccess::WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                                .configArray = {0, 0, 0, 9, 0, 0, 0, 0, 16},
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::CLUSTER_REQUEST_DISPLAY),
+                                .access = VehiclePropertyAccess::WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::CLUSTER_NAVIGATION_STATE),
+                                .access = VehiclePropertyAccess::WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+#ifdef ENABLE_VENDOR_CLUSTER_PROPERTY_FOR_TESTING
+        // Vendor propetry for E2E ClusterHomeService testing.
+        {
+                .config =
+                        {
+                                .prop = VENDOR_CLUSTER_SWITCH_UI,
+                                .access = VehiclePropertyAccess::WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = VENDOR_CLUSTER_DISPLAY_STATE,
+                                .access = VehiclePropertyAccess::WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = VENDOR_CLUSTER_REPORT_STATE,
+                                .access = VehiclePropertyAccess::READ,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                                .configArray = {0, 0, 0, 9, 0, 0, 0, 0, 16},
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = VENDOR_CLUSTER_REQUEST_DISPLAY,
+                                .access = VehiclePropertyAccess::READ,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = VENDOR_CLUSTER_NAVIGATION_STATE,
+                                .access = VehiclePropertyAccess::READ,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+#endif  // ENABLE_VENDOR_CLUSTER_PROPERTY_FOR_TESTING
 };
 
 }  // impl
