@@ -14,25 +14,15 @@
  * limitations under the License.
  */
 
-package android.hardware.biometrics.face;
+#pragma once
 
-@VintfStability
-@Backing(type="byte")
-enum Feature {
-    /**
-     * Require the user to look at the device during enrollment and authentication. This feature
-     * can be disabled to accommodate people who have limited vision.
-     */
-    REQUIRE_ATTENTION,
+#include "../GenericMessageBase.h"
 
-    /**
-     * Require a diverse set of poses during enrollment. This feature can be disabled to accommodate
-     * people with limited mobility.
-     */
-    REQUIRE_DIVERSE_POSES,
+namespace android::nl::protocols::generic::families {
 
-    /**
-     * Enable debugging functionality.
-     */
-    DEBUG,
-}
+class Mac80211hwsim : public GenericMessageBase {
+  public:
+    Mac80211hwsim(nlmsgtype_t familyId);
+};
+
+}  // namespace android::nl::protocols::generic::families
