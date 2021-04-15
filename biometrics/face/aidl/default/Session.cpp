@@ -92,13 +92,14 @@ ndk::ScopedAStatus Session::removeEnrollments(const std::vector<int32_t>& /*enro
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus Session::getFeatures() {
+ndk::ScopedAStatus Session::getFeatures(int32_t /*enrollmentId*/) {
     LOG(INFO) << "getFeatures";
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus Session::setFeature(const keymaster::HardwareAuthToken& /*hat*/,
-                                       Feature /*feature*/, bool /*enabled*/) {
+                                       int32_t /*enrollmentId*/, Feature /*feature*/,
+                                       bool /*enabled*/) {
     LOG(INFO) << "setFeature";
     return ndk::ScopedAStatus::ok();
 }
