@@ -1677,7 +1677,7 @@ WifiLegacyHal::getUsableChannels(uint32_t band_mask, uint32_t iface_mode_mask,
 }
 
 wifi_error WifiLegacyHal::triggerSubsystemRestart() {
-    return global_func_table_.wifi_trigger_subsystem_restart(global_handle_);
+    return global_func_table_.wifi_trigger_subsystem_restart();
 }
 
 void WifiLegacyHal::invalidate() {
