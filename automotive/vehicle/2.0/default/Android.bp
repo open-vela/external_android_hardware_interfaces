@@ -41,7 +41,7 @@ cc_defaults {
     defaults: ["vhal_v2_0_defaults"],
     shared_libs: [
         "libbinder_ndk",
-        "android.automotive.watchdog-V2-ndk_platform",
+        "carwatchdog_aidl_interface-V2-ndk_platform",
     ],
 }
 
@@ -210,7 +210,6 @@ cc_binary {
     vendor: true,
     relative_install_path: "hw",
     srcs: ["VehicleService.cpp"],
-    cflags: ["-DENABLE_VENDOR_CLUSTER_PROPERTY_FOR_TESTING"],
     shared_libs: [
         "libbase",
         "libjsoncpp",
