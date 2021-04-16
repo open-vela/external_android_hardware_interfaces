@@ -18,7 +18,6 @@
 
 #include <VtsHalHidlTargetCallbackBase.h>
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/stringprintf.h>
 #include <android-base/unique_fd.h>
 #include <android/hardware/tetheroffload/config/1.0/IOffloadConfig.h>
@@ -26,6 +25,7 @@
 #include <android/hardware/tetheroffload/control/1.0/types.h>
 #include <linux/netfilter/nfnetlink.h>
 #include <linux/netlink.h>
+#include <log/log.h>
 #include <net/if.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -56,16 +56,20 @@ enum class ExpectBoolean {
 constexpr const char* TEST_IFACE = "rmnet_data0";
 
 // We use #defines here so as to get local lamba captures and error message line numbers
-#define ASSERT_TRUE_CALLBACK                                                    \
-    [&](bool success, std::string errMsg) {                                     \
-        std::string msg = StringPrintf("unexpected error: %s", errMsg.c_str()); \
-        ASSERT_TRUE(success) << msg;                                            \
+#define ASSERT_TRUE_CALLBACK                            \
+    [&](bool success, std::string errMsg) {             \
+        if (!success) {                                 \
+            ALOGI("Error message: %s", errMsg.c_str()); \
+        }                                               \
+        ASSERT_TRUE(success);                           \
     }
 
-#define ASSERT_FALSE_CALLBACK                                                 \
-    [&](bool success, std::string errMsg) {                                   \
-        std::string msg = StringPrintf("expected error: %s", errMsg.c_str()); \
-        ASSERT_FALSE(success) << msg;                                         \
+#define ASSERT_FALSE_CALLBACK                           \
+    [&](bool success, std::string errMsg) {             \
+        if (!success) {                                 \
+            ALOGI("Error message: %s", errMsg.c_str()); \
+        }                                               \
+        ASSERT_FALSE(success);                          \
     }
 
 #define ASSERT_ZERO_BYTES_CALLBACK            \
@@ -110,23 +114,6 @@ class TetheringOffloadCallbackArgs {
     NatTimeoutUpdate last_params;
 };
 
-// Test environment for OffloadControl HIDL HAL.
-class OffloadControlHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static OffloadControlHidlEnvironment* Instance() {
-        static OffloadControlHidlEnvironment* instance = new OffloadControlHidlEnvironment;
-        return instance;
-    }
-
-    virtual void registerTestServices() override {
-        registerTestService<IOffloadConfig>();
-        registerTestService<IOffloadControl>();
-    }
-   private:
-    OffloadControlHidlEnvironment() {}
-};
-
 class OffloadControlHidlTestBase : public testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
@@ -144,8 +131,7 @@ class OffloadControlHidlTestBase : public testing::VtsHalHidlTargetTestBase {
     // The IOffloadConfig HAL is tested more thoroughly elsewhere. He we just
     // setup everything correctly and verify basic readiness.
     void setupConfigHal() {
-        config = testing::VtsHalHidlTargetTestBase::getService<IOffloadConfig>(
-            OffloadControlHidlEnvironment::Instance()->getServiceName<IOffloadConfig>());
+        config = testing::VtsHalHidlTargetTestBase::getService<IOffloadConfig>();
         ASSERT_NE(nullptr, config.get()) << "Could not get HIDL instance";
 
         unique_fd fd1(conntrackSocket(NF_NETLINK_CONNTRACK_NEW | NF_NETLINK_CONNTRACK_DESTROY));
@@ -173,8 +159,7 @@ class OffloadControlHidlTestBase : public testing::VtsHalHidlTargetTestBase {
     }
 
     void prepareControlHal() {
-        control = testing::VtsHalHidlTargetTestBase::getService<IOffloadControl>(
-            OffloadControlHidlEnvironment::Instance()->getServiceName<IOffloadControl>());
+        control = testing::VtsHalHidlTargetTestBase::getService<IOffloadControl>();
         ASSERT_NE(nullptr, control.get()) << "Could not get HIDL instance";
 
         control_cb = new TetheringOffloadCallback();
@@ -183,9 +168,10 @@ class OffloadControlHidlTestBase : public testing::VtsHalHidlTargetTestBase {
 
     void initOffload(const bool expected_result) {
         auto init_cb = [&](bool success, std::string errMsg) {
-            std::string msg = StringPrintf("Unexpectedly %s to init offload: %s",
-                                           success ? "succeeded" : "failed", errMsg.c_str());
-            ASSERT_EQ(expected_result, success) << msg;
+            if (!success) {
+                ALOGI("Error message: %s", errMsg.c_str());
+            }
+            ASSERT_EQ(expected_result, success);
         };
         const Return<void> ret = control->initOffload(control_cb, init_cb);
         ASSERT_TRUE(ret.isOk());
@@ -198,12 +184,15 @@ class OffloadControlHidlTestBase : public testing::VtsHalHidlTargetTestBase {
 
     void stopOffload(const ExpectBoolean value) {
         auto cb = [&](bool success, const hidl_string& errMsg) {
+            if (!success) {
+                ALOGI("Error message: %s", errMsg.c_str());
+            }
             switch (value) {
                 case ExpectBoolean::False:
-                    ASSERT_EQ(false, success) << "Unexpectedly able to stop offload: " << errMsg;
+                    ASSERT_EQ(false, success);
                     break;
                 case ExpectBoolean::True:
-                    ASSERT_EQ(true, success) << "Unexpectedly failed to stop offload: " << errMsg;
+                    ASSERT_EQ(true, success);
                     break;
                 case ExpectBoolean::Ignored:
                     break;
@@ -280,11 +269,8 @@ TEST_F(OffloadControlHidlTestBase, AdditionalStopsWithInitReturnFalse) {
     if (!interfaceIsUp(TEST_IFACE)) {
         return;
     }
-    SCOPED_TRACE("Expecting stopOffload to succeed");
-    stopOffload(ExpectBoolean::Ignored);  // balance out initOffload(true)
-    SCOPED_TRACE("Expecting stopOffload to fail the first time");
+    stopOffload(ExpectBoolean::True);  // balance out initOffload(true)
     stopOffload(ExpectBoolean::False);
-    SCOPED_TRACE("Expecting stopOffload to fail the second time");
     stopOffload(ExpectBoolean::False);
 }
 
@@ -692,9 +678,7 @@ TEST_F(OffloadControlHidlTest, RemoveDownstreamBogusPrefixFails) {
 }
 
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(OffloadControlHidlEnvironment::Instance());
-    ::testing::InitGoogleTest(&argc, argv);
-    OffloadControlHidlEnvironment::Instance()->init(&argc, argv);
+    testing::InitGoogleTest(&argc, argv);
     int status = RUN_ALL_TESTS();
     ALOGE("Test result with status=%d", status);
     return status;

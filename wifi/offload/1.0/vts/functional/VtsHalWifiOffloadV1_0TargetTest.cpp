@@ -23,7 +23,6 @@
 
 #include <VtsHalHidlTargetCallbackBase.h>
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 
 #include <vector>
 
@@ -69,33 +68,12 @@ class OffloadCallbackArgs {
     OffloadStatus error_code_;
 };
 
-// Test environment for Weaver HIDL HAL.
-class WifiOffloadHidlEnvironment
-    : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static WifiOffloadHidlEnvironment* Instance() {
-        static WifiOffloadHidlEnvironment* instance =
-            new WifiOffloadHidlEnvironment;
-        return instance;
-    }
-
-    virtual void registerTestServices() override {
-        registerTestService<IOffload>();
-    }
-
-   private:
-    WifiOffloadHidlEnvironment() {}
-};
-
 // The main test class for WifiOffload HIDL HAL.
 class WifiOffloadHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
         wifi_offload_ =
-            ::testing::VtsHalHidlTargetTestBase::getService<IOffload>(
-                WifiOffloadHidlEnvironment::Instance()
-                    ->getServiceName<IOffload>());
+            ::testing::VtsHalHidlTargetTestBase::getService<IOffload>();
         ASSERT_NE(wifi_offload_, nullptr);
 
         wifi_offload_cb_ = new OffloadCallback();
@@ -231,10 +209,17 @@ TEST_F(WifiOffloadHidlTest, getError) {
     ASSERT_EQ(true, res.no_timeout);
 }
 
+// A class for test environment setup
+class WifiOffloadHalHidlEnvironment : public ::testing::Environment {
+   public:
+    virtual void SetUp() {}
+    virtual void TearDown() {}
+};
+
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(WifiOffloadHidlEnvironment::Instance());
+    ::testing::AddGlobalTestEnvironment(new WifiOffloadHalHidlEnvironment);
     ::testing::InitGoogleTest(&argc, argv);
-    WifiOffloadHidlEnvironment::Instance()->init(&argc, argv);
+
     int status = RUN_ALL_TESTS();
     LOG(INFO) << "Test result = " << status;
 

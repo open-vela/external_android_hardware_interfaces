@@ -19,7 +19,6 @@
 #include <android/hardware/power/1.1/IPower.h>
 
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 
 using ::android::hardware::power::V1_1::IPower;
 using ::android::hardware::power::V1_1::PowerStateSubsystem;
@@ -29,24 +28,11 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::sp;
 
-// Test environment for Power HIDL HAL.
-class PowerHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static PowerHidlEnvironment* Instance() {
-        static PowerHidlEnvironment* instance = new PowerHidlEnvironment;
-        return instance;
-    }
-
-    virtual void registerTestServices() override { registerTestService<IPower>(); }
-};
-
 class PowerHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  public:
   virtual void SetUp() override {
-      power = ::testing::VtsHalHidlTargetTestBase::getService<IPower>(
-          PowerHidlEnvironment::Instance()->getServiceName<IPower>());
-      ASSERT_NE(power, nullptr);
+    power = ::testing::VtsHalHidlTargetTestBase::getService<IPower>();
+    ASSERT_NE(power, nullptr);
   }
 
   virtual void TearDown() override {}
@@ -105,10 +91,8 @@ TEST_F(PowerHidlTest, PowerHintAsync) {
 }
 
 int main(int argc, char **argv) {
-    ::testing::AddGlobalTestEnvironment(PowerHidlEnvironment::Instance());
-    ::testing::InitGoogleTest(&argc, argv);
-    PowerHidlEnvironment::Instance()->init(&argc, argv);
-    int status = RUN_ALL_TESTS();
-    LOG(INFO) << "Test result = " << status;
-    return status;
+  ::testing::InitGoogleTest(&argc, argv);
+  int status = RUN_ALL_TESTS();
+  LOG(INFO) << "Test result = " << status;
+  return status;
 }

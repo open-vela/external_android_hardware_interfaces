@@ -20,7 +20,6 @@
 
 #include <VtsHalHidlTargetCallbackBase.h>
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 
 using ::android::hardware::thermal::V1_0::Temperature;
 using ::android::hardware::thermal::V1_0::TemperatureType;
@@ -63,26 +62,11 @@ class ThermalCallback
     }
 };
 
-// Test environment for Thermal HIDL HAL.
-class ThermalHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static ThermalHidlEnvironment* Instance() {
-        static ThermalHidlEnvironment* instance = new ThermalHidlEnvironment;
-        return instance;
-    }
-
-    virtual void registerTestServices() override { registerTestService<IThermal>(); }
-   private:
-    ThermalHidlEnvironment() {}
-};
-
 // The main test class for THERMAL HIDL HAL 1.1.
 class ThermalHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        mThermal = ::testing::VtsHalHidlTargetTestBase::getService<IThermal>(
-            ThermalHidlEnvironment::Instance()->getServiceName<IThermal>());
+        mThermal = ::testing::VtsHalHidlTargetTestBase::getService<IThermal>();
         ASSERT_NE(mThermal, nullptr);
         mThermalCallback = new(std::nothrow) ThermalCallback();
         ASSERT_NE(mThermalCallback, nullptr);
@@ -115,9 +99,7 @@ TEST_F(ThermalHidlTest, NotifyThrottlingTest) {
 }
 
 int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(ThermalHidlEnvironment::Instance());
     ::testing::InitGoogleTest(&argc, argv);
-    ThermalHidlEnvironment::Instance()->init(&argc, argv);
     int status = RUN_ALL_TESTS();
     cout << "Test result = " << status << std::endl;
     return status;

@@ -24,15 +24,18 @@ namespace V2_0 {
 namespace implementation {
 
 // Methods from ::android::hardware::light::V2_0::ILight follow.
-Return<Status> Light::setLight(Type type, const OldLightState& state) {
+Return<Status> Light::setLight(Type type, const LightState& state)  {
     // Forward types for new methods.
 
-    LightState extState{.state = state,
-                        .interpolationOmega = static_cast<int32_t>(Default::INTERPOLATION_OMEGA),
-                        .brightness =  // Brightness inherits from Brightness
-                        static_cast<Brightness>(state.brightnessMode)};
+    ExtLightState extState {
+        .state = state,
+        .interpolationOmega =
+            static_cast<int32_t>(Default::INTERPOLATION_OMEGA),
+        .brightness = // ExtBrightness inherits from Brightness
+            static_cast<ExtBrightness>(state.brightnessMode)
+    };
 
-    return setLightExt(type, extState);
+    return setExtLight(type, extState);
 }
 
 Return<void> Light::getSupportedTypes(getSupportedTypes_cb _hidl_cb)  {
@@ -49,7 +52,9 @@ Return<void> Light::getSupportedTypes(getSupportedTypes_cb _hidl_cb)  {
 }
 
 // Methods from ::android::hardware::example::extension::light::V2_0::ILight follow.
-Return<Status> Light::setLightExt(Type /* type */, const LightState& /* state */) {
+Return<Status> Light::setExtLight(Type /* type */,
+                                  const ExtLightState& /* state */)  {
+
     // ******************************************************
     // Note: awesome proprietary hardware implementation here
     // ******************************************************

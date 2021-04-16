@@ -14,92 +14,23 @@
 // limitations under the License.
 //
 
-cc_library_static {
-    name: "VtsHalNeuralnetworksTest_utils",
+cc_test {
+    name: "VtsHalNeuralnetworksV1_0TargetTest",
     srcs: [
         "Callbacks.cpp",
         "GeneratedTestHarness.cpp",
+        "Models.cpp",
+        "VtsHalNeuralnetworksV1_0TargetTest.cpp",
     ],
     defaults: ["VtsHalTargetTestDefaults"],
-    export_include_dirs: ["."],
-    shared_libs: [
-        "libfmq",
-        "libnativewindow",
-    ],
     static_libs: [
         "android.hardware.neuralnetworks@1.0",
-        "android.hardware.neuralnetworks@1.1",
-        "android.hardware.neuralnetworks@1.2",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
-        "libgmock",
         "libhidlmemory",
-        "libneuralnetworks_utils",
     ],
     header_libs: [
-        "libneuralnetworks_headers",
         "libneuralnetworks_generated_test_harness_headers",
         "libneuralnetworks_generated_tests",
-    ],
-}
-
-cc_defaults {
-    name: "VtsHalNeuralNetworksTargetTestDefaults",
-    defaults: ["VtsHalTargetTestDefaults"],
-    srcs: [
-        "ValidateModel.cpp",
-        "ValidateRequest.cpp",
-        "VtsHalNeuralnetworks.cpp",
-    ],
-    shared_libs: [
-        "libfmq",
-        "libnativewindow",
-    ],
-    static_libs: [
-        "android.hardware.neuralnetworks@1.0",
-        "android.hardware.neuralnetworks@1.1",
-        "android.hardware.neuralnetworks@1.2",
-        "android.hidl.allocator@1.0",
-        "android.hidl.memory@1.0",
-        "libgmock",
-        "libhidlmemory",
-        "libneuralnetworks_utils",
-        "VtsHalNeuralnetworksTest_utils",
-    ],
-    header_libs: [
-        "libneuralnetworks_headers",
-        "libneuralnetworks_generated_test_harness_headers",
-        "libneuralnetworks_generated_tests",
-    ],
-    // Bug: http://b/74200014 - Disable arm32 asan since it triggers internal
-    // error in ld.gold.
-    arch: {
-        arm: {
-            sanitize: {
-                never: true,
-            },
-        },
-    },
-    test_suites: ["general-tests"],
-}
-
-cc_test {
-    name: "VtsHalNeuralnetworksV1_0TargetTest",
-    defaults: ["VtsHalNeuralNetworksTargetTestDefaults"],
-    srcs: [
-        "BasicTests.cpp",
-        "GeneratedTests.cpp",
-    ],
-}
-
-cc_test {
-    name: "PresubmitHalNeuralnetworksV1_0TargetTest",
-    defaults: ["VtsHalNeuralNetworksTargetTestDefaults"],
-    srcs: [
-        "BasicTests.cpp",
-        "GeneratedTests.cpp",
-    ],
-    cflags: [
-        "-DPRESUBMIT_NOT_VTS",
     ],
 }
