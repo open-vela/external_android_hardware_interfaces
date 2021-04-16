@@ -45,8 +45,6 @@ package android.audio.policy.configuration.V7_0 {
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioChannelMask AUDIO_CHANNEL_IN_VOICE_DNLINK_MONO;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioChannelMask AUDIO_CHANNEL_IN_VOICE_UPLINK_MONO;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioChannelMask AUDIO_CHANNEL_NONE;
-    enum_constant public static final android.audio.policy.configuration.V7_0.AudioChannelMask AUDIO_CHANNEL_OUT_13POINT_360RA;
-    enum_constant public static final android.audio.policy.configuration.V7_0.AudioChannelMask AUDIO_CHANNEL_OUT_22POINT2;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioChannelMask AUDIO_CHANNEL_OUT_2POINT0POINT2;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioChannelMask AUDIO_CHANNEL_OUT_2POINT1;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioChannelMask AUDIO_CHANNEL_OUT_2POINT1POINT2;
@@ -106,6 +104,7 @@ package android.audio.policy.configuration.V7_0 {
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_IN_FM_TUNER;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_IN_HDMI;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_IN_HDMI_ARC;
+    enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_IN_HDMI_EARC;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_IN_IP;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_IN_LINE;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_IN_LOOPBACK;
@@ -140,6 +139,7 @@ package android.audio.policy.configuration.V7_0 {
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_OUT_FM;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_OUT_HDMI;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_OUT_HDMI_ARC;
+    enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_OUT_HDMI_EARC;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_OUT_HEARING_AID;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_OUT_IP;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioDevice AUDIO_DEVICE_OUT_LINE;
@@ -211,6 +211,7 @@ package android.audio.policy.configuration.V7_0 {
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioFormat AUDIO_FORMAT_DSD;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioFormat AUDIO_FORMAT_DTS;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioFormat AUDIO_FORMAT_DTS_HD;
+    enum_constant public static final android.audio.policy.configuration.V7_0.AudioFormat AUDIO_FORMAT_DTS_UHD;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioFormat AUDIO_FORMAT_EVRC;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioFormat AUDIO_FORMAT_EVRCB;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioFormat AUDIO_FORMAT_EVRCNW;
@@ -272,6 +273,7 @@ package android.audio.policy.configuration.V7_0 {
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioInOutFlag AUDIO_OUTPUT_FLAG_DIRECT;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioInOutFlag AUDIO_OUTPUT_FLAG_DIRECT_PCM;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioInOutFlag AUDIO_OUTPUT_FLAG_FAST;
+    enum_constant public static final android.audio.policy.configuration.V7_0.AudioInOutFlag AUDIO_OUTPUT_FLAG_GAPLESS_OFFLOAD;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioInOutFlag AUDIO_OUTPUT_FLAG_HW_AV_SYNC;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioInOutFlag AUDIO_OUTPUT_FLAG_IEC958_NONAUDIO;
     enum_constant public static final android.audio.policy.configuration.V7_0.AudioInOutFlag AUDIO_OUTPUT_FLAG_INCALL_MUSIC;
