@@ -21,17 +21,6 @@
 #define OMX_ANDROID_COMPILE_AS_32BIT_ON_64BIT_PLATFORMS
 #endif
 
-#include <getopt.h>
-
-#include <android/hardware/graphics/allocator/2.0/IAllocator.h>
-#include <android/hardware/graphics/allocator/3.0/IAllocator.h>
-#include <android/hardware/graphics/common/1.0/types.h>
-#include <android/hardware/graphics/common/1.1/types.h>
-#include <android/hardware/graphics/common/1.2/types.h>
-#include <android/hardware/graphics/mapper/2.0/IMapper.h>
-#include <android/hardware/graphics/mapper/2.0/types.h>
-#include <android/hardware/graphics/mapper/3.0/IMapper.h>
-#include <android/hardware/graphics/mapper/3.0/types.h>
 #include <media/stagefright/foundation/ALooper.h>
 #include <utils/Condition.h>
 #include <utils/List.h>
@@ -44,15 +33,11 @@
 #include <media/openmax/OMX_AudioExt.h>
 #include <media/openmax/OMX_VideoExt.h>
 
-#include <VtsHalHidlTargetTestEnvBase.h>
-
 /* TIME OUTS (Wait time in dequeueMessage()) */
 
 /* As component is switching states (loaded<->idle<->execute), dequeueMessage()
  * expects the events to be received within this duration */
 #define DEFAULT_TIMEOUT 100000
-// b/70933963
-#define RELAXED_TIMEOUT 400000
 /* Time interval between successive Input/Output enqueues */
 #define DEFAULT_TIMEOUT_Q 2000
 /* While the component is amidst a process call, asynchronous commands like
@@ -298,36 +283,6 @@ Return<android::hardware::media::omx::V1_0::Status> setPortConfig(
 /*
  * common functions declarations
  */
-struct GrallocV2 {
-    using Format = android::hardware::graphics::common::V1_0::PixelFormat;
-    using Usage = android::hardware::hidl_bitfield<
-            android::hardware::graphics::common::V1_0::BufferUsage>;
-
-    using IAllocator = android::hardware::graphics::allocator::V2_0::IAllocator;
-
-    using IMapper = android::hardware::graphics::mapper::V2_0::IMapper;
-    using Error = android::hardware::graphics::mapper::V2_0::Error;
-    using Descriptor = android::hardware::graphics::mapper::V2_0::BufferDescriptor;
-    using YCbCrLayout = android::hardware::graphics::mapper::V2_0::YCbCrLayout;
-    using DescriptorInfo = IMapper::BufferDescriptorInfo;
-    using Rect = IMapper::Rect;
-};
-
-struct GrallocV3 {
-    using Format = android::hardware::graphics::common::V1_2::PixelFormat;
-    using Usage = android::hardware::hidl_bitfield<
-            android::hardware::graphics::common::V1_2::BufferUsage>;
-
-    using IAllocator = android::hardware::graphics::allocator::V3_0::IAllocator;
-
-    using IMapper = android::hardware::graphics::mapper::V3_0::IMapper;
-    using Error = android::hardware::graphics::mapper::V3_0::Error;
-    using Descriptor = android::hardware::graphics::mapper::V3_0::BufferDescriptor;
-    using YCbCrLayout = android::hardware::graphics::mapper::V3_0::YCbCrLayout;
-    using DescriptorInfo = IMapper::BufferDescriptorInfo;
-    using Rect = IMapper::Rect;
-};
-
 Return<android::hardware::media::omx::V1_0::Status> setRole(
     sp<IOmxNode> omxNode, const char* role);
 
@@ -399,78 +354,5 @@ void testEOS(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
              bool& eosFlag, PortMode* portMode = nullptr,
              portreconfig fptr = nullptr, OMX_U32 kPortIndexInput = 0,
              OMX_U32 kPortIndexOutput = 1, void* args = nullptr);
-
-// A class for test environment setup
-class ComponentTestEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   private:
-    typedef ::testing::VtsHalHidlTargetTestEnvBase Super;
-
-   public:
-    virtual void registerTestServices() override { registerTestService<IOmx>(); }
-
-    ComponentTestEnvironment() : res("/data/local/tmp/media/") {}
-
-    void setComponent(const char* _component) { component = _component; }
-
-    void setRole(const char* _role) { role = _role; }
-
-    void setRes(const char* _res) { res = _res; }
-
-    const hidl_string getInstance() { return Super::getServiceName<IOmx>(); }
-
-    const hidl_string getComponent() const { return component; }
-
-    const hidl_string getRole() const { return role; }
-
-    const hidl_string getRes() const { return res; }
-
-    int initFromOptions(int argc, char** argv) {
-        static struct option options[] = {{"component", required_argument, 0, 'C'},
-                                          {"role", required_argument, 0, 'R'},
-                                          {"res", required_argument, 0, 'P'},
-                                          {0, 0, 0, 0}};
-
-        while (true) {
-            int index = 0;
-            int c = getopt_long(argc, argv, "C:R:P:", options, &index);
-            if (c == -1) {
-                break;
-            }
-
-            switch (c) {
-                case 'C':
-                    setComponent(optarg);
-                    break;
-                case 'R':
-                    setRole(optarg);
-                    break;
-                case 'P':
-                    setRes(optarg);
-                    break;
-                case '?':
-                    break;
-            }
-        }
-
-        if (optind < argc) {
-            fprintf(stderr,
-                    "unrecognized option: %s\n\n"
-                    "usage: %s <gtest options> <test options>\n\n"
-                    "test options are:\n\n"
-                    "-C, --component: OMX component to test\n"
-                    "-R, --role: OMX component Role\n"
-                    "-P, --res: Resource files directory location\n",
-                    argv[optind ?: 1], argv[0]);
-            return 2;
-        }
-        return 0;
-    }
-
-   private:
-    hidl_string instance;
-    hidl_string component;
-    hidl_string role;
-    hidl_string res;
-};
 
 #endif  // MEDIA_HIDL_TEST_COMMON_H

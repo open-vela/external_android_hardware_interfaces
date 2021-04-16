@@ -26,6 +26,8 @@ namespace broadcastradio {
 namespace V1_1 {
 namespace implementation {
 
+extern "C" IBroadcastRadioFactory* HIDL_FETCH_IBroadcastRadioFactory(const char* name);
+
 struct BroadcastRadioFactory : public IBroadcastRadioFactory {
     BroadcastRadioFactory();
 
@@ -33,7 +35,7 @@ struct BroadcastRadioFactory : public IBroadcastRadioFactory {
     Return<void> connectModule(V1_0::Class classId, connectModule_cb _hidl_cb) override;
 
    private:
-    std::map<V1_0::Class, sp<V1_1::IBroadcastRadio>> mRadioModules;
+    std::map<V1_0::Class, sp<IBroadcastRadio>> mRadioModules;
 };
 
 }  // namespace implementation

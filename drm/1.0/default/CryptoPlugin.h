@@ -64,12 +64,12 @@ struct CryptoPlugin : public ICryptoPlugin {
         uint32_t bufferId) override;
 
     Return<void> decrypt(
-            bool secure, const hidl_array<uint8_t, 16>& keyId, const hidl_array<uint8_t, 16>& iv,
-            Mode mode, const Pattern& pattern, const hidl_vec<SubSample>& subSamples,
-            const SharedBuffer& source, uint64_t offset, const DestinationBuffer& destination,
-            decrypt_cb _hidl_cb) override NO_THREAD_SAFETY_ANALYSIS;  // use unique_lock
+        bool secure, const hidl_array<uint8_t, 16>& keyId, const hidl_array<uint8_t, 16>& iv,
+        Mode mode, const Pattern& pattern, const hidl_vec<SubSample>& subSamples,
+        const SharedBuffer& source, uint64_t offset, const DestinationBuffer& destination,
+        decrypt_cb _hidl_cb) override NO_THREAD_SAFETY_ANALYSIS;  // use unique_lock
 
-  private:
+   private:
     android::CryptoPlugin *mLegacyPlugin;
     std::map<uint32_t, sp<IMemory>> mSharedBufferMap GUARDED_BY(mSharedBufferLock);
 

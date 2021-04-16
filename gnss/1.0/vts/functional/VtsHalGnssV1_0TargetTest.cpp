@@ -19,13 +19,10 @@
 #include <log/log.h>
 
 #include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
 
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
-
-#include <cutils/properties.h>
 
 using android::hardware::Return;
 using android::hardware::Void;
@@ -38,32 +35,11 @@ using android::hardware::gnss::V1_0::IGnssDebug;
 using android::hardware::gnss::V1_0::IGnssMeasurement;
 using android::sp;
 
-static bool IsAutomotiveDevice() {
-  char buffer[PROPERTY_VALUE_MAX] = {0};
-  property_get("ro.hardware.type", buffer, "");
-  return strncmp(buffer, "automotive", PROPERTY_VALUE_MAX) == 0;
-}
-
 #define TIMEOUT_SEC 2  // for basic commands/responses
 
 // for command line argument on how strictly to run the test
 bool sAgpsIsPresent = false;  // if SUPL or XTRA assistance available
 bool sSignalIsWeak = false;   // if GNSS signals are weak (e.g. light indoor)
-
-// Test environment for GNSS HIDL HAL.
-class GnssHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
- public:
-  // get the test environment singleton
-  static GnssHidlEnvironment* Instance() {
-    static GnssHidlEnvironment* instance = new GnssHidlEnvironment;
-    return instance;
-  }
-
-  virtual void registerTestServices() override { registerTestService<IGnss>(); }
-
- private:
-  GnssHidlEnvironment() {}
-};
 
 // The main test class for GNSS HAL.
 class GnssHalTest : public ::testing::VtsHalHidlTargetTestBase {
@@ -75,8 +51,7 @@ class GnssHalTest : public ::testing::VtsHalHidlTargetTestBase {
     info_called_count_ = 0;
     notify_count_ = 0;
 
-    gnss_hal_ = ::testing::VtsHalHidlTargetTestBase::getService<IGnss>(
-        GnssHidlEnvironment::Instance()->getServiceName<IGnss>());
+    gnss_hal_ = ::testing::VtsHalHidlTargetTestBase::getService<IGnss>();
     ASSERT_NE(gnss_hal_, nullptr);
 
     gnss_cb_ = new GnssCallback(*this);
@@ -412,11 +387,7 @@ TEST_F(GnssHalTest, InjectDelete) {
   ASSERT_TRUE(result.isOk());
   EXPECT_TRUE(result);
 
-  auto resultVoid = gnss_hal_->deleteAidingData(IGnss::GnssAidingData::DELETE_POSITION);
-
-  ASSERT_TRUE(resultVoid.isOk());
-
-  resultVoid = gnss_hal_->deleteAidingData(IGnss::GnssAidingData::DELETE_TIME);
+  auto resultVoid = gnss_hal_->deleteAidingData(IGnss::GnssAidingData::DELETE_ALL);
 
   ASSERT_TRUE(resultVoid.isOk());
 
@@ -468,9 +439,9 @@ TEST_F(GnssHalTest, GetAllExtensions) {
 
   auto gnssDebug = gnss_hal_->getExtensionGnssDebug();
   ASSERT_TRUE(gnssDebug.isOk());
-  if (!IsAutomotiveDevice() && info_called_count_ > 0 && last_info_.yearOfHw >= 2017) {
-      sp<IGnssDebug> iGnssDebug = gnssDebug;
-      EXPECT_NE(iGnssDebug, nullptr);
+  if (info_called_count_ > 0 && last_info_.yearOfHw >= 2017) {
+    sp<IGnssDebug> iGnssDebug = gnssDebug;
+    EXPECT_NE(iGnssDebug, nullptr);
   }
 }
 
@@ -484,30 +455,18 @@ TEST_F(GnssHalTest, MeasurementCapabilites) {
   }
 }
 
-/*
- * SchedulingCapabilities:
- * Verifies that 2018+ hardware supports Scheduling capabilities.
- */
-TEST_F(GnssHalTest, SchedulingCapabilities) {
-    if (info_called_count_ > 0 && last_info_.yearOfHw >= 2018) {
-        EXPECT_TRUE(last_capabilities_ & IGnssCallback::Capabilities::SCHEDULING);
-    }
-}
-
 int main(int argc, char** argv) {
-  ::testing::AddGlobalTestEnvironment(GnssHidlEnvironment::Instance());
   ::testing::InitGoogleTest(&argc, argv);
-  GnssHidlEnvironment::Instance()->init(&argc, argv);
   /*
    * These arguments not used by automated VTS testing.
    * Only for use in manual testing, when wanting to run
    * stronger tests that require the presence of GPS signal.
    */
   for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "-agps") == 0) {
-        sAgpsIsPresent = true;
-    } else if (strcmp(argv[i], "-weak") == 0) {
-        sSignalIsWeak = true;
+      if (strcmp(argv[i], "-agps") == 0) {
+          sAgpsIsPresent = true;
+      } else if (strcmp(argv[i], "-weak") == 0) {
+          sSignalIsWeak = true;
     }
   }
   int status = RUN_ALL_TESTS();

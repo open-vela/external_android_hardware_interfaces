@@ -93,7 +93,6 @@ namespace implementation {
                 requestType = KeyRequestType::RELEASE;
                 break;
             case android::DrmPlugin::kKeyRequestType_Unknown:
-            default:
                 requestType = KeyRequestType::UNKNOWN;
                 break;
             }

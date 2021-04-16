@@ -19,11 +19,6 @@ Bar::Bar() {
 }
 
 // Methods from ::android::hardware::tests::foo::V1_0::IFoo follow.
-Return<void> Bar::convertToBoolIfSmall(Discriminator d, const hidl_vec<Union>& u,
-                                       convertToBoolIfSmall_cb _hidl_cb) {
-    return mFoo->convertToBoolIfSmall(d, u, _hidl_cb);
-}
-
 Return<void> Bar::doThis(float param) {
     return mFoo->doThis(param);
 }
@@ -147,10 +142,6 @@ Return<void> Bar::createHandles(uint32_t size, createHandles_cb _hidl_cb) {
 
 Return<void> Bar::closeHandles() {
     return mFoo->closeHandles();
-}
-
-Return<void> Bar::repeatWithFmq(const IFoo::WithFmq& withFmq, repeatWithFmq_cb _hidl_cb) {
-    return mFoo->repeatWithFmq(withFmq, _hidl_cb);
 }
 
 Return<void> Bar::echoNullInterface(const sp<IFooCallback> &cb, echoNullInterface_cb _hidl_cb) {

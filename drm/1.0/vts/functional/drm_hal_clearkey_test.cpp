@@ -89,6 +89,10 @@ static const uint8_t kInvalidUUID[16] = {
     0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80,
     0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80};
 
+static const uint32_t k256SubSampleByteCount = 256;
+static const uint32_t k512SubSampleClearBytes = 512;
+static const uint32_t k512SubSampleEncryptedBytes = 512;
+
 class DrmHalClearkeyFactoryTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
@@ -345,7 +349,8 @@ SessionId DrmHalClearkeyPluginTest::openSession() {
  * Helper method to close a session
  */
 void DrmHalClearkeyPluginTest::closeSession(const SessionId& sessionId) {
-    EXPECT_TRUE(drmPlugin->closeSession(sessionId).isOk());
+    auto result = drmPlugin->closeSession(sessionId);
+    EXPECT_EQ(Status::OK, result);
 }
 
 /**
@@ -788,7 +793,7 @@ TEST_F(DrmHalClearkeyPluginTest, SetMacAlgorithmNoSession) {
  */
 TEST_F(DrmHalClearkeyPluginTest, GenericEncryptNotSupported) {
     SessionId session = openSession();
-
+    ;
     hidl_vec<uint8_t> keyId = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
     hidl_vec<uint8_t> input = {1, 2, 3, 4, 5};
     hidl_vec<uint8_t> iv = std::vector<uint8_t>(AES_BLOCK_SIZE, 0);
@@ -817,7 +822,7 @@ TEST_F(DrmHalClearkeyPluginTest, GenericDecryptNotSupported) {
 
 TEST_F(DrmHalClearkeyPluginTest, GenericSignNotSupported) {
     SessionId session = openSession();
-
+    ;
     hidl_vec<uint8_t> keyId = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
     hidl_vec<uint8_t> message = {1, 2, 3, 4, 5};
     auto res = drmPlugin->sign(session, keyId, message,
@@ -831,7 +836,7 @@ TEST_F(DrmHalClearkeyPluginTest, GenericSignNotSupported) {
 
 TEST_F(DrmHalClearkeyPluginTest, GenericVerifyNotSupported) {
     SessionId session = openSession();
-
+    ;
     hidl_vec<uint8_t> keyId = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1};
     hidl_vec<uint8_t> message = {1, 2, 3, 4, 5};
     hidl_vec<uint8_t> signature = {0, 0, 0, 0, 0, 0, 0, 0,
@@ -921,7 +926,8 @@ sp<IMemory> DrmHalClearkeyPluginTest::getDecryptMemory(size_t size,
  */
 TEST_F(DrmHalClearkeyPluginTest, SetMediaDrmSession) {
     auto sessionId = openSession();
-    EXPECT_TRUE(cryptoPlugin->setMediaDrmSession(sessionId).isOk());
+    Status status = cryptoPlugin->setMediaDrmSession(sessionId);
+    EXPECT_EQ(Status::OK, status);
     closeSession(sessionId);
 }
 
@@ -942,7 +948,8 @@ TEST_F(DrmHalClearkeyPluginTest, SetMediaDrmSessionClosedSession) {
  */
 TEST_F(DrmHalClearkeyPluginTest, SetMediaDrmSessionEmptySession) {
     SessionId sessionId;
-    EXPECT_TRUE(cryptoPlugin->setMediaDrmSession(sessionId).isOk());
+    Status status = cryptoPlugin->setMediaDrmSession(sessionId);
+    EXPECT_EQ(Status::OK, status);
 }
 
 /**
@@ -1124,17 +1131,18 @@ TEST_F(DrmHalClearkeyDecryptTest, TestQueryKeyStatus) {
 TEST_F(DrmHalClearkeyDecryptTest, ClearSegmentTest) {
     vector<uint8_t> iv(AES_BLOCK_SIZE, 0);
     const Pattern noPattern = {0, 0};
-    const uint32_t kByteCount = 256;
     const vector<SubSample> subSamples = {
-        {.numBytesOfClearData = kByteCount,
+        {.numBytesOfClearData = k256SubSampleByteCount,
          .numBytesOfEncryptedData = 0}};
     auto sessionId = openSession();
     loadKeys(sessionId);
-    EXPECT_TRUE(cryptoPlugin->setMediaDrmSession(sessionId).isOk());
+
+    Status status = cryptoPlugin->setMediaDrmSession(sessionId);
+    EXPECT_EQ(Status::OK, status);
 
     uint32_t byteCount = decrypt(Mode::UNENCRYPTED, &iv[0], subSamples,
             noPattern, Status::OK);
-    EXPECT_EQ(kByteCount, byteCount);
+    EXPECT_EQ(k256SubSampleByteCount, byteCount);
 
     closeSession(sessionId);
 }
@@ -1146,18 +1154,18 @@ TEST_F(DrmHalClearkeyDecryptTest, ClearSegmentTest) {
 TEST_F(DrmHalClearkeyDecryptTest, EncryptedAesCtrSegmentTest) {
     vector<uint8_t> iv(AES_BLOCK_SIZE, 0);
     const Pattern noPattern = {0, 0};
-    const uint32_t kClearBytes = 512;
-    const uint32_t kEncryptedBytes = 512;
     const vector<SubSample> subSamples = {
-        {.numBytesOfClearData = kClearBytes,
-         .numBytesOfEncryptedData = kEncryptedBytes}};
+        {.numBytesOfClearData = k512SubSampleClearBytes,
+         .numBytesOfEncryptedData = k512SubSampleEncryptedBytes}};
     auto sessionId = openSession();
     loadKeys(sessionId);
-    EXPECT_TRUE(cryptoPlugin->setMediaDrmSession(sessionId).isOk());
+
+    Status status = cryptoPlugin->setMediaDrmSession(sessionId);
+    EXPECT_EQ(Status::OK, status);
 
     uint32_t byteCount = decrypt(Mode::AES_CTR, &iv[0], subSamples,
             noPattern, Status::OK);
-    EXPECT_EQ(kClearBytes + kEncryptedBytes, byteCount);
+    EXPECT_EQ(k512SubSampleClearBytes + k512SubSampleEncryptedBytes, byteCount);
 
     closeSession(sessionId);
 }
@@ -1169,10 +1177,12 @@ TEST_F(DrmHalClearkeyDecryptTest, EncryptedAesCtrSegmentTestNoKeys) {
     vector<uint8_t> iv(AES_BLOCK_SIZE, 0);
     const Pattern noPattern = {0, 0};
     const vector<SubSample> subSamples = {
-        {.numBytesOfClearData = 256,
-         .numBytesOfEncryptedData = 256}};
+        {.numBytesOfClearData = k256SubSampleByteCount,
+         .numBytesOfEncryptedData = k256SubSampleByteCount}};
     auto sessionId = openSession();
-    EXPECT_TRUE(cryptoPlugin->setMediaDrmSession(sessionId).isOk());
+
+    Status status = cryptoPlugin->setMediaDrmSession(sessionId);
+    EXPECT_EQ(Status::OK, status);
 
     uint32_t byteCount = decrypt(Mode::AES_CTR, &iv[0], subSamples,
             noPattern, Status::ERROR_DRM_NO_LICENSE);
@@ -1197,9 +1207,9 @@ void DrmHalClearkeyDecryptTest::decryptWithInvalidKeys(
             EXPECT_EQ(Status::OK, status);
             EXPECT_EQ(0u, myKeySetId.size());
         });
-    EXPECT_OK(res);
+    ASSERT_OK(res);
 
-    EXPECT_TRUE(cryptoPlugin->setMediaDrmSession(sessionId).isOk());
+    ASSERT_TRUE(cryptoPlugin->setMediaDrmSession(sessionId).isOk());
 
     uint32_t byteCount = decrypt(Mode::AES_CTR, &iv[0], subSamples,
             noPattern, Status::ERROR_DRM_NO_LICENSE);
@@ -1214,11 +1224,9 @@ void DrmHalClearkeyDecryptTest::decryptWithInvalidKeys(
 TEST_F(DrmHalClearkeyDecryptTest, DecryptWithEmptyKey) {
     vector<uint8_t> iv(AES_BLOCK_SIZE, 0);
     const Pattern noPattern = {0, 0};
-    const uint32_t kClearBytes = 512;
-    const uint32_t kEncryptedBytes = 512;
     const vector<SubSample> subSamples = {
-        {.numBytesOfClearData = kClearBytes,
-         .numBytesOfEncryptedData = kEncryptedBytes}};
+        {.numBytesOfClearData = k512SubSampleClearBytes,
+         .numBytesOfEncryptedData = k512SubSampleEncryptedBytes}};
 
     // base 64 encoded JSON response string, must not contain padding character '='
     const hidl_string emptyKeyResponse =
@@ -1251,11 +1259,9 @@ TEST_F(DrmHalClearkeyDecryptTest, DecryptWithEmptyKey) {
 TEST_F(DrmHalClearkeyDecryptTest, DecryptWithKeyTooLong) {
     vector<uint8_t> iv(AES_BLOCK_SIZE, 0);
     const Pattern noPattern = {0, 0};
-    const uint32_t kClearBytes = 512;
-    const uint32_t kEncryptedBytes = 512;
     const vector<SubSample> subSamples = {
-        {.numBytesOfClearData = kClearBytes,
-         .numBytesOfEncryptedData = kEncryptedBytes}};
+        {.numBytesOfClearData = k512SubSampleClearBytes,
+         .numBytesOfEncryptedData = k512SubSampleEncryptedBytes}};
 
     // base 64 encoded JSON response string, must not contain padding character '='
     const hidl_string keyTooLongResponse =
