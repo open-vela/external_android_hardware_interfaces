@@ -24,15 +24,16 @@
 #include <inttypes.h>
 #include <unistd.h>
 
+#include <gtest/gtest.h>
 #include <hardware/hw_auth_token.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
 
 #include <android/log.h>
 #include <android/hardware/gatekeeper/1.0/IGatekeeper.h>
 #include <android/hardware/gatekeeper/1.0/types.h>
 
 #include <log/log.h>
-
-#include <VtsHalHidlTargetTestBase.h>
 
 using ::android::hardware::hidl_string;
 using ::android::hardware::hidl_vec;
@@ -78,7 +79,7 @@ static const hw_auth_token_t *toAuthToken(GatekeeperResponse &rsp) {
 }
 
 // The main test class for Gatekeeper HIDL HAL.
-class GatekeeperHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+class GatekeeperHidlTest : public ::testing::TestWithParam<std::string> {
  protected:
   void setUid(uint32_t uid) { uid_ = uid; }
 
@@ -189,7 +190,7 @@ class GatekeeperHidlTest : public ::testing::VtsHalHidlTargetTestBase {
   GatekeeperHidlTest() : uid_(0) {}
   virtual void SetUp() override {
     GatekeeperResponse rsp;
-    gatekeeper_ = ::testing::VtsHalHidlTargetTestBase::getService<IGatekeeper>();
+    gatekeeper_ = IGatekeeper::getService(GetParam());
     ASSERT_NE(nullptr, gatekeeper_.get());
     doDeleteAllUsers(rsp);
   }
@@ -203,7 +204,7 @@ class GatekeeperHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 /**
  * Ensure we can enroll new password
  */
-TEST_F(GatekeeperHidlTest, EnrollSuccess) {
+TEST_P(GatekeeperHidlTest, EnrollSuccess) {
   hidl_vec<uint8_t> password;
   GatekeeperResponse rsp;
   ALOGI("Testing Enroll (expected success)");
@@ -215,7 +216,7 @@ TEST_F(GatekeeperHidlTest, EnrollSuccess) {
 /**
  * Ensure we can not enroll empty password
  */
-TEST_F(GatekeeperHidlTest, EnrollNoPassword) {
+TEST_P(GatekeeperHidlTest, EnrollNoPassword) {
   hidl_vec<uint8_t> password;
   GatekeeperResponse rsp;
   ALOGI("Testing Enroll (expected failure)");
@@ -226,7 +227,7 @@ TEST_F(GatekeeperHidlTest, EnrollNoPassword) {
 /**
  * Ensure we can successfully verify previously enrolled password
  */
-TEST_F(GatekeeperHidlTest, VerifySuccess) {
+TEST_P(GatekeeperHidlTest, VerifySuccess) {
   GatekeeperResponse enrollRsp;
   GatekeeperResponse verifyRsp;
   hidl_vec<uint8_t> password;
@@ -242,7 +243,7 @@ TEST_F(GatekeeperHidlTest, VerifySuccess) {
  * Ensure we can securely update password (keep the same
  * secure user_id) if we prove we know old password
  */
-TEST_F(GatekeeperHidlTest, TrustedReenroll) {
+TEST_P(GatekeeperHidlTest, TrustedReenroll) {
   GatekeeperResponse enrollRsp;
   GatekeeperRequest reenrollReq;
   GatekeeperResponse reenrollRsp;
@@ -281,7 +282,7 @@ TEST_F(GatekeeperHidlTest, TrustedReenroll) {
  * Ensure we can update password (and get new
  * secure user_id) if we don't know old password
  */
-TEST_F(GatekeeperHidlTest, UntrustedReenroll) {
+TEST_P(GatekeeperHidlTest, UntrustedReenroll) {
   GatekeeperResponse enrollRsp;
   GatekeeperResponse reenrollRsp;
   GatekeeperResponse verifyRsp;
@@ -311,7 +312,7 @@ TEST_F(GatekeeperHidlTest, UntrustedReenroll) {
 /**
  * Ensure we dont get successful verify with invalid data
  */
-TEST_F(GatekeeperHidlTest, VerifyNoData) {
+TEST_P(GatekeeperHidlTest, VerifyNoData) {
   hidl_vec<uint8_t> password;
   hidl_vec<uint8_t> passwordHandle;
   GatekeeperResponse verifyRsp;
@@ -325,7 +326,7 @@ TEST_F(GatekeeperHidlTest, VerifyNoData) {
 /**
  * Ensure we can not verify password after we enrolled it and then deleted user
  */
-TEST_F(GatekeeperHidlTest, DeleteUserTest) {
+TEST_P(GatekeeperHidlTest, DeleteUserTest) {
   hidl_vec<uint8_t> password;
   GatekeeperResponse enrollRsp;
   GatekeeperResponse verifyRsp;
@@ -352,7 +353,7 @@ TEST_F(GatekeeperHidlTest, DeleteUserTest) {
 /**
  * Ensure we can not delete a user that does not exist
  */
-TEST_F(GatekeeperHidlTest, DeleteInvalidUserTest) {
+TEST_P(GatekeeperHidlTest, DeleteInvalidUserTest) {
   hidl_vec<uint8_t> password;
   GatekeeperResponse enrollRsp;
   GatekeeperResponse verifyRsp;
@@ -384,7 +385,7 @@ TEST_F(GatekeeperHidlTest, DeleteInvalidUserTest) {
  * Ensure we can not verify passwords after we enrolled them and then deleted
  * all users
  */
-TEST_F(GatekeeperHidlTest, DeleteAllUsersTest) {
+TEST_P(GatekeeperHidlTest, DeleteAllUsersTest) {
   struct UserData {
     uint32_t userId;
     hidl_vec<uint8_t> password;
@@ -432,9 +433,8 @@ TEST_F(GatekeeperHidlTest, DeleteAllUsersTest) {
   ALOGI("Testing deleteAllUsers done: rsp=%" PRIi32, delAllRsp.code);
 }
 
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  int status = RUN_ALL_TESTS();
-  ALOGI("Test result = %d", status);
-  return status;
-}
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GatekeeperHidlTest);
+INSTANTIATE_TEST_SUITE_P(
+        PerInstance, GatekeeperHidlTest,
+        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IGatekeeper::descriptor)),
+        android::hardware::PrintInstanceNameToString);

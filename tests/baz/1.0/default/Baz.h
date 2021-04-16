@@ -27,6 +27,7 @@ using ::android::sp;
 
 struct Baz : public IBaz {
     // Methods from ::android::hardware::tests::baz::V1_0::IBase follow.
+    Return<bool> isJava() override;
     Return<void> someBaseMethod() override;
     Return<bool> someBoolMethod(bool x) override;
     Return<void> someBoolArrayMethod(const hidl_array<bool, 3>& x,
@@ -53,6 +54,22 @@ struct Baz : public IBaz {
                            uint8_t third,
                            takeAMask_cb _hidl_cb) override;
 
+    Return<void> testArrays(
+            const IBase::LotsOfPrimitiveArrays &in,
+            testArrays_cb _hidl_cb) override;
+
+    Return<void> testByteVecs(
+            const hidl_vec<IBase::ByteOneDim> &in,
+            testByteVecs_cb _hidl_cb) override;
+
+    Return<void> testBooleanVecs(
+            const hidl_vec<IBase::BooleanOneDim> &in,
+            testBooleanVecs_cb _hidl_cb) override;
+
+    Return<void> testDoubleVecs(
+            const hidl_vec<IBase::DoubleOneDim> &in,
+            testDoubleVecs_cb _hidl_cb) override;
+
     // Methods from ::android::hardware::tests::baz::V1_0::IBaz follow.
     Return<void> doThis(float param) override;
     Return<int32_t> doThatAndReturnSomething(int64_t param) override;
@@ -70,11 +87,15 @@ struct Baz : public IBaz {
                                  haveSomeStrings_cb _hidl_cb) override;
     Return<void> haveAStringVec(const hidl_vec<hidl_string>& vector,
                                 haveAStringVec_cb _hidl_cb) override;
+    Return<void> repeatBitfieldVec(const hidl_vec<uint8_t>& vector,
+                                   repeatBitfieldVec_cb _hidl_cb) override;
     Return<void> returnABunchOfStrings(returnABunchOfStrings_cb _hidl_cb) override;
     Return<uint8_t> returnABitField() override;
     Return<uint32_t> size(uint32_t size) override;
     Return<void> getNestedStructs(getNestedStructs_cb _hidl_cb) override;
 
+    Return<void> haveSomeStructWithInterface(const StructWithInterface& swi,
+                                             haveSomeStructWithInterface_cb _hidl_cb) override;
     // Methods from ::android::hidl::base::V1_0::IBase follow.
  private:
     sp<IBazCallback> mStoredCallback;
