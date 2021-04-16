@@ -15,10 +15,12 @@
  */
 
 #define LOG_TAG "vr_hidl_hal_test"
-#include <VtsHalHidlTargetTestBase.h>
 #include <android-base/logging.h>
 #include <android/hardware/vr/1.0/IVr.h>
+#include <gtest/gtest.h>
 #include <hardware/vr.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
 #include <log/log.h>
 
 using ::android::hardware::vr::V1_0::IVr;
@@ -27,10 +29,10 @@ using ::android::hardware::Void;
 using ::android::sp;
 
 // The main test class for VR HIDL HAL.
-class VrHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+class VrHidlTest : public ::testing::TestWithParam<std::string> {
  public:
   void SetUp() override {
-    vr = ::testing::VtsHalHidlTargetTestBase::getService<IVr>();
+    vr = IVr::getService(GetParam());
     ASSERT_NE(vr, nullptr);
   }
 
@@ -39,30 +41,20 @@ class VrHidlTest : public ::testing::VtsHalHidlTargetTestBase {
   sp<IVr> vr;
 };
 
-
-// A class for test environment setup (kept since this file is a template).
-class VrHidlEnvironment : public ::testing::Environment {
- public:
-  void SetUp() {}
-  void TearDown() {}
-
- private:
-};
-
 // Sanity check that Vr::init does not crash.
-TEST_F(VrHidlTest, Init) {
+TEST_P(VrHidlTest, Init) {
   EXPECT_TRUE(vr->init().isOk());
 }
 
 // Sanity check Vr::setVrMode is able to enable and disable VR mode.
-TEST_F(VrHidlTest, SetVrMode) {
+TEST_P(VrHidlTest, SetVrMode) {
   EXPECT_TRUE(vr->init().isOk());
   EXPECT_TRUE(vr->setVrMode(true).isOk());
   EXPECT_TRUE(vr->setVrMode(false).isOk());
 }
 
 // Sanity check that Vr::init and Vr::setVrMode can be used in any order.
-TEST_F(VrHidlTest, ReInit) {
+TEST_P(VrHidlTest, ReInit) {
   EXPECT_TRUE(vr->init().isOk());
   EXPECT_TRUE(vr->setVrMode(true).isOk());
   EXPECT_TRUE(vr->init().isOk());
@@ -71,10 +63,9 @@ TEST_F(VrHidlTest, ReInit) {
   EXPECT_TRUE(vr->setVrMode(false).isOk());
 }
 
-int main(int argc, char **argv) {
-  ::testing::AddGlobalTestEnvironment(new VrHidlEnvironment);
-  ::testing::InitGoogleTest(&argc, argv);
-  int status = RUN_ALL_TESTS();
-  ALOGI("Test result = %d", status);
-  return status;
-}
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(VrHidlTest);
+INSTANTIATE_TEST_SUITE_P(
+        PerInstance, VrHidlTest,
+        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IVr::descriptor)),
+        android::hardware::PrintInstanceNameToString);
+

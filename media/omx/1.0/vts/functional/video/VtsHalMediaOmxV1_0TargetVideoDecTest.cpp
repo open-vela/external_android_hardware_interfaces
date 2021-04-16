@@ -28,6 +28,8 @@
 #include <android/hidl/allocator/1.0/IAllocator.h>
 #include <android/hidl/memory/1.0/IMapper.h>
 #include <android/hidl/memory/1.0/IMemory.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
 
 using ::android::hardware::media::omx::V1_0::IOmx;
 using ::android::hardware::media::omx::V1_0::IOmxObserver;
@@ -44,131 +46,54 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::hidl_string;
 using ::android::sp;
 
-#include <VtsHalHidlTargetTestBase.h>
 #include <getopt.h>
 #include <media/hardware/HardwareAPI.h>
-#include <media_hidl_test_common.h>
 #include <media_video_hidl_test_common.h>
 #include <fstream>
 
-// A class for test environment setup
-class ComponentTestEnvironment : public ::testing::Environment {
-   public:
-    virtual void SetUp() {}
-    virtual void TearDown() {}
-
-    ComponentTestEnvironment() : instance("default"), res("/data/local/tmp/media/") {}
-
-    void setInstance(const char* _instance) { instance = _instance; }
-
-    void setComponent(const char* _component) { component = _component; }
-
-    void setRole(const char* _role) { role = _role; }
-
-    void setRes(const char* _res) { res = _res; }
-
-    const hidl_string getInstance() const { return instance; }
-
-    const hidl_string getComponent() const { return component; }
-
-    const hidl_string getRole() const { return role; }
-
-    const hidl_string getRes() const { return res; }
-
-    int initFromOptions(int argc, char** argv) {
-        static struct option options[] = {
-            {"instance", required_argument, 0, 'I'},
-            {"component", required_argument, 0, 'C'},
-            {"role", required_argument, 0, 'R'},
-            {"res", required_argument, 0, 'P'},
-            {0, 0, 0, 0}};
-
-        while (true) {
-            int index = 0;
-            int c = getopt_long(argc, argv, "I:C:R:P:", options, &index);
-            if (c == -1) {
-                break;
-            }
-
-            switch (c) {
-                case 'I':
-                    setInstance(optarg);
-                    break;
-                case 'C':
-                    setComponent(optarg);
-                    break;
-                case 'R':
-                    setRole(optarg);
-                    break;
-                case 'P':
-                    setRes(optarg);
-                    break;
-                case '?':
-                    break;
-            }
-        }
-
-        if (optind < argc) {
-            fprintf(stderr,
-                    "unrecognized option: %s\n\n"
-                    "usage: %s <gtest options> <test options>\n\n"
-                    "test options are:\n\n"
-                    "-I, --instance: HAL instance to test\n"
-                    "-C, --component: OMX component to test\n"
-                    "-R, --role: OMX component Role\n"
-                    "-P, --res: Resource files directory location\n",
-                    argv[optind ?: 1], argv[0]);
-            return 2;
-        }
-        return 0;
-    }
-
-   private:
-    hidl_string instance;
-    hidl_string component;
-    hidl_string role;
-    hidl_string res;
-};
-
-static ComponentTestEnvironment* gEnv = nullptr;
+// Resource directory
+std::string sResourceDir = "";
 
 // video decoder test fixture class
-class VideoDecHidlTest : public ::testing::VtsHalHidlTargetTestBase {
-   private:
-    typedef ::testing::VtsHalHidlTargetTestBase Super;
-   public:
-    ::std::string getTestCaseInfo() const override {
-        return ::std::string() +
-                "Component: " + gEnv->getComponent().c_str() + " | " +
-                "Role: " + gEnv->getRole().c_str() + " | " +
-                "Instance: " + gEnv->getInstance().c_str() + " | " +
-                "Res: " + gEnv->getRes().c_str();
+class VideoDecHidlTest
+    : public ::testing::TestWithParam<std::tuple<std::string, std::string, std::string>> {
+  public:
+    ::std::string getTestCaseInfo() const {
+        return ::std::string() + "Component: " + component_ + " | " + "Role: " + role_ + " | " +
+               "Instance: " + instance_ + " | " + "Res: " + sResourceDir;
     }
 
     virtual void SetUp() override {
-        Super::SetUp();
+        instance_ = std::get<0>(GetParam());
+        component_ = std::get<1>(GetParam());
+        role_ = std::get<2>(GetParam());
+        ASSERT_NE(sResourceDir.empty(), true);
+
         disableTest = false;
         android::hardware::media::omx::V1_0::Status status;
-        omx = Super::getService<IOmx>(gEnv->getInstance());
+        omx = IOmx::getService(instance_);
         ASSERT_NE(omx, nullptr);
         observer =
             new CodecObserver([this](Message msg, const BufferInfo* buffer) {
                 handleMessage(msg, buffer);
             });
         ASSERT_NE(observer, nullptr);
-        if (strncmp(gEnv->getComponent().c_str(), "OMX.", 4) != 0)
+        if (component_.find("OMX.") != 0) disableTest = true;
+        EXPECT_TRUE(omx->allocateNode(component_, observer,
+                                      [&](android::hardware::media::omx::V1_0::Status _s,
+                                          sp<IOmxNode> const& _nl) {
+                                          status = _s;
+                                          this->omxNode = _nl;
+                                      })
+                            .isOk());
+        if (status == android::hardware::media::omx::V1_0::Status::NAME_NOT_FOUND) {
             disableTest = true;
-        EXPECT_TRUE(omx->allocateNode(
-                           gEnv->getComponent(), observer,
-                           [&](android::hardware::media::omx::V1_0::Status _s,
-                               sp<IOmxNode> const& _nl) {
-                               status = _s;
-                               this->omxNode = _nl;
-                           })
-                        .isOk());
+            std::cout << "[   WARN   ] Test Disabled, component not present\n";
+            return;
+        }
         ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
         ASSERT_NE(omxNode, nullptr);
-        ASSERT_NE(gEnv->getRole().empty(), true) << "Invalid Component Role";
+        ASSERT_NE(role_.empty(), true) << "Invalid Component Role";
         struct StringToName {
             const char* Name;
             standardComp CompName;
@@ -181,7 +106,7 @@ class VideoDecHidlTest : public ::testing::VtsHalHidlTargetTestBase {
             sizeof(kStringToName) / sizeof(kStringToName[0]);
         const char* pch;
         char substring[OMX_MAX_STRINGNAME_SIZE];
-        strcpy(substring, gEnv->getRole().c_str());
+        strcpy(substring, role_.c_str());
         pch = strchr(substring, '.');
         ASSERT_NE(pch, nullptr);
         compName = unknown_comp;
@@ -220,14 +145,21 @@ class VideoDecHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         isSecure = false;
         portSettingsChange = false;
         size_t suffixLen = strlen(".secure");
-        if (strlen(gEnv->getComponent().c_str()) >= suffixLen) {
-            isSecure =
-                !strcmp(gEnv->getComponent().c_str() +
-                            strlen(gEnv->getComponent().c_str()) - suffixLen,
-                        ".secure");
+        if (component_.rfind(".secure") == component_.length() - suffixLen) {
+            isSecure = true;
         }
         if (isSecure) disableTest = true;
+        omxNode->configureVideoTunnelMode(
+            1, OMX_TRUE, 0,
+            [&](android::hardware::media::omx::V1_0::Status _s,
+                const ::android::hardware::hidl_handle& sidebandHandle) {
+                (void)sidebandHandle;
+                if (_s == android::hardware::media::omx::V1_0::Status::OK)
+                    this->disableTest = true;
+            });
         if (disableTest) std::cout << "[   WARN   ] Test Disabled \n";
+        // NOTES: secure and tunneled components are not covered in these tests.
+        // we are disabling tests for them
     }
 
     virtual void TearDown() override {
@@ -239,7 +171,6 @@ class VideoDecHidlTest : public ::testing::VtsHalHidlTargetTestBase {
             EXPECT_TRUE((omxNode->freeNode()).isOk());
             omxNode = nullptr;
         }
-        Super::TearDown();
     }
 
     // callback function to process messages received by onMessages() from IL
@@ -318,6 +249,10 @@ class VideoDecHidlTest : public ::testing::VtsHalHidlTargetTestBase {
         vp9,
         unknown_comp,
     };
+
+    std::string component_;
+    std::string role_;
+    std::string instance_;
 
     sp<IOmx> omx;
     sp<CodecObserver> observer;
@@ -516,6 +451,7 @@ void portReconfiguration(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                     status,
                     android::hardware::media::omx::V1_0::Status::TIMED_OUT);
 
+                ASSERT_NO_FATAL_FAILURE(freePortBuffers(oBuffer, oPortMode, true));
                 ASSERT_NO_FATAL_FAILURE(allocatePortBuffers(
                     omxNode, oBuffer, kPortIndexOutput, oPortMode, true));
                 status = observer->dequeueMessage(&msg, DEFAULT_TIMEOUT,
@@ -783,23 +719,23 @@ void getDefaultColorFormat(sp<IOmxNode> omxNode, OMX_U32 kPortIndexOutput,
 }
 
 // set component role
-TEST_F(VideoDecHidlTest, SetRole) {
+TEST_P(VideoDecHidlTest, SetRole) {
     description("Test Set Component Role");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
 }
 
 // port format enumeration
-TEST_F(VideoDecHidlTest, EnumeratePortFormat) {
+TEST_P(VideoDecHidlTest, EnumeratePortFormat) {
     description("Test Component on Mandatory Port Parameters (Port Format)");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
     OMX_COLOR_FORMATTYPE eColorFormat = OMX_COLOR_FormatYUV420Planar;
     OMX_U32 xFramerate = (24U << 16);
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -819,12 +755,12 @@ TEST_F(VideoDecHidlTest, EnumeratePortFormat) {
 
 // test port settings reconfiguration, elementary stream decode and timestamp
 // deviation
-TEST_F(VideoDecHidlTest, DecodeTest) {
+TEST_P(VideoDecHidlTest, DecodeTest) {
     description("Tests Port Reconfiguration, Decode and timestamp deviation");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -834,8 +770,8 @@ TEST_F(VideoDecHidlTest, DecodeTest) {
         kPortIndexOutput = kPortIndexInput + 1;
     }
     char mURL[512], info[512];
-    strcpy(mURL, gEnv->getRes().c_str());
-    strcpy(info, gEnv->getRes().c_str());
+    strcpy(mURL, sResourceDir.c_str());
+    strcpy(info, sResourceDir.c_str());
     GetURLForComponent(compName, mURL, info);
 
     std::ifstream eleStream, eleInfo;
@@ -918,13 +854,13 @@ TEST_F(VideoDecHidlTest, DecodeTest) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
-                                                    &oBuffer, kPortIndexInput,
-                                                    kPortIndexOutput));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
+                                                    kPortIndexInput, kPortIndexOutput, portMode,
+                                                    true));
 }
 
 // Test for adaptive playback support
-TEST_F(VideoDecHidlTest, AdaptivePlaybackTest) {
+TEST_P(VideoDecHidlTest, AdaptivePlaybackTest) {
     description("Tests for Adaptive Playback support");
     if (disableTest) return;
     if (!(compName == avc || compName == hevc || compName == vp8 ||
@@ -932,7 +868,7 @@ TEST_F(VideoDecHidlTest, AdaptivePlaybackTest) {
         return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -959,7 +895,7 @@ TEST_F(VideoDecHidlTest, AdaptivePlaybackTest) {
     uint32_t adaptiveMaxHeight = 240;
     status = omxNode->prepareForAdaptivePlayback(
         kPortIndexOutput, true, adaptiveMaxWidth, adaptiveMaxHeight);
-    if (strncmp(gEnv->getComponent().c_str(), "OMX.google.", 11) == 0) {
+    if (component_.find("OMX.google.") == 0) {
         // SoftOMX Decoders donot support graphic buffer modes. So for them
         // support for adaptive play back is mandatory in Byte Buffer mode
         ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
@@ -1008,8 +944,8 @@ TEST_F(VideoDecHidlTest, AdaptivePlaybackTest) {
         std::ifstream eleStream, eleInfo;
         char mURL[512], info[512];
         android::Vector<FrameData> Info;
-        strcpy(mURL, gEnv->getRes().c_str());
-        strcpy(info, gEnv->getRes().c_str());
+        strcpy(mURL, sResourceDir.c_str());
+        strcpy(info, sResourceDir.c_str());
         GetURLForComponent(compName, mURL, info, i % STREAM_COUNT);
         eleInfo.open(info);
         ASSERT_EQ(eleInfo.is_open(), true);
@@ -1066,18 +1002,18 @@ TEST_F(VideoDecHidlTest, AdaptivePlaybackTest) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
-                                                    &oBuffer, kPortIndexInput,
-                                                    kPortIndexOutput));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
+                                                    kPortIndexInput, kPortIndexOutput, portMode,
+                                                    true));
 }
 
 // end of sequence test
-TEST_F(VideoDecHidlTest, EOSTest_M) {
+TEST_P(VideoDecHidlTest, EOSTest_M) {
     description("Test End of stream monkeying");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1132,18 +1068,18 @@ TEST_F(VideoDecHidlTest, EOSTest_M) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
-                                                    &oBuffer, kPortIndexInput,
-                                                    kPortIndexOutput));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
+                                                    kPortIndexInput, kPortIndexOutput, portMode,
+                                                    true));
 }
 
 // end of sequence test
-TEST_F(VideoDecHidlTest, ThumbnailTest) {
+TEST_P(VideoDecHidlTest, ThumbnailTest) {
     description("Test Request for thumbnail");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1153,8 +1089,8 @@ TEST_F(VideoDecHidlTest, ThumbnailTest) {
         kPortIndexOutput = kPortIndexInput + 1;
     }
     char mURL[512], info[512];
-    strcpy(mURL, gEnv->getRes().c_str());
-    strcpy(info, gEnv->getRes().c_str());
+    strcpy(mURL, sResourceDir.c_str());
+    strcpy(info, sResourceDir.c_str());
     GetURLForComponent(compName, mURL, info);
 
     std::ifstream eleStream, eleInfo;
@@ -1253,18 +1189,18 @@ TEST_F(VideoDecHidlTest, ThumbnailTest) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
-                                                    &oBuffer, kPortIndexInput,
-                                                    kPortIndexOutput));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
+                                                    kPortIndexInput, kPortIndexOutput, portMode,
+                                                    true));
 }
 
 // end of sequence test
-TEST_F(VideoDecHidlTest, SimpleEOSTest) {
+TEST_P(VideoDecHidlTest, SimpleEOSTest) {
     description("Test End of stream");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1274,8 +1210,8 @@ TEST_F(VideoDecHidlTest, SimpleEOSTest) {
         kPortIndexOutput = kPortIndexInput + 1;
     }
     char mURL[512], info[512];
-    strcpy(mURL, gEnv->getRes().c_str());
-    strcpy(info, gEnv->getRes().c_str());
+    strcpy(mURL, sResourceDir.c_str());
+    strcpy(info, sResourceDir.c_str());
     GetURLForComponent(compName, mURL, info);
 
     std::ifstream eleStream, eleInfo;
@@ -1360,18 +1296,18 @@ TEST_F(VideoDecHidlTest, SimpleEOSTest) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
-                                                    &oBuffer, kPortIndexInput,
-                                                    kPortIndexOutput));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
+                                                    kPortIndexInput, kPortIndexOutput, portMode,
+                                                    true));
 }
 
 // test input/output port flush
-TEST_F(VideoDecHidlTest, FlushTest) {
+TEST_P(VideoDecHidlTest, FlushTest) {
     description("Test Flush");
     if (disableTest) return;
     android::hardware::media::omx::V1_0::Status status;
     uint32_t kPortIndexInput = 0, kPortIndexOutput = 1;
-    status = setRole(omxNode, gEnv->getRole().c_str());
+    status = setRole(omxNode, role_);
     ASSERT_EQ(status, ::android::hardware::media::omx::V1_0::Status::OK);
     OMX_PORT_PARAM_TYPE params;
     status = getParam(omxNode, OMX_IndexParamVideoInit, &params);
@@ -1381,8 +1317,8 @@ TEST_F(VideoDecHidlTest, FlushTest) {
         kPortIndexOutput = kPortIndexInput + 1;
     }
     char mURL[512], info[512];
-    strcpy(mURL, gEnv->getRes().c_str());
-    strcpy(info, gEnv->getRes().c_str());
+    strcpy(mURL, sResourceDir.c_str());
+    strcpy(info, sResourceDir.c_str());
     GetURLForComponent(compName, mURL, info);
 
     std::ifstream eleStream, eleInfo;
@@ -1479,19 +1415,27 @@ TEST_F(VideoDecHidlTest, FlushTest) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
-                                                    &oBuffer, kPortIndexInput,
-                                                    kPortIndexOutput));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
+                                                    kPortIndexInput, kPortIndexOutput, portMode,
+                                                    true));
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(VideoDecHidlTest);
+INSTANTIATE_TEST_SUITE_P(PerInstance, VideoDecHidlTest, testing::ValuesIn(kTestParameters),
+                         android::hardware::PrintInstanceTupleNameToString<>);
+
 int main(int argc, char** argv) {
-    gEnv = new ComponentTestEnvironment();
-    ::testing::AddGlobalTestEnvironment(gEnv);
+    kTestParameters = getTestParameters("video_decoder");
     ::testing::InitGoogleTest(&argc, argv);
-    int status = gEnv->initFromOptions(argc, argv);
-    if (status == 0) {
-        status = RUN_ALL_TESTS();
-        ALOGI("Test result = %d", status);
+
+    // Set the resource directory based on command line args.
+    // Test will fail to set up if the argument is not set.
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-P") == 0 && i < argc - 1) {
+            sResourceDir = argv[i + 1];
+            break;
+        }
     }
-    return status;
+
+    return RUN_ALL_TESTS();
 }

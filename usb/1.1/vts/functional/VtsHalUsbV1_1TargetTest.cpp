@@ -23,15 +23,17 @@
 #include <android/hardware/usb/1.1/types.h>
 
 #include <VtsHalHidlTargetCallbackBase.h>
-#include <VtsHalHidlTargetTestBase.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
 #include <log/log.h>
 #include <stdlib.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
 
+using ::android::hardware::usb::V1_1::IUsb;
 using ::android::hardware::usb::V1_1::IUsbCallback;
-using ::android::hardware::usb::V1_0::IUsb;
 using ::android::hardware::usb::V1_0::PortDataRole;
 using ::android::hardware::usb::V1_0::PortMode;
 using ::android::hardware::usb::V1_1::PortMode_1_1;
@@ -114,11 +116,11 @@ class UsbCallback : public ::testing::VtsHalHidlTargetCallbackBase<UsbClientCall
 };
 
 // The main test class for the USB hidl HAL
-class UsbHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+class UsbHidlTest : public ::testing::TestWithParam<std::string> {
    public:
     virtual void SetUp() override {
         ALOGI(__FUNCTION__);
-        usb = ::testing::VtsHalHidlTargetTestBase::getService<IUsb>();
+        usb = IUsb::getService(GetParam());
         ASSERT_NE(usb, nullptr);
 
         usb_cb_2 = new UsbCallback(2);
@@ -144,7 +146,7 @@ class UsbHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  * Callback oject is created and registered.
  * Check to see if the hidl transaction succeeded.
  */
-TEST_F(UsbHidlTest, setCallback) {
+TEST_P(UsbHidlTest, setCallback) {
     usb_cb_1 = new UsbCallback(1);
     ASSERT_NE(usb_cb_1, nullptr);
     Return<void> ret = usb->setCallback(usb_cb_1);
@@ -157,7 +159,7 @@ TEST_F(UsbHidlTest, setCallback) {
  * HAL service should call notifyPortStatusChange_1_1
  * instead of notifyPortStatusChange of V1_0 interface
  */
-TEST_F(UsbHidlTest, queryPortStatus) {
+TEST_P(UsbHidlTest, queryPortStatus) {
     Return<void> ret = usb->queryPortStatus();
     ASSERT_TRUE(ret.isOk());
     auto res = usb_cb_2->WaitForCallback(kCallbackNameNotifyPortStatusChange_1_1);
@@ -167,10 +169,8 @@ TEST_F(UsbHidlTest, queryPortStatus) {
     EXPECT_EQ(PortMode::NONE, res.args->usb_last_port_status.status.supportedModes);
     EXPECT_EQ(Status::SUCCESS, res.args->usb_last_status);
 }
-
-int main(int argc, char** argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    int status = RUN_ALL_TESTS();
-    ALOGI("Test result = %d", status);
-    return status;
-}
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(UsbHidlTest);
+INSTANTIATE_TEST_SUITE_P(
+        PerInstance, UsbHidlTest,
+        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IUsb::descriptor)),
+        android::hardware::PrintInstanceNameToString);

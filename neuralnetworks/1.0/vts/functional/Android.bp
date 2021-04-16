@@ -14,23 +14,89 @@
 // limitations under the License.
 //
 
-cc_test {
-    name: "VtsHalNeuralnetworksV1_0TargetTest",
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
+cc_defaults {
+    name: "neuralnetworks_vts_functional_defaults",
+    defaults: ["VtsHalTargetTestDefaults"],
+    arch: {
+        x86: {
+            cflags: [ "-D_Float16=__fp16",
+                      "-Xclang", "-fnative-half-type",
+                      "-Xclang", "-fallow-half-arguments-and-returns" ],
+        },
+        x86_64: {
+            cflags: [ "-D_Float16=__fp16",
+                      "-Xclang", "-fnative-half-type",
+                      "-Xclang", "-fallow-half-arguments-and-returns" ],
+        },
+    },
+}
+
+cc_library_static {
+    name: "VtsHalNeuralNetworksV1_0_utils",
     srcs: [
         "Callbacks.cpp",
-        "GeneratedTestHarness.cpp",
-        "Models.cpp",
-        "VtsHalNeuralnetworksV1_0TargetTest.cpp",
+        "Utils.cpp",
     ],
-    defaults: ["VtsHalTargetTestDefaults"],
+    defaults: ["neuralnetworks_vts_functional_defaults"],
+    export_include_dirs: ["include"],
+    shared_libs: [
+        "libfmq",
+        "libnativewindow",
+    ],
     static_libs: [
         "android.hardware.neuralnetworks@1.0",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
+        "libgmock",
         "libhidlmemory",
+        "libneuralnetworks_generated_test_harness",
+        "libneuralnetworks_utils",
     ],
     header_libs: [
-        "libneuralnetworks_generated_test_harness_headers",
-        "libneuralnetworks_generated_tests",
+        "libneuralnetworks_headers",
     ],
+}
+
+cc_test {
+    name: "VtsHalNeuralnetworksV1_0TargetTest",
+    defaults: ["neuralnetworks_vts_functional_defaults"],
+    srcs: [
+        "BasicTests.cpp",
+        "GeneratedTestHarness.cpp",
+        "TestAssertions.cpp",
+        "TestMain.cpp",
+        "ValidateModel.cpp",
+        "ValidateRequest.cpp",
+        "VtsHalNeuralnetworks.cpp",
+    ],
+    shared_libs: [
+        "libfmq",
+        "libnativewindow",
+    ],
+    static_libs: [
+        "android.hardware.neuralnetworks@1.0",
+        "android.hidl.allocator@1.0",
+        "android.hidl.memory@1.0",
+        "libgmock",
+        "libhidlmemory",
+        "libneuralnetworks_generated_test_harness",
+        "libneuralnetworks_utils",
+        "VtsHalNeuralNetworksV1_0_utils",
+    ],
+    whole_static_libs: [
+        "neuralnetworks_generated_V1_0_example",
+    ],
+    header_libs: [
+        "libneuralnetworks_headers",
+    ],
+    test_suites: ["general-tests", "vts"],
 }

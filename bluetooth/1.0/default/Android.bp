@@ -13,6 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
 cc_library_shared {
     name: "android.hardware.bluetooth@1.0-impl",
     defaults: ["hidl_defaults"],
@@ -29,7 +38,6 @@ cc_library_shared {
         "libcutils",
         "libhardware",
         "libhidlbase",
-        "libhidltransport",
         "liblog",
         "libutils",
     ],
@@ -94,6 +102,7 @@ cc_test {
         "android.hardware.bluetooth-hci",
         "libgmock",
     ],
+    test_suites: ["general-tests"],
 }
 
 cc_test_host {
@@ -102,13 +111,33 @@ cc_test_host {
     srcs: [
         "bluetooth_address.cc",
         "test/bluetooth_address_test.cc",
-        "test/properties.cc",
     ],
     local_include_dirs: [
         "test",
     ],
     shared_libs: [
         "libbase",
+        "libcutils",
         "liblog",
+    ],
+}
+
+cc_binary {
+    name: "android.hardware.bluetooth@1.0-service",
+    defaults: ["hidl_defaults"],
+    relative_install_path: "hw",
+    vendor: true,
+    init_rc: ["android.hardware.bluetooth@1.0-service.rc"],
+    srcs: ["service.cpp"],
+
+    shared_libs: [
+        "liblog",
+        "libcutils",
+        "libdl",
+        "libbase",
+        "libutils",
+        "libhardware",
+        "libhidlbase",
+        "android.hardware.bluetooth@1.0",
     ],
 }

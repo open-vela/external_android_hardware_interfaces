@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <android-base/logging.h>
 #include <radio_hidl_hal_utils_v1_0.h>
 
 using namespace ::android::hardware::radio::V1_0;
@@ -21,8 +22,9 @@ using namespace ::android::hardware::radio::V1_0;
 /*
  * Test IRadio.setGsmBroadcastConfig() for the response returned.
  */
-TEST_F(RadioHidlTest, setGsmBroadcastConfig) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, setGsmBroadcastConfig) {
+    LOG(DEBUG) << "setGsmBroadcastConfig";
+    serial = GetRandomSerialNumber();
 
     // Create GsmBroadcastSmsConfigInfo #1
     GsmBroadcastSmsConfigInfo gbSmsConfig1;
@@ -74,19 +76,20 @@ TEST_F(RadioHidlTest, setGsmBroadcastConfig) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckGeneralError() ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_STATE ||
-                    radioRsp->rspInfo.error == RadioError::NONE ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_MODEM_STATE);
+        ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
+                                     {RadioError::NONE, RadioError::INVALID_ARGUMENTS,
+                                      RadioError::INVALID_MODEM_STATE, RadioError::INVALID_STATE},
+                                     CHECK_GENERAL_ERROR));
     }
+    LOG(DEBUG) << "setGsmBroadcastConfig finished";
 }
 
 /*
  * Test IRadio.getGsmBroadcastConfig() for the response returned.
  */
-TEST_F(RadioHidlTest, getGsmBroadcastConfig) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, getGsmBroadcastConfig) {
+    LOG(DEBUG) << "getGsmBroadcastConfig";
+    serial = GetRandomSerialNumber();
 
     radio->getGsmBroadcastConfig(serial);
 
@@ -95,17 +98,20 @@ TEST_F(RadioHidlTest, getGsmBroadcastConfig) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckGeneralError() || radioRsp->rspInfo.error == RadioError::INVALID_STATE ||
-                    radioRsp->rspInfo.error == RadioError::NONE ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_MODEM_STATE);
+        ASSERT_TRUE(CheckAnyOfErrors(
+            radioRsp->rspInfo.error,
+            {RadioError::NONE, RadioError::INVALID_MODEM_STATE, RadioError::INVALID_STATE},
+            CHECK_GENERAL_ERROR));
     }
+    LOG(DEBUG) << "getGsmBroadcastConfig finished";
 }
 
 /*
  * Test IRadio.setCdmaBroadcastConfig() for the response returned.
  */
-TEST_F(RadioHidlTest, setCdmaBroadcastConfig) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, setCdmaBroadcastConfig) {
+    LOG(DEBUG) << "setCdmaBroadcastConfig";
+    serial = GetRandomSerialNumber();
 
     CdmaBroadcastSmsConfigInfo cbSmsConfig;
     cbSmsConfig.serviceCategory = 4096;
@@ -122,17 +128,19 @@ TEST_F(RadioHidlTest, setCdmaBroadcastConfig) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckGeneralError() ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
-                    radioRsp->rspInfo.error == RadioError::NONE);
+        ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
+                                     {RadioError::NONE, RadioError::INVALID_MODEM_STATE},
+                                     CHECK_GENERAL_ERROR));
     }
+    LOG(DEBUG) << "setCdmaBroadcastConfig finished";
 }
 
 /*
  * Test IRadio.getCdmaBroadcastConfig() for the response returned.
  */
-TEST_F(RadioHidlTest, getCdmaBroadcastConfig) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, getCdmaBroadcastConfig) {
+    LOG(DEBUG) << "getCdmaBroadcastConfig";
+    serial = GetRandomSerialNumber();
 
     radio->getCdmaBroadcastConfig(serial);
 
@@ -141,15 +149,18 @@ TEST_F(RadioHidlTest, getCdmaBroadcastConfig) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckGeneralError() || radioRsp->rspInfo.error == RadioError::NONE);
+        ASSERT_TRUE(
+            CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::NONE}, CHECK_GENERAL_ERROR));
     }
+    LOG(DEBUG) << "getCdmaBroadcastConfig finished";
 }
 
 /*
  * Test IRadio.setCdmaBroadcastActivation() for the response returned.
  */
-TEST_F(RadioHidlTest, setCdmaBroadcastActivation) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, setCdmaBroadcastActivation) {
+    LOG(DEBUG) << "setCdmaBroadcastActivation";
+    serial = GetRandomSerialNumber();
     bool activate = false;
 
     radio->setCdmaBroadcastActivation(serial, activate);
@@ -159,17 +170,19 @@ TEST_F(RadioHidlTest, setCdmaBroadcastActivation) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckGeneralError() ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
-                    radioRsp->rspInfo.error == RadioError::NONE);
+        ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
+                                     {RadioError::NONE, RadioError::INVALID_ARGUMENTS},
+                                     CHECK_GENERAL_ERROR));
     }
+    LOG(DEBUG) << "setCdmaBroadcastActivation finished";
 }
 
 /*
  * Test IRadio.setGsmBroadcastActivation() for the response returned.
  */
-TEST_F(RadioHidlTest, setGsmBroadcastActivation) {
-    int serial = GetRandomSerialNumber();
+TEST_P(RadioHidlTest, setGsmBroadcastActivation) {
+    LOG(DEBUG) << "setGsmBroadcastActivation";
+    serial = GetRandomSerialNumber();
     bool activate = false;
 
     radio->setGsmBroadcastActivation(serial, activate);
@@ -179,11 +192,11 @@ TEST_F(RadioHidlTest, setGsmBroadcastActivation) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     if (cardStatus.cardState == CardState::ABSENT) {
-        ASSERT_TRUE(CheckGeneralError() ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_ARGUMENTS ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_STATE ||
-                    radioRsp->rspInfo.error == RadioError::NONE ||
-                    radioRsp->rspInfo.error == RadioError::OPERATION_NOT_ALLOWED ||
-                    radioRsp->rspInfo.error == RadioError::INVALID_MODEM_STATE);
+        ASSERT_TRUE(CheckAnyOfErrors(
+            radioRsp->rspInfo.error,
+            {RadioError::NONE, RadioError::INVALID_ARGUMENTS, RadioError::INVALID_MODEM_STATE,
+             RadioError::INVALID_STATE, RadioError::OPERATION_NOT_ALLOWED},
+            CHECK_GENERAL_ERROR));
     }
+    LOG(DEBUG) << "setGsmBroadcastActivation finished";
 }

@@ -17,9 +17,11 @@
 #include <android/hardware/thermal/1.1/IThermal.h>
 #include <android/hardware/thermal/1.1/IThermalCallback.h>
 #include <android/hardware/thermal/1.0/types.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
 
 #include <VtsHalHidlTargetCallbackBase.h>
-#include <VtsHalHidlTargetTestBase.h>
 
 using ::android::hardware::thermal::V1_0::Temperature;
 using ::android::hardware::thermal::V1_0::TemperatureType;
@@ -63,10 +65,10 @@ class ThermalCallback
 };
 
 // The main test class for THERMAL HIDL HAL 1.1.
-class ThermalHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+class ThermalHidlTest : public testing::TestWithParam<std::string> {
    public:
     virtual void SetUp() override {
-        mThermal = ::testing::VtsHalHidlTargetTestBase::getService<IThermal>();
+        mThermal = IThermal::getService(GetParam());
         ASSERT_NE(mThermal, nullptr);
         mThermalCallback = new(std::nothrow) ThermalCallback();
         ASSERT_NE(mThermalCallback, nullptr);
@@ -88,7 +90,7 @@ class ThermalHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 // This just calls into and back from our local ThermalCallback impl.
 // Note: a real thermal throttling event from the Thermal HAL could be
 // inadvertently received here.
-TEST_F(ThermalHidlTest, NotifyThrottlingTest) {
+TEST_P(ThermalHidlTest, NotifyThrottlingTest) {
     auto ret = mThermalCallback->notifyThrottling(true, kThrottleTemp);
     ASSERT_TRUE(ret.isOk());
     auto res = mThermalCallback->WaitForCallback(kCallbackNameNotifyThrottling);
@@ -98,9 +100,8 @@ TEST_F(ThermalHidlTest, NotifyThrottlingTest) {
     EXPECT_EQ(kThrottleTemp, res.args->temperature);
 }
 
-int main(int argc, char** argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    int status = RUN_ALL_TESTS();
-    cout << "Test result = " << status << std::endl;
-    return status;
-}
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(ThermalHidlTest);
+INSTANTIATE_TEST_SUITE_P(
+        PerInstance, ThermalHidlTest,
+        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IThermal::descriptor)),
+        android::hardware::PrintInstanceNameToString);

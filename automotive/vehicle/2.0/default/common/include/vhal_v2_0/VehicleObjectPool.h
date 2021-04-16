@@ -21,6 +21,7 @@
 #include <deque>
 #include <map>
 #include <mutex>
+#include <memory>
 
 #include <android/hardware/automotive/vehicle/2.0/types.h>
 
@@ -152,7 +153,7 @@ private:
  *   VehiclePropValuePool pool;
  *   auto v = pool.obtain(VehiclePropertyType::INT32);
  *   v->propId = VehicleProperty::HVAC_FAN_SPEED;
- *   v->areaId = VehicleAreaZone::ROW_1_LEFT;
+ *   v->areaId = VehicleAreaSeat::ROW_1_LEFT;
  *   v->timestamp = elapsedRealtimeNano();
  *   v->value->int32Values[0] = 42;
  *
@@ -191,9 +192,8 @@ public:
     VehiclePropValuePool& operator=(VehiclePropValuePool&) = delete;
 private:
     bool isDisposable(VehiclePropertyType type, size_t vecSize) const {
-        return vecSize > mMaxRecyclableVectorSize ||
-               VehiclePropertyType::STRING == type ||
-               VehiclePropertyType::COMPLEX == type;
+        return vecSize > mMaxRecyclableVectorSize || VehiclePropertyType::STRING == type ||
+               VehiclePropertyType::MIXED == type;
     }
 
     RecyclableType obtainDisposable(VehiclePropertyType valueType,
@@ -206,7 +206,7 @@ private:
         InternalPool(VehiclePropertyType type, size_t vectorSize)
             : mPropType(type), mVectorSize(vectorSize) {}
 
-        RecyclableType obtain() {
+        RecyclableType obtain() override {
             return ObjectPool<VehiclePropValue>::obtain();
         }
     protected:

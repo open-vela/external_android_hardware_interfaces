@@ -21,7 +21,11 @@
 
 #include <android/hardware/boot/1.0/IBootControl.h>
 
-#include <VtsHalHidlTargetTestBase.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
+
+#include <unordered_set>
 
 using ::android::hardware::boot::V1_0::IBootControl;
 using ::android::hardware::boot::V1_0::CommandResult;
@@ -31,19 +35,20 @@ using ::android::hardware::hidl_string;
 using ::android::hardware::Return;
 using ::android::sp;
 using std::string;
+using std::unordered_set;
 using std::vector;
 
 // The main test class for the Boot HIDL HAL.
-class BootHidlTest : public ::testing::VtsHalHidlTargetTestBase {
- public:
-  virtual void SetUp() override {
-    boot = ::testing::VtsHalHidlTargetTestBase::getService<IBootControl>();
-    ASSERT_NE(boot, nullptr);
-  }
+class BootHidlTest : public ::testing::TestWithParam<std::string> {
+  public:
+    virtual void SetUp() override {
+        boot = IBootControl::getService(GetParam());
+        ASSERT_NE(boot, nullptr);
+    }
 
-  virtual void TearDown() override {}
+    virtual void TearDown() override {}
 
-  sp<IBootControl> boot;
+    sp<IBootControl> boot;
 };
 
 auto generate_callback(CommandResult *dest) {
@@ -51,117 +56,133 @@ auto generate_callback(CommandResult *dest) {
 }
 
 // Sanity check Boot::getNumberSlots().
-TEST_F(BootHidlTest, GetNumberSlots) {
-  uint32_t slots = boot->getNumberSlots();
-  EXPECT_LE((uint32_t)2, slots);
+TEST_P(BootHidlTest, GetNumberSlots) {
+    uint32_t slots = boot->getNumberSlots();
+    EXPECT_LE((uint32_t)2, slots);
 }
 
 // Sanity check Boot::getCurrentSlot().
-TEST_F(BootHidlTest, GetCurrentSlot) {
-  Slot curSlot = boot->getCurrentSlot();
-  uint32_t slots = boot->getNumberSlots();
-  EXPECT_LT(curSlot, slots);
+TEST_P(BootHidlTest, GetCurrentSlot) {
+    Slot curSlot = boot->getCurrentSlot();
+    uint32_t slots = boot->getNumberSlots();
+    EXPECT_LT(curSlot, slots);
 }
 
 // Sanity check Boot::markBootSuccessful().
-TEST_F(BootHidlTest, MarkBootSuccessful) {
-  CommandResult cr;
-  Return<void> result = boot->markBootSuccessful(generate_callback(&cr));
-  ASSERT_TRUE(result.isOk());
-  if (cr.success) {
-    Slot curSlot = boot->getCurrentSlot();
-    BoolResult ret = boot->isSlotMarkedSuccessful(curSlot);
-    EXPECT_EQ(BoolResult::TRUE, ret);
-  }
-}
-
-// Sanity check Boot::setActiveBootSlot() on good and bad inputs.
-TEST_F(BootHidlTest, SetActiveBootSlot) {
-  for (Slot s = 0; s < 2; s++) {
-    CommandResult cr;
-    Return<void> result = boot->setActiveBootSlot(s, generate_callback(&cr));
-    EXPECT_TRUE(result.isOk());
-  }
-  {
-    // Restore original flags to avoid problems on reboot
+TEST_P(BootHidlTest, MarkBootSuccessful) {
     CommandResult cr;
     Return<void> result = boot->markBootSuccessful(generate_callback(&cr));
-    EXPECT_TRUE(result.isOk());
-    EXPECT_TRUE(cr.success);
-  }
-  {
-    CommandResult cr;
-    uint32_t slots = boot->getNumberSlots();
-    Return<void> result =
-        boot->setActiveBootSlot(slots, generate_callback(&cr));
     ASSERT_TRUE(result.isOk());
-    EXPECT_EQ(false, cr.success);
-  }
+    if (cr.success) {
+        Slot curSlot = boot->getCurrentSlot();
+        BoolResult ret = boot->isSlotMarkedSuccessful(curSlot);
+        EXPECT_EQ(BoolResult::TRUE, ret);
+    }
 }
 
-// Sanity check Boot::setSlotAsUnbootable() on good and bad inputs.
-TEST_F(BootHidlTest, SetSlotAsUnbootable) {
-  {
-    CommandResult cr;
+TEST_P(BootHidlTest, SetActiveBootSlot) {
     Slot curSlot = boot->getCurrentSlot();
     Slot otherSlot = curSlot ? 0 : 1;
-    Return<void> result =
-        boot->setSlotAsUnbootable(otherSlot, generate_callback(&cr));
-    EXPECT_TRUE(result.isOk());
-    if (cr.success) {
-      EXPECT_EQ(BoolResult::FALSE, boot->isSlotBootable(otherSlot));
+    auto otherBootable = boot->isSlotBootable(otherSlot);
 
-      // Restore original flags to avoid problems on reboot
-      result = boot->setActiveBootSlot(otherSlot, generate_callback(&cr));
-      EXPECT_TRUE(result.isOk());
-      EXPECT_TRUE(cr.success);
-      result = boot->setActiveBootSlot(curSlot, generate_callback(&cr));
-      EXPECT_TRUE(result.isOk());
-      EXPECT_TRUE(cr.success);
-      result = boot->markBootSuccessful(generate_callback(&cr));
-      EXPECT_TRUE(result.isOk());
-      EXPECT_TRUE(cr.success);
+    for (Slot s = 0; s < 2; s++) {
+        CommandResult cr;
+        Return<void> result = boot->setActiveBootSlot(s, generate_callback(&cr));
+        EXPECT_TRUE(result.isOk());
     }
-  }
-  {
-    CommandResult cr;
-    uint32_t slots = boot->getNumberSlots();
-    Return<void> result =
-        boot->setSlotAsUnbootable(slots, generate_callback(&cr));
-    EXPECT_TRUE(result.isOk());
-    EXPECT_EQ(false, cr.success);
-  }
+    {
+        // Restore original flags to avoid problems on reboot
+        CommandResult cr;
+        auto result = boot->setActiveBootSlot(curSlot, generate_callback(&cr));
+        EXPECT_TRUE(result.isOk());
+        EXPECT_TRUE(cr.success);
+
+        if (otherBootable == BoolResult::FALSE) {
+            result = boot->setSlotAsUnbootable(otherSlot, generate_callback(&cr));
+            EXPECT_TRUE(result.isOk());
+            EXPECT_TRUE(cr.success);
+        }
+
+        result = boot->markBootSuccessful(generate_callback(&cr));
+        EXPECT_TRUE(result.isOk());
+        EXPECT_TRUE(cr.success);
+    }
+    {
+        CommandResult cr;
+        uint32_t slots = boot->getNumberSlots();
+        Return<void> result = boot->setActiveBootSlot(slots, generate_callback(&cr));
+        ASSERT_TRUE(result.isOk());
+        EXPECT_EQ(false, cr.success);
+    }
+}
+
+TEST_P(BootHidlTest, SetSlotAsUnbootable) {
+    Slot curSlot = boot->getCurrentSlot();
+    Slot otherSlot = curSlot ? 0 : 1;
+    auto otherBootable = boot->isSlotBootable(otherSlot);
+    {
+        CommandResult cr;
+        Return<void> result = boot->setSlotAsUnbootable(otherSlot, generate_callback(&cr));
+        EXPECT_TRUE(result.isOk());
+        if (cr.success) {
+            EXPECT_EQ(BoolResult::FALSE, boot->isSlotBootable(otherSlot));
+
+            // Restore original flags to avoid problems on reboot
+            if (otherBootable == BoolResult::TRUE) {
+                result = boot->setActiveBootSlot(otherSlot, generate_callback(&cr));
+                EXPECT_TRUE(result.isOk());
+                EXPECT_TRUE(cr.success);
+            }
+            result = boot->setActiveBootSlot(curSlot, generate_callback(&cr));
+            EXPECT_TRUE(result.isOk());
+            EXPECT_TRUE(cr.success);
+            result = boot->markBootSuccessful(generate_callback(&cr));
+            EXPECT_TRUE(result.isOk());
+            EXPECT_TRUE(cr.success);
+        }
+    }
+    {
+        CommandResult cr;
+        uint32_t slots = boot->getNumberSlots();
+        Return<void> result = boot->setSlotAsUnbootable(slots, generate_callback(&cr));
+        EXPECT_TRUE(result.isOk());
+        EXPECT_EQ(false, cr.success);
+    }
 }
 
 // Sanity check Boot::isSlotBootable() on good and bad inputs.
-TEST_F(BootHidlTest, IsSlotBootable) {
-  for (Slot s = 0; s < 2; s++) {
-    EXPECT_NE(BoolResult::INVALID_SLOT, boot->isSlotBootable(s));
-  }
-  uint32_t slots = boot->getNumberSlots();
-  EXPECT_EQ(BoolResult::INVALID_SLOT, boot->isSlotBootable(slots));
+TEST_P(BootHidlTest, IsSlotBootable) {
+    for (Slot s = 0; s < 2; s++) {
+        EXPECT_NE(BoolResult::INVALID_SLOT, boot->isSlotBootable(s));
+    }
+    uint32_t slots = boot->getNumberSlots();
+    EXPECT_EQ(BoolResult::INVALID_SLOT, boot->isSlotBootable(slots));
 }
 
 // Sanity check Boot::isSlotMarkedSuccessful() on good and bad inputs.
-TEST_F(BootHidlTest, IsSlotMarkedSuccessful) {
-  for (Slot s = 0; s < 2; s++) {
-    EXPECT_NE(BoolResult::INVALID_SLOT, boot->isSlotMarkedSuccessful(s));
-  }
-  uint32_t slots = boot->getNumberSlots();
-  EXPECT_EQ(BoolResult::INVALID_SLOT, boot->isSlotMarkedSuccessful(slots));
+TEST_P(BootHidlTest, IsSlotMarkedSuccessful) {
+    for (Slot s = 0; s < 2; s++) {
+        EXPECT_NE(BoolResult::INVALID_SLOT, boot->isSlotMarkedSuccessful(s));
+    }
+    uint32_t slots = boot->getNumberSlots();
+    EXPECT_EQ(BoolResult::INVALID_SLOT, boot->isSlotMarkedSuccessful(slots));
 }
 
 // Sanity check Boot::getSuffix() on good and bad inputs.
-TEST_F(BootHidlTest, GetSuffix) {
+TEST_P(BootHidlTest, GetSuffix) {
     string suffixStr;
-    vector<string> correctSuffixes = {"_a", "_b"};
+    unordered_set<string> suffixes;
     auto cb = [&](hidl_string suffix) { suffixStr = suffix.c_str(); };
-    for (Slot i = 0; i < 2; i++) {
+    for (Slot i = 0; i < boot->getNumberSlots(); i++) {
         CommandResult cr;
         Return<void> result = boot->getSuffix(i, cb);
         EXPECT_TRUE(result.isOk());
-        ASSERT_EQ(0, suffixStr.compare(correctSuffixes[i]));
+        ASSERT_EQ('_', suffixStr[0]);
+        ASSERT_LE((unsigned)2, suffixStr.size());
+        suffixes.insert(suffixStr);
     }
+    // All suffixes should be unique
+    ASSERT_EQ(boot->getNumberSlots(), suffixes.size());
     {
         string emptySuffix = "";
         Return<void> result = boot->getSuffix(boot->getNumberSlots(), cb);
@@ -170,9 +191,8 @@ TEST_F(BootHidlTest, GetSuffix) {
     }
 }
 
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  int status = RUN_ALL_TESTS();
-  LOG(INFO) << "Test result = " << status;
-  return status;
-}
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BootHidlTest);
+INSTANTIATE_TEST_SUITE_P(
+        PerInstance, BootHidlTest,
+        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IBootControl::descriptor)),
+        android::hardware::PrintInstanceNameToString);
