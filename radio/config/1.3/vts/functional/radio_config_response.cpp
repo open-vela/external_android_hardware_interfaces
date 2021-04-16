@@ -64,9 +64,8 @@ Return<void> RadioConfigResponse::setModemsConfigResponse(
 }
 
 Return<void> RadioConfigResponse::getHalDeviceCapabilitiesResponse(
-        const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
-        bool modemReducedFeatures) {
-    modemReducedFeatureSet1 = modemReducedFeatures;
-    parent.notify(info.serial);
+        const ::android::hardware::radio::V1_6::RadioResponseInfo& /* info */,
+        const ::android::hardware::radio::config::V1_3::HalDeviceCapabilities& capabilities) {
+    halDeviceCapabilities = capabilities;
     return Void();
 }
