@@ -18,7 +18,7 @@
 
 #include <vector>
 
-#include <keymaster/cppcose/cppcose.h>
+#include <cppcose/cppcose.h>
 
 namespace aidl::android::hardware::security::keymint::remote_prov {
 
