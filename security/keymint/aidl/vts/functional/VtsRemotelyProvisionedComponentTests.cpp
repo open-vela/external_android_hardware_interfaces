@@ -16,7 +16,7 @@
 
 #define LOG_TAG "VtsRemotelyProvisionableComponentTests"
 
-#include <AndroidRemotelyProvisionedComponentDevice.h>
+#include <RemotelyProvisionedComponent.h>
 #include <aidl/android/hardware/security/keymint/IRemotelyProvisionedComponent.h>
 #include <aidl/android/hardware/security/keymint/SecurityLevel.h>
 #include <android/binder_manager.h>
