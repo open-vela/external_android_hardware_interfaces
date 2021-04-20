@@ -177,6 +177,7 @@
             <xs:enumeration value="AUDIO_OUTPUT_FLAG_MMAP_NOIRQ" />
             <xs:enumeration value="AUDIO_OUTPUT_FLAG_VOIP_RX" />
             <xs:enumeration value="AUDIO_OUTPUT_FLAG_INCALL_MUSIC" />
+            <xs:enumeration value="AUDIO_OUTPUT_FLAG_GAPLESS_OFFLOAD" />
             <xs:enumeration value="AUDIO_INPUT_FLAG_FAST" />
             <xs:enumeration value="AUDIO_INPUT_FLAG_HW_HOTWORD" />
             <xs:enumeration value="AUDIO_INPUT_FLAG_RAW" />
@@ -252,6 +253,7 @@
             <xs:enumeration value="AUDIO_DEVICE_OUT_BLUETOOTH_A2DP_HEADPHONES"/>
             <xs:enumeration value="AUDIO_DEVICE_OUT_BLUETOOTH_A2DP_SPEAKER"/>
             <xs:enumeration value="AUDIO_DEVICE_OUT_HDMI"/>
+            <xs:enumeration value="AUDIO_DEVICE_OUT_HDMI_EARC"/>
             <xs:enumeration value="AUDIO_DEVICE_OUT_AUX_DIGITAL"/>
             <xs:enumeration value="AUDIO_DEVICE_OUT_ANLG_DOCK_HEADSET"/>
             <xs:enumeration value="AUDIO_DEVICE_OUT_DGTL_DOCK_HEADSET"/>
@@ -303,6 +305,7 @@
             <xs:enumeration value="AUDIO_DEVICE_IN_USB_HEADSET"/>
             <xs:enumeration value="AUDIO_DEVICE_IN_BLUETOOTH_BLE"/>
             <xs:enumeration value="AUDIO_DEVICE_IN_HDMI_ARC"/>
+            <xs:enumeration value="AUDIO_DEVICE_IN_HDMI_EARC"/>
             <xs:enumeration value="AUDIO_DEVICE_IN_ECHO_REFERENCE"/>
             <xs:enumeration value="AUDIO_DEVICE_IN_BLE_HEADSET"/>
             <xs:enumeration value="AUDIO_DEVICE_IN_DEFAULT"/>
@@ -411,6 +414,7 @@
             <xs:enumeration value="AUDIO_FORMAT_MPEGH_LC_L3"/>
             <xs:enumeration value="AUDIO_FORMAT_MPEGH_LC_L4"/>
             <xs:enumeration value="AUDIO_FORMAT_IEC60958"/>
+            <xs:enumeration value="AUDIO_FORMAT_DTS_UHD"/>
         </xs:restriction>
     </xs:simpleType>
     <xs:simpleType name="extendableAudioFormat">
@@ -504,6 +508,8 @@
             <xs:enumeration value="AUDIO_CHANNEL_OUT_7POINT1"/>
             <xs:enumeration value="AUDIO_CHANNEL_OUT_7POINT1POINT2"/>
             <xs:enumeration value="AUDIO_CHANNEL_OUT_7POINT1POINT4"/>
+            <xs:enumeration value="AUDIO_CHANNEL_OUT_13POINT_360RA"/>
+            <xs:enumeration value="AUDIO_CHANNEL_OUT_22POINT2"/>
             <xs:enumeration value="AUDIO_CHANNEL_OUT_MONO_HAPTIC_A"/>
             <xs:enumeration value="AUDIO_CHANNEL_OUT_STEREO_HAPTIC_A"/>
             <xs:enumeration value="AUDIO_CHANNEL_OUT_HAPTIC_AB"/>

@@ -35,6 +35,7 @@ package android.hardware.security.keymint;
 /* @hide */
 @VintfStability
 interface IRemotelyProvisionedComponent {
+  android.hardware.security.keymint.RpcHardwareInfo getHardwareInfo();
   byte[] generateEcdsaP256KeyPair(in boolean testMode, out android.hardware.security.keymint.MacedPublicKey macedPublicKey);
   byte[] generateCertificateRequest(in boolean testMode, in android.hardware.security.keymint.MacedPublicKey[] keysToSign, in byte[] endpointEncryptionCertChain, in byte[] challenge, out android.hardware.security.keymint.DeviceInfo deviceInfo, out android.hardware.security.keymint.ProtectedData protectedData);
   const int STATUS_FAILED = 1;
