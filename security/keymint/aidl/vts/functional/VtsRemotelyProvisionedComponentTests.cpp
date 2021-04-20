@@ -16,13 +16,13 @@
 
 #define LOG_TAG "VtsRemotelyProvisionableComponentTests"
 
-#include <RemotelyProvisionedComponent.h>
+#include <AndroidRemotelyProvisionedComponentDevice.h>
 #include <aidl/android/hardware/security/keymint/IRemotelyProvisionedComponent.h>
 #include <aidl/android/hardware/security/keymint/SecurityLevel.h>
 #include <android/binder_manager.h>
 #include <cppbor_parse.h>
-#include <cppcose/cppcose.h>
 #include <gmock/gmock.h>
+#include <keymaster/cppcose/cppcose.h>
 #include <keymaster/keymaster_configuration.h>
 #include <keymint_support/authorization_set.h>
 #include <openssl/ec.h>
