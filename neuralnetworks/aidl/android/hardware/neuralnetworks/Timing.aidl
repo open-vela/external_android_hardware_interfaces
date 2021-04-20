@@ -28,9 +28,9 @@ parcelable Timing {
     /**
      * Execution time on device (not driver, which runs on host processor).
      */
-    long timeOnDeviceNs;
+    long timeOnDevice;
     /**
      * Execution time in driver (including time on device).
      */
-    long timeInDriverNs;
+    long timeInDriver;
 }
