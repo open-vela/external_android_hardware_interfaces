@@ -21,13 +21,14 @@
 #include <android/binder_process.h>
 
 #include <AndroidKeyMintDevice.h>
-#include <AndroidRemotelyProvisionedComponentDevice.h>
 #include <AndroidSecureClock.h>
 #include <AndroidSharedSecret.h>
 #include <keymaster/soft_keymaster_logger.h>
 
+#include "RemotelyProvisionedComponent.h"
+
 using aidl::android::hardware::security::keymint::AndroidKeyMintDevice;
-using aidl::android::hardware::security::keymint::AndroidRemotelyProvisionedComponentDevice;
+using aidl::android::hardware::security::keymint::RemotelyProvisionedComponent;
 using aidl::android::hardware::security::keymint::SecurityLevel;
 using aidl::android::hardware::security::secureclock::AndroidSecureClock;
 using aidl::android::hardware::security::sharedsecret::AndroidSharedSecret;
@@ -55,7 +56,7 @@ int main() {
     // Add Shared Secret Service
     addService<AndroidSharedSecret>(keyMint);
     // Add Remotely Provisioned Component Service
-    addService<AndroidRemotelyProvisionedComponentDevice>(keyMint);
+    addService<RemotelyProvisionedComponent>(keyMint);
     ABinderProcess_joinThreadPool();
     return EXIT_FAILURE;  // should not reach
 }
