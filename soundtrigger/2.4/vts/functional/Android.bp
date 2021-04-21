@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2020 The Android Open Source Project
+// Copyright (C) 2021 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,35 +24,15 @@ package {
 }
 
 cc_test {
-    name: "VtsHalRadioV1_6TargetTest",
+    name: "VtsHalSoundtriggerV2_4TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
-    srcs: [
-        "radio_hidl_hal_api.cpp",
-        "radio_hidl_hal_misc.cpp",
-        "radio_hidl_hal_test.cpp",
-        "radio_response.cpp",
-        "radio_indication.cpp",
-        "VtsHalRadioV1_6TargetTest.cpp",
-        "vts_test_util_v1_6.cpp",
-    ],
+    srcs: ["VtsHalSoundtriggerV2_4TargetTest.cpp"],
     static_libs: [
-        "RadioVtsTestUtilBase",
-        "RadioConfigVtsTestResponse",
-        "android.hardware.radio@1.6",
-        "android.hardware.radio@1.5",
-        "android.hardware.radio@1.4",
-        "android.hardware.radio@1.3",
-        "android.hardware.radio@1.2",
-        "android.hardware.radio@1.1",
-        "android.hardware.radio@1.0",
-        "android.hardware.radio.config@1.0",
-        "android.hardware.radio.config@1.1",
-        "android.hardware.radio.config@1.2",
-        "android.hardware.radio.config@1.3",
-    ],
-    header_libs: [
-        "radio.util.header@1.0",
-        "radio.config.util.header@1.3",
+        "android.hardware.soundtrigger@2.0",
+        "android.hardware.soundtrigger@2.1",
+        "android.hardware.soundtrigger@2.2",
+        "android.hardware.soundtrigger@2.3",
+        "android.hardware.soundtrigger@2.4",
     ],
     test_suites: [
         "general-tests",
