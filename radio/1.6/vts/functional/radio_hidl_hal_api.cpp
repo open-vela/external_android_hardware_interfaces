@@ -158,9 +158,6 @@ TEST_P(RadioHidlTest_v1_6, setupDataCall_1_6_osAppId) {
                 {::android::hardware::radio::V1_6::RadioError::NONE,
                  ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
                  ::android::hardware::radio::V1_6::RadioError::OP_NOT_ALLOWED_BEFORE_REG_TO_NW}));
-        if (radioRsp_v1_6->setupDataCallResult.trafficDescriptors.size() <= 0) {
-            return;
-        }
         EXPECT_EQ(optionalTrafficDescriptor.value().osAppId.value().osAppId,
                 radioRsp_v1_6->setupDataCallResult.trafficDescriptors[0].osAppId.value().osAppId);
     }
@@ -175,18 +172,7 @@ TEST_P(RadioHidlTest_v1_6, getSlicingConfig) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    if (getRadioHalCapabilities()) {
-        ASSERT_TRUE(CheckAnyOfErrors(
-                radioRsp_v1_6->rspInfo.error,
-                {::android::hardware::radio::V1_6::RadioError::REQUEST_NOT_SUPPORTED}));
-    } else {
-        ASSERT_TRUE(
-                CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
-                                 {::android::hardware::radio::V1_6::RadioError::NONE,
-                                  ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
-                                  ::android::hardware::radio::V1_6::RadioError::INTERNAL_ERR,
-                                  ::android::hardware::radio::V1_6::RadioError::MODEM_ERR}));
-    }
+    EXPECT_EQ(::android::hardware::radio::V1_6::RadioError::NONE, radioRsp_v1_6->rspInfo.error);
 }
 
 /*
@@ -383,7 +369,7 @@ TEST_P(RadioHidlTest_v1_6, setNrDualConnectivityState) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    if (getRadioHalCapabilities()) {
+    if (getRadioHalCapabilities().modemReducedFeatureSet1) {
         ASSERT_TRUE(CheckAnyOfErrors(
                 radioRsp_v1_6->rspInfo.error,
                 {::android::hardware::radio::V1_6::RadioError::REQUEST_NOT_SUPPORTED}));
@@ -409,7 +395,7 @@ TEST_P(RadioHidlTest_v1_6, isNrDualConnectivityEnabled) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    if (getRadioHalCapabilities()) {
+    if (getRadioHalCapabilities().modemReducedFeatureSet1) {
         ASSERT_TRUE(CheckAnyOfErrors(
                 radioRsp_v1_6->rspInfo.error,
                 {::android::hardware::radio::V1_6::RadioError::REQUEST_NOT_SUPPORTED}));
@@ -435,7 +421,7 @@ TEST_P(RadioHidlTest_v1_6, setDataThrottling) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    if (getRadioHalCapabilities()) {
+    if (getRadioHalCapabilities().modemReducedFeatureSet1) {
         ASSERT_TRUE(CheckAnyOfErrors(
                 radioRsp_v1_6->rspInfo.error,
                 {::android::hardware::radio::V1_6::RadioError::REQUEST_NOT_SUPPORTED}));
@@ -455,7 +441,7 @@ TEST_P(RadioHidlTest_v1_6, setDataThrottling) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    if (getRadioHalCapabilities()) {
+    if (getRadioHalCapabilities().modemReducedFeatureSet1) {
         ASSERT_TRUE(CheckAnyOfErrors(
                 radioRsp_v1_6->rspInfo.error,
                 {::android::hardware::radio::V1_6::RadioError::REQUEST_NOT_SUPPORTED}));
@@ -475,7 +461,7 @@ TEST_P(RadioHidlTest_v1_6, setDataThrottling) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    if (getRadioHalCapabilities()) {
+    if (getRadioHalCapabilities().modemReducedFeatureSet1) {
         ASSERT_TRUE(CheckAnyOfErrors(
                 radioRsp_v1_6->rspInfo.error,
                 {::android::hardware::radio::V1_6::RadioError::REQUEST_NOT_SUPPORTED}));
@@ -494,7 +480,7 @@ TEST_P(RadioHidlTest_v1_6, setDataThrottling) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    if (getRadioHalCapabilities()) {
+    if (getRadioHalCapabilities().modemReducedFeatureSet1) {
         ASSERT_TRUE(CheckAnyOfErrors(
                 radioRsp_v1_6->rspInfo.error,
                 {::android::hardware::radio::V1_6::RadioError::REQUEST_NOT_SUPPORTED}));
@@ -827,7 +813,7 @@ TEST_P(RadioHidlTest_v1_6, getSimPhonebookCapacity) {
 /*
  * Test IRadio.updateSimPhonebookRecords() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_6, updateSimPhonebookRecords) {
+TEST_F(RadioHidlTest_v1_6, updateSimPhonebookRecords) {
     serial = GetRandomSerialNumber();
     radio_v1_6->getSimPhonebookCapacity(serial);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
