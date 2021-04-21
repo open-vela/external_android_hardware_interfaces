@@ -31,7 +31,6 @@ cc_test {
     ],
     srcs: [
         "AttestKeyTest.cpp",
-        "DeviceUniqueAttestationTest.cpp",
         "KeyMintTest.cpp",
     ],
     shared_libs: [
