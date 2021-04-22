@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,12 +31,18 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.biometrics.fingerprint;
+package android.hardware.soundtrigger3;
 @VintfStability
-parcelable SensorProps {
-  android.hardware.biometrics.common.CommonProps commonProps;
-  android.hardware.biometrics.fingerprint.FingerprintSensorType sensorType = android.hardware.biometrics.fingerprint.FingerprintSensorType.UNKNOWN;
-  android.hardware.biometrics.fingerprint.SensorLocation[] sensorLocations;
-  boolean supportsNavigationGestures;
-  boolean supportsDetectInteraction;
+interface ISoundTriggerHw {
+  android.media.soundtrigger.Properties getProperties();
+  void registerGlobalCallback(in android.hardware.soundtrigger3.ISoundTriggerHwGlobalCallback callback);
+  int loadSoundModel(in android.media.soundtrigger.SoundModel soundModel, in android.hardware.soundtrigger3.ISoundTriggerHwCallback callback);
+  int loadPhraseSoundModel(in android.media.soundtrigger.PhraseSoundModel soundModel, in android.hardware.soundtrigger3.ISoundTriggerHwCallback callback);
+  void unloadSoundModel(in int modelHandle);
+  void startRecognition(in int modelHandle, in int deviceHandle, in int ioHandle, in android.media.soundtrigger.RecognitionConfig config);
+  void stopRecognition(in int modelHandle);
+  void forceRecognitionEvent(in int modelHandle);
+  @nullable android.media.soundtrigger.ModelParameterRange queryParameter(in int modelHandle, in android.media.soundtrigger.ModelParameter modelParam);
+  int getParameter(in int modelHandle, in android.media.soundtrigger.ModelParameter modelParam);
+  void setParameter(in int modelHandle, in android.media.soundtrigger.ModelParameter modelParam, in int value);
 }
