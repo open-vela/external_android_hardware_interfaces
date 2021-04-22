@@ -19,24 +19,18 @@ package android.hardware.biometrics.face;
 @VintfStability
 @Backing(type="byte")
 enum AcquiredInfo {
-    /**
-     * Placeholder value used for default initialization of AcquiredInfo. This
-     * value means AcquiredInfo wasn't explicitly initialized and must be
-     * discarded by the recipient.
-     */
-    UNKNOWN,
 
     /**
      * The acquired face data was good, no further user interaction is necessary.
      */
-    GOOD,
+    GOOD = 0,
 
     /**
      * The acquired face data was too noisy or did not have sufficient detail.
      * This is a catch-all for all acquisition errors not captured by the other
      * constants.
      */
-    INSUFFICIENT,
+    INSUFFICIENT = 1,
 
     /**
      * Because there was too much ambient light, the captured face data was too
@@ -46,7 +40,7 @@ enum AcquiredInfo {
      * The user is expected to take action to retry the operation in better
      * lighting conditions when this is returned.
      */
-    TOO_BRIGHT,
+    TOO_BRIGHT = 2,
 
     /**
      * Because there was not enough illumination, the captured face data was too
@@ -56,7 +50,7 @@ enum AcquiredInfo {
      * The user is expected to take action to retry the operation in better
      * lighting conditions when this is returned.
      */
-    TOO_DARK,
+    TOO_DARK = 3,
 
     /**
      * The detected face is too close to the sensor, and the image cannot be
@@ -65,7 +59,7 @@ enum AcquiredInfo {
      * The user is expected to be informed to move further from the sensor when
      * this is returned.
      */
-    TOO_CLOSE,
+    TOO_CLOSE = 4,
 
     /**
      * The detected face is too small, as the user might be too far away from
@@ -74,7 +68,7 @@ enum AcquiredInfo {
      * The user is expected to be informed to move closer to the sensor when
      * this is returned.
      */
-    TOO_FAR,
+    TOO_FAR = 5,
 
     /**
      * Only the upper part of the face was detected. The sensor's field of view
@@ -83,7 +77,7 @@ enum AcquiredInfo {
      * The user should be informed to move up with respect to the sensor when
      * this is returned.
      */
-    FACE_TOO_HIGH,
+    FACE_TOO_HIGH = 6,
 
     /**
      * Only the lower part of the face was detected. The sensor's field of view
@@ -92,7 +86,7 @@ enum AcquiredInfo {
      * The user should be informed to move down with respect to the sensor when
      * this is returned.
      */
-    FACE_TOO_LOW,
+    FACE_TOO_LOW = 7,
 
     /**
      * Only the right part of the face was detected. The sensor's field of view
@@ -101,7 +95,7 @@ enum AcquiredInfo {
      * The user should be informed to move to the right with respect to the
      * sensor when this is returned.
      */
-    FACE_TOO_RIGHT,
+    FACE_TOO_RIGHT = 8,
 
     /**
      * Only the left part of the face was detected. The sensor's field of view
@@ -110,7 +104,7 @@ enum AcquiredInfo {
      * The user should be informed to move to the left with respect to the
      * sensor when this is returned.
      */
-    FACE_TOO_LEFT,
+    FACE_TOO_LEFT = 9,
 
     /**
      * The user's eyes have strayed away from the sensor. If this message is
@@ -118,7 +112,7 @@ enum AcquiredInfo {
      * can't be found in the frame, one of the other acquisition messages
      * must be sent, e.g. NOT_DETECTED.
      */
-    POOR_GAZE,
+    POOR_GAZE = 10,
 
     /**
      * No face was detected within the sensor's field of view.
@@ -126,7 +120,7 @@ enum AcquiredInfo {
      * The user should be informed to point the sensor to a face when this is
      * returned.
      */
-    NOT_DETECTED,
+    NOT_DETECTED = 11,
 
     /**
      * Too much motion was detected.
@@ -134,7 +128,7 @@ enum AcquiredInfo {
      * The user should be informed to keep their face steady relative to the
      * sensor.
      */
-    TOO_MUCH_MOTION,
+    TOO_MUCH_MOTION = 12,
 
     /**
      * The sensor needs to be re-calibrated. This is an unexpected condition,
@@ -143,20 +137,20 @@ enum AcquiredInfo {
      * re-enrolling. The expected response to this message is to direct the
      * user to re-enroll.
      */
-    RECALIBRATE,
+    RECALIBRATE = 13,
 
     /**
      * The face is too different from a previous acquisition. This condition
      * only applies to enrollment. This can happen if the user passes the
      * device to someone else in the middle of enrollment.
      */
-    TOO_DIFFERENT,
+    TOO_DIFFERENT = 14,
 
     /**
      * The face is too similar to a previous acquisition. This condition only
      * applies to enrollment. The user should change their pose.
      */
-    TOO_SIMILAR,
+    TOO_SIMILAR = 15,
 
     /**
      * The magnitude of the pan angle of the user’s face with respect to the sensor’s
@@ -168,7 +162,7 @@ enum AcquiredInfo {
      *
      * The user should be informed to look more directly at the camera.
      */
-    PAN_TOO_EXTREME,
+    PAN_TOO_EXTREME = 16,
 
     /**
      * The magnitude of the tilt angle of the user’s face with respect to the sensor’s
@@ -179,7 +173,7 @@ enum AcquiredInfo {
      *
      * The user should be informed to look more directly at the camera.
      */
-    TILT_TOO_EXTREME,
+    TILT_TOO_EXTREME = 17,
 
     /**
      * The magnitude of the roll angle of the user’s face with respect to the sensor’s
@@ -191,7 +185,7 @@ enum AcquiredInfo {
      *
      * The user should be informed to look more directly at the camera.
      */
-    ROLL_TOO_EXTREME,
+    ROLL_TOO_EXTREME = 18,
 
     /**
      * The user’s face has been obscured by some object.
@@ -199,7 +193,7 @@ enum AcquiredInfo {
      * The user should be informed to remove any objects from the line of sight from
      * the sensor to the user’s face.
      */
-    FACE_OBSCURED,
+    FACE_OBSCURED = 19,
 
     /**
      * This message represents the earliest message sent at the beginning of the authentication
@@ -208,33 +202,33 @@ enum AcquiredInfo {
      * will measure latency based on the time between the last START message and the onAuthenticated
      * callback.
      */
-    START,
+    START = 20,
 
     /**
      * The sensor is dirty. The user should be informed to clean the sensor.
      */
-    SENSOR_DIRTY,
+    SENSOR_DIRTY = 21,
 
     /**
      * Vendor-specific acquisition message. See ISessionCallback#onAcquired vendorCode
      * documentation.
      */
-    VENDOR,
+    VENDOR = 22,
 
     /**
      * The first frame from the camera has been received.
      */
-    FIRST_FRAME_RECEIVED,
+    FIRST_FRAME_RECEIVED = 23,
 
     /**
      * Dark glasses detected. This can be useful for providing relevant feedback to the user and
      * enabling an alternative authentication logic if the implementation supports it.
      */
-    DARK_GLASSES_DETECTED,
+    DARK_GLASSES_DETECTED = 24,
 
     /**
      * A face mask or face covering detected. This can be useful for providing relevant feedback to
      * the user and enabling an alternative authentication logic if the implementation supports it.
      */
-    MOUTH_COVERING_DETECTED,
+    MOUTH_COVERING_DETECTED = 25,
 }
