@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package android.hardware.biometrics.fingerprint;
+#pragma once
 
-@VintfStability
-@Backing(type="byte")
-enum FingerprintSensorType {
-    UNKNOWN,
-    REAR,
-    UNDER_DISPLAY_ULTRASONIC,
-    UNDER_DISPLAY_OPTICAL,
-    POWER_BUTTON,
-    HOME_BUTTON
-}
+#include "../GenericMessageBase.h"
 
+namespace android::nl::protocols::generic::families {
+
+class Mac80211hwsim : public GenericMessageBase {
+  public:
+    Mac80211hwsim(nlmsgtype_t familyId);
+};
+
+}  // namespace android::nl::protocols::generic::families
