@@ -20,22 +20,22 @@ package android.hardware.biometrics.face;
 @Backing(type="byte")
 enum Error {
     /**
-     * Placeholder value used for default initialization of Error. This value
-     * means Error wasn't explicitly initialized and must be discarded by the
-     * recipient.
+     * Reserved for testing and to keep subsequent numbering consistent with
+     * older interfaces.
+     *
+     * NO_ERROR = 0,
      */
-    UNKNOWN,
 
     /**
      * A hardware error has occurred that cannot be resolved. Try again later.
      */
-    HW_UNAVAILABLE,
+    HW_UNAVAILABLE = 1,
 
     /**
      * The current operation could not be completed, e.g. the sensor was unable
      * to process the current image or the HAT was invalid.
      */
-    UNABLE_TO_PROCESS,
+    UNABLE_TO_PROCESS = 2,
 
     /**
      * The current operation took too long to complete. This is intended to
@@ -48,34 +48,48 @@ enum Error {
      * indicate that the implementation is no longer looking and the framework
      * should restart the operation on the next user interaction.
      */
-    TIMEOUT,
+    TIMEOUT = 3,
 
     /**
      * The current operation could not be completed because there is not enough
      * storage space remaining to do so.
      */
-    NO_SPACE,
+    NO_SPACE = 4,
 
     /**
      * The current operation has been cancelled. This may happen if a new
      * request (authenticate, remove, enumerate, enroll) is initiated while
      * an on-going operation is in progress, or if cancel() was called.
      */
-    CANCELED,
+    CANCELED = 5,
 
     /**
      * The current remove operation could not be completed; the face template
      * provided could not be removed.
      */
-    UNABLE_TO_REMOVE,
+    UNABLE_TO_REMOVE = 6,
+
+    /**
+     * Reserved to maintain backwards compatibility. See
+     * ISessionCallback#onLockoutTimed instead.
+     *
+     * LOCKOUT = 7,
+     */
 
     /**
      * Used to enable a vendor-specific error message.
      */
-    VENDOR,
+    VENDOR = 8,
+
+    /**
+     * Reserved to maintain backwards compatibility. See
+     * ISessionCallback#onLockoutPermanent instead.
+     *
+     * LOCKOUT_PERMANENT = 9
+     */
 
     /**
      * Authentication cannot be performed because re-enrollment is required.
      */
-    REENROLL_REQUIRED,
+    REENROLL_REQUIRED = 16,
 }
