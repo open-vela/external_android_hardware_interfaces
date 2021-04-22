@@ -362,27 +362,18 @@ TEST_P(NewKeyGenerationTest, RsaWithAttestation) {
     auto challenge = "hello";
     auto app_id = "foo";
 
-    auto subject = "cert subj 2";
-    vector<uint8_t> subject_der(make_name_from_str(subject));
-
-    uint64_t serial_int = 66;
-    vector<uint8_t> serial_blob(build_serial_blob(serial_int));
-
     for (auto key_size : ValidKeySizes(Algorithm::RSA)) {
         vector<uint8_t> key_blob;
         vector<KeyCharacteristics> key_characteristics;
-        ASSERT_EQ(ErrorCode::OK,
-                  GenerateKey(AuthorizationSetBuilder()
-                                      .RsaSigningKey(key_size, 65537)
-                                      .Digest(Digest::NONE)
-                                      .Padding(PaddingMode::NONE)
-                                      .AttestationChallenge(challenge)
-                                      .AttestationApplicationId(app_id)
-                                      .Authorization(TAG_NO_AUTH_REQUIRED)
-                                      .Authorization(TAG_CERTIFICATE_SERIAL, serial_blob)
-                                      .Authorization(TAG_CERTIFICATE_SUBJECT, subject_der)
-                                      .SetDefaultValidity(),
-                              &key_blob, &key_characteristics));
+        ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                     .RsaSigningKey(key_size, 65537)
+                                                     .Digest(Digest::NONE)
+                                                     .Padding(PaddingMode::NONE)
+                                                     .AttestationChallenge(challenge)
+                                                     .AttestationApplicationId(app_id)
+                                                     .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                     .SetDefaultValidity(),
+                                             &key_blob, &key_characteristics));
 
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
@@ -394,7 +385,6 @@ TEST_P(NewKeyGenerationTest, RsaWithAttestation) {
                 << "Key size " << key_size << "missing";
         EXPECT_TRUE(crypto_params.Contains(TAG_RSA_PUBLIC_EXPONENT, 65537U));
 
-        verify_subject_and_serial(cert_chain_[0], serial_int, subject, false);
         EXPECT_TRUE(ChainSignaturesAreValid(cert_chain_));
         ASSERT_GT(cert_chain_.size(), 0);
 
@@ -490,25 +480,16 @@ TEST_P(NewKeyGenerationTest, RsaEncryptionWithAttestation) {
     auto challenge = "hello";
     auto app_id = "foo";
 
-    auto subject = "subj 2";
-    vector<uint8_t> subject_der(make_name_from_str(subject));
-
-    uint64_t serial_int = 111166;
-    vector<uint8_t> serial_blob(build_serial_blob(serial_int));
-
     vector<uint8_t> key_blob;
     vector<KeyCharacteristics> key_characteristics;
-    ASSERT_EQ(ErrorCode::OK,
-              GenerateKey(AuthorizationSetBuilder()
-                                  .RsaEncryptionKey(key_size, 65537)
-                                  .Padding(PaddingMode::NONE)
-                                  .AttestationChallenge(challenge)
-                                  .AttestationApplicationId(app_id)
-                                  .Authorization(TAG_NO_AUTH_REQUIRED)
-                                  .Authorization(TAG_CERTIFICATE_SERIAL, serial_blob)
-                                  .Authorization(TAG_CERTIFICATE_SUBJECT, subject_der)
-                                  .SetDefaultValidity(),
-                          &key_blob, &key_characteristics));
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .RsaEncryptionKey(key_size, 65537)
+                                                 .Padding(PaddingMode::NONE)
+                                                 .AttestationChallenge(challenge)
+                                                 .AttestationApplicationId(app_id)
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .SetDefaultValidity(),
+                                         &key_blob, &key_characteristics));
 
     ASSERT_GT(key_blob.size(), 0U);
     AuthorizationSet auths;
@@ -540,7 +521,6 @@ TEST_P(NewKeyGenerationTest, RsaEncryptionWithAttestation) {
             << "Key size " << key_size << "missing";
     EXPECT_TRUE(crypto_params.Contains(TAG_RSA_PUBLIC_EXPONENT, 65537U));
 
-    verify_subject_and_serial(cert_chain_[0], serial_int, subject, false);
     EXPECT_TRUE(ChainSignaturesAreValid(cert_chain_));
     ASSERT_GT(cert_chain_.size(), 0);
 
@@ -561,25 +541,16 @@ TEST_P(NewKeyGenerationTest, RsaEncryptionWithAttestation) {
  * works as expected.
  */
 TEST_P(NewKeyGenerationTest, RsaWithSelfSign) {
-    auto subject = "cert subj subj subj subj subj subj 22222222222222222222";
-    vector<uint8_t> subject_der(make_name_from_str(subject));
-
-    uint64_t serial_int = 0;
-    vector<uint8_t> serial_blob(build_serial_blob(serial_int));
-
     for (auto key_size : ValidKeySizes(Algorithm::RSA)) {
         vector<uint8_t> key_blob;
         vector<KeyCharacteristics> key_characteristics;
-        ASSERT_EQ(ErrorCode::OK,
-                  GenerateKey(AuthorizationSetBuilder()
-                                      .RsaSigningKey(key_size, 65537)
-                                      .Digest(Digest::NONE)
-                                      .Padding(PaddingMode::NONE)
-                                      .Authorization(TAG_NO_AUTH_REQUIRED)
-                                      .Authorization(TAG_CERTIFICATE_SERIAL, serial_blob)
-                                      .Authorization(TAG_CERTIFICATE_SUBJECT, subject_der)
-                                      .SetDefaultValidity(),
-                              &key_blob, &key_characteristics));
+        ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                     .RsaSigningKey(key_size, 65537)
+                                                     .Digest(Digest::NONE)
+                                                     .Padding(PaddingMode::NONE)
+                                                     .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                     .SetDefaultValidity(),
+                                             &key_blob, &key_characteristics));
 
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
@@ -591,7 +562,6 @@ TEST_P(NewKeyGenerationTest, RsaWithSelfSign) {
                 << "Key size " << key_size << "missing";
         EXPECT_TRUE(crypto_params.Contains(TAG_RSA_PUBLIC_EXPONENT, 65537U));
 
-        verify_subject_and_serial(cert_chain_[0], serial_int, subject, false);
         EXPECT_TRUE(ChainSignaturesAreValid(cert_chain_));
         ASSERT_EQ(cert_chain_.size(), 1);
 
@@ -629,25 +599,16 @@ TEST_P(NewKeyGenerationTest, RsaWithAttestationAppIdIgnored) {
     auto key_size = 2048;
     auto app_id = "foo";
 
-    auto subject = "cert subj 2";
-    vector<uint8_t> subject_der(make_name_from_str(subject));
-
-    uint64_t serial_int = 1;
-    vector<uint8_t> serial_blob(build_serial_blob(serial_int));
-
     vector<uint8_t> key_blob;
     vector<KeyCharacteristics> key_characteristics;
-    ASSERT_EQ(ErrorCode::OK,
-              GenerateKey(AuthorizationSetBuilder()
-                                  .RsaSigningKey(key_size, 65537)
-                                  .Digest(Digest::NONE)
-                                  .Padding(PaddingMode::NONE)
-                                  .AttestationApplicationId(app_id)
-                                  .Authorization(TAG_NO_AUTH_REQUIRED)
-                                  .Authorization(TAG_CERTIFICATE_SERIAL, serial_blob)
-                                  .Authorization(TAG_CERTIFICATE_SUBJECT, subject_der)
-                                  .SetDefaultValidity(),
-                          &key_blob, &key_characteristics));
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .RsaSigningKey(key_size, 65537)
+                                                 .Digest(Digest::NONE)
+                                                 .Padding(PaddingMode::NONE)
+                                                 .AttestationApplicationId(app_id)
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .SetDefaultValidity(),
+                                         &key_blob, &key_characteristics));
 
     ASSERT_GT(key_blob.size(), 0U);
     CheckBaseParams(key_characteristics);
@@ -659,7 +620,6 @@ TEST_P(NewKeyGenerationTest, RsaWithAttestationAppIdIgnored) {
             << "Key size " << key_size << "missing";
     EXPECT_TRUE(crypto_params.Contains(TAG_RSA_PUBLIC_EXPONENT, 65537U));
 
-    verify_subject_and_serial(cert_chain_[0], serial_int, subject, false);
     EXPECT_TRUE(ChainSignaturesAreValid(cert_chain_));
     ASSERT_EQ(cert_chain_.size(), 1);
 
@@ -716,28 +676,19 @@ TEST_P(NewKeyGenerationTest, LimitedUsageRsaWithAttestation) {
     auto challenge = "hello";
     auto app_id = "foo";
 
-    auto subject = "cert subj 2";
-    vector<uint8_t> subject_der(make_name_from_str(subject));
-
-    uint64_t serial_int = 66;
-    vector<uint8_t> serial_blob(build_serial_blob(serial_int));
-
     for (auto key_size : ValidKeySizes(Algorithm::RSA)) {
         vector<uint8_t> key_blob;
         vector<KeyCharacteristics> key_characteristics;
-        ASSERT_EQ(ErrorCode::OK,
-                  GenerateKey(AuthorizationSetBuilder()
-                                      .RsaSigningKey(key_size, 65537)
-                                      .Digest(Digest::NONE)
-                                      .Padding(PaddingMode::NONE)
-                                      .AttestationChallenge(challenge)
-                                      .AttestationApplicationId(app_id)
-                                      .Authorization(TAG_NO_AUTH_REQUIRED)
-                                      .Authorization(TAG_USAGE_COUNT_LIMIT, 1)
-                                      .Authorization(TAG_CERTIFICATE_SERIAL, serial_blob)
-                                      .Authorization(TAG_CERTIFICATE_SUBJECT, subject_der)
-                                      .SetDefaultValidity(),
-                              &key_blob, &key_characteristics));
+        ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                     .RsaSigningKey(key_size, 65537)
+                                                     .Digest(Digest::NONE)
+                                                     .Padding(PaddingMode::NONE)
+                                                     .AttestationChallenge(challenge)
+                                                     .AttestationApplicationId(app_id)
+                                                     .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                     .Authorization(TAG_USAGE_COUNT_LIMIT, 1)
+                                                     .SetDefaultValidity(),
+                                             &key_blob, &key_characteristics));
 
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
@@ -760,7 +711,6 @@ TEST_P(NewKeyGenerationTest, LimitedUsageRsaWithAttestation) {
         // Check the usage count limit tag also appears in the attestation.
         EXPECT_TRUE(ChainSignaturesAreValid(cert_chain_));
         ASSERT_GT(cert_chain_.size(), 0);
-        verify_subject_and_serial(cert_chain_[0], serial_int, subject, false);
 
         AuthorizationSet hw_enforced = HwEnforcedAuthorizations(key_characteristics);
         AuthorizationSet sw_enforced = SwEnforcedAuthorizations(key_characteristics);
@@ -844,26 +794,17 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestation) {
     auto challenge = "hello";
     auto app_id = "foo";
 
-    auto subject = "cert subj 2";
-    vector<uint8_t> subject_der(make_name_from_str(subject));
-
-    uint64_t serial_int = 0xFFFFFFFFFFFFFFFF;
-    vector<uint8_t> serial_blob(build_serial_blob(serial_int));
-
     for (auto key_size : ValidKeySizes(Algorithm::EC)) {
         vector<uint8_t> key_blob;
         vector<KeyCharacteristics> key_characteristics;
-        ASSERT_EQ(ErrorCode::OK,
-                  GenerateKey(AuthorizationSetBuilder()
-                                      .Authorization(TAG_NO_AUTH_REQUIRED)
-                                      .EcdsaSigningKey(key_size)
-                                      .Digest(Digest::NONE)
-                                      .AttestationChallenge(challenge)
-                                      .AttestationApplicationId(app_id)
-                                      .Authorization(TAG_CERTIFICATE_SERIAL, serial_blob)
-                                      .Authorization(TAG_CERTIFICATE_SUBJECT, subject_der)
-                                      .SetDefaultValidity(),
-                              &key_blob, &key_characteristics));
+        ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                     .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                     .EcdsaSigningKey(key_size)
+                                                     .Digest(Digest::NONE)
+                                                     .AttestationChallenge(challenge)
+                                                     .AttestationApplicationId(app_id)
+                                                     .SetDefaultValidity(),
+                                             &key_blob, &key_characteristics));
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
 
@@ -875,7 +816,6 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestation) {
 
         EXPECT_TRUE(ChainSignaturesAreValid(cert_chain_));
         ASSERT_GT(cert_chain_.size(), 0);
-        verify_subject_and_serial(cert_chain_[0], serial_int, subject, false);
 
         AuthorizationSet hw_enforced = HwEnforcedAuthorizations(key_characteristics);
         AuthorizationSet sw_enforced = SwEnforcedAuthorizations(key_characteristics);
@@ -894,23 +834,14 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestation) {
  * the key will generate a self signed attestation.
  */
 TEST_P(NewKeyGenerationTest, EcdsaSelfSignAttestation) {
-    auto subject = "cert subj 2";
-    vector<uint8_t> subject_der(make_name_from_str(subject));
-
-    uint64_t serial_int = 0x123456FFF1234;
-    vector<uint8_t> serial_blob(build_serial_blob(serial_int));
-
     for (auto key_size : ValidKeySizes(Algorithm::EC)) {
         vector<uint8_t> key_blob;
         vector<KeyCharacteristics> key_characteristics;
-        ASSERT_EQ(ErrorCode::OK,
-                  GenerateKey(AuthorizationSetBuilder()
-                                      .EcdsaSigningKey(key_size)
-                                      .Digest(Digest::NONE)
-                                      .Authorization(TAG_CERTIFICATE_SERIAL, serial_blob)
-                                      .Authorization(TAG_CERTIFICATE_SUBJECT, subject_der)
-                                      .SetDefaultValidity(),
-                              &key_blob, &key_characteristics));
+        ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                     .EcdsaSigningKey(key_size)
+                                                     .Digest(Digest::NONE)
+                                                     .SetDefaultValidity(),
+                                             &key_blob, &key_characteristics));
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
 
@@ -921,7 +852,6 @@ TEST_P(NewKeyGenerationTest, EcdsaSelfSignAttestation) {
                 << "Key size " << key_size << "missing";
 
         EXPECT_TRUE(ChainSignaturesAreValid(cert_chain_));
-        verify_subject_and_serial(cert_chain_[0], serial_int, subject, false);
         ASSERT_EQ(cert_chain_.size(), 1);
 
         AuthorizationSet hw_enforced = HwEnforcedAuthorizations(key_characteristics);
