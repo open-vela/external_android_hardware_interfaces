@@ -228,7 +228,8 @@ class KeyMintBenchmarkTest {
                     AuthorizationSet* out_params) {
         Status result;
         BeginResult out;
-        result = keymint_->begin(purpose, key_blob_, in_params.vector_data(), std::nullopt, &out);
+        result = keymint_->begin(purpose, key_blob_, in_params.vector_data(), HardwareAuthToken(),
+                                 &out);
         if (result.isOk()) {
             *out_params = out.params;
             op_ = out.operation;
