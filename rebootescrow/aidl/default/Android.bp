@@ -87,9 +87,7 @@ cc_test {
     ],
     static_libs: [
         "libhadamardutils",
-    ],
-    header_libs: [
-        "libgtest_prod_headers",
+        "libgtest_prod",
     ],
     shared_libs: [
         "liblog",
