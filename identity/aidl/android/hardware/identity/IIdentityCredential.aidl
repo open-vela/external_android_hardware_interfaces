@@ -324,7 +324,6 @@ interface IIdentityCredential {
      *
      * @param out deviceNameSpaces the bytes of DeviceNameSpaces.
      */
-    @SuppressWarnings(value={"out-array"})
     void finishRetrieval(out byte[] mac, out byte[] deviceNameSpaces);
 
     /**
@@ -377,7 +376,6 @@ interface IIdentityCredential {
      *
      * @return an X.509 certificate for the new signing key, signed by the credential key.
      */
-    @SuppressWarnings(value={"out-array"})
     Certificate generateSigningKeyPair(out byte[] signingKeyBlob);
 
     /**
