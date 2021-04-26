@@ -14,26 +14,22 @@
  * limitations under the License.
  */
 
-#include <android-base/logging.h>
 #include <radio_hidl_hal_utils_v1_0.h>
 
 /*
  * Test IRadio.getIccCardStatus() for the response returned.
  */
-TEST_P(RadioHidlTest, getIccCardStatus) {
-    LOG(DEBUG) << "getIccCardStatus";
+TEST_F(RadioHidlTest, getIccCardStatus) {
     EXPECT_LE(cardStatus.applications.size(), (unsigned int)RadioConst::CARD_MAX_APPS);
     EXPECT_LT(cardStatus.gsmUmtsSubscriptionAppIndex, (int)RadioConst::CARD_MAX_APPS);
     EXPECT_LT(cardStatus.cdmaSubscriptionAppIndex, (int)RadioConst::CARD_MAX_APPS);
     EXPECT_LT(cardStatus.imsSubscriptionAppIndex, (int)RadioConst::CARD_MAX_APPS);
-    LOG(DEBUG) << "getIccCardStatus finished";
 }
 
 /*
  * Test IRadio.supplyIccPinForApp() for the response returned
  */
-TEST_P(RadioHidlTest, supplyIccPinForApp) {
-    LOG(DEBUG) << "supplyIccPinForApp";
+TEST_F(RadioHidlTest, supplyIccPinForApp) {
     serial = GetRandomSerialNumber();
 
     // Pass wrong password and check PASSWORD_INCORRECT returned for 3GPP and
@@ -53,14 +49,12 @@ TEST_P(RadioHidlTest, supplyIccPinForApp) {
                 {RadioError::PASSWORD_INCORRECT, RadioError::REQUEST_NOT_SUPPORTED}));
         }
     }
-    LOG(DEBUG) << "supplyIccPinForApp finished";
 }
 
 /*
  * Test IRadio.supplyIccPukForApp() for the response returned.
  */
-TEST_P(RadioHidlTest, supplyIccPukForApp) {
-    LOG(DEBUG) << "supplyIccPukForApp";
+TEST_F(RadioHidlTest, supplyIccPukForApp) {
     serial = GetRandomSerialNumber();
 
     // Pass wrong password and check PASSWORD_INCORRECT returned for 3GPP and
@@ -79,14 +73,12 @@ TEST_P(RadioHidlTest, supplyIccPukForApp) {
                                                                    RadioError::INVALID_SIM_STATE}));
         }
     }
-    LOG(DEBUG) << "supplyIccPukForApp finished";
 }
 
 /*
  * Test IRadio.supplyIccPin2ForApp() for the response returned.
  */
-TEST_P(RadioHidlTest, supplyIccPin2ForApp) {
-    LOG(DEBUG) << "supplyIccPin2ForApp";
+TEST_F(RadioHidlTest, supplyIccPin2ForApp) {
     serial = GetRandomSerialNumber();
 
     // Pass wrong password and check PASSWORD_INCORRECT returned for 3GPP and
@@ -107,14 +99,12 @@ TEST_P(RadioHidlTest, supplyIccPin2ForApp) {
                                   RadioError::SIM_PUK2}));
         }
     }
-    LOG(DEBUG) << "supplyIccPin2ForApp finished";
 }
 
 /*
  * Test IRadio.supplyIccPuk2ForApp() for the response returned.
  */
-TEST_P(RadioHidlTest, supplyIccPuk2ForApp) {
-    LOG(DEBUG) << "supplyIccPuk2ForApp";
+TEST_F(RadioHidlTest, supplyIccPuk2ForApp) {
     serial = GetRandomSerialNumber();
 
     // Pass wrong password and check PASSWORD_INCORRECT returned for 3GPP and
@@ -133,14 +123,12 @@ TEST_P(RadioHidlTest, supplyIccPuk2ForApp) {
                                                                    RadioError::INVALID_SIM_STATE}));
         }
     }
-    LOG(DEBUG) << "supplyIccPuk2ForApp finished";
 }
 
 /*
  * Test IRadio.changeIccPinForApp() for the response returned.
  */
-TEST_P(RadioHidlTest, changeIccPinForApp) {
-    LOG(DEBUG) << "changeIccPinForApp";
+TEST_F(RadioHidlTest, changeIccPinForApp) {
     serial = GetRandomSerialNumber();
 
     // Pass wrong password and check PASSWORD_INCORRECT returned for 3GPP and
@@ -160,14 +148,12 @@ TEST_P(RadioHidlTest, changeIccPinForApp) {
                 {RadioError::PASSWORD_INCORRECT, RadioError::REQUEST_NOT_SUPPORTED}));
         }
     }
-    LOG(DEBUG) << "changeIccPinForApp finished";
 }
 
 /*
  * Test IRadio.changeIccPin2ForApp() for the response returned.
  */
-TEST_P(RadioHidlTest, changeIccPin2ForApp) {
-    LOG(DEBUG) << "changeIccPin2ForApp";
+TEST_F(RadioHidlTest, changeIccPin2ForApp) {
     serial = GetRandomSerialNumber();
 
     // Pass wrong password and check PASSWORD_INCORRECT returned for 3GPP and
@@ -188,16 +174,12 @@ TEST_P(RadioHidlTest, changeIccPin2ForApp) {
                                   RadioError::SIM_PUK2}));
         }
     }
-    LOG(DEBUG) << "changeIccPin2ForApp finished";
 }
 
 /*
- * The following test is disabled due to b/109889468
- *
  * Test IRadio.getImsiForApp() for the response returned.
  */
-TEST_P(RadioHidlTest, DISABLED_getImsiForApp) {
-    LOG(DEBUG) << "DISABLED_getImsiForApp";
+TEST_F(RadioHidlTest, getImsiForApp) {
     serial = GetRandomSerialNumber();
 
     // Check success returned while getting imsi for 3GPP and 3GPP2 apps only
@@ -221,14 +203,12 @@ TEST_P(RadioHidlTest, DISABLED_getImsiForApp) {
             }
         }
     }
-    LOG(DEBUG) << "DISABLED_getImsiForApp finished";
 }
 
 /*
  * Test IRadio.iccIOForApp() for the response returned.
  */
-TEST_P(RadioHidlTest, iccIOForApp) {
-    LOG(DEBUG) << "iccIOForApp";
+TEST_F(RadioHidlTest, iccIOForApp) {
     serial = GetRandomSerialNumber();
 
     for (int i = 0; i < (int)cardStatus.applications.size(); i++) {
@@ -248,14 +228,12 @@ TEST_P(RadioHidlTest, iccIOForApp) {
         EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp->rspInfo.type);
         EXPECT_EQ(serial, radioRsp->rspInfo.serial);
     }
-    LOG(DEBUG) << "iccIOForApp finished";
 }
 
 /*
  * Test IRadio.iccTransmitApduBasicChannel() for the response returned.
  */
-TEST_P(RadioHidlTest, iccTransmitApduBasicChannel) {
-    LOG(DEBUG) << "iccTransmitApduBasicChannel";
+TEST_F(RadioHidlTest, iccTransmitApduBasicChannel) {
     serial = GetRandomSerialNumber();
     SimApdu msg;
     memset(&msg, 0, sizeof(msg));
@@ -267,14 +245,12 @@ TEST_P(RadioHidlTest, iccTransmitApduBasicChannel) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     // TODO(sanketpadawe): Add test for error code
-    LOG(DEBUG) << "iccTransmitApduBasicChannel finished";
 }
 
 /*
  * Test IRadio.iccOpenLogicalChannel() for the response returned.
  */
-TEST_P(RadioHidlTest, iccOpenLogicalChannel) {
-    LOG(DEBUG) << "iccOpenLogicalChannel";
+TEST_F(RadioHidlTest, iccOpenLogicalChannel) {
     serial = GetRandomSerialNumber();
     int p2 = 0x04;
     // Specified in ISO 7816-4 clause 7.1.1 0x04 means that FCP template is requested.
@@ -284,14 +260,12 @@ TEST_P(RadioHidlTest, iccOpenLogicalChannel) {
         EXPECT_EQ(serial, radioRsp->rspInfo.serial);
         EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp->rspInfo.type);
     }
-    LOG(DEBUG) << "iccOpenLogicalChannel finished";
 }
 
 /*
  * Test IRadio.iccCloseLogicalChannel() for the response returned.
  */
-TEST_P(RadioHidlTest, iccCloseLogicalChannel) {
-    LOG(DEBUG) << "iccCloseLogicalChannel";
+TEST_F(RadioHidlTest, iccCloseLogicalChannel) {
     serial = GetRandomSerialNumber();
     // Try closing invalid channel and check INVALID_ARGUMENTS returned as error
     radio->iccCloseLogicalChannel(serial, 0);
@@ -300,14 +274,12 @@ TEST_P(RadioHidlTest, iccCloseLogicalChannel) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     EXPECT_EQ(RadioError::INVALID_ARGUMENTS, radioRsp->rspInfo.error);
-    LOG(DEBUG) << "iccCloseLogicalChannel finished";
 }
 
 /*
  * Test IRadio.iccTransmitApduLogicalChannel() for the response returned.
  */
-TEST_P(RadioHidlTest, iccTransmitApduLogicalChannel) {
-    LOG(DEBUG) << "iccTransmitApduLogicalChannel";
+TEST_F(RadioHidlTest, iccTransmitApduLogicalChannel) {
     serial = GetRandomSerialNumber();
     SimApdu msg;
     memset(&msg, 0, sizeof(msg));
@@ -319,14 +291,12 @@ TEST_P(RadioHidlTest, iccTransmitApduLogicalChannel) {
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
     // TODO(sanketpadawe): Add test for error code
-    LOG(DEBUG) << "iccTransmitApduLogicalChannel finished";
 }
 
 /*
  * Test IRadio.requestIccSimAuthentication() for the response returned.
  */
-TEST_P(RadioHidlTest, requestIccSimAuthentication) {
-    LOG(DEBUG) << "requestIccSimAuthentication";
+TEST_F(RadioHidlTest, requestIccSimAuthentication) {
     serial = GetRandomSerialNumber();
 
     // Pass wrong challenge string and check RadioError::INVALID_ARGUMENTS
@@ -340,14 +310,12 @@ TEST_P(RadioHidlTest, requestIccSimAuthentication) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error, {RadioError::INVALID_ARGUMENTS,
                                                                RadioError::REQUEST_NOT_SUPPORTED}));
     }
-    LOG(DEBUG) << "requestIccSimAuthentication finished";
 }
 
 /*
  * Test IRadio.supplyNetworkDepersonalization() for the response returned.
  */
-TEST_P(RadioHidlTest, supplyNetworkDepersonalization) {
-    LOG(DEBUG) << "supplyNetworkDepersonalization";
+TEST_F(RadioHidlTest, supplyNetworkDepersonalization) {
     serial = GetRandomSerialNumber();
 
     radio->supplyNetworkDepersonalization(serial, hidl_string("test"));
@@ -362,5 +330,4 @@ TEST_P(RadioHidlTest, supplyNetworkDepersonalization) {
              RadioError::INVALID_SIM_STATE, RadioError::MODEM_ERR, RadioError::NO_MEMORY,
              RadioError::PASSWORD_INCORRECT, RadioError::SIM_ABSENT, RadioError::SYSTEM_ERR}));
     }
-    LOG(DEBUG) << "supplyNetworkDepersonalization finished";
 }

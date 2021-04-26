@@ -15,17 +15,13 @@
  */
 
 #include <android-base/logging.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 
-#include <VtsCoreUtil.h>
-#include <android/hardware/wifi/1.0/IWifi.h>
+#include <VtsHalHidlTargetTestBase.h>
+
 #include <android/hardware/wifi/supplicant/1.0/ISupplicantStaIface.h>
 
 #include "supplicant_hidl_call_util.h"
 #include "supplicant_hidl_test_utils.h"
-#include <cutils/properties.h>
 
 using ::android::sp;
 using ::android::hardware::hidl_array;
@@ -34,14 +30,12 @@ using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
 using ::android::hardware::wifi::supplicant::V1_0::IfaceType;
-using ::android::hardware::wifi::supplicant::V1_0::ISupplicant;
 using ::android::hardware::wifi::supplicant::V1_0::ISupplicantStaIface;
 using ::android::hardware::wifi::supplicant::V1_0::ISupplicantStaIfaceCallback;
 using ::android::hardware::wifi::supplicant::V1_0::ISupplicantStaNetwork;
 using ::android::hardware::wifi::supplicant::V1_0::SupplicantNetworkId;
 using ::android::hardware::wifi::supplicant::V1_0::SupplicantStatus;
 using ::android::hardware::wifi::supplicant::V1_0::SupplicantStatusCode;
-using ::android::hardware::wifi::V1_0::IWifi;
 
 namespace {
 constexpr uint8_t kTestMacAddr[] = {0x56, 0x67, 0x67, 0xf4, 0x56, 0x92};
@@ -62,47 +56,29 @@ constexpr char kTestRadioWorkName[] = "TestRadioWork";
 constexpr uint32_t kTestRadioWorkFrequency = 2412;
 constexpr uint32_t kTestRadioWorkTimeout = 8;
 constexpr uint32_t kTestRadioWorkId = 16;
-int8_t kTestCountryCode[] = {'U', 'S'};
+constexpr int8_t kTestCountryCode[] = {'U', 'S'};
 constexpr uint8_t kTestWpsDeviceType[] = {[0 ... 7] = 0x01};
 constexpr uint16_t kTestWpsConfigMethods = 0xffff;
 }  // namespace
 
-class SupplicantStaIfaceHidlTest
-    : public ::testing::TestWithParam<std::tuple<std::string, std::string>> {
+class SupplicantStaIfaceHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
     virtual void SetUp() override {
-        wifi_instance_name_ = std::get<0>(GetParam());
-        supplicant_instance_name_ = std::get<1>(GetParam());
-        isP2pOn_ =
-            testing::deviceSupportsFeature("android.hardware.wifi.direct");
-        // Stop Framework
-        std::system("/system/bin/stop");
-        stopSupplicant(wifi_instance_name_);
-        startSupplicantAndWaitForHidlService(wifi_instance_name_,
-                                             supplicant_instance_name_);
-        supplicant_ = getSupplicant(supplicant_instance_name_, isP2pOn_);
-        EXPECT_TRUE(turnOnExcessiveLogging(supplicant_));
-        sta_iface_ = getSupplicantStaIface(supplicant_);
+        startSupplicantAndWaitForHidlService();
+        EXPECT_TRUE(turnOnExcessiveLogging());
+        sta_iface_ = getSupplicantStaIface();
         ASSERT_NE(sta_iface_.get(), nullptr);
 
         memcpy(mac_addr_.data(), kTestMacAddr, mac_addr_.size());
     }
 
-    virtual void TearDown() override {
-        stopSupplicant(wifi_instance_name_);
-        // Start Framework
-        std::system("/system/bin/start");
-    }
+    virtual void TearDown() override { stopSupplicant(); }
 
    protected:
-    bool isP2pOn_ = false;
-    sp<ISupplicant> supplicant_;
     // ISupplicantStaIface object used for all tests in this fixture.
     sp<ISupplicantStaIface> sta_iface_;
     // MAC address to use for various tests.
     std::array<uint8_t, 6> mac_addr_;
-    std::string wifi_instance_name_;
-    std::string supplicant_instance_name_;
 };
 
 class IfaceCallback : public ISupplicantStaIfaceCallback {
@@ -183,19 +159,16 @@ class IfaceCallback : public ISupplicantStaIfaceCallback {
  * Ensures that an instance of the ISupplicantStaIface proxy object is
  * successfully created.
  */
-TEST_P(SupplicantStaIfaceHidlTest, Create) {
-    stopSupplicant(wifi_instance_name_);
-    startSupplicantAndWaitForHidlService(wifi_instance_name_,
-                                         supplicant_instance_name_);
-    EXPECT_NE(nullptr, getSupplicantStaIface(
-                           getSupplicant(supplicant_instance_name_, isP2pOn_))
-                           .get());
+TEST(SupplicantStaIfaceHidlTestNoFixture, Create) {
+    startSupplicantAndWaitForHidlService();
+    EXPECT_NE(nullptr, getSupplicantStaIface().get());
+    stopSupplicant();
 }
 
 /*
  * RegisterCallback
  */
-TEST_P(SupplicantStaIfaceHidlTest, RegisterCallback) {
+TEST_F(SupplicantStaIfaceHidlTest, RegisterCallback) {
     sta_iface_->registerCallback(
         new IfaceCallback(), [](const SupplicantStatus& status) {
             EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
@@ -205,7 +178,7 @@ TEST_P(SupplicantStaIfaceHidlTest, RegisterCallback) {
 /*
  * GetName
  */
-TEST_P(SupplicantStaIfaceHidlTest, GetName) {
+TEST_F(SupplicantStaIfaceHidlTest, GetName) {
     const auto& status_and_interface_name = HIDL_INVOKE(sta_iface_, getName);
     EXPECT_EQ(SupplicantStatusCode::SUCCESS,
               status_and_interface_name.first.code);
@@ -215,7 +188,7 @@ TEST_P(SupplicantStaIfaceHidlTest, GetName) {
 /*
  * GetType
  */
-TEST_P(SupplicantStaIfaceHidlTest, GetType) {
+TEST_F(SupplicantStaIfaceHidlTest, GetType) {
     const auto& status_and_interface_type = HIDL_INVOKE(sta_iface_, getType);
     EXPECT_EQ(SupplicantStatusCode::SUCCESS,
               status_and_interface_type.first.code);
@@ -225,15 +198,14 @@ TEST_P(SupplicantStaIfaceHidlTest, GetType) {
 /*
  * listNetworks.
  */
-TEST_P(SupplicantStaIfaceHidlTest, listNetworks) {
+TEST_F(SupplicantStaIfaceHidlTest, listNetworks) {
     sta_iface_->listNetworks([](const SupplicantStatus& status,
                                 const hidl_vec<SupplicantNetworkId>& ids) {
         EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
         EXPECT_EQ(0u, ids.size());
     });
 
-    sp<ISupplicantStaNetwork> sta_network =
-        createSupplicantStaNetwork(supplicant_);
+    sp<ISupplicantStaNetwork> sta_network = createSupplicantStaNetwork();
     EXPECT_NE(nullptr, sta_network.get());
 
     sta_iface_->listNetworks([](const SupplicantStatus& status,
@@ -246,7 +218,7 @@ TEST_P(SupplicantStaIfaceHidlTest, listNetworks) {
 /*
  * Reassociate.
  */
-TEST_P(SupplicantStaIfaceHidlTest, Reassociate) {
+TEST_F(SupplicantStaIfaceHidlTest, Reassociate) {
     sta_iface_->reassociate([](const SupplicantStatus& status) {
         EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
     });
@@ -255,7 +227,7 @@ TEST_P(SupplicantStaIfaceHidlTest, Reassociate) {
 /*
  * Reconnect.
  */
-TEST_P(SupplicantStaIfaceHidlTest, Reconnect) {
+TEST_F(SupplicantStaIfaceHidlTest, Reconnect) {
     sta_iface_->reconnect([](const SupplicantStatus& status) {
         EXPECT_EQ(SupplicantStatusCode::FAILURE_IFACE_NOT_DISCONNECTED,
                   status.code);
@@ -265,7 +237,7 @@ TEST_P(SupplicantStaIfaceHidlTest, Reconnect) {
 /*
  * Disconnect.
  */
-TEST_P(SupplicantStaIfaceHidlTest, Disconnect) {
+TEST_F(SupplicantStaIfaceHidlTest, Disconnect) {
     sta_iface_->disconnect([](const SupplicantStatus& status) {
         EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
     });
@@ -274,7 +246,7 @@ TEST_P(SupplicantStaIfaceHidlTest, Disconnect) {
 /*
  * SetPowerSave.
  */
-TEST_P(SupplicantStaIfaceHidlTest, SetPowerSave) {
+TEST_F(SupplicantStaIfaceHidlTest, SetPowerSave) {
     sta_iface_->setPowerSave(true, [](const SupplicantStatus& status) {
         EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
     });
@@ -286,7 +258,7 @@ TEST_P(SupplicantStaIfaceHidlTest, SetPowerSave) {
 /*
  * InitiateTdlsDiscover.
  */
-TEST_P(SupplicantStaIfaceHidlTest, InitiateTdlsDiscover) {
+TEST_F(SupplicantStaIfaceHidlTest, InitiateTdlsDiscover) {
     sta_iface_->initiateTdlsDiscover(
         mac_addr_, [](const SupplicantStatus& status) {
             EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
@@ -296,7 +268,7 @@ TEST_P(SupplicantStaIfaceHidlTest, InitiateTdlsDiscover) {
 /*
  * InitiateTdlsSetup.
  */
-TEST_P(SupplicantStaIfaceHidlTest, InitiateTdlsSetup) {
+TEST_F(SupplicantStaIfaceHidlTest, InitiateTdlsSetup) {
     sta_iface_->initiateTdlsSetup(
         mac_addr_, [](const SupplicantStatus& status) {
             EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
@@ -306,7 +278,7 @@ TEST_P(SupplicantStaIfaceHidlTest, InitiateTdlsSetup) {
 /*
  * InitiateTdlsTeardown.
  */
-TEST_P(SupplicantStaIfaceHidlTest, InitiateTdlsTeardown) {
+TEST_F(SupplicantStaIfaceHidlTest, InitiateTdlsTeardown) {
     sta_iface_->initiateTdlsTeardown(
         mac_addr_, [](const SupplicantStatus& status) {
             EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
@@ -316,7 +288,7 @@ TEST_P(SupplicantStaIfaceHidlTest, InitiateTdlsTeardown) {
 /*
  * InitiateAnqpQuery.
  */
-TEST_P(SupplicantStaIfaceHidlTest, InitiateAnqpQuery) {
+TEST_F(SupplicantStaIfaceHidlTest, InitiateAnqpQuery) {
     std::vector<ISupplicantStaIface::AnqpInfoId> anqp_ids(
         kTestAnqpInfoIds, kTestAnqpInfoIds + sizeof(kTestAnqpInfoIds));
     std::vector<ISupplicantStaIface::Hs20AnqpSubtypes> hs_types(
@@ -332,7 +304,7 @@ TEST_P(SupplicantStaIfaceHidlTest, InitiateAnqpQuery) {
 /*
  * InitiateHs20IconQuery.
  */
-TEST_P(SupplicantStaIfaceHidlTest, InitiateHs20IconQuery) {
+TEST_F(SupplicantStaIfaceHidlTest, InitiateHs20IconQuery) {
     sta_iface_->initiateHs20IconQuery(
         mac_addr_, kTestHs20IconFile, [](const SupplicantStatus& status) {
             // These requests will fail unless the BSSID mentioned is actually
@@ -344,7 +316,7 @@ TEST_P(SupplicantStaIfaceHidlTest, InitiateHs20IconQuery) {
 /*
  * GetMacAddress.
  */
-TEST_P(SupplicantStaIfaceHidlTest, GetMacAddress) {
+TEST_F(SupplicantStaIfaceHidlTest, GetMacAddress) {
     sta_iface_->getMacAddress([](const SupplicantStatus& status,
                                  const hidl_array<uint8_t, 6>& mac_addr) {
         EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
@@ -356,7 +328,7 @@ TEST_P(SupplicantStaIfaceHidlTest, GetMacAddress) {
 /*
  * StartRxFilter.
  */
-TEST_P(SupplicantStaIfaceHidlTest, StartRxFilter) {
+TEST_F(SupplicantStaIfaceHidlTest, StartRxFilter) {
     sta_iface_->startRxFilter([](const SupplicantStatus& status) {
         EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
     });
@@ -365,7 +337,7 @@ TEST_P(SupplicantStaIfaceHidlTest, StartRxFilter) {
 /*
  * StopRxFilter.
  */
-TEST_P(SupplicantStaIfaceHidlTest, StopRxFilter) {
+TEST_F(SupplicantStaIfaceHidlTest, StopRxFilter) {
     sta_iface_->stopRxFilter([](const SupplicantStatus& status) {
         EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
     });
@@ -374,7 +346,7 @@ TEST_P(SupplicantStaIfaceHidlTest, StopRxFilter) {
 /*
  * AddRxFilter.
  */
-TEST_P(SupplicantStaIfaceHidlTest, AddRxFilter) {
+TEST_F(SupplicantStaIfaceHidlTest, AddRxFilter) {
     sta_iface_->addRxFilter(ISupplicantStaIface::RxFilterType::V4_MULTICAST,
                             [](const SupplicantStatus& status) {
                                 EXPECT_EQ(SupplicantStatusCode::SUCCESS,
@@ -390,7 +362,7 @@ TEST_P(SupplicantStaIfaceHidlTest, AddRxFilter) {
 /*
  * RemoveRxFilter.
  */
-TEST_P(SupplicantStaIfaceHidlTest, RemoveRxFilter) {
+TEST_F(SupplicantStaIfaceHidlTest, RemoveRxFilter) {
     sta_iface_->removeRxFilter(ISupplicantStaIface::RxFilterType::V4_MULTICAST,
                                [](const SupplicantStatus& status) {
                                    EXPECT_EQ(SupplicantStatusCode::SUCCESS,
@@ -406,7 +378,7 @@ TEST_P(SupplicantStaIfaceHidlTest, RemoveRxFilter) {
 /*
  * SetBtCoexistenceMode.
  */
-TEST_P(SupplicantStaIfaceHidlTest, SetBtCoexistenceMode) {
+TEST_F(SupplicantStaIfaceHidlTest, SetBtCoexistenceMode) {
     sta_iface_->setBtCoexistenceMode(
         ISupplicantStaIface::BtCoexistenceMode::ENABLED,
         [](const SupplicantStatus& status) {
@@ -427,7 +399,7 @@ TEST_P(SupplicantStaIfaceHidlTest, SetBtCoexistenceMode) {
 /*
  * SetBtCoexistenceScanModeEnabled.
  */
-TEST_P(SupplicantStaIfaceHidlTest, SetBtCoexistenceScanModeEnabled) {
+TEST_F(SupplicantStaIfaceHidlTest, SetBtCoexistenceScanModeEnabled) {
     sta_iface_->setBtCoexistenceScanModeEnabled(
         true, [](const SupplicantStatus& status) {
             EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
@@ -441,7 +413,7 @@ TEST_P(SupplicantStaIfaceHidlTest, SetBtCoexistenceScanModeEnabled) {
 /*
  * SetSuspendModeEnabled.
  */
-TEST_P(SupplicantStaIfaceHidlTest, SetSuspendModeEnabled) {
+TEST_F(SupplicantStaIfaceHidlTest, SetSuspendModeEnabled) {
     sta_iface_->setSuspendModeEnabled(true, [](const SupplicantStatus& status) {
         EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
     });
@@ -454,11 +426,7 @@ TEST_P(SupplicantStaIfaceHidlTest, SetSuspendModeEnabled) {
 /*
  * SetCountryCode.
  */
-TEST_P(SupplicantStaIfaceHidlTest, SetCountryCode) {
-    std::array<char, PROPERTY_VALUE_MAX> buffer;
-    property_get("ro.boot.wificountrycode", buffer.data(), "US");
-    kTestCountryCode[0] = buffer.data()[0];
-    kTestCountryCode[1] = buffer.data()[1];
+TEST_F(SupplicantStaIfaceHidlTest, SetCountryCode) {
     sta_iface_->setCountryCode(
         kTestCountryCode, [](const SupplicantStatus& status) {
             EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
@@ -468,7 +436,7 @@ TEST_P(SupplicantStaIfaceHidlTest, SetCountryCode) {
 /*
  * SetWpsDeviceName
  */
-TEST_P(SupplicantStaIfaceHidlTest, SetWpsDeviceName) {
+TEST_F(SupplicantStaIfaceHidlTest, SetWpsDeviceName) {
     EXPECT_EQ(
         SupplicantStatusCode::SUCCESS,
         HIDL_INVOKE(sta_iface_, setWpsDeviceName, kTestWpsDeviceName).code);
@@ -477,7 +445,7 @@ TEST_P(SupplicantStaIfaceHidlTest, SetWpsDeviceName) {
 /*
  * SetWpsDeviceType
  */
-TEST_P(SupplicantStaIfaceHidlTest, SetWpsDeviceType) {
+TEST_F(SupplicantStaIfaceHidlTest, SetWpsDeviceType) {
     EXPECT_EQ(
         SupplicantStatusCode::SUCCESS,
         HIDL_INVOKE(sta_iface_, setWpsDeviceType, kTestWpsDeviceType).code);
@@ -486,7 +454,7 @@ TEST_P(SupplicantStaIfaceHidlTest, SetWpsDeviceType) {
 /*
  * SetWpsManufacturer
  */
-TEST_P(SupplicantStaIfaceHidlTest, SetWpsManufacturer) {
+TEST_F(SupplicantStaIfaceHidlTest, SetWpsManufacturer) {
     EXPECT_EQ(
         SupplicantStatusCode::SUCCESS,
         HIDL_INVOKE(sta_iface_, setWpsManufacturer, kTestWpsManufacturer).code);
@@ -495,7 +463,7 @@ TEST_P(SupplicantStaIfaceHidlTest, SetWpsManufacturer) {
 /*
  * SetWpsModelName
  */
-TEST_P(SupplicantStaIfaceHidlTest, SetWpsModelName) {
+TEST_F(SupplicantStaIfaceHidlTest, SetWpsModelName) {
     EXPECT_EQ(SupplicantStatusCode::SUCCESS,
               HIDL_INVOKE(sta_iface_, setWpsModelName, kTestWpsModelName).code);
 }
@@ -503,7 +471,7 @@ TEST_P(SupplicantStaIfaceHidlTest, SetWpsModelName) {
 /*
  * SetWpsModelNumber
  */
-TEST_P(SupplicantStaIfaceHidlTest, SetWpsModelNumber) {
+TEST_F(SupplicantStaIfaceHidlTest, SetWpsModelNumber) {
     EXPECT_EQ(
         SupplicantStatusCode::SUCCESS,
         HIDL_INVOKE(sta_iface_, setWpsModelNumber, kTestWpsModelNumber).code);
@@ -512,7 +480,7 @@ TEST_P(SupplicantStaIfaceHidlTest, SetWpsModelNumber) {
 /*
  * SetWpsSerialNumber
  */
-TEST_P(SupplicantStaIfaceHidlTest, SetWpsSerialNumber) {
+TEST_F(SupplicantStaIfaceHidlTest, SetWpsSerialNumber) {
     EXPECT_EQ(
         SupplicantStatusCode::SUCCESS,
         HIDL_INVOKE(sta_iface_, setWpsSerialNumber, kTestWpsSerialNumber).code);
@@ -521,7 +489,7 @@ TEST_P(SupplicantStaIfaceHidlTest, SetWpsSerialNumber) {
 /*
  * SetWpsConfigMethods
  */
-TEST_P(SupplicantStaIfaceHidlTest, SetWpsConfigMethods) {
+TEST_F(SupplicantStaIfaceHidlTest, SetWpsConfigMethods) {
     EXPECT_EQ(
         SupplicantStatusCode::SUCCESS,
         HIDL_INVOKE(sta_iface_, setWpsConfigMethods, kTestWpsConfigMethods)
@@ -531,7 +499,7 @@ TEST_P(SupplicantStaIfaceHidlTest, SetWpsConfigMethods) {
 /*
  * SetExternalSim
  */
-TEST_P(SupplicantStaIfaceHidlTest, SetExternalSim) {
+TEST_F(SupplicantStaIfaceHidlTest, SetExternalSim) {
     EXPECT_EQ(SupplicantStatusCode::SUCCESS,
               HIDL_INVOKE(sta_iface_, setExternalSim, true).code);
     EXPECT_EQ(SupplicantStatusCode::SUCCESS,
@@ -541,7 +509,7 @@ TEST_P(SupplicantStaIfaceHidlTest, SetExternalSim) {
 /*
  * AddExtRadioWork
  */
-TEST_P(SupplicantStaIfaceHidlTest, AddExtRadioWork) {
+TEST_F(SupplicantStaIfaceHidlTest, AddExtRadioWork) {
     const auto& status_and_radio_work_id =
         HIDL_INVOKE(sta_iface_, addExtRadioWork, kTestRadioWorkName,
                     kTestRadioWorkFrequency, kTestRadioWorkTimeout);
@@ -556,19 +524,9 @@ TEST_P(SupplicantStaIfaceHidlTest, AddExtRadioWork) {
 /*
  * RemoveExtRadioWork
  */
-TEST_P(SupplicantStaIfaceHidlTest, RemoveExtRadioWork) {
+TEST_F(SupplicantStaIfaceHidlTest, RemoveExtRadioWork) {
     // This fails because there is no on going radio work with kTestRadioWorkId.
     EXPECT_NE(
         SupplicantStatusCode::SUCCESS,
         HIDL_INVOKE(sta_iface_, removeExtRadioWork, kTestRadioWorkId).code);
 }
-
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantStaIfaceHidlTest);
-INSTANTIATE_TEST_CASE_P(
-    PerInstance, SupplicantStaIfaceHidlTest,
-    testing::Combine(
-        testing::ValuesIn(
-            android::hardware::getAllHalInstanceNames(IWifi::descriptor)),
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(
-            ISupplicant::descriptor))),
-    android::hardware::PrintInstanceTupleNameToString<>);
