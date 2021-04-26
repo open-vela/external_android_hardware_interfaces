@@ -31,11 +31,7 @@ namespace implementation {
 
 PrimaryDevice::PrimaryDevice(audio_hw_device_t* device) : mDevice(new Device(device)) {}
 
-PrimaryDevice::~PrimaryDevice() {
-    // Do not call mDevice->close here. If there are any unclosed streams,
-    // they only hold IDevice instance, not IPrimaryDevice, thus IPrimaryDevice
-    // "part" of a device can be destroyed before the streams.
-}
+PrimaryDevice::~PrimaryDevice() {}
 
 // Methods from ::android::hardware::audio::CPP_VERSION::IDevice follow.
 Return<Result> PrimaryDevice::initCheck() {
@@ -73,36 +69,28 @@ Return<void> PrimaryDevice::getInputBufferSize(const AudioConfig& config,
 
 #if MAJOR_VERSION == 2
 Return<void> PrimaryDevice::openOutputStream(int32_t ioHandle, const DeviceAddress& device,
-                                             const AudioConfig& config, AudioOutputFlags flags,
+                                             const AudioConfig& config,
+                                             AudioOutputFlagBitfield flags,
                                              openOutputStream_cb _hidl_cb) {
     return mDevice->openOutputStream(ioHandle, device, config, flags, _hidl_cb);
 }
 
 Return<void> PrimaryDevice::openInputStream(int32_t ioHandle, const DeviceAddress& device,
-                                            const AudioConfig& config, AudioInputFlags flags,
+                                            const AudioConfig& config, AudioInputFlagBitfield flags,
                                             AudioSource source, openInputStream_cb _hidl_cb) {
     return mDevice->openInputStream(ioHandle, device, config, flags, source, _hidl_cb);
 }
 #elif MAJOR_VERSION >= 4
 Return<void> PrimaryDevice::openOutputStream(int32_t ioHandle, const DeviceAddress& device,
                                              const AudioConfig& config,
-#if MAJOR_VERSION <= 6
-                                             AudioOutputFlags flags,
-#else
-                                             const AudioOutputFlags& flags,
-#endif
+                                             AudioOutputFlagBitfield flags,
                                              const SourceMetadata& sourceMetadata,
                                              openOutputStream_cb _hidl_cb) {
     return mDevice->openOutputStream(ioHandle, device, config, flags, sourceMetadata, _hidl_cb);
 }
 
 Return<void> PrimaryDevice::openInputStream(int32_t ioHandle, const DeviceAddress& device,
-                                            const AudioConfig& config,
-#if MAJOR_VERSION <= 6
-                                            AudioInputFlags flags,
-#else
-                                            const AudioInputFlags& flags,
-#endif
+                                            const AudioConfig& config, AudioInputFlagBitfield flags,
                                             const SinkMetadata& sinkMetadata,
                                             openInputStream_cb _hidl_cb) {
     return mDevice->openInputStream(ioHandle, device, config, flags, sinkMetadata, _hidl_cb);
@@ -172,26 +160,6 @@ Return<Result> PrimaryDevice::setConnectedState(const DeviceAddress& address, bo
     return mDevice->setConnectedState(address, connected);
 }
 #endif
-#if MAJOR_VERSION >= 6
-Return<Result> PrimaryDevice::close() {
-    return mDevice->close();
-}
-
-Return<Result> PrimaryDevice::addDeviceEffect(AudioPortHandle device, uint64_t effectId) {
-    return mDevice->addDeviceEffect(device, effectId);
-}
-
-Return<Result> PrimaryDevice::removeDeviceEffect(AudioPortHandle device, uint64_t effectId) {
-    return mDevice->removeDeviceEffect(device, effectId);
-}
-
-Return<void> PrimaryDevice::updateAudioPatch(int32_t previousPatch,
-                                             const hidl_vec<AudioPortConfig>& sources,
-                                             const hidl_vec<AudioPortConfig>& sinks,
-                                             updateAudioPatch_cb _hidl_cb) {
-    return mDevice->updateAudioPatch(previousPatch, sources, sinks, _hidl_cb);
-}
-#endif
 
 // Methods from ::android::hardware::audio::CPP_VERSION::IPrimaryDevice follow.
 Return<Result> PrimaryDevice::setVoiceVolume(float volume) {
@@ -211,9 +179,6 @@ Return<Result> PrimaryDevice::setMode(AudioMode mode) {
         case AudioMode::RINGTONE:
         case AudioMode::IN_CALL:
         case AudioMode::IN_COMMUNICATION:
-#if MAJOR_VERSION >= 6
-        case AudioMode::CALL_SCREEN:
-#endif
             break;  // Valid values
         default:
             return Result::INVALID_ARGUMENTS;

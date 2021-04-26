@@ -47,7 +47,7 @@ class SocketComm {
     /**
      * Serialized and send the given message to all connected clients.
      */
-    void sendMessage(vhal_proto::EmulatorMessage const& msg);
+    void sendMessage(emulator::EmulatorMessage const& msg);
 
    private:
     int mListenFd;

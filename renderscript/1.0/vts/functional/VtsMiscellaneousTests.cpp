@@ -25,14 +25,14 @@
  *
  * Calls: getService<IDevice>, contextCreate, contextDestroy
  */
-TEST_P(RenderscriptHidlTest, ContextCreateAndDestroy) {}
+TEST_F(RenderscriptHidlTest, ContextCreateAndDestroy) {}
 
 /*
  * Create an Element and verify the return value is valid.
  *
  * Calls: elementCreate
  */
-TEST_P(RenderscriptHidlTest, ElementCreate) {
+TEST_F(RenderscriptHidlTest, ElementCreate) {
     Element element = context->elementCreate(DataType::FLOAT_32, DataKind::USER, false, 1);
     EXPECT_NE(Element(0), element);
 }
@@ -43,7 +43,7 @@ TEST_P(RenderscriptHidlTest, ElementCreate) {
  *
  * Calls: elementCreate, typeCreate, allocationCreateTyped, allocationGetType
  */
-TEST_P(RenderscriptHidlTest, ElementTypeAllocationCreate) {
+TEST_F(RenderscriptHidlTest, ElementTypeAllocationCreate) {
     // Element create test
     Element element = context->elementCreate(DataType::FLOAT_32, DataKind::USER, false, 1);
     ASSERT_NE(Element(0), element);
@@ -71,7 +71,7 @@ TEST_P(RenderscriptHidlTest, ElementTypeAllocationCreate) {
  * Calls: elementCreate, typeCreate, elementGetNativeMetadata,
  * typeGetNativeMetadata
  */
-TEST_P(RenderscriptHidlTest, MetadataTest) {
+TEST_F(RenderscriptHidlTest, MetadataTest) {
     // float1
     Element element = context->elementCreate(DataType::FLOAT_32, DataKind::USER, false, 1);
     ASSERT_NE(Element(0), element);
@@ -107,7 +107,7 @@ TEST_P(RenderscriptHidlTest, MetadataTest) {
  * Calls: elementCreate, typeCreate, allocationCreateTyped,
  * allocationGetPointer, allocationResize1D
  */
-TEST_P(RenderscriptHidlTest, ResizeTest) {
+TEST_F(RenderscriptHidlTest, ResizeTest) {
     // float1
     Element element = context->elementCreate(DataType::FLOAT_32, DataKind::USER, false, 1);
     ASSERT_NE(Element(0), element);
@@ -145,7 +145,7 @@ TEST_P(RenderscriptHidlTest, ResizeTest) {
  * allocationGetNativeWindow, allocationSetNativeWindow, allocationIoSend,
  * allocationIoReceive, allocation2DRead
  */
-TEST_P(RenderscriptHidlTest, NativeWindowIoTest) {
+TEST_F(RenderscriptHidlTest, NativeWindowIoTest) {
     // uint8x4
     Element element = context->elementCreate(DataType::UNSIGNED_8, DataKind::USER, false, 4);
     ASSERT_NE(Element(0), element);
@@ -198,7 +198,7 @@ TEST_P(RenderscriptHidlTest, NativeWindowIoTest) {
  * allocation2DWrite, allocation2DRead, allocationIoSend,
  * allocationIoReceive
  */
-TEST_P(RenderscriptHidlTest, BufferQueueTest) {
+TEST_F(RenderscriptHidlTest, BufferQueueTest) {
     // uint8x4
     Element element = context->elementCreate(DataType::UNSIGNED_8, DataKind::USER, false, 4);
     ASSERT_NE(Element(0), element);
@@ -269,7 +269,7 @@ TEST_P(RenderscriptHidlTest, BufferQueueTest) {
  * Calls: contextInitToClient, contextSendMessage, contextPeekMessage,
  * contextGetMessage, contextDeinitToClient, contextLog
  */
-TEST_P(RenderscriptHidlTest, ContextMessageTest) {
+TEST_F(RenderscriptHidlTest, ContextMessageTest) {
     context->contextInitToClient();
 
     const char * message = "correct";
@@ -299,7 +299,7 @@ TEST_P(RenderscriptHidlTest, ContextMessageTest) {
  * Calls: contextSetPriority, contextSetCacheDir, elementCreate, assignName,
  * contextFinish, getName, objDestroy, samplerCreate
  */
-TEST_P(RenderscriptHidlTest, MiscellaneousTests) {
+TEST_F(RenderscriptHidlTest, MiscellaneousTests) {
     context->contextSetPriority(ThreadPriorities::NORMAL);
     context->contextSetCacheDir("/data/local/tmp/temp/");
 
