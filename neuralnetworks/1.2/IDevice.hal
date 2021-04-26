@@ -40,7 +40,7 @@ interface IDevice extends @1.1::IDevice {
      * NNAPI applications filter devices based on their needs:
      *     - An application demands a certain level of performance, but a specific version of
      *       the driver cannot meet that requirement because of a performance regression.
-     *       The application can blacklist the driver based on the version provided.
+     *       The application can disallow the driver based on the version provided.
      *     - An application has a minimum precision requirement, but certain versions of
      *       the driver cannot meet that requirement because of bugs or certain optimizations.
      *       The application can filter out versions of these drivers.
@@ -64,14 +64,14 @@ interface IDevice extends @1.1::IDevice {
      * results, the developer could choose an ACCELERATOR type device for ML
      * workloads, and reserve GPU for graphical rendering.
      *
-     * @param status Error status returned from querying the device type. Must be:
-     *               - NONE if the query was successful
-     *               - DEVICE_UNAVAILABLE if driver is offline or busy
-     *               - GENERAL_FAILURE if the query resulted in an
-     *                 unspecified error
-     * @param type The DeviceType of the device. Please note, this is not a
-     *             bitfield of DeviceTypes. Each device must only be of a
-     *             single DeviceType.
+     * @return status Error status returned from querying the device type. Must be:
+     *                - NONE if the query was successful
+     *                - DEVICE_UNAVAILABLE if driver is offline or busy
+     *                - GENERAL_FAILURE if the query resulted in an
+     *                  unspecified error
+     * @return type The DeviceType of the device. Please note, this is not a
+     *              bitfield of DeviceTypes. Each device must only be of a
+     *              single DeviceType.
      */
     getType() generates (ErrorStatus status, DeviceType type);
 

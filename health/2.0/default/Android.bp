@@ -1,3 +1,12 @@
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
 cc_defaults {
     name: "android.hardware.health@2.0-impl_defaults",
 
@@ -10,8 +19,6 @@ cc_defaults {
     shared_libs: [
         "libbase",
         "libhidlbase",
-        "libhidltransport",
-        "libhwbinder",
         "liblog",
         "libutils",
         "libcutils",
@@ -33,7 +40,11 @@ cc_library_static {
     vendor_available: true,
     srcs: [
         "Health.cpp",
-        "healthd_common.cpp",
+        "healthd_common_adapter.cpp",
+    ],
+
+    whole_static_libs: [
+        "libhealthloop",
     ],
 
     export_include_dirs: ["include"],
