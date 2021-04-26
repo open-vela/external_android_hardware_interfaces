@@ -108,9 +108,6 @@ cc_library_static {
     srcs: [
         "impl/vhal_v2_0/EmulatedUserHal.cpp",
     ],
-    whole_static_libs: [
-        "android.hardware.automotive.vehicle@2.0-user-hal-helper-lib",
-    ],
 }
 
 // Vehicle HAL Server reference impl lib
@@ -137,6 +134,7 @@ cc_library_static {
     local_include_dirs: ["common/include/vhal_v2_0"],
     export_include_dirs: ["impl"],
     srcs: [
+        "impl/vhal_v2_0/EmulatedUserHal.cpp",
         "impl/vhal_v2_0/GeneratorHub.cpp",
         "impl/vhal_v2_0/JsonFakeValueGenerator.cpp",
         "impl/vhal_v2_0/LinearFakeValueGenerator.cpp",
@@ -145,7 +143,6 @@ cc_library_static {
     ],
     whole_static_libs: [
         "android.hardware.automotive.vehicle@2.0-server-common-lib",
-        "android.hardware.automotive.vehicle@2.0-user-hal-helper-lib",
     ],
     static_libs: [
         "android.hardware.automotive.vehicle@2.0-libproto-native",
