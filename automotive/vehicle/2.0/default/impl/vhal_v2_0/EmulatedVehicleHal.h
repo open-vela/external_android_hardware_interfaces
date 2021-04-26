@@ -63,7 +63,6 @@ public:
     //  Methods from EmulatedVehicleHalIface
     bool setPropertyFromVehicle(const VehiclePropValue& propValue) override;
     std::vector<VehiclePropValue> getAllProperties() const override;
-    void getAllPropertiesOverride();
 
 private:
     constexpr std::chrono::nanoseconds hertzToNanoseconds(float hz) const {
@@ -82,17 +81,12 @@ private:
                                    VehiclePropValue* outValue);
     StatusCode fillObd2DtcInfo(VehiclePropValue* outValue);
     StatusCode clearObd2FreezeFrames(const VehiclePropValue& propValue);
-    VehicleHal::VehiclePropValuePtr doInternalHealthCheck();
-    VehicleHal::VehiclePropValuePtr createVhalHeartBeatProp();
 
     /* Private members */
     VehiclePropertyStore* mPropStore;
     std::unordered_set<int32_t> mHvacPowerProps;
     RecurrentTimer mRecurrentTimer;
     VehicleHalClient* mVehicleClient;
-    bool mInEmulator;
-    bool mInitVhalValueOverride;
-    std::vector<VehiclePropValue> mVehiclePropertiesOverride;
     EmulatedUserHal* mEmulatedUserHal;
 };
 
