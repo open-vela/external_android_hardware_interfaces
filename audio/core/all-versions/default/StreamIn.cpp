@@ -413,8 +413,8 @@ Return<void> StreamIn::prepareForReading(uint32_t frameSize, uint32_t framesCoun
 
     // Create and launch the thread.
     auto tempReadThread =
-            sp<ReadThread>::make(&mStopReadThread, mStream, tempCommandMQ.get(), tempDataMQ.get(),
-                                 tempStatusMQ.get(), tempElfGroup.get());
+        std::make_unique<ReadThread>(&mStopReadThread, mStream, tempCommandMQ.get(),
+                                     tempDataMQ.get(), tempStatusMQ.get(), tempElfGroup.get());
     if (!tempReadThread->init()) {
         ALOGW("failed to start reader thread: %s", strerror(-status));
         sendError(Result::INVALID_ARGUMENTS);
@@ -430,7 +430,7 @@ Return<void> StreamIn::prepareForReading(uint32_t frameSize, uint32_t framesCoun
     mCommandMQ = std::move(tempCommandMQ);
     mDataMQ = std::move(tempDataMQ);
     mStatusMQ = std::move(tempStatusMQ);
-    mReadThread = tempReadThread;
+    mReadThread = tempReadThread.release();
     mEfGroup = tempElfGroup.release();
 #if MAJOR_VERSION <= 6
     threadInfo.pid = getpid();
