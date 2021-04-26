@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <android-base/logging.h>
+#include <android/hardware/radio/1.2/IRadio.h>
 #include <radio_hidl_hal_utils_v1_0.h>
 
 using namespace ::android::hardware::radio::V1_0;
@@ -21,7 +23,8 @@ using namespace ::android::hardware::radio::V1_0;
 /*
  * Test IRadio.getDataRegistrationState() for the response returned.
  */
-TEST_F(RadioHidlTest, getDataRegistrationState) {
+TEST_P(RadioHidlTest, getDataRegistrationState) {
+    LOG(DEBUG) << "getDataRegistrationState";
     serial = GetRandomSerialNumber();
 
     radio->getDataRegistrationState(serial);
@@ -94,12 +97,14 @@ TEST_F(RadioHidlTest, getDataRegistrationState) {
             }
         }
     }
+    LOG(DEBUG) << "getDataRegistrationState finished";
 }
 
 /*
  * Test IRadio.setupDataCall() for the response returned.
  */
-TEST_F(RadioHidlTest, setupDataCall) {
+TEST_P(RadioHidlTest, setupDataCall) {
+    LOG(DEBUG) << "setupDataCall";
     serial = GetRandomSerialNumber();
 
     RadioTechnology radioTechnology = RadioTechnology::LTE;
@@ -135,6 +140,9 @@ TEST_F(RadioHidlTest, setupDataCall) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp->rspInfo.type);
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
+    // setupDataCall is deprecated on radio::V1_2 with setupDataCall_1_2
+    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_2);
+
     if (cardStatus.cardState == CardState::ABSENT) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
                                      {RadioError::NONE, RadioError::OP_NOT_ALLOWED_BEFORE_REG_TO_NW,
@@ -142,12 +150,14 @@ TEST_F(RadioHidlTest, setupDataCall) {
                                       RadioError::RADIO_NOT_AVAILABLE, RadioError::SIM_ABSENT},
                                      CHECK_OEM_ERROR));
     }
+    LOG(DEBUG) << "setupDataCall finished";
 }
 
 /*
  * Test IRadio.deactivateDataCall() for the response returned.
  */
-TEST_F(RadioHidlTest, deactivateDataCall) {
+TEST_P(RadioHidlTest, deactivateDataCall) {
+    LOG(DEBUG) << "deactivateDataCall";
     serial = GetRandomSerialNumber();
     int cid = 1;
     bool reasonRadioShutDown = false;
@@ -158,18 +168,23 @@ TEST_F(RadioHidlTest, deactivateDataCall) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp->rspInfo.type);
     EXPECT_EQ(serial, radioRsp->rspInfo.serial);
 
+    // deactivateDataCall is deprecated on radio::V1_2 with deactiveDataCall_1_2
+    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(1_2);
+
     if (cardStatus.cardState == CardState::ABSENT) {
         ASSERT_TRUE(CheckAnyOfErrors(radioRsp->rspInfo.error,
                                      {RadioError::NONE, RadioError::RADIO_NOT_AVAILABLE,
                                       RadioError::SIM_ABSENT, RadioError::INVALID_CALL_ID},
                                      CHECK_OEM_ERROR));
     }
+    LOG(DEBUG) << "deactivateDataCall finished";
 }
 
 /*
  * Test IRadio.getDataCallList() for the response returned.
  */
-TEST_F(RadioHidlTest, getDataCallList) {
+TEST_P(RadioHidlTest, getDataCallList) {
+    LOG(DEBUG) << "getDataCallList";
     serial = GetRandomSerialNumber();
 
     radio->getDataCallList(serial);
@@ -183,12 +198,14 @@ TEST_F(RadioHidlTest, getDataCallList) {
             radioRsp->rspInfo.error,
             {RadioError::NONE, RadioError::RADIO_NOT_AVAILABLE, RadioError::SIM_ABSENT}));
     }
+    LOG(DEBUG) << "getDataCallList finished";
 }
 
 /*
  * Test IRadio.setInitialAttachApn() for the response returned.
  */
-TEST_F(RadioHidlTest, setInitialAttachApn) {
+TEST_P(RadioHidlTest, setInitialAttachApn) {
+    LOG(DEBUG) << "setInitialAttachApn";
     serial = GetRandomSerialNumber();
 
     DataProfileInfo dataProfileInfo;
@@ -226,12 +243,14 @@ TEST_F(RadioHidlTest, setInitialAttachApn) {
                                       RadioError::SUBSCRIPTION_NOT_AVAILABLE},
                                      CHECK_OEM_ERROR));
     }
+    LOG(DEBUG) << "setInitialAttachApn finished";
 }
 
 /*
  * Test IRadio.setDataAllowed() for the response returned.
  */
-TEST_F(RadioHidlTest, setDataAllowed) {
+TEST_P(RadioHidlTest, setDataAllowed) {
+    LOG(DEBUG) << "setDataAllowed";
     serial = GetRandomSerialNumber();
     bool allow = true;
 
@@ -244,12 +263,14 @@ TEST_F(RadioHidlTest, setDataAllowed) {
     if (cardStatus.cardState == CardState::ABSENT) {
         EXPECT_EQ(RadioError::NONE, radioRsp->rspInfo.error);
     }
+    LOG(DEBUG) << "setDataAllowed finished";
 }
 
 /*
  * Test IRadio.setDataProfile() for the response returned.
  */
-TEST_F(RadioHidlTest, setDataProfile) {
+TEST_P(RadioHidlTest, setDataProfile) {
+    LOG(DEBUG) << "setDataProfile";
     serial = GetRandomSerialNumber();
 
     // Create a dataProfileInfo
@@ -289,4 +310,5 @@ TEST_F(RadioHidlTest, setDataProfile) {
                                      {RadioError::NONE, RadioError::RADIO_NOT_AVAILABLE,
                                       RadioError::SIM_ABSENT, RadioError::REQUEST_NOT_SUPPORTED}));
     }
+    LOG(DEBUG) << "setDataProfile finished";
 }
