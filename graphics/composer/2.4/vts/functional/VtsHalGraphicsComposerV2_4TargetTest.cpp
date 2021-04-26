@@ -73,15 +73,15 @@ class VtsDisplay {
 
     IComposerClient::Rect getFrameRect() const { return {0, 0, mDisplayWidth, mDisplayHeight}; }
 
-    void setDimensions(int32_t displayWidth, int32_t displayHeight) const {
+    void setDimensions(int32_t displayWidth, int32_t displayHeight) {
         mDisplayWidth = displayWidth;
         mDisplayHeight = displayHeight;
     }
 
   private:
     const Display mDisplay;
-    mutable int32_t mDisplayWidth;
-    mutable int32_t mDisplayHeight;
+    int32_t mDisplayWidth;
+    int32_t mDisplayHeight;
 };
 
 class GraphicsComposerHidlTest : public ::testing::TestWithParam<std::string> {
@@ -159,9 +159,9 @@ class GraphicsComposerHidlTest : public ::testing::TestWithParam<std::string> {
 
     void execute() { mComposerClient->execute(mReader.get(), mWriter.get()); }
 
-    const native_handle_t* allocate(int32_t width, int32_t height) {
+    const native_handle_t* allocate() {
         return mGralloc->allocate(
-                width, height, /*layerCount*/ 1,
+                /*width*/ 64, /*height*/ 64, /*layerCount*/ 1,
                 static_cast<common::V1_1::PixelFormat>(PixelFormat::RGBA_8888),
                 static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN));
     }
@@ -200,7 +200,7 @@ class GraphicsComposerHidlTest : public ::testing::TestWithParam<std::string> {
                                        const ContentType& contentType, const char* contentTypeStr);
 
     Error setActiveConfigWithConstraints(
-            const VtsDisplay& display, Config config,
+            VtsDisplay& display, Config config,
             const IComposerClient::VsyncPeriodChangeConstraints& constraints,
             VsyncPeriodChangeTimeline* timeline) {
         const auto error = mComposerClient->setActiveConfigWithConstraints(display.get(), config,
@@ -215,7 +215,7 @@ class GraphicsComposerHidlTest : public ::testing::TestWithParam<std::string> {
         return error;
     }
 
-    void setActiveConfig(const VtsDisplay& display, Config config) {
+    void setActiveConfig(VtsDisplay& display, Config config) {
         mComposerClient->setActiveConfig(display.get(), config);
         const int32_t displayWidth = mComposerClient->getDisplayAttribute_2_4(
                 display.get(), config, IComposerClient::Attribute::WIDTH);
@@ -377,7 +377,7 @@ TEST_P(GraphicsComposerHidlTest, getDisplayVsyncPeriod_BadDisplay) {
 }
 
 TEST_P(GraphicsComposerHidlTest, getDisplayVsyncPeriod) {
-    for (const auto& display : mDisplays) {
+    for (VtsDisplay& display : mDisplays) {
         for (Config config : mComposerClient->getDisplayConfigs(display.get())) {
             VsyncPeriodNanos expectedVsyncPeriodNanos = mComposerClient->getDisplayAttribute_2_4(
                     display.get(), config,
@@ -441,7 +441,7 @@ TEST_P(GraphicsComposerHidlTest, setActiveConfigWithConstraints_BadConfig) {
     constraints.seamlessRequired = false;
     constraints.desiredTimeNanos = systemTime();
 
-    for (const auto& display : mDisplays) {
+    for (VtsDisplay& display : mDisplays) {
         Config invalidConfigId = GetInvalidConfigId(display.get());
         EXPECT_EQ(Error::BAD_CONFIG,
                   setActiveConfigWithConstraints(display, invalidConfigId, constraints, &timeline));
@@ -455,7 +455,7 @@ TEST_P(GraphicsComposerHidlTest, setActiveConfigWithConstraints_SeamlessNotAllow
     constraints.seamlessRequired = true;
     constraints.desiredTimeNanos = systemTime();
 
-    for (const auto& display : mDisplays) {
+    for (VtsDisplay& display : mDisplays) {
         forEachTwoConfigs(display.get(), [&](Config config1, Config config2) {
             const auto configGroup1 = mComposerClient->getDisplayAttribute_2_4(
                     display.get(), config1,
@@ -490,10 +490,7 @@ void GraphicsComposerHidlTest::sendRefreshFrame(const VtsDisplay& display,
     mComposerClient->setPowerMode(display.get(), V2_1::IComposerClient::PowerMode::ON);
     mComposerClient->setColorMode_2_3(display.get(), ColorMode::NATIVE, RenderIntent::COLORIMETRIC);
 
-    IComposerClient::FRect displayCrop = display.getCrop();
-    int32_t displayWidth = static_cast<int32_t>(std::ceilf(displayCrop.right - displayCrop.left));
-    int32_t displayHeight = static_cast<int32_t>(std::ceilf(displayCrop.bottom - displayCrop.top));
-    auto handle = allocate(displayWidth, displayHeight);
+    auto handle = allocate();
     ASSERT_NE(nullptr, handle);
 
     Layer layer;
@@ -521,7 +518,7 @@ void GraphicsComposerHidlTest::sendRefreshFrame(const VtsDisplay& display,
     ASSERT_EQ(0, mReader->mErrors.size());
 
     mWriter->selectLayer(layer);
-    auto handle2 = allocate(displayWidth, displayHeight);
+    auto handle2 = allocate();
     ASSERT_NE(nullptr, handle2);
 
     mWriter->setLayerBuffer(0, handle2, -1);
@@ -556,7 +553,7 @@ void GraphicsComposerHidlTest::waitForVsyncPeriodChange(Display display,
 }
 
 void GraphicsComposerHidlTest::Test_setActiveConfigWithConstraints(const TestParameters& params) {
-    for (const auto& display : mDisplays) {
+    for (VtsDisplay& display : mDisplays) {
         forEachTwoConfigs(display.get(), [&](Config config1, Config config2) {
             setActiveConfig(display, config1);
             sendRefreshFrame(display, nullptr);
@@ -745,7 +742,6 @@ TEST_P(GraphicsComposerHidlTest, setGameContentType) {
     Test_setContentType(ContentType::GAME, "GAME");
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GraphicsComposerHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, GraphicsComposerHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IComposer::descriptor)),
