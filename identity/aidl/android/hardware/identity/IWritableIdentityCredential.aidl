@@ -320,7 +320,6 @@ interface IWritableIdentityCredential {
      *              "accessControlProfiles" : [ * uint ],
      *          }
      */
-    @SuppressWarnings(value={"out-array"})
     void finishAddingEntries(out byte[] credentialData,
         out byte[] proofOfProvisioningSignature);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 The Android Open Source Project
+ * Copyright 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,7 +12,8 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *////////////////////////////////////////////////////////////////////////////////
+ */
+///////////////////////////////////////////////////////////////////////////////
 // THIS FILE IS IMMUTABLE. DO NOT EDIT IN ANY CASE.                          //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -30,24 +31,10 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.identity;
+package android.hardware.soundtrigger3;
 @VintfStability
-interface IIdentityCredential {
-  /**
-   * @deprecated use deleteCredentalWithChallenge() instead.
-   */
-  byte[] deleteCredential();
-  byte[] createEphemeralKeyPair();
-  void setReaderEphemeralPublicKey(in byte[] publicKey);
-  long createAuthChallenge();
-  void startRetrieval(in android.hardware.identity.SecureAccessControlProfile[] accessControlProfiles, in android.hardware.keymaster.HardwareAuthToken authToken, in byte[] itemsRequest, in byte[] signingKeyBlob, in byte[] sessionTranscript, in byte[] readerSignature, in int[] requestCounts);
-  void startRetrieveEntryValue(in @utf8InCpp String nameSpace, in @utf8InCpp String name, in int entrySize, in int[] accessControlProfileIds);
-  byte[] retrieveEntryValue(in byte[] encryptedContent);
-  void finishRetrieval(out byte[] mac, out byte[] deviceNameSpaces);
-  android.hardware.identity.Certificate generateSigningKeyPair(out byte[] signingKeyBlob);
-  void setRequestedNamespaces(in android.hardware.identity.RequestNamespace[] requestNamespaces);
-  void setVerificationToken(in android.hardware.keymaster.VerificationToken verificationToken);
-  byte[] deleteCredentialWithChallenge(in byte[] challenge);
-  byte[] proveOwnership(in byte[] challenge);
-  android.hardware.identity.IWritableIdentityCredential updateCredential();
+interface ISoundTriggerHwCallback {
+  void modelUnloaded(in int model);
+  void phraseRecognitionCallback(in int model, in android.media.soundtrigger.PhraseRecognitionEvent event);
+  void recognitionCallback(in int model, in android.media.soundtrigger.RecognitionEvent event);
 }
