@@ -119,6 +119,7 @@ char nibble2hex[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
 // Attestations don't contain everything in key authorization lists, so we need to filter the key
 // lists to produce the lists that we expect to match the attestations.
 auto kTagsToFilter = {
+        Tag::BLOB_USAGE_REQUIREMENTS,  //
         Tag::CREATION_DATETIME,        //
         Tag::EC_CURVE,
         Tag::HARDWARE_TYPE,
@@ -347,7 +348,7 @@ ErrorCode KeyMintAidlTestBase::Begin(KeyPurpose purpose, const vector<uint8_t>& 
     SCOPED_TRACE("Begin");
     Status result;
     BeginResult out;
-    result = keymint_->begin(purpose, key_blob, in_params.vector_data(), std::nullopt, &out);
+    result = keymint_->begin(purpose, key_blob, in_params.vector_data(), HardwareAuthToken(), &out);
 
     if (result.isOk()) {
         *out_params = out.params;
@@ -365,7 +366,7 @@ ErrorCode KeyMintAidlTestBase::Begin(KeyPurpose purpose, const vector<uint8_t>& 
     Status result;
     BeginResult out;
 
-    result = keymint_->begin(purpose, key_blob, in_params.vector_data(), std::nullopt, &out);
+    result = keymint_->begin(purpose, key_blob, in_params.vector_data(), HardwareAuthToken(), &out);
 
     if (result.isOk()) {
         *out_params = out.params;
