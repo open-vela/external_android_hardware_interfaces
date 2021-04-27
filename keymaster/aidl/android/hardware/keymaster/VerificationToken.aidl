@@ -43,7 +43,7 @@ parcelable VerificationToken {
     /**
      * SecurityLevel of the secure environment that generated the token.
      */
-    SecurityLevel securityLevel = SecurityLevel.SOFTWARE;
+    SecurityLevel securityLevel;
 
     /**
      * 32-byte HMAC-SHA256 of the above values, computed as:
