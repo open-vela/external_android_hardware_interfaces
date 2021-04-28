@@ -13,13 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define LOG_TAG "RadioTest"
-
 #include <vts_test_util.h>
 #include <iostream>
-#include "VtsCoreUtil.h"
-
-#define WAIT_TIMEOUT_PERIOD 75
 
 int GetRandomSerialNumber() {
     return rand();
@@ -58,76 +53,4 @@ int GetRandomSerialNumber() {
         }
     }
     return testing::AssertionFailure() << "SapError:" + toString(err) + " is returned";
-}
-
-// Runs "pm list features" and attempts to find the specified feature in its output.
-bool deviceSupportsFeature(const char* feature) {
-    bool hasFeature = false;
-    FILE* p = popen("/system/bin/pm list features", "re");
-    if (p) {
-        char* line = NULL;
-        size_t len = 0;
-        while (getline(&line, &len, p) > 0) {
-            if (strstr(line, feature)) {
-                hasFeature = true;
-                break;
-            }
-        }
-        pclose(p);
-    } else {
-        __android_log_print(ANDROID_LOG_FATAL, LOG_TAG, "popen failed: %d", errno);
-        _exit(EXIT_FAILURE);
-    }
-    __android_log_print(ANDROID_LOG_INFO, LOG_TAG, "Feature %s: %ssupported", feature,
-                        hasFeature ? "" : "not ");
-    return hasFeature;
-}
-
-bool isDsDsEnabled() {
-    return testing::checkSubstringInCommandOutput("getprop persist.radio.multisim.config", "dsds");
-}
-
-bool isTsTsEnabled() {
-    return testing::checkSubstringInCommandOutput("getprop persist.radio.multisim.config", "tsts");
-}
-
-bool isVoiceInService(RegState state) {
-    return ::android::hardware::radio::V1_0::RegState::REG_HOME == state ||
-           ::android::hardware::radio::V1_0::RegState::REG_ROAMING == state;
-}
-
-bool isVoiceEmergencyOnly(RegState state) {
-    return ::android::hardware::radio::V1_0::RegState::NOT_REG_MT_NOT_SEARCHING_OP_EM == state ||
-           ::android::hardware::radio::V1_0::RegState::NOT_REG_MT_SEARCHING_OP_EM == state ||
-           ::android::hardware::radio::V1_0::RegState::REG_DENIED_EM == state ||
-           ::android::hardware::radio::V1_0::RegState::UNKNOWN_EM == state;
-}
-
-/*
- * Notify that the response message is received.
- */
-void RadioResponseWaiter::notify(int receivedSerial) {
-    std::unique_lock<std::mutex> lock(mtx_);
-    if (serial == receivedSerial) {
-        count_++;
-        cv_.notify_one();
-    }
-}
-
-/*
- * Wait till the response message is notified or till WAIT_TIMEOUT_PERIOD.
- */
-std::cv_status RadioResponseWaiter::wait() {
-    std::unique_lock<std::mutex> lock(mtx_);
-
-    std::cv_status status = std::cv_status::no_timeout;
-    auto now = std::chrono::system_clock::now();
-    while (count_ == 0) {
-        status = cv_.wait_until(lock, now + std::chrono::seconds(WAIT_TIMEOUT_PERIOD));
-        if (status == std::cv_status::timeout) {
-            return status;
-        }
-    }
-    count_--;
-    return status;
 }

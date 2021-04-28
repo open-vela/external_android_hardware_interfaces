@@ -1,14 +1,5 @@
-package {
-    // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "hardware_interfaces_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_interfaces_license"],
-}
-
-cc_defaults {
-    name: "cas_service_defaults",
+cc_binary {
+    name: "android.hardware.cas@1.0-service",
     defaults: ["hidl_defaults"],
     vendor: true,
     relative_install_path: "hw",
@@ -21,7 +12,8 @@ cc_defaults {
       "TypeConvert.cpp",
     ],
 
-    compile_multilib: "prefer32",
+    compile_multilib: "32",
+    init_rc: ["android.hardware.cas@1.0-service.rc"],
 
     shared_libs: [
       "android.hardware.cas@1.0",
@@ -30,27 +22,12 @@ cc_defaults {
       "libbinder",
       "libhidlbase",
       "libhidlmemory",
+      "libhidltransport",
       "liblog",
-      "libstagefright_foundation",
       "libutils",
     ],
     header_libs: [
+      "libstagefright_foundation_headers",
       "media_plugin_headers",
     ],
-}
-
-cc_binary {
-    name: "android.hardware.cas@1.0-service",
-    vintf_fragments: ["android.hardware.cas@1.0-service.xml"],
-    defaults: ["cas_service_defaults"],
-    init_rc: ["android.hardware.cas@1.0-service.rc"],
-}
-
-cc_binary {
-    name: "android.hardware.cas@1.0-service-lazy",
-    vintf_fragments: ["android.hardware.cas@1.0-service-lazy.xml"],
-    overrides: ["android.hardware.cas@1.0-service"],
-    defaults: ["cas_service_defaults"],
-    init_rc: ["android.hardware.cas@1.0-service-lazy.rc"],
-    cflags: ["-DLAZY_SERVICE"],
 }

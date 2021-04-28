@@ -14,30 +14,30 @@
 // limitations under the License.
 //
 
-package {
-    // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "hardware_interfaces_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_interfaces_license"],
-}
-
 cc_test {
     name: "VtsHalEvsV1_0TargetTest",
+
     srcs: [
         "VtsHalEvsV1_0TargetTest.cpp",
         "FrameHandler.cpp",
+        "FormatConvert.cpp"
     ],
-    defaults: ["VtsHalTargetTestDefaults"],
+
+    defaults: [
+        "hidl_defaults",
+    ],
+
     shared_libs: [
-        "libui",
-    ],
-    static_libs: [
         "android.hardware.automotive.evs@1.0",
-        "android.hardware.automotive.evs@common-default-lib",
+        "liblog",
+        "libutils",
+        "libui",
+        "libhidlbase",
+        "libhidltransport",
     ],
-    test_suites: ["vts"],
+
+    static_libs: ["VtsHalHidlTargetTestBase"],
+
     cflags: [
         "-O0",
         "-g",
