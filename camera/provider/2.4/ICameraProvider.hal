@@ -115,7 +115,7 @@ interface ICameraProvider {
      *     INTERNAL_ERROR:
      *         A camera ID list cannot be created. This may be due to
      *         a failure to initialize the camera subsystem, for example.
-     * @return cameraDeviceNames The vector of internal camera device
+     * @return cameraDeviceServiceNames The vector of internal camera device
      *     names known to this provider.
      */
     getCameraIdList()
@@ -140,8 +140,7 @@ interface ICameraProvider {
      *         Torch API support cannot be queried. This may be due to
      *         a failure to initialize the camera subsystem, for example.
      * @return support Whether the camera devices known to this provider
-     *     supports setTorchMode API or not. Devices launched with SDK
-     *     level 29 or higher must return true.
+     *     supports setTorchMode API or not.
      *
      */
     isSetTorchModeSupported() generates (Status status, bool support);

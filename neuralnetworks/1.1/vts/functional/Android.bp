@@ -14,48 +14,38 @@
 // limitations under the License.
 //
 
-package {
-    // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "hardware_interfaces_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_interfaces_license"],
-}
-
 cc_test {
     name: "VtsHalNeuralnetworksV1_1TargetTest",
-    defaults: ["neuralnetworks_vts_functional_defaults"],
     srcs: [
         "BasicTests.cpp",
-        "TestAssertions.cpp",
-        "TestMain.cpp",
+        "GeneratedTests.cpp",
         "ValidateModel.cpp",
         "ValidateRequest.cpp",
+        "ValidationTests.cpp",
         "VtsHalNeuralnetworks.cpp",
-        "GeneratedTestHarness.cpp",
     ],
-    shared_libs: [
-        "libfmq",
-        "libnativewindow",
-    ],
+    defaults: ["VtsHalTargetTestDefaults"],
     static_libs: [
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
-        "libgmock",
         "libhidlmemory",
-        "libneuralnetworks_generated_test_harness",
         "libneuralnetworks_utils",
-        "VtsHalNeuralNetworksV1_0_utils",
-    ],
-    whole_static_libs: [
-        "neuralnetworks_generated_V1_0_example",
-        "neuralnetworks_generated_V1_1_example",
+        "VtsHalNeuralnetworksTest_utils",
     ],
     header_libs: [
         "libneuralnetworks_headers",
+        "libneuralnetworks_generated_test_harness_headers",
+        "libneuralnetworks_generated_tests",
     ],
-    test_suites: ["general-tests", "vts"],
+    // Bug: http://b/74200014 - Disable arm32 asan since it triggers internal
+    // error in ld.gold.
+    arch: {
+        arm: {
+            sanitize: {
+                never: true,
+            },
+        },
+    },
 }

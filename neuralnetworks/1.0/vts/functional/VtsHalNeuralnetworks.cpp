@@ -17,129 +17,70 @@
 #define LOG_TAG "neuralnetworks_hidl_hal_test"
 
 #include "VtsHalNeuralnetworks.h"
-#include "1.0/Callbacks.h"
-#include "GeneratedTestHarness.h"
-#include "TestHarness.h"
 
-#include <android-base/logging.h>
-#include <hidl/ServiceManagement.h>
-#include <string>
-#include <utility>
+namespace android {
+namespace hardware {
+namespace neuralnetworks {
+namespace V1_0 {
+namespace vts {
+namespace functional {
 
-namespace android::hardware::neuralnetworks::V1_0::vts::functional {
+// A class for test environment setup
+NeuralnetworksHidlEnvironment::NeuralnetworksHidlEnvironment() {}
 
-using implementation::PreparedModelCallback;
+NeuralnetworksHidlEnvironment::~NeuralnetworksHidlEnvironment() {}
 
-void createPreparedModel(const sp<IDevice>& device, const Model& model,
-                         sp<IPreparedModel>* preparedModel) {
-    ASSERT_NE(nullptr, preparedModel);
-    *preparedModel = nullptr;
-
-    // see if service can handle model
-    bool fullySupportsModel = false;
-    const Return<void> supportedCall = device->getSupportedOperations(
-            model, [&fullySupportsModel](ErrorStatus status, const hidl_vec<bool>& supported) {
-                ASSERT_EQ(ErrorStatus::NONE, status);
-                ASSERT_NE(0ul, supported.size());
-                fullySupportsModel = std::all_of(supported.begin(), supported.end(),
-                                                 [](bool valid) { return valid; });
-            });
-    ASSERT_TRUE(supportedCall.isOk());
-
-    // launch prepare model
-    const sp<PreparedModelCallback> preparedModelCallback = new PreparedModelCallback();
-    const Return<ErrorStatus> prepareLaunchStatus =
-            device->prepareModel(model, preparedModelCallback);
-    ASSERT_TRUE(prepareLaunchStatus.isOk());
-    ASSERT_EQ(ErrorStatus::NONE, static_cast<ErrorStatus>(prepareLaunchStatus));
-
-    // retrieve prepared model
-    preparedModelCallback->wait();
-    const ErrorStatus prepareReturnStatus = preparedModelCallback->getStatus();
-    *preparedModel = preparedModelCallback->getPreparedModel();
-
-    // The getSupportedOperations call returns a list of operations that are
-    // guaranteed not to fail if prepareModel is called, and
-    // 'fullySupportsModel' is true i.f.f. the entire model is guaranteed.
-    // If a driver has any doubt that it can prepare an operation, it must
-    // return false. So here, if a driver isn't sure if it can support an
-    // operation, but reports that it successfully prepared the model, the test
-    // can continue.
-    if (!fullySupportsModel && prepareReturnStatus != ErrorStatus::NONE) {
-        ASSERT_EQ(nullptr, preparedModel->get());
-        LOG(INFO) << "NN VTS: Early termination of test because vendor service cannot prepare "
-                     "model that it does not support.";
-        std::cout << "[          ]   Early termination of test because vendor service cannot "
-                     "prepare model that it does not support."
-                  << std::endl;
-        GTEST_SKIP();
-    }
-    ASSERT_EQ(ErrorStatus::NONE, prepareReturnStatus);
-    ASSERT_NE(nullptr, preparedModel->get());
+NeuralnetworksHidlEnvironment* NeuralnetworksHidlEnvironment::getInstance() {
+    // This has to return a "new" object because it is freed inside
+    // ::testing::AddGlobalTestEnvironment when the gtest is being torn down
+    static NeuralnetworksHidlEnvironment* instance = new NeuralnetworksHidlEnvironment();
+    return instance;
 }
+
+void NeuralnetworksHidlEnvironment::registerTestServices() {
+    registerTestService<IDevice>();
+}
+
+// The main test class for NEURALNETWORK HIDL HAL.
+NeuralnetworksHidlTest::NeuralnetworksHidlTest() {}
+
+NeuralnetworksHidlTest::~NeuralnetworksHidlTest() {}
 
 void NeuralnetworksHidlTest::SetUp() {
-    testing::TestWithParam<NeuralnetworksHidlTestParam>::SetUp();
-    ASSERT_NE(kDevice, nullptr);
+    ::testing::VtsHalHidlTargetTestBase::SetUp();
+    device = ::testing::VtsHalHidlTargetTestBase::getService<IDevice>(
+        NeuralnetworksHidlEnvironment::getInstance());
+    ASSERT_NE(nullptr, device.get());
 }
 
-static NamedDevice makeNamedDevice(const std::string& name) {
-    return {name, IDevice::getService(name)};
+void NeuralnetworksHidlTest::TearDown() {
+    device = nullptr;
+    ::testing::VtsHalHidlTargetTestBase::TearDown();
 }
 
-static std::vector<NamedDevice> getNamedDevicesImpl() {
-    // Retrieves the name of all service instances that implement IDevice,
-    // including any Lazy HAL instances.
-    const std::vector<std::string> names = hardware::getAllHalInstanceNames(IDevice::descriptor);
+}  // namespace functional
+}  // namespace vts
 
-    // Get a handle to each device and pair it with its name.
-    std::vector<NamedDevice> namedDevices;
-    namedDevices.reserve(names.size());
-    std::transform(names.begin(), names.end(), std::back_inserter(namedDevices), makeNamedDevice);
-    return namedDevices;
+::std::ostream& operator<<(::std::ostream& os, ErrorStatus errorStatus) {
+    return os << toString(errorStatus);
 }
 
-const std::vector<NamedDevice>& getNamedDevices() {
-    const static std::vector<NamedDevice> devices = getNamedDevicesImpl();
-    return devices;
+::std::ostream& operator<<(::std::ostream& os, DeviceStatus deviceStatus) {
+    return os << toString(deviceStatus);
 }
 
-std::string printNeuralnetworksHidlTest(
-        const testing::TestParamInfo<NeuralnetworksHidlTestParam>& info) {
-    return gtestCompliantName(getName(info.param));
+}  // namespace V1_0
+}  // namespace neuralnetworks
+}  // namespace hardware
+}  // namespace android
+
+using android::hardware::neuralnetworks::V1_0::vts::functional::NeuralnetworksHidlEnvironment;
+
+int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(NeuralnetworksHidlEnvironment::getInstance());
+    ::testing::InitGoogleTest(&argc, argv);
+    NeuralnetworksHidlEnvironment::getInstance()->init(&argc, argv);
+
+    int status = RUN_ALL_TESTS();
+    return status;
 }
-
-INSTANTIATE_DEVICE_TEST(NeuralnetworksHidlTest);
-
-// Forward declaration from ValidateModel.cpp
-void validateModel(const sp<IDevice>& device, const Model& model);
-// Forward declaration from ValidateRequest.cpp
-void validateRequest(const sp<IPreparedModel>& preparedModel, const Request& request);
-
-void validateEverything(const sp<IDevice>& device, const Model& model, const Request& request) {
-    validateModel(device, model);
-
-    // Create IPreparedModel.
-    sp<IPreparedModel> preparedModel;
-    createPreparedModel(device, model, &preparedModel);
-    if (preparedModel == nullptr) return;
-
-    validateRequest(preparedModel, request);
-}
-
-TEST_P(ValidationTest, Test) {
-    const Model model = createModel(kTestModel);
-    ExecutionContext context;
-    const Request request = context.createRequest(kTestModel);
-    ASSERT_FALSE(kTestModel.expectFailure);
-    validateEverything(kDevice, model, request);
-}
-
-INSTANTIATE_GENERATED_TEST(ValidationTest, [](const std::string& testName) {
-    // Skip validation for the "inputs_as_internal" and "all_tensors_as_inputs"
-    // generated tests.
-    return testName.find("inputs_as_internal") == std::string::npos &&
-           testName.find("all_tensors_as_inputs") == std::string::npos;
-});
-
-}  // namespace android::hardware::neuralnetworks::V1_0::vts::functional

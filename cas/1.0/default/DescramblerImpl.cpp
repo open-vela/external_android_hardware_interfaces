@@ -18,10 +18,8 @@
 #define LOG_TAG "android.hardware.cas@1.0-DescramblerImpl"
 
 #include <hidlmemory/mapping.h>
-#include <inttypes.h>
 #include <media/cas/DescramblerAPI.h>
 #include <media/hardware/CryptoAPI.h>
-#include <media/stagefright/foundation/AString.h>
 #include <media/stagefright/foundation/AUtils.h>
 #include <utils/Log.h>
 
@@ -102,7 +100,7 @@ Return<void> DescramblerImpl::descramble(
     // size in size_t. If size is over SIZE_MAX, mapMemory mapMemory could succeed
     // but the mapped memory's actual size will be smaller than the reported size.
     if (srcBuffer.heapBase.size() > SIZE_MAX) {
-        ALOGE("Invalid hidl_memory size: %" PRIu64 "", srcBuffer.heapBase.size());
+        ALOGE("Invalid hidl_memory size: %llu", srcBuffer.heapBase.size());
         android_errorWriteLog(0x534e4554, "79376389");
         _hidl_cb(toStatus(BAD_VALUE), 0, NULL);
         return Void();
@@ -119,8 +117,8 @@ Return<void> DescramblerImpl::descramble(
     }
     if (!validateRangeForSize(
             srcBuffer.offset, srcBuffer.size, (uint64_t)srcMem->getSize())) {
-        ALOGE("Invalid src buffer range: offset %" PRIu64 ", size %" PRIu64 ", srcMem"
-              "size %" PRIu64 "", srcBuffer.offset, srcBuffer.size, (uint64_t)srcMem->getSize());
+        ALOGE("Invalid src buffer range: offset %llu, size %llu, srcMem size %llu",
+                srcBuffer.offset, srcBuffer.size, (uint64_t)srcMem->getSize());
         android_errorWriteLog(0x534e4554, "67962232");
         _hidl_cb(toStatus(BAD_VALUE), 0, NULL);
         return Void();
@@ -136,8 +134,8 @@ Return<void> DescramblerImpl::descramble(
     // is consistent with the source shared buffer size.
     if (!validateRangeForSize(srcOffset, totalBytesInSubSamples, srcBuffer.size)) {
         ALOGE("Invalid srcOffset and subsample size: "
-                "srcOffset %" PRIu64 ", totalBytesInSubSamples %" PRIu64 ", srcBuffer"
-                "size %" PRIu64 "", srcOffset, totalBytesInSubSamples, srcBuffer.size);
+                "srcOffset %llu, totalBytesInSubSamples %llu, srcBuffer size %llu",
+                srcOffset, totalBytesInSubSamples, srcBuffer.size);
         android_errorWriteLog(0x534e4554, "67962232");
         _hidl_cb(toStatus(BAD_VALUE), 0, NULL);
         return Void();
@@ -154,8 +152,8 @@ Return<void> DescramblerImpl::descramble(
         // dstOffset against the buffer size too.
         if (!validateRangeForSize(dstOffset, totalBytesInSubSamples, srcBuffer.size)) {
             ALOGE("Invalid dstOffset and subsample size: "
-                    "dstOffset %" PRIu64 ", totalBytesInSubSamples %" PRIu64 ", srcBuffer"
-                    "size %" PRIu64 "", dstOffset, totalBytesInSubSamples, srcBuffer.size);
+                    "dstOffset %llu, totalBytesInSubSamples %llu, srcBuffer size %llu",
+                    dstOffset, totalBytesInSubSamples, srcBuffer.size);
             android_errorWriteLog(0x534e4554, "67962232");
             _hidl_cb(toStatus(BAD_VALUE), 0, NULL);
             return Void();
@@ -179,7 +177,6 @@ Return<void> DescramblerImpl::descramble(
     // Casting hidl SubSample to DescramblerPlugin::SubSample, but need
     // to ensure structs are actually idential
 
-    AString detailedError;
     int32_t result = holder->descramble(
             dstBuffer.type != BufferType::SHARED_MEMORY,
             (DescramblerPlugin::ScramblingControl)scramblingControl,
@@ -189,10 +186,10 @@ Return<void> DescramblerImpl::descramble(
             srcOffset,
             dstPtr,
             dstOffset,
-            &detailedError);
+            NULL);
 
     holder.reset();
-    _hidl_cb(toStatus(result >= 0 ? OK : result), result, detailedError.c_str());
+    _hidl_cb(toStatus(result >= 0 ? OK : result), result, NULL);
     return Void();
 }
 

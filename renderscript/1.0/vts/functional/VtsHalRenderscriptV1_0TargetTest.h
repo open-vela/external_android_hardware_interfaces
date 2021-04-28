@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#pragma once
+#ifndef VTS_HAL_RENDERSCRIPT_V1_0_TARGET_TESTS_H
+#define VTS_HAL_RENDERSCRIPT_V1_0_TARGET_TESTS_H
 
 #define LOG_TAG "renderscript_hidl_hal_test"
 #include <android-base/logging.h>
@@ -23,9 +24,9 @@
 #include <android/hardware/renderscript/1.0/IDevice.h>
 #include <android/hardware/renderscript/1.0/types.h>
 
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 
 using ::android::hardware::renderscript::V1_0::Allocation;
 using ::android::hardware::renderscript::V1_0::AllocationAdapter;
@@ -88,8 +89,8 @@ extern const int8_t bitCode[];
 extern const int bitCodeLength;
 
 // The main test class for RENDERSCRIPT HIDL HAL.
-class RenderscriptHidlTest : public ::testing::TestWithParam<std::string> {
-  public:
+class RenderscriptHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+public:
     virtual void SetUp() override;
     virtual void TearDown() override;
 
@@ -98,3 +99,17 @@ class RenderscriptHidlTest : public ::testing::TestWithParam<std::string> {
 private:
     sp<IDevice>    device;
 };
+
+// Test environment for RENDERSCRIPT HIDL HAL.
+class RenderscriptHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    // get the test environment singleton
+    static RenderscriptHidlEnvironment* Instance() {
+        static RenderscriptHidlEnvironment* instance = new RenderscriptHidlEnvironment;
+        return instance;
+    }
+
+    virtual void registerTestServices() override { registerTestService<IDevice>(); }
+};
+
+#endif // VTS_HAL_RENDERSCRIPT_V1_0_TARGET_TESTS_H
