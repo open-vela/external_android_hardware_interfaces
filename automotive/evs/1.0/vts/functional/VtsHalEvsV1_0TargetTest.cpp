@@ -17,15 +17,6 @@
 #define LOG_TAG "VtsHalEvsTest"
 
 
-// Note:  We have't got a great way to indicate which target
-// should be tested, so we'll leave the interface served by the
-// default (mock) EVS driver here for easy reference.  All
-// actual EVS drivers should serve on the EvsEnumeratorHw name,
-// however, so the code is checked in that way.
-//const static char kEnumeratorName[]  = "EvsEnumeratorHw-Mock";
-const static char kEnumeratorName[]  = "EvsEnumeratorHw";
-
-
 // These values are called out in the EVS design doc (as of Mar 8, 2017)
 static const int kMaxStreamStartMilliseconds = 500;
 static const int kMinimumFramesPerSecond = 10;
@@ -53,8 +44,9 @@ static const float kNanoToSeconds = 0.000000001f;
 #include <android/hardware/automotive/evs/1.0/IEvsCameraStream.h>
 #include <android/hardware/automotive/evs/1.0/IEvsDisplay.h>
 
-#include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
 
 using namespace ::android::hardware::automotive::evs::V1_0;
 using ::android::hardware::Return;
@@ -64,29 +56,19 @@ using ::android::hardware::hidl_handle;
 using ::android::hardware::hidl_string;
 using ::android::sp;
 
-// Test environment for Evs HIDL HAL.
-class EvsHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static EvsHidlEnvironment* Instance() {
-        static EvsHidlEnvironment* instance = new EvsHidlEnvironment;
-        return instance;
-    }
-
-    virtual void registerTestServices() override { registerTestService<IEvsEnumerator>(); }
-
-   private:
-    EvsHidlEnvironment() {}
-};
-
 // The main test class for EVS
-class EvsHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+class EvsHidlTest : public ::testing::TestWithParam<std::string> {
 public:
     virtual void SetUp() override {
         // Make sure we can connect to the enumerator
-        pEnumerator = getService<IEvsEnumerator>(
-            EvsHidlEnvironment::Instance()->getServiceName<IEvsEnumerator>(kEnumeratorName));
+        std::string service_name = GetParam();
+        pEnumerator = IEvsEnumerator::getService(service_name);
+
         ASSERT_NE(pEnumerator.get(), nullptr);
+
+        // "default" is reserved for EVS manager.
+        constexpr static char kEvsManagerName[] = "default";
+        mIsHwModule = service_name.compare(kEvsManagerName);
     }
 
     virtual void TearDown() override {}
@@ -114,19 +96,20 @@ protected:
 
     sp<IEvsEnumerator>          pEnumerator;    // Every test needs access to the service
     std::vector <CameraDesc>    cameraInfo;     // Empty unless/until loadCameraList() is called
+    bool                        mIsHwModule;    // boolean to tell current module under testing
+                                                // is HW module implementation.
 };
 
 
-//
-// Tests start here...
-//
+// Test cases, their implementations, and corresponding requirements are
+// documented at go/aae-evs-public-api-test.
 
 /*
  * CameraOpenClean:
  * Opens each camera reported by the enumerator and then explicitly closes it via a
  * call to closeCamera.  Then repeats the test to ensure all cameras can be reopened.
  */
-TEST_F(EvsHidlTest, CameraOpenClean) {
+TEST_P(EvsHidlTest, CameraOpenClean) {
     ALOGI("Starting CameraOpenClean test");
 
     // Get the camera list
@@ -158,7 +141,7 @@ TEST_F(EvsHidlTest, CameraOpenClean) {
  * call.  This ensures that the intended "aggressive open" behavior works.  This is necessary for
  * the system to be tolerant of shutdown/restart race conditions.
  */
-TEST_F(EvsHidlTest, CameraOpenAggressive) {
+TEST_P(EvsHidlTest, CameraOpenAggressive) {
     ALOGI("Starting CameraOpenAggressive test");
 
     // Get the camera list
@@ -180,9 +163,14 @@ TEST_F(EvsHidlTest, CameraOpenAggressive) {
         ASSERT_NE(pCam, pCam2);
         ASSERT_NE(pCam2, nullptr);
 
-        // Verify that the old camera rejects calls
-        Return<EvsResult> badResult = pCam->setMaxFramesInFlight(2);
-        EXPECT_EQ(EvsResult::OWNERSHIP_LOST, EvsResult(badResult));
+        Return<EvsResult> result = pCam->setMaxFramesInFlight(2);
+        if (mIsHwModule) {
+            // Verify that the old camera rejects calls via HW module.
+            EXPECT_EQ(EvsResult::OWNERSHIP_LOST, EvsResult(result));
+        } else {
+            // default implementation supports multiple clients.
+            EXPECT_EQ(EvsResult::OK, EvsResult(result));
+        }
 
         // Close the superceded camera
         pEnumerator->closeCamera(pCam);
@@ -194,7 +182,8 @@ TEST_F(EvsHidlTest, CameraOpenAggressive) {
                              }
         );
 
-        // Leave the second camera dangling so it gets cleaned up by the destructor path
+        // Close the second camera instance
+        pEnumerator->closeCamera(pCam2);
     }
 
     // Sleep here to ensure the destructor cleanup has time to run so we don't break follow on tests
@@ -206,7 +195,7 @@ TEST_F(EvsHidlTest, CameraOpenAggressive) {
  * DisplayOpen:
  * Test both clean shut down and "aggressive open" device stealing behavior.
  */
-TEST_F(EvsHidlTest, DisplayOpen) {
+TEST_P(EvsHidlTest, DisplayOpen) {
     ALOGI("Starting DisplayOpen test");
 
     // Request exclusive access to the EVS display, then let it go
@@ -254,7 +243,7 @@ TEST_F(EvsHidlTest, DisplayOpen) {
  * Validate that display states transition as expected and can be queried from either the display
  * object itself or the owning enumerator.
  */
-TEST_F(EvsHidlTest, DisplayStates) {
+TEST_P(EvsHidlTest, DisplayStates) {
     ALOGI("Starting DisplayStates test");
 
     // Ensure the display starts in the expected state
@@ -314,7 +303,7 @@ TEST_F(EvsHidlTest, DisplayStates) {
  * CameraStreamPerformance:
  * Measure and qualify the stream start up time and streaming frame rate of each reported camera
  */
-TEST_F(EvsHidlTest, CameraStreamPerformance) {
+TEST_P(EvsHidlTest, CameraStreamPerformance) {
     ALOGI("Starting CameraStreamPerformance test");
 
     // Get the camera list
@@ -342,6 +331,11 @@ TEST_F(EvsHidlTest, CameraStreamPerformance) {
         EXPECT_LE(nanoseconds_to_milliseconds(timeToFirstFrame), kMaxStreamStartMilliseconds);
         printf("Measured time to first frame %0.2f ms\n", timeToFirstFrame * kNanoToMilliseconds);
         ALOGI("Measured time to first frame %0.2f ms", timeToFirstFrame * kNanoToMilliseconds);
+
+        // Check aspect ratio
+        unsigned width = 0, height = 0;
+        frameHandler->getFrameDimension(&width, &height);
+        EXPECT_GE(width, height);
 
         // Wait a bit, then ensure we get at least the required minimum number of frames
         sleep(5);
@@ -372,7 +366,7 @@ TEST_F(EvsHidlTest, CameraStreamPerformance) {
  * Ensure the camera implementation behaves properly when the client holds onto buffers for more
  * than one frame time.  The camera must cleanly skip frames until the client is ready again.
  */
-TEST_F(EvsHidlTest, CameraStreamBuffering) {
+TEST_P(EvsHidlTest, CameraStreamBuffering) {
     ALOGI("Starting CameraStreamBuffering test");
 
     // Arbitrary constant (should be > 1 and less than crazy)
@@ -441,7 +435,7 @@ TEST_F(EvsHidlTest, CameraStreamBuffering) {
  * imagery is simply copied to the display buffer and presented on screen.  This is the one test
  * which a human could observe to see the operation of the system on the physical display.
  */
-TEST_F(EvsHidlTest, CameraToDisplayRoundTrip) {
+TEST_P(EvsHidlTest, CameraToDisplayRoundTrip) {
     ALOGI("Starting CameraToDisplayRoundTrip test");
 
     // Get the camera list
@@ -496,11 +490,98 @@ TEST_F(EvsHidlTest, CameraToDisplayRoundTrip) {
     pEnumerator->closeDisplay(pDisplay);
 }
 
-int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(EvsHidlEnvironment::Instance());
-    ::testing::InitGoogleTest(&argc, argv);
-    EvsHidlEnvironment::Instance()->init(&argc, argv);
-    int status = RUN_ALL_TESTS();
-    ALOGI("Test result = %d", status);
-    return status;
+
+/*
+ * MultiCameraStream:
+ * Verify that each client can start and stop video streams on the same
+ * underlying camera.
+ */
+TEST_P(EvsHidlTest, MultiCameraStream) {
+    ALOGI("Starting MultiCameraStream test");
+
+    if (mIsHwModule) {
+        // This test is not for HW module implementation.
+        return;
+    }
+
+    // Get the camera list
+    loadCameraList();
+
+    // Test each reported camera
+    for (auto&& cam: cameraInfo) {
+        // Create two camera clients.
+        sp <IEvsCamera> pCam0 = pEnumerator->openCamera(cam.cameraId);
+        ASSERT_NE(pCam0, nullptr);
+
+        sp <IEvsCamera> pCam1 = pEnumerator->openCamera(cam.cameraId);
+        ASSERT_NE(pCam1, nullptr);
+
+        // Set up per-client frame receiver objects which will fire up its own thread
+        sp<FrameHandler> frameHandler0 = new FrameHandler(pCam0, cam,
+                                                          nullptr,
+                                                          FrameHandler::eAutoReturn);
+        ASSERT_NE(frameHandler0, nullptr);
+
+        sp<FrameHandler> frameHandler1 = new FrameHandler(pCam1, cam,
+                                                          nullptr,
+                                                          FrameHandler::eAutoReturn);
+        ASSERT_NE(frameHandler1, nullptr);
+
+        // Start the camera's video stream via client 0
+        bool startResult = false;
+        startResult = frameHandler0->startStream() &&
+                      frameHandler1->startStream();
+        ASSERT_TRUE(startResult);
+
+        // Ensure the stream starts
+        frameHandler0->waitForFrameCount(1);
+        frameHandler1->waitForFrameCount(1);
+
+        nsecs_t firstFrame = systemTime(SYSTEM_TIME_MONOTONIC);
+
+        // Wait a bit, then ensure both clients get at least the required minimum number of frames
+        sleep(5);
+        nsecs_t end = systemTime(SYSTEM_TIME_MONOTONIC);
+        unsigned framesReceived0 = 0, framesReceived1 = 0;
+        frameHandler0->getFramesCounters(&framesReceived0, nullptr);
+        frameHandler1->getFramesCounters(&framesReceived1, nullptr);
+        framesReceived0 = framesReceived0 - 1;    // Back out the first frame we already waited for
+        framesReceived1 = framesReceived1 - 1;    // Back out the first frame we already waited for
+        nsecs_t runTime = end - firstFrame;
+        float framesPerSecond0 = framesReceived0 / (runTime * kNanoToSeconds);
+        float framesPerSecond1 = framesReceived1 / (runTime * kNanoToSeconds);
+        printf("Measured camera rate %3.2f fps and %3.2f fps\n", framesPerSecond0, framesPerSecond1);
+        ALOGI("Measured camera rate %3.2f fps and %3.2f fps", framesPerSecond0, framesPerSecond1);
+        EXPECT_GE(framesPerSecond0, kMinimumFramesPerSecond);
+        EXPECT_GE(framesPerSecond1, kMinimumFramesPerSecond);
+
+        // Shutdown one client
+        frameHandler0->shutdown();
+
+        // Read frame counters again
+        frameHandler0->getFramesCounters(&framesReceived0, nullptr);
+        frameHandler1->getFramesCounters(&framesReceived1, nullptr);
+
+        // Wait a bit again
+        sleep(5);
+        unsigned framesReceivedAfterStop0 = 0, framesReceivedAfterStop1 = 0;
+        frameHandler0->getFramesCounters(&framesReceivedAfterStop0, nullptr);
+        frameHandler1->getFramesCounters(&framesReceivedAfterStop1, nullptr);
+        EXPECT_EQ(framesReceived0, framesReceivedAfterStop0);
+        EXPECT_LT(framesReceived1, framesReceivedAfterStop1);
+
+        // Shutdown another
+        frameHandler1->shutdown();
+
+        // Explicitly release the camera
+        pEnumerator->closeCamera(pCam0);
+        pEnumerator->closeCamera(pCam1);
+    }
 }
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(EvsHidlTest);
+INSTANTIATE_TEST_SUITE_P(
+    PerInstance,
+    EvsHidlTest,
+    testing::ValuesIn(android::hardware::getAllHalInstanceNames(IEvsEnumerator::descriptor)),
+    android::hardware::PrintInstanceNameToString);

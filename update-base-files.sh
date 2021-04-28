@@ -36,11 +36,17 @@ hidl-gen $options \
 hidl-gen $options \
          -o $ANDROID_BUILD_TOP/system/core/include/system/graphics-base-v1.1.h \
          android.hardware.graphics.common@1.1
+hidl-gen $options \
+         -o $ANDROID_BUILD_TOP/system/core/include/system/graphics-base-v1.2.h \
+         android.hardware.graphics.common@1.2
 
 # system/media
 hidl-gen $options \
+         -o $ANDROID_BUILD_TOP/system/media/audio/include/system/audio_common-base.h \
+         android.hardware.audio.common@7.0
+hidl-gen $options \
          -o $ANDROID_BUILD_TOP/system/media/audio/include/system/audio-base.h \
-         android.hardware.audio.common@2.0
+         android.hardware.audio@7.0
 hidl-gen $options \
          -o $ANDROID_BUILD_TOP/system/media/audio/include/system/audio_effect-base.h \
-         android.hardware.audio.effect@2.0
+         android.hardware.audio.effect@7.0
