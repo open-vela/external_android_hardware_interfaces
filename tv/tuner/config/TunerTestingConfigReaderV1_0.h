@@ -123,7 +123,6 @@ struct DescramblerConfig {
 };
 
 struct LiveBroadcastHardwareConnections {
-    bool hasFrontendConnection;
     string frontendId;
     string dvrSoftwareFeId;
     string audioFilterId;
@@ -135,7 +134,6 @@ struct LiveBroadcastHardwareConnections {
 };
 
 struct ScanHardwareConnections {
-    bool hasFrontendConnection;
     string frontendId;
 };
 
@@ -151,23 +149,19 @@ struct DvrPlaybackHardwareConnections {
 
 struct DvrRecordHardwareConnections {
     bool support;
-    bool hasFrontendConnection;
     string frontendId;
     string dvrRecordId;
     string dvrSoftwareFeId;
     string recordFilterId;
-    string dvrSourceId;
 };
 
 struct DescramblingHardwareConnections {
     bool support;
-    bool hasFrontendConnection;
     string frontendId;
     string dvrSoftwareFeId;
     string audioFilterId;
     string videoFilterId;
     string descramblerId;
-    string dvrSourceId;
     /* list string of extra filters; */
 };
 
@@ -408,14 +402,7 @@ struct TunerTestingConfigReader1_0 {
     }
 
     static void connectLiveBroadcast(LiveBroadcastHardwareConnections& live) {
-        auto dataFlow = getDataFlowConfiguration();
-        if (dataFlow.hasClearLiveBroadcast()) {
-            live.hasFrontendConnection = true;
-        } else {
-            live.hasFrontendConnection = false;
-            return;
-        }
-        auto liveConfig = *dataFlow.getFirstClearLiveBroadcast();
+        auto liveConfig = *getDataFlowConfiguration().getFirstClearLiveBroadcast();
         live.frontendId = liveConfig.getFrontendConnection();
 
         live.audioFilterId = liveConfig.getAudioFilterConnection();
@@ -441,15 +428,8 @@ struct TunerTestingConfigReader1_0 {
     }
 
     static void connectScan(ScanHardwareConnections& scan) {
-        auto dataFlow = getDataFlowConfiguration();
-        if (dataFlow.hasScan()) {
-            scan.hasFrontendConnection = true;
-        } else {
-            scan.hasFrontendConnection = false;
-            return;
-        }
-        auto scanConfig = *dataFlow.getFirstScan();
-        scan.frontendId = scanConfig.getFrontendConnection();
+        auto scanConfig = getDataFlowConfiguration().getFirstScan();
+        scan.frontendId = scanConfig->getFrontendConnection();
     }
 
     static void connectDvrPlayback(DvrPlaybackHardwareConnections& playback) {
@@ -457,7 +437,6 @@ struct TunerTestingConfigReader1_0 {
         if (dataFlow.hasDvrPlayback()) {
             playback.support = true;
         } else {
-            playback.support = false;
             return;
         }
         auto playbackConfig = *dataFlow.getFirstDvrPlayback();
@@ -476,7 +455,6 @@ struct TunerTestingConfigReader1_0 {
         if (dataFlow.hasDvrRecord()) {
             record.support = true;
         } else {
-            record.support = false;
             return;
         }
         auto recordConfig = *dataFlow.getFirstDvrRecord();
@@ -486,13 +464,6 @@ struct TunerTestingConfigReader1_0 {
         if (recordConfig.hasDvrSoftwareFeConnection()) {
             record.dvrSoftwareFeId = recordConfig.getDvrSoftwareFeConnection();
         }
-        if (recordConfig.getHasFrontendConnection()) {
-            record.hasFrontendConnection = true;
-            record.dvrSourceId = emptyHardwareId;
-        } else {
-            record.hasFrontendConnection = false;
-            record.dvrSourceId = recordConfig.getDvrSourceConnection();
-        }
     }
 
     static void connectDescrambling(DescramblingHardwareConnections& descrambling) {
@@ -500,7 +471,6 @@ struct TunerTestingConfigReader1_0 {
         if (dataFlow.hasDescrambling()) {
             descrambling.support = true;
         } else {
-            descrambling.support = false;
             return;
         }
         auto descConfig = *dataFlow.getFirstDescrambling();
@@ -511,13 +481,6 @@ struct TunerTestingConfigReader1_0 {
         if (descConfig.hasDvrSoftwareFeConnection()) {
             descrambling.dvrSoftwareFeId = descConfig.getDvrSoftwareFeConnection();
         }
-        if (descConfig.getHasFrontendConnection()) {
-            descrambling.hasFrontendConnection = true;
-            descrambling.dvrSourceId = emptyHardwareId;
-        } else {
-            descrambling.hasFrontendConnection = false;
-            descrambling.dvrSourceId = descConfig.getDvrSourceConnection();
-        }
     }
 
     static void connectLnbLive(LnbLiveHardwareConnections& lnbLive) {
@@ -525,7 +488,6 @@ struct TunerTestingConfigReader1_0 {
         if (dataFlow.hasLnbLive()) {
             lnbLive.support = true;
         } else {
-            lnbLive.support = false;
             return;
         }
         auto lnbLiveConfig = *dataFlow.getFirstLnbLive();
@@ -545,7 +507,6 @@ struct TunerTestingConfigReader1_0 {
         if (dataFlow.hasLnbRecord()) {
             lnbRecord.support = true;
         } else {
-            lnbRecord.support = false;
             return;
         }
         auto lnbRecordConfig = *dataFlow.getFirstLnbRecord();
@@ -565,7 +526,6 @@ struct TunerTestingConfigReader1_0 {
         if (dataFlow.hasTimeFilter()) {
             timeFilter.support = true;
         } else {
-            timeFilter.support = false;
             return;
         }
         auto timeFilterConfig = *dataFlow.getFirstTimeFilter();
