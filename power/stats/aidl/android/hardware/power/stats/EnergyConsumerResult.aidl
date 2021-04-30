@@ -25,7 +25,7 @@ parcelable EnergyConsumerResult {
      */
     int id;
     /**
-     * Time of data capture in milliseconds since boot (CLOCK_BOOTTIME clock)
+     * Time since boot in milliseconds
      */
     long timestampMs;
     /**
@@ -38,3 +38,4 @@ parcelable EnergyConsumerResult {
      */
     EnergyConsumerAttribution[] attribution;
 }
+

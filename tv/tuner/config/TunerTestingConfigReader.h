@@ -36,8 +36,6 @@ using android::hardware::tv::tuner::V1_0::DemuxFilterRecordSettings;
 using android::hardware::tv::tuner::V1_0::DemuxFilterSectionSettings;
 using android::hardware::tv::tuner::V1_0::DemuxFilterSettings;
 using android::hardware::tv::tuner::V1_0::DemuxFilterType;
-using android::hardware::tv::tuner::V1_0::DemuxIpAddress;
-using android::hardware::tv::tuner::V1_0::DemuxIpFilterSettings;
 using android::hardware::tv::tuner::V1_0::DemuxIpFilterType;
 using android::hardware::tv::tuner::V1_0::DemuxMmtpFilterType;
 using android::hardware::tv::tuner::V1_0::DemuxRecordScIndexType;
@@ -52,7 +50,6 @@ using android::hardware::tv::tuner::V1_0::FrontendDvbtCoderate;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtConstellation;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtGuardInterval;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtHierarchy;
-using android::hardware::tv::tuner::V1_0::FrontendDvbtPlpMode;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtSettings;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtStandard;
 using android::hardware::tv::tuner::V1_0::FrontendDvbtTransmissionMode;
@@ -66,9 +63,8 @@ using android::hardware::tv::tuner::V1_0::LnbVoltage;
 using android::hardware::tv::tuner::V1_0::PlaybackSettings;
 using android::hardware::tv::tuner::V1_0::RecordSettings;
 
+const string configFilePath = "/vendor/etc/tuner_vts_config.xml";
 const string emptyHardwareId = "";
-
-static string mConfigFilePath;
 
 #define PROVISION_STR                                      \
     "{                                                   " \
@@ -124,19 +120,16 @@ struct DescramblerConfig {
 };
 
 struct LiveBroadcastHardwareConnections {
-    bool hasFrontendConnection;
     string frontendId;
     string dvrSoftwareFeId;
     string audioFilterId;
     string videoFilterId;
     string sectionFilterId;
-    string ipFilterId;
     string pcrFilterId;
     /* list string of extra filters; */
 };
 
 struct ScanHardwareConnections {
-    bool hasFrontendConnection;
     string frontendId;
 };
 
@@ -152,23 +145,19 @@ struct DvrPlaybackHardwareConnections {
 
 struct DvrRecordHardwareConnections {
     bool support;
-    bool hasFrontendConnection;
     string frontendId;
     string dvrRecordId;
     string dvrSoftwareFeId;
     string recordFilterId;
-    string dvrSourceId;
 };
 
 struct DescramblingHardwareConnections {
     bool support;
-    bool hasFrontendConnection;
     string frontendId;
     string dvrSoftwareFeId;
     string audioFilterId;
     string videoFilterId;
     string descramblerId;
-    string dvrSourceId;
     /* list string of extra filters; */
 };
 
@@ -197,17 +186,14 @@ struct TimeFilterHardwareConnections {
     string timeFilterId;
 };
 
-struct TunerTestingConfigReader1_0 {
+struct TunerTestingConfigReader {
   public:
-    static void setConfigFilePath(string path) { mConfigFilePath = path; }
-
     static bool checkConfigFileExists() {
-        auto res = read(mConfigFilePath.c_str());
+        auto res = read(configFilePath.c_str());
         if (res == nullopt) {
-            ALOGW("[ConfigReader] Couldn't read %s."
+            ALOGW("[ConfigReader] Couldn't read /vendor/etc/tuner_vts_config.xml."
                   "Please check tuner_testing_dynamic_configuration.xsd"
-                  "and sample_tuner_vts_config.xml for more details on how to config Tune VTS.",
-                  mConfigFilePath.c_str());
+                  "and sample_tuner_vts_config.xml for more details on how to config Tune VTS.");
         }
         return (res != nullopt);
     }
@@ -409,14 +395,7 @@ struct TunerTestingConfigReader1_0 {
     }
 
     static void connectLiveBroadcast(LiveBroadcastHardwareConnections& live) {
-        auto dataFlow = getDataFlowConfiguration();
-        if (dataFlow.hasClearLiveBroadcast()) {
-            live.hasFrontendConnection = true;
-        } else {
-            live.hasFrontendConnection = false;
-            return;
-        }
-        auto liveConfig = *dataFlow.getFirstClearLiveBroadcast();
+        auto liveConfig = *getDataFlowConfiguration().getFirstClearLiveBroadcast();
         live.frontendId = liveConfig.getFrontendConnection();
 
         live.audioFilterId = liveConfig.getAudioFilterConnection();
@@ -434,23 +413,11 @@ struct TunerTestingConfigReader1_0 {
         if (liveConfig.hasDvrSoftwareFeConnection()) {
             live.dvrSoftwareFeId = liveConfig.getDvrSoftwareFeConnection();
         }
-        if (liveConfig.hasIpFilterConnection()) {
-            live.ipFilterId = liveConfig.getIpFilterConnection();
-        } else {
-            live.ipFilterId = emptyHardwareId;
-        }
     }
 
     static void connectScan(ScanHardwareConnections& scan) {
-        auto dataFlow = getDataFlowConfiguration();
-        if (dataFlow.hasScan()) {
-            scan.hasFrontendConnection = true;
-        } else {
-            scan.hasFrontendConnection = false;
-            return;
-        }
-        auto scanConfig = *dataFlow.getFirstScan();
-        scan.frontendId = scanConfig.getFrontendConnection();
+        auto scanConfig = getDataFlowConfiguration().getFirstScan();
+        scan.frontendId = scanConfig->getFrontendConnection();
     }
 
     static void connectDvrPlayback(DvrPlaybackHardwareConnections& playback) {
@@ -458,7 +425,6 @@ struct TunerTestingConfigReader1_0 {
         if (dataFlow.hasDvrPlayback()) {
             playback.support = true;
         } else {
-            playback.support = false;
             return;
         }
         auto playbackConfig = *dataFlow.getFirstDvrPlayback();
@@ -477,22 +443,14 @@ struct TunerTestingConfigReader1_0 {
         if (dataFlow.hasDvrRecord()) {
             record.support = true;
         } else {
-            record.support = false;
             return;
         }
         auto recordConfig = *dataFlow.getFirstDvrRecord();
+        record.frontendId = recordConfig.getFrontendConnection();
         record.recordFilterId = recordConfig.getRecordFilterConnection();
         record.dvrRecordId = recordConfig.getDvrRecordConnection();
         if (recordConfig.hasDvrSoftwareFeConnection()) {
             record.dvrSoftwareFeId = recordConfig.getDvrSoftwareFeConnection();
-        }
-        if (recordConfig.getHasFrontendConnection()) {
-            record.hasFrontendConnection = true;
-            record.dvrSourceId = emptyHardwareId;
-            record.frontendId = recordConfig.getFrontendConnection();
-        } else {
-            record.hasFrontendConnection = false;
-            record.dvrSourceId = recordConfig.getDvrSourceConnection();
         }
     }
 
@@ -501,23 +459,15 @@ struct TunerTestingConfigReader1_0 {
         if (dataFlow.hasDescrambling()) {
             descrambling.support = true;
         } else {
-            descrambling.support = false;
             return;
         }
         auto descConfig = *dataFlow.getFirstDescrambling();
+        descrambling.frontendId = descConfig.getFrontendConnection();
         descrambling.descramblerId = descConfig.getDescramblerConnection();
         descrambling.audioFilterId = descConfig.getAudioFilterConnection();
         descrambling.videoFilterId = descConfig.getVideoFilterConnection();
         if (descConfig.hasDvrSoftwareFeConnection()) {
             descrambling.dvrSoftwareFeId = descConfig.getDvrSoftwareFeConnection();
-        }
-        if (descConfig.getHasFrontendConnection()) {
-            descrambling.hasFrontendConnection = true;
-            descrambling.dvrSourceId = emptyHardwareId;
-            descrambling.frontendId = descConfig.getFrontendConnection();
-        } else {
-            descrambling.hasFrontendConnection = false;
-            descrambling.dvrSourceId = descConfig.getDvrSourceConnection();
         }
     }
 
@@ -526,7 +476,6 @@ struct TunerTestingConfigReader1_0 {
         if (dataFlow.hasLnbLive()) {
             lnbLive.support = true;
         } else {
-            lnbLive.support = false;
             return;
         }
         auto lnbLiveConfig = *dataFlow.getFirstLnbLive();
@@ -546,7 +495,6 @@ struct TunerTestingConfigReader1_0 {
         if (dataFlow.hasLnbRecord()) {
             lnbRecord.support = true;
         } else {
-            lnbRecord.support = false;
             return;
         }
         auto lnbRecordConfig = *dataFlow.getFirstLnbRecord();
@@ -566,15 +514,10 @@ struct TunerTestingConfigReader1_0 {
         if (dataFlow.hasTimeFilter()) {
             timeFilter.support = true;
         } else {
-            timeFilter.support = false;
             return;
         }
         auto timeFilterConfig = *dataFlow.getFirstTimeFilter();
         timeFilter.timeFilterId = timeFilterConfig.getTimeFilterConnection();
-    }
-
-    static HardwareConfiguration getHardwareConfig() {
-        return *getTunerConfig().getFirstHardwareConfiguration();
     }
 
   private:
@@ -587,27 +530,12 @@ struct TunerTestingConfigReader1_0 {
             ALOGW("[ConfigReader] no more dvbt settings");
             return dvbtSettings;
         }
-        auto dvbt = feConfig.getFirstDvbtFrontendSettings_optional();
-        uint32_t trans = static_cast<uint32_t>(dvbt->getTransmissionMode());
-        if (trans <= (uint32_t)FrontendDvbtTransmissionMode::MODE_32K) {
-            dvbtSettings.transmissionMode = static_cast<FrontendDvbtTransmissionMode>(trans);
-        }
-        dvbtSettings.bandwidth = static_cast<FrontendDvbtBandwidth>(dvbt->getBandwidth());
-        dvbtSettings.isHighPriority = dvbt->getIsHighPriority();
-        dvbtSettings.hierarchy = static_cast<FrontendDvbtHierarchy>(dvbt->getHierarchy());
-        dvbtSettings.hpCoderate = static_cast<FrontendDvbtCoderate>(dvbt->getHpCoderate());
-        dvbtSettings.lpCoderate = static_cast<FrontendDvbtCoderate>(dvbt->getLpCoderate());
-        dvbtSettings.guardInterval =
-                static_cast<FrontendDvbtGuardInterval>(dvbt->getGuardInterval());
-        dvbtSettings.standard = static_cast<FrontendDvbtStandard>(dvbt->getStandard());
-        dvbtSettings.isMiso = dvbt->getIsMiso();
-        dvbtSettings.plpMode = static_cast<FrontendDvbtPlpMode>(dvbt->getPlpMode());
-        dvbtSettings.plpId = dvbt->getPlpId();
-        dvbtSettings.plpGroupId = dvbt->getPlpGroupId();
-        if (dvbt->hasConstellation()) {
-            dvbtSettings.constellation =
-                    static_cast<FrontendDvbtConstellation>(dvbt->getConstellation());
-        }
+        dvbtSettings.transmissionMode = static_cast<FrontendDvbtTransmissionMode>(
+                feConfig.getFirstDvbtFrontendSettings_optional()->getTransmissionMode());
+        dvbtSettings.bandwidth = static_cast<FrontendDvbtBandwidth>(
+                feConfig.getFirstDvbtFrontendSettings_optional()->getBandwidth());
+        dvbtSettings.isHighPriority =
+                feConfig.getFirstDvbtFrontendSettings_optional()->getIsHighPriority();
         return dvbtSettings;
     }
 
@@ -631,13 +559,13 @@ struct TunerTestingConfigReader1_0 {
                                           DemuxFilterSettings& settings) {
         auto mainType = filterConfig.getMainType();
         auto subType = filterConfig.getSubType();
+        uint32_t pid = static_cast<uint32_t>(filterConfig.getPid());
         switch (mainType) {
             case FilterMainTypeEnum::TS: {
                 ALOGW("[ConfigReader] filter main type is ts");
                 type.mainType = DemuxFilterMainType::TS;
                 switch (subType) {
                     case FilterSubTypeEnum::UNDEFINED:
-                        type.subType.tsFilterType(DemuxTsFilterType::UNDEFINED);
                         break;
                     case FilterSubTypeEnum::SECTION:
                         type.subType.tsFilterType(DemuxTsFilterType::SECTION);
@@ -678,9 +606,7 @@ struct TunerTestingConfigReader1_0 {
                         ALOGW("[ConfigReader] ts subtype is not supported");
                         return false;
                 }
-                if (filterConfig.hasPid()) {
-                    settings.ts().tpid = static_cast<uint32_t>(filterConfig.getPid());
-                }
+                settings.ts().tpid = pid;
                 break;
             }
             case FilterMainTypeEnum::MMTP: {
@@ -688,7 +614,6 @@ struct TunerTestingConfigReader1_0 {
                 type.mainType = DemuxFilterMainType::MMTP;
                 switch (subType) {
                     case FilterSubTypeEnum::UNDEFINED:
-                        type.subType.mmtpFilterType(DemuxMmtpFilterType::UNDEFINED);
                         break;
                     case FilterSubTypeEnum::SECTION:
                         type.subType.mmtpFilterType(DemuxMmtpFilterType::SECTION);
@@ -727,47 +652,7 @@ struct TunerTestingConfigReader1_0 {
                         ALOGW("[ConfigReader] mmtp subtype is not supported");
                         return false;
                 }
-                if (filterConfig.hasPid()) {
-                    settings.mmtp().mmtpPid = static_cast<uint32_t>(filterConfig.getPid());
-                }
-                break;
-            }
-            case FilterMainTypeEnum::IP: {
-                ALOGW("[ConfigReader] filter main type is ip");
-                type.mainType = DemuxFilterMainType::IP;
-                switch (subType) {
-                    case FilterSubTypeEnum::UNDEFINED:
-                        type.subType.ipFilterType(DemuxIpFilterType::UNDEFINED);
-                        break;
-                    case FilterSubTypeEnum::SECTION:
-                        type.subType.ipFilterType(DemuxIpFilterType::SECTION);
-                        settings.ip().filterSettings.section(
-                                readSectionFilterSettings(filterConfig));
-                        break;
-                    case FilterSubTypeEnum::NTP:
-                        type.subType.ipFilterType(DemuxIpFilterType::NTP);
-                        settings.ip().filterSettings.noinit();
-                        break;
-                    case FilterSubTypeEnum::IP: {
-                        DemuxIpFilterSettings ip{
-                                .ipAddr = readIpAddress(filterConfig),
-                        };
-                        ip.filterSettings.bPassthrough(readPassthroughSettings(filterConfig));
-                        settings.ip(ip);
-                        break;
-                    }
-                    case FilterSubTypeEnum::IP_PAYLOAD:
-                        type.subType.ipFilterType(DemuxIpFilterType::IP_PAYLOAD);
-                        settings.ip().filterSettings.noinit();
-                        break;
-                    case FilterSubTypeEnum::PAYLOAD_THROUGH:
-                        type.subType.ipFilterType(DemuxIpFilterType::PAYLOAD_THROUGH);
-                        settings.ip().filterSettings.noinit();
-                        break;
-                    default:
-                        ALOGW("[ConfigReader] mmtp subtype is not supported");
-                        return false;
-                }
+                settings.mmtp().mmtpPid = pid;
                 break;
             }
             default:
@@ -776,46 +661,6 @@ struct TunerTestingConfigReader1_0 {
                 return false;
         }
         return true;
-    }
-
-    static DemuxIpAddress readIpAddress(Filter filterConfig) {
-        DemuxIpAddress ipAddress;
-        if (!filterConfig.hasIpFilterConfig_optional()) {
-            return ipAddress;
-        }
-        auto ipFilterConfig = filterConfig.getFirstIpFilterConfig_optional();
-        if (ipFilterConfig->hasSrcPort()) {
-            ipAddress.srcPort = ipFilterConfig->getSrcPort();
-        }
-        if (ipFilterConfig->hasDestPort()) {
-            ipAddress.dstPort = ipFilterConfig->getDestPort();
-        }
-        if (ipFilterConfig->getFirstSrcIpAddress()->getIsIpV4()) {
-            memcpy(ipAddress.srcIpAddress.v4().data(),
-                   ipFilterConfig->getFirstSrcIpAddress()->getIp().data(), 4);
-        } else {
-            memcpy(ipAddress.srcIpAddress.v6().data(),
-                   ipFilterConfig->getFirstSrcIpAddress()->getIp().data(), 6);
-        }
-        if (ipFilterConfig->getFirstDestIpAddress()->getIsIpV4()) {
-            memcpy(ipAddress.dstIpAddress.v4().data(),
-                   ipFilterConfig->getFirstDestIpAddress()->getIp().data(), 4);
-        } else {
-            memcpy(ipAddress.dstIpAddress.v6().data(),
-                   ipFilterConfig->getFirstDestIpAddress()->getIp().data(), 6);
-        }
-        return ipAddress;
-    }
-
-    static bool readPassthroughSettings(Filter filterConfig) {
-        if (!filterConfig.hasIpFilterConfig_optional()) {
-            return false;
-        }
-        auto ipFilterConfig = filterConfig.getFirstIpFilterConfig_optional();
-        if (ipFilterConfig->hasDataPassthrough()) {
-            return ipFilterConfig->getDataPassthrough();
-        }
-        return false;
     }
 
     static DemuxFilterSectionSettings readSectionFilterSettings(Filter filterConfig) {
@@ -875,7 +720,11 @@ struct TunerTestingConfigReader1_0 {
         return recordSettings;
     }
 
-    static TunerConfiguration getTunerConfig() { return *read(mConfigFilePath.c_str()); }
+    static TunerConfiguration getTunerConfig() { return *read(configFilePath.c_str()); }
+
+    static HardwareConfiguration getHardwareConfig() {
+        return *getTunerConfig().getFirstHardwareConfiguration();
+    }
 
     static DataFlowConfiguration getDataFlowConfiguration() {
         return *getTunerConfig().getFirstDataFlowConfiguration();

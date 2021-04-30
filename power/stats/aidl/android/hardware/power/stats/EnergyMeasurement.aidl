@@ -23,7 +23,7 @@ parcelable EnergyMeasurement {
      */
     int id;
     /**
-     * Time of data capture in milliseconds since boot (CLOCK_BOOTTIME clock)
+     * Approximate time of data capture in millseconds since boot
      */
     long timestampMs;
     /**
@@ -35,3 +35,4 @@ parcelable EnergyMeasurement {
      */
     long energyUWs;
 }
+

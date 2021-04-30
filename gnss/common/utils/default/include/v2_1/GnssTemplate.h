@@ -132,7 +132,6 @@ struct GnssTemplate : public T_IGnss {
     mutable std::mutex mMutex;
     virtual hidl_vec<V2_1::IGnssCallback::GnssSvInfo> filterBlocklistedSatellitesV2_1(
             hidl_vec<V2_1::IGnssCallback::GnssSvInfo> gnssSvInfoList);
-    virtual void notePowerConsumption();
 };
 
 template <class T_IGnss>
@@ -220,7 +219,6 @@ Return<bool> GnssTemplate<T_IGnss>::start() {
             auto svStatus = filterBlocklistedSatellitesV2_1(Utils::getMockSvInfoListV2_1());
             this->reportSvStatus(svStatus);
             auto currentLocation = getLocationFromHW();
-            notePowerConsumption();
             if (mGnssFd != -1) {
                 // Only report location if the return from hardware is valid
                 // note that we can not merge these two "if" together, if didn't
@@ -247,7 +245,7 @@ Return<bool> GnssTemplate<T_IGnss>::start() {
 template <class T_IGnss>
 hidl_vec<V2_1::IGnssCallback::GnssSvInfo> GnssTemplate<T_IGnss>::filterBlocklistedSatellitesV2_1(
         hidl_vec<V2_1::IGnssCallback::GnssSvInfo> gnssSvInfoList) {
-    ALOGD("GnssTemplate::filterBlocklistedSatellitesV2_1");
+    ALOGD("filterBlocklistedSatellitesV2_1");
     for (uint32_t i = 0; i < gnssSvInfoList.size(); i++) {
         if (mGnssConfiguration->isBlacklistedV2_1(gnssSvInfoList[i])) {
             gnssSvInfoList[i].v2_0.v1_0.svFlag &=
@@ -255,11 +253,6 @@ hidl_vec<V2_1::IGnssCallback::GnssSvInfo> GnssTemplate<T_IGnss>::filterBlocklist
         }
     }
     return gnssSvInfoList;
-}
-
-template <class T_IGnss>
-void GnssTemplate<T_IGnss>::notePowerConsumption() {
-    ALOGD("GnssTemplate::notePowerConsumption");
 }
 
 template <class T_IGnss>
