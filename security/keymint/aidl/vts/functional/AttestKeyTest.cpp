@@ -44,7 +44,7 @@ using AttestKeyTest = KeyMintAidlTestBase;
 TEST_P(AttestKeyTest, AllRsaSizes) {
     for (auto size : ValidKeySizes(Algorithm::RSA)) {
         /*
-         * Create attestation key.
+         * Create attestaton key.
          */
         AttestationKey attest_key;
         vector<KeyCharacteristics> attest_key_characteristics;
@@ -482,7 +482,7 @@ TEST_P(AttestKeyTest, AlternateAttestKeyChaining) {
 TEST_P(AttestKeyTest, AllEcCurves) {
     for (auto curve : ValidCurves()) {
         /*
-         * Create attestation key.
+         * Create attestaton key.
          */
         AttestationKey attest_key;
         vector<KeyCharacteristics> attest_key_characteristics;
@@ -566,7 +566,7 @@ TEST_P(AttestKeyTest, AllEcCurves) {
 }
 
 TEST_P(AttestKeyTest, AttestWithNonAttestKey) {
-    // Create non-attestation key.
+    // Create non-attestaton key.
     AttestationKey non_attest_key;
     vector<KeyCharacteristics> non_attest_key_characteristics;
     vector<Certificate> non_attest_key_cert_chain;
