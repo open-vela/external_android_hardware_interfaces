@@ -20,6 +20,7 @@
 #include <log/log.h>
 #include "GnssConfiguration.h"
 #include "GnssMeasurementInterface.h"
+#include "GnssPowerIndication.h"
 #include "GnssPsds.h"
 
 namespace aidl::android::hardware::gnss {
@@ -72,11 +73,8 @@ ndk::ScopedAStatus Gnss::getExtensionGnssConfiguration(
 ndk::ScopedAStatus Gnss::getExtensionGnssPowerIndication(
         std::shared_ptr<IGnssPowerIndication>* iGnssPowerIndication) {
     ALOGD("Gnss::getExtensionGnssPowerIndication");
-    if (mGnssPowerIndication == nullptr) {
-        mGnssPowerIndication = SharedRefBase::make<GnssPowerIndication>();
-    }
 
-    *iGnssPowerIndication = mGnssPowerIndication;
+    *iGnssPowerIndication = SharedRefBase::make<GnssPowerIndication>();
     return ndk::ScopedAStatus::ok();
 }
 

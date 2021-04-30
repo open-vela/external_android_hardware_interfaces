@@ -26,3 +26,4 @@ enum FingerprintSensorType {
     POWER_BUTTON,
     HOME_BUTTON
 }
+

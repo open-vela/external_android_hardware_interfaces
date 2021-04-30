@@ -30,7 +30,6 @@ using android::hardware::gnss::BlocklistedSource;
 using android::hardware::gnss::ElapsedRealtime;
 using android::hardware::gnss::GnssClock;
 using android::hardware::gnss::GnssMeasurement;
-using android::hardware::gnss::GnssPowerStats;
 using android::hardware::gnss::IGnss;
 using android::hardware::gnss::IGnssConfiguration;
 using android::hardware::gnss::IGnssMeasurementCallback;
@@ -38,7 +37,6 @@ using android::hardware::gnss::IGnssMeasurementInterface;
 using android::hardware::gnss::IGnssPowerIndication;
 using android::hardware::gnss::IGnssPsds;
 using android::hardware::gnss::PsdsType;
-using android::hardware::gnss::SatellitePvt;
 
 using GnssConstellationTypeAidl = android::hardware::gnss::GnssConstellationType;
 
@@ -129,39 +127,22 @@ TEST_P(GnssHalTest, TestGnssMeasurementExtension) {
                          GnssMeasurement::HAS_SATELLITE_PVT |
                          GnssMeasurement::HAS_CORRELATION_VECTOR));
 
-        if (measurement.flags & GnssMeasurement::HAS_SATELLITE_PVT &&
-            has_capability_satpvt == true) {
-            if (measurement.satellitePvt.flags & SatellitePvt::HAS_POSITION_VELOCITY_CLOCK_INFO) {
-                ASSERT_TRUE(measurement.satellitePvt.satPosEcef.posXMeters >= -43000000 &&
-                            measurement.satellitePvt.satPosEcef.posXMeters <= 43000000);
-                ASSERT_TRUE(measurement.satellitePvt.satPosEcef.posYMeters >= -43000000 &&
-                            measurement.satellitePvt.satPosEcef.posYMeters <= 43000000);
-                ASSERT_TRUE(measurement.satellitePvt.satPosEcef.posZMeters >= -43000000 &&
-                            measurement.satellitePvt.satPosEcef.posZMeters <= 43000000);
-                ASSERT_TRUE(measurement.satellitePvt.satPosEcef.ureMeters > 0);
-                ASSERT_TRUE(measurement.satellitePvt.satVelEcef.velXMps >= -4000 &&
-                            measurement.satellitePvt.satVelEcef.velXMps <= 4000);
-                ASSERT_TRUE(measurement.satellitePvt.satVelEcef.velYMps >= -4000 &&
-                            measurement.satellitePvt.satVelEcef.velYMps <= 4000);
-                ASSERT_TRUE(measurement.satellitePvt.satVelEcef.velZMps >= -4000 &&
-                            measurement.satellitePvt.satVelEcef.velZMps <= 4000);
-                ASSERT_TRUE(measurement.satellitePvt.satVelEcef.ureRateMps > 0);
-                ASSERT_TRUE(
-                        measurement.satellitePvt.satClockInfo.satHardwareCodeBiasMeters > -17.869 &&
-                        measurement.satellitePvt.satClockInfo.satHardwareCodeBiasMeters < 17.729);
-                ASSERT_TRUE(measurement.satellitePvt.satClockInfo.satTimeCorrectionMeters > -3e6 &&
-                            measurement.satellitePvt.satClockInfo.satTimeCorrectionMeters < 3e6);
-                ASSERT_TRUE(measurement.satellitePvt.satClockInfo.satClkDriftMps > -1.117 &&
-                            measurement.satellitePvt.satClockInfo.satClkDriftMps < 1.117);
-            }
-            if (measurement.satellitePvt.flags & SatellitePvt::HAS_IONO) {
-                ASSERT_TRUE(measurement.satellitePvt.ionoDelayMeters > 0 &&
-                            measurement.satellitePvt.ionoDelayMeters < 100);
-            }
-            if (measurement.satellitePvt.flags & SatellitePvt::HAS_TROPO) {
-                ASSERT_TRUE(measurement.satellitePvt.tropoDelayMeters > 0 &&
-                            measurement.satellitePvt.tropoDelayMeters < 100);
-            }
+        if ((measurement.flags & GnssMeasurement::HAS_SATELLITE_PVT) &&
+            (has_capability_satpvt == true)) {
+            ASSERT_TRUE(measurement.satellitePvt.satPosEcef.posXMeters >= -43000000 &&
+                        measurement.satellitePvt.satPosEcef.posXMeters <= 43000000);
+            ASSERT_TRUE(measurement.satellitePvt.satPosEcef.posYMeters >= -43000000 &&
+                        measurement.satellitePvt.satPosEcef.posYMeters <= 43000000);
+            ASSERT_TRUE(measurement.satellitePvt.satPosEcef.posZMeters >= -43000000 &&
+                        measurement.satellitePvt.satPosEcef.posZMeters <= 43000000);
+            ASSERT_TRUE(measurement.satellitePvt.satPosEcef.ureMeters > 0);
+            ASSERT_TRUE(measurement.satellitePvt.satVelEcef.velXMps >= -4000 &&
+                        measurement.satellitePvt.satVelEcef.velXMps <= 4000);
+            ASSERT_TRUE(measurement.satellitePvt.satVelEcef.velYMps >= -4000 &&
+                        measurement.satellitePvt.satVelEcef.velYMps <= 4000);
+            ASSERT_TRUE(measurement.satellitePvt.satVelEcef.velZMps >= -4000 &&
+                        measurement.satellitePvt.satVelEcef.velZMps <= 4000);
+            ASSERT_TRUE(measurement.satellitePvt.satVelEcef.ureRateMps > 0);
         }
 
         if (kIsCorrelationVectorSupported &&
@@ -187,12 +168,9 @@ TEST_P(GnssHalTest, TestGnssMeasurementExtension) {
  * TestGnssPowerIndication
  * 1. Gets the GnssPowerIndicationExtension.
  * 2. Sets a GnssPowerIndicationCallback.
- * 3. Requests and verifies the 1st GnssPowerStats is received.
- * 4. Gets a location.
- * 5. Requests the 2nd GnssPowerStats, and verifies it has larger values than the 1st one.
+ * 3.
  */
 TEST_P(GnssHalTest, TestGnssPowerIndication) {
-    // Set up gnssPowerIndication and callback
     sp<IGnssPowerIndication> iGnssPowerIndication;
     auto status = aidl_gnss_hal_->getExtensionGnssPowerIndication(&iGnssPowerIndication);
     ASSERT_TRUE(status.isOk());
@@ -208,49 +186,10 @@ TEST_P(GnssHalTest, TestGnssPowerIndication) {
 
     EXPECT_EQ(gnssPowerIndicationCallback->capabilities_cbq_.calledCount(), 1);
 
-    // Request and verify a GnssPowerStats is received
-    gnssPowerIndicationCallback->gnss_power_stats_cbq_.reset();
     iGnssPowerIndication->requestGnssPowerStats();
-
     EXPECT_TRUE(gnssPowerIndicationCallback->gnss_power_stats_cbq_.retrieve(
             gnssPowerIndicationCallback->last_gnss_power_stats_, kTimeoutSec));
     EXPECT_EQ(gnssPowerIndicationCallback->gnss_power_stats_cbq_.calledCount(), 1);
-    auto powerStats1 = gnssPowerIndicationCallback->last_gnss_power_stats_;
-
-    // Get a location and request another GnssPowerStats
-    gnss_cb_->location_cbq_.reset();
-    StartAndCheckFirstLocation(/* min_interval_msec= */ 1000, /* low_power_mode= */ false);
-
-    // Request and verify the 2nd GnssPowerStats has larger values than the 1st one
-    iGnssPowerIndication->requestGnssPowerStats();
-
-    EXPECT_TRUE(gnssPowerIndicationCallback->gnss_power_stats_cbq_.retrieve(
-            gnssPowerIndicationCallback->last_gnss_power_stats_, kTimeoutSec));
-    EXPECT_EQ(gnssPowerIndicationCallback->gnss_power_stats_cbq_.calledCount(), 2);
-    auto powerStats2 = gnssPowerIndicationCallback->last_gnss_power_stats_;
-
-    // Elapsed realtime must increase
-    EXPECT_GT(powerStats2.elapsedRealtime.timestampNs, powerStats1.elapsedRealtime.timestampNs);
-
-    // Total energy must increase
-    EXPECT_GT(powerStats2.totalEnergyMilliJoule, powerStats1.totalEnergyMilliJoule);
-
-    // At least oone of singleband and multiband acquisition energy must increase
-    bool singlebandAcqEnergyIncreased = powerStats2.singlebandAcquisitionModeEnergyMilliJoule >
-                                        powerStats1.singlebandAcquisitionModeEnergyMilliJoule;
-    bool multibandAcqEnergyIncreased = powerStats2.multibandAcquisitionModeEnergyMilliJoule >
-                                       powerStats1.multibandAcquisitionModeEnergyMilliJoule;
-    EXPECT_TRUE(singlebandAcqEnergyIncreased || multibandAcqEnergyIncreased);
-
-    // At least one of singleband and multiband tracking energy must increase
-    bool singlebandTrackingEnergyIncreased = powerStats2.singlebandTrackingModeEnergyMilliJoule >
-                                             powerStats1.singlebandTrackingModeEnergyMilliJoule;
-    bool multibandTrackingEnergyIncreased = powerStats2.multibandTrackingModeEnergyMilliJoule >
-                                            powerStats1.multibandTrackingModeEnergyMilliJoule;
-    EXPECT_TRUE(singlebandTrackingEnergyIncreased || multibandTrackingEnergyIncreased);
-
-    // Clean up
-    StopAndClearLocations();
 }
 
 /*

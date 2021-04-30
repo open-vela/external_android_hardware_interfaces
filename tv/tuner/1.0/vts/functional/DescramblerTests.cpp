@@ -53,15 +53,12 @@ AssertionResult DescramblerTests::openCasSession(TunerKeyToken& sessionId,
         return failure();
     }
 
-    if (hidlPvtData.size() > 0) {
-        auto status = mCas->setSessionPrivateData(sessionId, hidlPvtData);
-        if (status != android::hardware::cas::V1_0::Status::OK) {
-            ALOGW("[vts] Failed to set session private data");
-            mCas->closeSession(sessionId);
-            return failure();
-        }
+    auto status = mCas->setSessionPrivateData(sessionId, hidlPvtData);
+    if (status != android::hardware::cas::V1_0::Status::OK) {
+        ALOGW("[vts] Failed to set session private data");
+        mCas->closeSession(sessionId);
+        return failure();
     }
-
     return success();
 }
 

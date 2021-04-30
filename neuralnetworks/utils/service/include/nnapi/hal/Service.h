@@ -22,15 +22,10 @@
 #include <memory>
 #include <vector>
 
-namespace android::hardware::neuralnetworks::service {
+namespace android::nn::hal {
 
-struct SharedDeviceAndUpdatability {
-    nn::SharedDevice device;
-    bool isDeviceUpdatable = false;
-};
+std::vector<nn::SharedDevice> getDevices();
 
-std::vector<SharedDeviceAndUpdatability> getDevices(bool includeUpdatableDrivers);
-
-}  // namespace android::hardware::neuralnetworks::service
+}  // namespace android::nn::hal
 
 #endif  // ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_UTILS_SERVICE_H

@@ -34,7 +34,7 @@
 package android.hardware.biometrics.face;
 @VintfStability
 parcelable BaseFrame {
-  android.hardware.biometrics.face.AcquiredInfo acquiredInfo = android.hardware.biometrics.face.AcquiredInfo.UNKNOWN;
+  android.hardware.biometrics.face.AcquiredInfo acquiredInfo = android.hardware.biometrics.face.AcquiredInfo.INSUFFICIENT;
   int vendorCode;
   float pan;
   float tilt;

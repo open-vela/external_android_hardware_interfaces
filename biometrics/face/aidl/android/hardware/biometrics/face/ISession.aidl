@@ -17,7 +17,6 @@
 package android.hardware.biometrics.face;
 
 import android.hardware.biometrics.common.ICancellationSignal;
-import android.hardware.biometrics.face.EnrollmentStageConfig;
 import android.hardware.biometrics.face.EnrollmentType;
 import android.hardware.biometrics.face.Feature;
 import android.hardware.common.NativeHandle;
@@ -105,9 +104,9 @@ interface ISession {
      * each of the stages.
      *
      * @param enrollmentType See the EnrollmentType enum.
-     * @return An EnrollmentStageConfig array that describes each enrollment stage.
-     */
-    EnrollmentStageConfig[] getEnrollmentConfig(in EnrollmentType enrollmentType);
+     * @return A list of EnrollmentStageConfig that describes each enrollment stage.
+     *
+    List<EnrollmentStageConfig> getEnrollmentConfig(in EnrollmentType enrollmentType);
 
     /**
      * enroll:

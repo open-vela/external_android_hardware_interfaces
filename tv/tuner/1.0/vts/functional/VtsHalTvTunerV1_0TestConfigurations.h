@@ -21,7 +21,7 @@
 #include <hidl/Status.h>
 #include <hidlmemory/FrameworkUtils.h>
 
-#include "../../../config/TunerTestingConfigReaderV1_0.h"
+#include "../../../config/TunerTestingConfigReader.h"
 
 using android::hardware::tv::tuner::V1_0::DemuxFilterMainType;
 using android::hardware::tv::tuner::V1_0::DemuxTsFilterType;
@@ -38,8 +38,6 @@ using namespace android::media::tuner::testing::configuration::V1_0;
 
 const uint32_t FMQ_SIZE_4M = 0x400000;
 const uint32_t FMQ_SIZE_16M = 0x1000000;
-
-const string configFilePath = "/vendor/etc/tuner_vts_config_1_0.xml";
 
 #define FILTER_MAIN_TYPE_BIT_COUNT 5
 
@@ -87,7 +85,7 @@ inline void initFrontendConfig() {
     frontendMap[defaultFeId].isSoftwareFe = true;
 
     // Read customized config
-    TunerTestingConfigReader1_0::readFrontendConfig1_0(frontendMap);
+    TunerTestingConfigReader::readFrontendConfig1_0(frontendMap);
 };
 
 inline void initFilterConfig() {
@@ -109,73 +107,51 @@ inline void initFilterConfig() {
     filterMap[defaultAudioFilterId].settings.ts().filterSettings.av({.isPassthrough = false});
 
     // Read customized config
-    TunerTestingConfigReader1_0::readFilterConfig1_0(filterMap);
+    TunerTestingConfigReader::readFilterConfig1_0(filterMap);
 };
 
 /** Config all the dvrs that would be used in the tests */
 inline void initDvrConfig() {
     // Read customized config
-    TunerTestingConfigReader1_0::readDvrConfig1_0(dvrMap);
+    TunerTestingConfigReader::readDvrConfig1_0(dvrMap);
 };
 
 /** Config all the lnbs that would be used in the tests */
 inline void initLnbConfig() {
     // Read customized config
-    TunerTestingConfigReader1_0::readLnbConfig1_0(lnbMap);
-    TunerTestingConfigReader1_0::readDiseqcMessages(diseqcMsgMap);
+    TunerTestingConfigReader::readLnbConfig1_0(lnbMap);
+    TunerTestingConfigReader::readDiseqcMessages(diseqcMsgMap);
 };
 
 /** Config all the time filters that would be used in the tests */
 inline void initTimeFilterConfig() {
     // Read customized config
-    TunerTestingConfigReader1_0::readTimeFilterConfig1_0(timeFilterMap);
+    TunerTestingConfigReader::readTimeFilterConfig1_0(timeFilterMap);
 };
 
 /** Config all the descramblers that would be used in the tests */
 inline void initDescramblerConfig() {
     // Read customized config
-    TunerTestingConfigReader1_0::readDescramblerConfig1_0(descramblerMap);
+    TunerTestingConfigReader::readDescramblerConfig1_0(descramblerMap);
 };
 
 /** Read the vendor configurations of which hardware to use for each test cases/data flows */
 inline void connectHardwaresToTestCases() {
-    TunerTestingConfigReader1_0::connectLiveBroadcast(live);
-    TunerTestingConfigReader1_0::connectScan(scan);
-    TunerTestingConfigReader1_0::connectDvrPlayback(playback);
-    TunerTestingConfigReader1_0::connectDvrRecord(record);
-    TunerTestingConfigReader1_0::connectDescrambling(descrambling);
-    TunerTestingConfigReader1_0::connectLnbLive(lnbLive);
-    TunerTestingConfigReader1_0::connectLnbRecord(lnbRecord);
-    TunerTestingConfigReader1_0::connectTimeFilter(timeFilter);
+    TunerTestingConfigReader::connectLiveBroadcast(live);
+    TunerTestingConfigReader::connectScan(scan);
+    TunerTestingConfigReader::connectDvrPlayback(playback);
+    TunerTestingConfigReader::connectDvrRecord(record);
+    TunerTestingConfigReader::connectDescrambling(descrambling);
+    TunerTestingConfigReader::connectLnbLive(lnbLive);
+    TunerTestingConfigReader::connectLnbRecord(lnbRecord);
+    TunerTestingConfigReader::connectTimeFilter(timeFilter);
 };
 
 inline bool validateConnections() {
-    if ((!live.hasFrontendConnection || !scan.hasFrontendConnection) && !playback.support) {
-        ALOGW("[vts config] VTS must support either a DVR source or a Frontend source.");
-        return false;
-    }
-
-    if (record.support && !record.hasFrontendConnection &&
-        record.dvrSourceId.compare(emptyHardwareId) == 0) {
-        ALOGW("[vts config] Record must support either a DVR source or a Frontend source.");
-        return false;
-    }
-
-    if (descrambling.support && !descrambling.hasFrontendConnection &&
-        descrambling.dvrSourceId.compare(emptyHardwareId) == 0) {
-        ALOGW("[vts config] Descrambling must support either a DVR source or a Frontend source.");
-        return false;
-    }
-
-    bool feIsValid = live.hasFrontendConnection
-                             ? frontendMap.find(live.frontendId) != frontendMap.end()
-                             : true;
-    feIsValid &= scan.hasFrontendConnection ? frontendMap.find(scan.frontendId) != frontendMap.end()
-                                            : true;
-    feIsValid &= record.support && record.hasFrontendConnection
-                         ? frontendMap.find(record.frontendId) != frontendMap.end()
-                         : true;
-    feIsValid &= (descrambling.support && descrambling.hasFrontendConnection)
+    bool feIsValid = frontendMap.find(live.frontendId) != frontendMap.end() &&
+                     frontendMap.find(scan.frontendId) != frontendMap.end();
+    feIsValid &= record.support ? frontendMap.find(record.frontendId) != frontendMap.end() : true;
+    feIsValid &= descrambling.support
                          ? frontendMap.find(descrambling.frontendId) != frontendMap.end()
                          : true;
     feIsValid &= lnbLive.support ? frontendMap.find(lnbLive.frontendId) != frontendMap.end() : true;
@@ -187,28 +163,18 @@ inline bool validateConnections() {
         return false;
     }
 
-    bool dvrIsValid = (live.hasFrontendConnection && frontendMap[live.frontendId].isSoftwareFe)
+    bool dvrIsValid = frontendMap[live.frontendId].isSoftwareFe
                               ? dvrMap.find(live.dvrSoftwareFeId) != dvrMap.end()
                               : true;
     dvrIsValid &= playback.support ? dvrMap.find(playback.dvrId) != dvrMap.end() : true;
     if (record.support) {
-        if (record.hasFrontendConnection) {
-            if (frontendMap[record.frontendId].isSoftwareFe) {
-                dvrIsValid &= dvrMap.find(record.dvrSoftwareFeId) != dvrMap.end();
-            }
-        } else {
-            dvrIsValid &= dvrMap.find(record.dvrSourceId) != dvrMap.end();
+        if (frontendMap[record.frontendId].isSoftwareFe) {
+            dvrIsValid &= dvrMap.find(record.dvrSoftwareFeId) != dvrMap.end();
         }
         dvrIsValid &= dvrMap.find(record.dvrRecordId) != dvrMap.end();
     }
-    if (descrambling.support) {
-        if (descrambling.hasFrontendConnection) {
-            if (frontendMap[descrambling.frontendId].isSoftwareFe) {
-                dvrIsValid &= dvrMap.find(descrambling.dvrSoftwareFeId) != dvrMap.end();
-            }
-        } else {
-            dvrIsValid &= dvrMap.find(descrambling.dvrSourceId) != dvrMap.end();
-        }
+    if (descrambling.support && frontendMap[descrambling.frontendId].isSoftwareFe) {
+        dvrIsValid &= dvrMap.find(descrambling.dvrSoftwareFeId) != dvrMap.end();
     }
 
     if (!dvrIsValid) {
@@ -216,10 +182,8 @@ inline bool validateConnections() {
         return false;
     }
 
-    bool filterIsValid = (live.hasFrontendConnection)
-                             ? filterMap.find(live.audioFilterId) != filterMap.end() &&
-                               filterMap.find(live.videoFilterId) != filterMap.end()
-                             : true;
+    bool filterIsValid = filterMap.find(live.audioFilterId) != filterMap.end() &&
+                         filterMap.find(live.videoFilterId) != filterMap.end();
     filterIsValid &= playback.support
                              ? (filterMap.find(playback.audioFilterId) != filterMap.end() &&
                                 filterMap.find(playback.videoFilterId) != filterMap.end())

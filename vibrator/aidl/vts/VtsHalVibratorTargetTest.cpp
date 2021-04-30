@@ -276,9 +276,7 @@ TEST_P(VibratorAidl, ValidateEffectWithCallback) {
             if (!status.isOk())
                 continue;
 
-            //TODO(b/187207798): revert back to conservative timeout values once
-            //latencies have been fixed
-            std::chrono::milliseconds timeout{lengthMs * 8};
+            std::chrono::milliseconds timeout{lengthMs * 2};
             EXPECT_EQ(completionFuture.wait_for(timeout), std::future_status::ready);
         }
     }
@@ -590,9 +588,7 @@ TEST_P(VibratorAidl, ComposeCallback) {
             EXPECT_EQ(Status::EX_NONE, vibrator->compose(composite, callback).exceptionCode())
                 << toString(primitive);
 
-            //TODO(b/187207798): revert back to conservative timeout values once
-            //latencies have been fixed
-            EXPECT_EQ(completionFuture.wait_for(duration * 4), std::future_status::ready)
+            EXPECT_EQ(completionFuture.wait_for(duration * 2), std::future_status::ready)
                 << toString(primitive);
             end = high_resolution_clock::now();
 
@@ -743,9 +739,7 @@ TEST_P(VibratorAidl, ComposeValidPwleWithCallback) {
     sp<CompletionCallback> callback =
         new CompletionCallback([&completionPromise] { completionPromise.set_value(); });
     uint32_t durationMs = 2100;  // Sum of 2 active and 1 braking below
-    //TODO(b/187207798): revert back to conservative timeout values once
-    //latencies have been fixed
-    std::chrono::milliseconds timeout{durationMs * 4};
+    std::chrono::milliseconds timeout{durationMs * 2};
 
     ActivePwle active = composeValidActivePwle(vibrator, capabilities);
 

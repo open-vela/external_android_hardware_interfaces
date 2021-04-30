@@ -447,8 +447,6 @@ TEST_P(RadioHidlTest_v1_6, setDataThrottling) {
                  ::android::hardware::radio::V1_6::RadioError::NONE,
                  ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS}));
     }
-
-    sleep(1);
     serial = GetRandomSerialNumber();
 
     res = radio_v1_6->setDataThrottling(serial, DataThrottlingAction::THROTTLE_ANCHOR_CARRIER,
@@ -469,8 +467,6 @@ TEST_P(RadioHidlTest_v1_6, setDataThrottling) {
                  ::android::hardware::radio::V1_6::RadioError::NONE,
                  ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS}));
     }
-
-    sleep(1);
     serial = GetRandomSerialNumber();
 
     res = radio_v1_6->setDataThrottling(serial, DataThrottlingAction::HOLD, 60000);
@@ -491,8 +487,6 @@ TEST_P(RadioHidlTest_v1_6, setDataThrottling) {
                  ::android::hardware::radio::V1_6::RadioError::NONE,
                  ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS}));
     }
-
-    sleep(1);
     serial = GetRandomSerialNumber();
 
     res = radio_v1_6->setDataThrottling(serial, DataThrottlingAction::NO_DATA_THROTTLING, 60000);
@@ -512,8 +506,6 @@ TEST_P(RadioHidlTest_v1_6, setDataThrottling) {
                  ::android::hardware::radio::V1_6::RadioError::NONE,
                  ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS}));
     }
-
-    sleep(1);
 }
 
 /*
@@ -599,7 +591,7 @@ TEST_P(RadioHidlTest_v1_6, emergencyDial_1_6) {
     // or Emergency_Only.
     if (isDsDsEnabled() || isTsTsEnabled()) {
         serial = GetRandomSerialNumber();
-        radio_v1_6->getVoiceRegistrationState_1_6(serial);
+        radio_v1_6->getVoiceRegistrationState(serial);
         EXPECT_EQ(std::cv_status::no_timeout, wait());
         if (isVoiceEmergencyOnly(radioRsp_v1_6->voiceRegResp.regState) ||
             isVoiceInService(radioRsp_v1_6->voiceRegResp.regState)) {
@@ -653,7 +645,7 @@ TEST_P(RadioHidlTest_v1_6, emergencyDial_1_6_withServices) {
     // or Emergency_Only.
     if (isDsDsEnabled() || isTsTsEnabled()) {
         serial = GetRandomSerialNumber();
-        radio_v1_6->getVoiceRegistrationState_1_6(serial);
+        radio_v1_6->getVoiceRegistrationState(serial);
         EXPECT_EQ(std::cv_status::no_timeout, wait());
         if (isVoiceEmergencyOnly(radioRsp_v1_6->voiceRegResp.regState) ||
             isVoiceInService(radioRsp_v1_6->voiceRegResp.regState)) {
@@ -706,7 +698,7 @@ TEST_P(RadioHidlTest_v1_6, emergencyDial_1_6_withEmergencyRouting) {
     // or Emergency_Only.
     if (isDsDsEnabled() || isTsTsEnabled()) {
         serial = GetRandomSerialNumber();
-        radio_v1_6->getVoiceRegistrationState_1_6(serial);
+        radio_v1_6->getVoiceRegistrationState(serial);
         EXPECT_EQ(std::cv_status::no_timeout, wait());
         if (isVoiceEmergencyOnly(radioRsp_v1_6->voiceRegResp.regState) ||
             isVoiceInService(radioRsp_v1_6->voiceRegResp.regState)) {
