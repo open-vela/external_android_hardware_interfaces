@@ -17,27 +17,24 @@
 #define LOG_TAG "StreamInHAL"
 
 #include "core/default/StreamIn.h"
+#include "core/default/Conversions.h"
 #include "core/default/Util.h"
 #include "common/all-versions/HidlSupport.h"
 
 //#define LOG_NDEBUG 0
 #define ATRACE_TAG ATRACE_TAG_AUDIO
 
-#include <HidlUtils.h>
 #include <android/log.h>
 #include <hardware/audio.h>
-#include <util/CoreUtils.h>
 #include <utils/Trace.h>
-#include <cmath>
 #include <memory>
+#include <cmath>
 
 namespace android {
 namespace hardware {
 namespace audio {
 namespace CPP_VERSION {
 namespace implementation {
-
-using ::android::hardware::audio::common::CPP_VERSION::implementation::HidlUtils;
 
 namespace {
 
@@ -144,7 +141,7 @@ bool ReadThread::threadLoop() {
 StreamIn::StreamIn(const sp<Device>& device, audio_stream_in_t* stream)
     : mDevice(device),
       mStream(stream),
-      mStreamCommon(new Stream(true /*isInput*/, &stream->common)),
+      mStreamCommon(new Stream(&stream->common)),
       mStreamMmap(new StreamMmap<audio_stream_in_t>(stream)),
       mEfGroup(nullptr),
       mStopReadThread(false) {}
@@ -180,7 +177,6 @@ Return<uint64_t> StreamIn::getBufferSize() {
     return mStreamCommon->getBufferSize();
 }
 
-#if MAJOR_VERSION <= 6
 Return<uint32_t> StreamIn::getSampleRate() {
     return mStreamCommon->getSampleRate();
 }
@@ -226,18 +222,6 @@ Return<void> StreamIn::getSupportedFormats(getSupportedFormats_cb _hidl_cb) {
 Return<Result> StreamIn::setFormat(AudioFormat format) {
     return mStreamCommon->setFormat(format);
 }
-
-#else
-
-Return<void> StreamIn::getSupportedProfiles(getSupportedProfiles_cb _hidl_cb) {
-    return mStreamCommon->getSupportedProfiles(_hidl_cb);
-}
-
-Return<Result> StreamIn::setAudioProperties(const AudioConfigBaseOptional& config) {
-    return mStreamCommon->setAudioProperties(config);
-}
-
-#endif  // MAJOR_VERSION <= 6
 
 Return<void> StreamIn::getAudioProperties(getAudioProperties_cb _hidl_cb) {
     return mStreamCommon->getAudioProperties(_hidl_cb);
@@ -337,11 +321,9 @@ Return<Result> StreamIn::close() {
 Return<void> StreamIn::getAudioSource(getAudioSource_cb _hidl_cb) {
     int halSource;
     Result retval = mStreamCommon->getParam(AudioParameter::keyInputSource, &halSource);
-    AudioSource source = {};
+    AudioSource source(AudioSource::DEFAULT);
     if (retval == Result::OK) {
-        retval = Stream::analyzeStatus(
-                "get_audio_source",
-                HidlUtils::audioSourceFromHal(static_cast<audio_source_t>(halSource), &source));
+        source = AudioSource(halSource);
     }
     _hidl_cb(retval, source);
     return Void();
@@ -358,11 +340,7 @@ Return<Result> StreamIn::setGain(float gain) {
 Return<void> StreamIn::prepareForReading(uint32_t frameSize, uint32_t framesCount,
                                          prepareForReading_cb _hidl_cb) {
     status_t status;
-#if MAJOR_VERSION <= 6
     ThreadInfo threadInfo = {0, 0};
-#else
-    int32_t threadInfo = 0;
-#endif
 
     // Wrap the _hidl_cb to return an error
     auto sendError = [&threadInfo, &_hidl_cb](Result result) {
@@ -412,9 +390,9 @@ Return<void> StreamIn::prepareForReading(uint32_t frameSize, uint32_t framesCoun
     }
 
     // Create and launch the thread.
-    auto tempReadThread =
-            sp<ReadThread>::make(&mStopReadThread, mStream, tempCommandMQ.get(), tempDataMQ.get(),
-                                 tempStatusMQ.get(), tempElfGroup.get());
+    sp<ReadThread> tempReadThread =
+            new ReadThread(&mStopReadThread, mStream, tempCommandMQ.get(), tempDataMQ.get(),
+                           tempStatusMQ.get(), tempElfGroup.get());
     if (!tempReadThread->init()) {
         ALOGW("failed to start reader thread: %s", strerror(-status));
         sendError(Result::INVALID_ARGUMENTS);
@@ -432,12 +410,8 @@ Return<void> StreamIn::prepareForReading(uint32_t frameSize, uint32_t framesCoun
     mStatusMQ = std::move(tempStatusMQ);
     mReadThread = tempReadThread;
     mEfGroup = tempElfGroup.release();
-#if MAJOR_VERSION <= 6
     threadInfo.pid = getpid();
     threadInfo.tid = mReadThread->getTid();
-#else
-    threadInfo = mReadThread->getTid();
-#endif
     _hidl_cb(Result::OK, *mCommandMQ->getDesc(), *mDataMQ->getDesc(), *mStatusMQ->getDesc(),
              threadInfo);
     return Void();
@@ -478,74 +452,34 @@ Return<void> StreamIn::debug(const hidl_handle& fd, const hidl_vec<hidl_string>&
 }
 
 #if MAJOR_VERSION >= 4
-Result StreamIn::doUpdateSinkMetadata(const SinkMetadata& sinkMetadata) {
-    std::vector<record_track_metadata> halTracks;
-#if MAJOR_VERSION <= 6
-    (void)CoreUtils::sinkMetadataToHal(sinkMetadata, &halTracks);
-#else
-    // Validate whether a conversion to V7 is possible. This is needed
-    // to have a consistent behavior of the HAL regardless of the API
-    // version of the legacy HAL (and also to be consistent with openInputStream).
-    std::vector<record_track_metadata_v7> halTracksV7;
-    if (status_t status = CoreUtils::sinkMetadataToHalV7(
-                sinkMetadata, false /*ignoreNonVendorTags*/, &halTracksV7);
-        status == NO_ERROR) {
-        halTracks.reserve(halTracksV7.size());
-        for (auto metadata_v7 : halTracksV7) {
-            halTracks.push_back(std::move(metadata_v7.base));
-        }
-    } else {
-        return Stream::analyzeStatus("sinkMetadataToHal", status);
+Return<void> StreamIn::updateSinkMetadata(const SinkMetadata& sinkMetadata) {
+    if (mStream->update_sink_metadata == nullptr) {
+        return Void();  // not supported by the HAL
     }
-#endif  // MAJOR_VERSION <= 6
+    std::vector<record_track_metadata> halTracks;
+    halTracks.reserve(sinkMetadata.tracks.size());
+    for (auto& metadata : sinkMetadata.tracks) {
+        record_track_metadata halTrackMetadata = {
+            .source = static_cast<audio_source_t>(metadata.source), .gain = metadata.gain};
+#if MAJOR_VERSION >= 5
+        if (metadata.destination.getDiscriminator() ==
+            RecordTrackMetadata::Destination::hidl_discriminator::device) {
+            halTrackMetadata.dest_device =
+                static_cast<audio_devices_t>(metadata.destination.device().device);
+            strncpy(halTrackMetadata.dest_device_address,
+                    deviceAddressToHal(metadata.destination.device()).c_str(),
+                    AUDIO_DEVICE_MAX_ADDRESS_LEN);
+        }
+#endif
+        halTracks.push_back(halTrackMetadata);
+    }
     const sink_metadata_t halMetadata = {
         .track_count = halTracks.size(),
         .tracks = halTracks.data(),
     };
     mStream->update_sink_metadata(mStream, &halMetadata);
-    return Result::OK;
-}
-
-#if MAJOR_VERSION >= 7
-Result StreamIn::doUpdateSinkMetadataV7(const SinkMetadata& sinkMetadata) {
-    std::vector<record_track_metadata_v7> halTracks;
-    if (status_t status = CoreUtils::sinkMetadataToHalV7(sinkMetadata,
-                                                         false /*ignoreNonVendorTags*/, &halTracks);
-        status != NO_ERROR) {
-        return Stream::analyzeStatus("sinkMetadataToHal", status);
-    }
-    const sink_metadata_v7_t halMetadata = {
-            .track_count = halTracks.size(),
-            .tracks = halTracks.data(),
-    };
-    mStream->update_sink_metadata_v7(mStream, &halMetadata);
-    return Result::OK;
-}
-#endif  //  MAJOR_VERSION >= 7
-
-#if MAJOR_VERSION <= 6
-Return<void> StreamIn::updateSinkMetadata(const SinkMetadata& sinkMetadata) {
-    if (mStream->update_sink_metadata == nullptr) {
-        return Void();  // not supported by the HAL
-    }
-    (void)doUpdateSinkMetadata(sinkMetadata);
     return Void();
 }
-#elif MAJOR_VERSION >= 7
-Return<Result> StreamIn::updateSinkMetadata(const SinkMetadata& sinkMetadata) {
-    if (mDevice->version() < AUDIO_DEVICE_API_VERSION_3_2) {
-        if (mStream->update_sink_metadata == nullptr) {
-            return Result::NOT_SUPPORTED;
-        }
-        return doUpdateSinkMetadata(sinkMetadata);
-    } else {
-        if (mStream->update_sink_metadata_v7 == nullptr) {
-            return Result::NOT_SUPPORTED;
-        }
-        return doUpdateSinkMetadataV7(sinkMetadata);
-    }
-}
-#endif
 
 Return<void> StreamIn::getActiveMicrophones(getActiveMicrophones_cb _hidl_cb) {
     Result retval = Result::NOT_SUPPORTED;
@@ -557,7 +491,7 @@ Return<void> StreamIn::getActiveMicrophones(getActiveMicrophones_cb _hidl_cb) {
         mStream->get_active_microphones(mStream, &mic_array[0], &actual_mics) == 0) {
         microphones.resize(actual_mics);
         for (size_t i = 0; i < actual_mics; ++i) {
-            (void)CoreUtils::microphoneInfoFromHal(mic_array[i], &microphones[i]);
+            halToMicrophoneCharacteristics(&microphones[i], mic_array[i]);
         }
         retval = Result::OK;
     }

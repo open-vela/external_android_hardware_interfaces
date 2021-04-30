@@ -104,7 +104,6 @@ class FrontendTests {
     void setService(sp<ITuner> tuner) {
         mService = tuner;
         mDvrTests.setService(tuner);
-        getDefaultSoftwareFrontendPlaybackConfig(mDvrConfig);
     }
 
     AssertionResult getFrontendIds();
@@ -126,14 +125,12 @@ class FrontendTests {
 
     void setDvrTests(DvrTests dvrTests) { mDvrTests = dvrTests; }
     void setDemux(sp<IDemux> demux) { mDvrTests.setDemux(demux); }
-    void setSoftwareFrontendDvrConfig(DvrConfig conf) { mDvrConfig = conf; }
 
   protected:
     static AssertionResult failure() { return ::testing::AssertionFailure(); }
     static AssertionResult success() { return ::testing::AssertionSuccess(); }
 
-    // TODO: replace with customized dvr input
-    void getDefaultSoftwareFrontendPlaybackConfig(DvrConfig& dvrConfig) {
+    void getSoftwareFrontendPlaybackConfig(DvrConfig& dvrConfig) {
         PlaybackSettings playbackSettings{
                 .statusMask = 0xf,
                 .lowThreshold = 0x1000,
@@ -154,5 +151,4 @@ class FrontendTests {
 
     DvrTests mDvrTests;
     bool mIsSoftwareFe = false;
-    DvrConfig mDvrConfig;
 };

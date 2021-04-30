@@ -81,7 +81,6 @@ TEST_P(AuthSecretHidlTest, provisionPrimaryUserCredentialAndWrongSecret) {
     authsecret->primaryUserCredential(WRONG_SECRET);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(AuthSecretHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, AuthSecretHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IAuthSecret::descriptor)),
