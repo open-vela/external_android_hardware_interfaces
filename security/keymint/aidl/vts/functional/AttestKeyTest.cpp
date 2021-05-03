@@ -56,7 +56,6 @@ TEST_P(AttestKeyTest, AllRsaSizes) {
                                              {} /* attestation signing key */, &attest_key.keyBlob,
                                              &attest_key_characteristics, &attest_key_cert_chain));
 
-        ASSERT_GT(attest_key_cert_chain.size(), 0);
         EXPECT_EQ(attest_key_cert_chain.size(), 1);
         EXPECT_TRUE(IsSelfSigned(attest_key_cert_chain)) << "Failed on size " << size;
 
@@ -495,7 +494,6 @@ TEST_P(AttestKeyTest, AllEcCurves) {
                                              {} /* attestation siging key */, &attest_key.keyBlob,
                                              &attest_key_characteristics, &attest_key_cert_chain));
 
-        ASSERT_GT(attest_key_cert_chain.size(), 0);
         EXPECT_EQ(attest_key_cert_chain.size(), 1);
         EXPECT_TRUE(IsSelfSigned(attest_key_cert_chain)) << "Failed on curve " << curve;
 
@@ -579,7 +577,6 @@ TEST_P(AttestKeyTest, AttestWithNonAttestKey) {
                     {} /* attestation siging key */, &non_attest_key.keyBlob,
                     &non_attest_key_characteristics, &non_attest_key_cert_chain));
 
-    ASSERT_GT(non_attest_key_cert_chain.size(), 0);
     EXPECT_EQ(non_attest_key_cert_chain.size(), 1);
     EXPECT_TRUE(IsSelfSigned(non_attest_key_cert_chain));
 
