@@ -468,7 +468,6 @@ struct TunerTestingConfigReader {
             return;
         }
         auto recordConfig = *dataFlow.getFirstDvrRecord();
-        record.frontendId = recordConfig.getFrontendConnection();
         record.recordFilterId = recordConfig.getRecordFilterConnection();
         record.dvrRecordId = recordConfig.getDvrRecordConnection();
         if (recordConfig.hasDvrSoftwareFeConnection()) {
@@ -477,6 +476,7 @@ struct TunerTestingConfigReader {
         if (recordConfig.getHasFrontendConnection()) {
             record.hasFrontendConnection = true;
             record.dvrSourceId = emptyHardwareId;
+            record.frontendId = recordConfig.getFrontendConnection();
         } else {
             record.hasFrontendConnection = false;
             record.dvrSourceId = recordConfig.getDvrSourceConnection();
@@ -492,7 +492,6 @@ struct TunerTestingConfigReader {
             return;
         }
         auto descConfig = *dataFlow.getFirstDescrambling();
-        descrambling.frontendId = descConfig.getFrontendConnection();
         descrambling.descramblerId = descConfig.getDescramblerConnection();
         descrambling.audioFilterId = descConfig.getAudioFilterConnection();
         descrambling.videoFilterId = descConfig.getVideoFilterConnection();
@@ -502,6 +501,7 @@ struct TunerTestingConfigReader {
         if (descConfig.getHasFrontendConnection()) {
             descrambling.hasFrontendConnection = true;
             descrambling.dvrSourceId = emptyHardwareId;
+            descrambling.frontendId = descConfig.getFrontendConnection();
         } else {
             descrambling.hasFrontendConnection = false;
             descrambling.dvrSourceId = descConfig.getDvrSourceConnection();
