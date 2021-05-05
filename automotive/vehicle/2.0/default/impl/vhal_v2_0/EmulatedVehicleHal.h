@@ -30,9 +30,8 @@
 #include "vhal_v2_0/VehiclePropertyStore.h"
 
 #include "DefaultConfig.h"
-#include "EmulatedUserHal.h"
-#include "EmulatedVehicleConnector.h"
-#include "GeneratorHub.h"
+#include "FakeValueGenerator.h"
+
 #include "VehicleEmulator.h"
 
 namespace android {
@@ -46,8 +45,7 @@ namespace impl {
 /** Implementation of VehicleHal that connected to emulator instead of real vehicle network. */
 class EmulatedVehicleHal : public EmulatedVehicleHalIface {
 public:
-    EmulatedVehicleHal(VehiclePropertyStore* propStore, VehicleHalClient* client,
-                       EmulatedUserHal* emulatedUserHal = nullptr);
+    EmulatedVehicleHal(VehiclePropertyStore* propStore);
     ~EmulatedVehicleHal() = default;
 
     //  Methods from VehicleHal
@@ -58,12 +56,10 @@ public:
     StatusCode set(const VehiclePropValue& propValue) override;
     StatusCode subscribe(int32_t property, float sampleRate) override;
     StatusCode unsubscribe(int32_t property) override;
-    bool dump(const hidl_handle& fd, const hidl_vec<hidl_string>& options) override;
 
     //  Methods from EmulatedVehicleHalIface
     bool setPropertyFromVehicle(const VehiclePropValue& propValue) override;
     std::vector<VehiclePropValue> getAllProperties() const override;
-    void getAllPropertiesOverride();
 
 private:
     constexpr std::chrono::nanoseconds hertzToNanoseconds(float hz) const {
@@ -71,7 +67,9 @@ private:
     }
 
     StatusCode handleGenerateFakeDataRequest(const VehiclePropValue& request);
-    void onPropertyValue(const VehiclePropValue& value, bool updateStatus);
+    void onFakeValueGenerated(const VehiclePropValue& value);
+    VehiclePropValuePtr createHwInputKeyProp(VehicleHwKeyInputAction action, int32_t keyCode,
+                                             int32_t targetDisplay);
 
     void onContinuousPropertyTimer(const std::vector<int32_t>& properties);
     bool isContinuousProperty(int32_t propId) const;
@@ -82,18 +80,13 @@ private:
                                    VehiclePropValue* outValue);
     StatusCode fillObd2DtcInfo(VehiclePropValue* outValue);
     StatusCode clearObd2FreezeFrames(const VehiclePropValue& propValue);
-    VehicleHal::VehiclePropValuePtr doInternalHealthCheck();
-    VehicleHal::VehiclePropValuePtr createVhalHeartBeatProp();
 
     /* Private members */
     VehiclePropertyStore* mPropStore;
     std::unordered_set<int32_t> mHvacPowerProps;
     RecurrentTimer mRecurrentTimer;
-    VehicleHalClient* mVehicleClient;
-    bool mInEmulator;
-    bool mInitVhalValueOverride;
-    std::vector<VehiclePropValue> mVehiclePropertiesOverride;
-    EmulatedUserHal* mEmulatedUserHal;
+    std::unique_ptr<FakeValueGenerator> mLinearFakeValueGenerator;
+    std::unique_ptr<FakeValueGenerator> mJsonFakeValueGenerator;
 };
 
 }  // impl

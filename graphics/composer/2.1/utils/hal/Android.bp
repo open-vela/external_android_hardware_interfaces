@@ -13,27 +13,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package {
-    // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "hardware_interfaces_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_interfaces_license"],
-}
-
 cc_library_headers {
     name: "android.hardware.graphics.composer@2.1-hal",
     defaults: ["hidl_defaults"],
     vendor_available: true,
     shared_libs: [
         "android.hardware.graphics.composer@2.1",
-        "android.hardware.graphics.composer@2.1-resources",
+        "android.hardware.graphics.mapper@2.0",
         "libhardware", // TODO remove hwcomposer2.h dependency
     ],
     export_shared_lib_headers: [
         "android.hardware.graphics.composer@2.1",
-        "android.hardware.graphics.composer@2.1-resources",
+        "android.hardware.graphics.mapper@2.0",
         "libhardware",
     ],
     header_libs: [
