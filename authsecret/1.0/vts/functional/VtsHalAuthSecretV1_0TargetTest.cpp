@@ -16,41 +16,35 @@
 
 #include <android/hardware/authsecret/1.0/IAuthSecret.h>
 
-#include <VtsHalHidlTargetTestBase.h>
-#include <VtsHalHidlTargetTestEnvBase.h>
+#include <gtest/gtest.h>
+#include <hidl/GtestPrinter.h>
+#include <hidl/ServiceManagement.h>
 
 using ::android::hardware::hidl_vec;
 using ::android::hardware::authsecret::V1_0::IAuthSecret;
 using ::android::sp;
 
-// Test environment for Boot HIDL HAL.
-class AuthSecretHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
-   public:
-    // get the test environment singleton
-    static AuthSecretHidlEnvironment* Instance() {
-        static AuthSecretHidlEnvironment* instance = new AuthSecretHidlEnvironment;
-        return instance;
-    }
-
-    virtual void registerTestServices() override { registerTestService<IAuthSecret>(); }
-
-   private:
-    AuthSecretHidlEnvironment() {}
-};
-
 /**
  * There is no expected behaviour that can be tested so these tests check the
  * HAL doesn't crash with different execution orders.
  */
-struct AuthSecretHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+class AuthSecretHidlTest : public testing::TestWithParam<std::string> {
+  public:
     virtual void SetUp() override {
-        authsecret = ::testing::VtsHalHidlTargetTestBase::getService<IAuthSecret>(
-            AuthSecretHidlEnvironment::Instance()->getServiceName<IAuthSecret>());
+        authsecret = IAuthSecret::getService(GetParam());
         ASSERT_NE(authsecret, nullptr);
+
+        // Notify LSS to generate PIN code '1234' and corresponding secret.
+        (void)system("cmd lock_settings set-pin 1234");
 
         // All tests must enroll the correct secret first as this cannot be changed
         // without a factory reset and the order of tests could change.
         authsecret->primaryUserCredential(CORRECT_SECRET);
+    }
+
+    static void TearDownTestSuite() {
+        // clean up PIN code after testing
+        (void)system("cmd lock_settings clear --old 1234");
     }
 
     sp<IAuthSecret> authsecret;
@@ -59,18 +53,18 @@ struct AuthSecretHidlTest : public ::testing::VtsHalHidlTargetTestBase {
 };
 
 /* Provision the primary user with a secret. */
-TEST_F(AuthSecretHidlTest, provisionPrimaryUserCredential) {
+TEST_P(AuthSecretHidlTest, provisionPrimaryUserCredential) {
     // Secret provisioned by SetUp()
 }
 
 /* Provision the primary user with a secret and pass the secret again. */
-TEST_F(AuthSecretHidlTest, provisionPrimaryUserCredentialAndPassAgain) {
+TEST_P(AuthSecretHidlTest, provisionPrimaryUserCredentialAndPassAgain) {
     // Secret provisioned by SetUp()
     authsecret->primaryUserCredential(CORRECT_SECRET);
 }
 
 /* Provision the primary user with a secret and pass the secret again repeatedly. */
-TEST_F(AuthSecretHidlTest, provisionPrimaryUserCredentialAndPassAgainMultipleTimes) {
+TEST_P(AuthSecretHidlTest, provisionPrimaryUserCredentialAndPassAgainMultipleTimes) {
     // Secret provisioned by SetUp()
     constexpr int N = 5;
     for (int i = 0; i < N; ++i) {
@@ -82,16 +76,13 @@ TEST_F(AuthSecretHidlTest, provisionPrimaryUserCredentialAndPassAgainMultipleTim
  * should never happen and is an framework bug if it does. As the secret is
  * wrong, the HAL implementation may not be able to function correctly but it
  * should fail gracefully. */
-TEST_F(AuthSecretHidlTest, provisionPrimaryUserCredentialAndWrongSecret) {
+TEST_P(AuthSecretHidlTest, provisionPrimaryUserCredentialAndWrongSecret) {
     // Secret provisioned by SetUp()
     authsecret->primaryUserCredential(WRONG_SECRET);
 }
 
-int main(int argc, char** argv) {
-    ::testing::AddGlobalTestEnvironment(AuthSecretHidlEnvironment::Instance());
-    ::testing::InitGoogleTest(&argc, argv);
-    AuthSecretHidlEnvironment::Instance()->init(&argc, argv);
-    int status = RUN_ALL_TESTS();
-    ALOGI("Test result = %d", status);
-    return status;
-}
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(AuthSecretHidlTest);
+INSTANTIATE_TEST_SUITE_P(
+        PerInstance, AuthSecretHidlTest,
+        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IAuthSecret::descriptor)),
+        android::hardware::PrintInstanceNameToString);

@@ -18,8 +18,11 @@
 
 #include <log/log.h>
 
-#include "GnssConstants.h"
+#include "Constants.h"
 #include "GnssDebug.h"
+#include "MockLocation.h"
+
+using namespace ::android::hardware::gnss::common;
 
 namespace android {
 namespace hardware {
@@ -30,17 +33,17 @@ namespace implementation {
 // Methods from ::android::hardware::gnss::V1_0::IGnssDebug follow.
 Return<void> GnssDebug::getDebugData(V1_0::IGnssDebug::getDebugData_cb _hidl_cb) {
     PositionDebug positionDebug = {
-        .valid = true,
-        .latitudeDegrees = kMockLatitudeDegrees,
-        .longitudeDegrees = kMockLongitudeDegrees,
-        .altitudeMeters = kMockAltitudeMeters,
-        .speedMetersPerSec = kMockSpeedMetersPerSec,
-        .bearingDegrees = kMockBearingDegrees,
-        .horizontalAccuracyMeters = kMockHorizontalAccuracyMeters,
-        .verticalAccuracyMeters = kMockVerticalAccuracyMeters,
-        .speedAccuracyMetersPerSecond = kMockSpeedAccuracyMetersPerSecond,
-        .bearingAccuracyDegrees = kMockBearingAccuracyDegrees,
-        .ageSeconds = 0.99};
+            .valid = true,
+            .latitudeDegrees = gMockLatitudeDegrees,
+            .longitudeDegrees = gMockLongitudeDegrees,
+            .altitudeMeters = gMockAltitudeMeters,
+            .speedMetersPerSec = gMockSpeedMetersPerSec,
+            .bearingDegrees = gMockBearingDegrees,
+            .horizontalAccuracyMeters = kMockHorizontalAccuracyMeters,
+            .verticalAccuracyMeters = kMockVerticalAccuracyMeters,
+            .speedAccuracyMetersPerSecond = kMockSpeedAccuracyMetersPerSecond,
+            .bearingAccuracyDegrees = kMockBearingAccuracyDegrees,
+            .ageSeconds = 0.99};
 
     TimeDebug timeDebug = {.timeEstimate = kMockTimestamp,
                            .timeUncertaintyNs = 1000,

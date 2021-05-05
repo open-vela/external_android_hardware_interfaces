@@ -24,7 +24,7 @@
 #include <composer-hal/2.1/ComposerClient.h>
 #include <composer-hal/2.2/ComposerCommandEngine.h>
 #include <composer-hal/2.2/ComposerHal.h>
-#include <composer-hal/2.2/ComposerResources.h>
+#include <composer-resources/2.2/ComposerResources.h>
 
 namespace android {
 namespace hardware {
@@ -89,7 +89,7 @@ class ComposerClientImpl : public V2_1::hal::detail::ComposerClientImpl<Interfac
 
         auto resources = static_cast<ComposerResources*>(mResources.get());
         const native_handle_t* readbackBuffer;
-        ComposerResources::ReplacedBufferHandle replacedReadbackBuffer;
+        ComposerResources::ReplacedHandle replacedReadbackBuffer(true);
         error = resources->getDisplayReadbackBuffer(display, buffer.getNativeHandle(),
                                                     &readbackBuffer, &replacedReadbackBuffer);
         if (error != Error::NONE) {
@@ -132,24 +132,13 @@ class ComposerClientImpl : public V2_1::hal::detail::ComposerClientImpl<Interfac
 
     Return<void> getRenderIntents(Display display, ColorMode mode,
                                   IComposerClient::getRenderIntents_cb hidl_cb) override {
-#ifdef USES_DISPLAY_RENDER_INTENTS
         std::vector<RenderIntent> intents;
         Error err = mHal->getRenderIntents(display, mode, &intents);
         hidl_cb(err, intents);
-#else
-        (void)display;
-        (void)mode;
-        hidl_cb(Error::NONE, hidl_vec<RenderIntent>({RenderIntent::COLORIMETRIC}));
-#endif
         return Void();
     }
 
     Return<Error> setColorMode_2_2(Display display, ColorMode mode, RenderIntent intent) override {
-#ifndef USES_DISPLAY_RENDER_INTENTS
-        if (intent != RenderIntent::COLORIMETRIC) {
-            return Error::BAD_PARAMETER;
-        }
-#endif
         return mHal->setColorMode_2_2(display, mode, intent);
     }
 
