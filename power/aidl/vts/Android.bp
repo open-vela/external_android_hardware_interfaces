@@ -29,10 +29,10 @@ cc_test {
     ],
     srcs: ["VtsHalPowerTargetTest.cpp"],
     shared_libs: [
-        "libbinder_ndk",
+        "libbinder",
     ],
     static_libs: [
-        "android.hardware.power-V2-ndk_platform",
+        "android.hardware.power-V1-cpp",
     ],
     test_suites: [
         "vts",
