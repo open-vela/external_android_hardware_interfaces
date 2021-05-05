@@ -52,7 +52,6 @@ namespace implementation {
     Return<void> CryptoPlugin::setSharedBufferBase(const hidl_memory& base,
             uint32_t bufferId) {
         sp<IMemory> hidlMemory = mapMemory(base);
-        ALOGE_IF(hidlMemory == nullptr, "mapMemory returns nullptr");
 
         std::lock_guard<std::mutex> shared_buffer_lock(mSharedBufferLock);
 
@@ -68,7 +67,7 @@ namespace implementation {
             const SharedBuffer& source, uint64_t offset,
             const DestinationBuffer& destination,
             decrypt_cb _hidl_cb) {
-        std::unique_lock<std::mutex> lock(mSharedBufferLock);
+        std::unique_lock<std::mutex> shared_buffer_lock(mSharedBufferLock);
         if (mSharedBufferMap.find(source.bufferId) == mSharedBufferMap.end()) {
             _hidl_cb(Status::ERROR_DRM_CANNOT_HANDLE, 0, "source decrypt buffer base not set");
             return Void();
@@ -149,9 +148,9 @@ namespace implementation {
                 return Void();
             }
 
-            size_t totalDstSize = 0;
-            if (__builtin_add_overflow(destBuffer.offset, destBuffer.size, &totalDstSize) ||
-                totalDstSize > destBase->getSize()) {
+            size_t totalSize = 0;
+            if (__builtin_add_overflow(destBuffer.offset, destBuffer.size, &totalSize) ||
+                totalSize > destBase->getSize()) {
                 android_errorWriteLog(0x534e4554, "176496353");
                 _hidl_cb(Status::ERROR_DRM_CANNOT_HANDLE, 0, "invalid buffer size");
                 return Void();
@@ -178,7 +177,8 @@ namespace implementation {
         }
 
         // release mSharedBufferLock
-        lock.unlock();
+        shared_buffer_lock.unlock();
+
         ssize_t result = mLegacyPlugin->decrypt(secure, keyId.data(), iv.data(),
                 legacyMode, legacyPattern, srcPtr, legacySubSamples.get(),
                 subSamples.size(), destPtr, &detailMessage);
