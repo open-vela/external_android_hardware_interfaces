@@ -28,11 +28,9 @@
 #include <fmq/MessageQueue.h>
 #include <hidl/MQDescriptor.h>
 #include <nnapi/IBurst.h>
-#include <nnapi/IExecution.h>
 #include <nnapi/IPreparedModel.h>
 #include <nnapi/Result.h>
 #include <nnapi/Types.h>
-#include <nnapi/hal/CommonUtils.h>
 #include <nnapi/hal/ProtectCallback.h>
 
 #include <atomic>
@@ -53,14 +51,14 @@ namespace android::hardware::neuralnetworks::V1_2::utils {
  * across FMQ, making it appear to the runtime as a regular synchronous inference. Additionally,
  * this class manages the burst's memory cache.
  */
-class ExecutionBurstController final
-    : public nn::IBurst,
-      public std::enable_shared_from_this<ExecutionBurstController> {
+class ExecutionBurstController final : public nn::IBurst {
     struct PrivateConstructorTag {};
 
   public:
-    using FallbackFunction = std::function<
-            nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>>()>;
+    using FallbackFunction =
+            std::function<nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>>(
+                    const nn::Request&, nn::MeasureTiming, const nn::OptionalTimePoint&,
+                    const nn::OptionalDuration&)>;
 
     /**
      * NN runtime memory cache.
@@ -156,10 +154,10 @@ class ExecutionBurstController final
      * @return ExecutionBurstController Execution burst controller object.
      */
     static nn::GeneralResult<std::shared_ptr<const ExecutionBurstController>> create(
-            nn::SharedPreparedModel preparedModel, const sp<IPreparedModel>& hidlPreparedModel,
+            const sp<IPreparedModel>& preparedModel, FallbackFunction fallback,
             std::chrono::microseconds pollingTimeWindow);
 
-    ExecutionBurstController(PrivateConstructorTag tag, nn::SharedPreparedModel preparedModel,
+    ExecutionBurstController(PrivateConstructorTag tag, FallbackFunction fallback,
                              std::unique_ptr<RequestChannelSender> requestChannelSender,
                              std::unique_ptr<ResultChannelReceiver> resultChannelReceiver,
                              sp<ExecutionBurstCallback> callback, sp<IBurstContext> burstContext,
@@ -175,21 +173,9 @@ class ExecutionBurstController final
             const nn::OptionalTimePoint& deadline,
             const nn::OptionalDuration& loopTimeoutDuration) const override;
 
-    // See IBurst::createReusableExecution for information on this method.
-    nn::GeneralResult<nn::SharedExecution> createReusableExecution(
-            const nn::Request& request, nn::MeasureTiming measure,
-            const nn::OptionalDuration& loopTimeoutDuration) const override;
-
-    // If fallback is not nullptr, this method will invoke the fallback function to try another
-    // execution path if the packet could not be sent. Otherwise, failing to send the packet will
-    // result in an error.
-    nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> executeInternal(
-            const std::vector<FmqRequestDatum>& requestPacket,
-            const hal::utils::RequestRelocation& relocation, FallbackFunction fallback) const;
-
   private:
     mutable std::atomic_flag mExecutionInFlight = ATOMIC_FLAG_INIT;
-    const nn::SharedPreparedModel kPreparedModel;
+    const FallbackFunction kFallback;
     const std::unique_ptr<RequestChannelSender> mRequestChannelSender;
     const std::unique_ptr<ResultChannelReceiver> mResultChannelReceiver;
     const sp<ExecutionBurstCallback> mBurstCallback;
