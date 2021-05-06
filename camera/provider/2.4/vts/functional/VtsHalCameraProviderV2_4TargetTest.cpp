@@ -7155,24 +7155,17 @@ void CameraHidlTest::castDevice(const sp<device::V3_2::ICameraDevice>& device,
                                 sp<device::V3_5::ICameraDevice>* device3_5 /*out*/,
                                 sp<device::V3_7::ICameraDevice>* device3_7 /*out*/) {
     ASSERT_NE(nullptr, device3_5);
-    ASSERT_NE(nullptr, device3_7);
+    if (deviceVersion == CAMERA_DEVICE_API_VERSION_3_5) {
+        auto castResult = device::V3_5::ICameraDevice::castFrom(device);
+        ASSERT_TRUE(castResult.isOk());
+        *device3_5 = castResult;
+    }
 
-    switch (deviceVersion) {
-        case CAMERA_DEVICE_API_VERSION_3_7: {
-            auto castResult = device::V3_7::ICameraDevice::castFrom(device);
-            ASSERT_TRUE(castResult.isOk());
-            *device3_7 = castResult;
-        }
-            [[fallthrough]];
-        case CAMERA_DEVICE_API_VERSION_3_5: {
-            auto castResult = device::V3_5::ICameraDevice::castFrom(device);
-            ASSERT_TRUE(castResult.isOk());
-            *device3_5 = castResult;
-            break;
-        }
-        default:
-            // no-op
-            return;
+    ASSERT_NE(nullptr, device3_7);
+    if (deviceVersion == CAMERA_DEVICE_API_VERSION_3_7) {
+        auto castResult = device::V3_7::ICameraDevice::castFrom(device);
+        ASSERT_TRUE(castResult.isOk());
+        *device3_7 = castResult;
     }
 }
 
