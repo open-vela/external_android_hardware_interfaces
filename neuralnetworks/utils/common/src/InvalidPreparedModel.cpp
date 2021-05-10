@@ -42,12 +42,6 @@ InvalidPreparedModel::executeFenced(
     return NN_ERROR() << "InvalidPreparedModel";
 }
 
-nn::GeneralResult<nn::SharedExecution> InvalidPreparedModel::createReusableExecution(
-        const nn::Request& /*request*/, nn::MeasureTiming /*measure*/,
-        const nn::OptionalDuration& /*loopTimeoutDuration*/) const {
-    return NN_ERROR() << "InvalidPreparedModel";
-}
-
 nn::GeneralResult<nn::SharedBurst> InvalidPreparedModel::configureExecutionBurst() const {
     return NN_ERROR() << "InvalidPreparedModel";
 }
