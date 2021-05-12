@@ -15,6 +15,7 @@
  */
 
 #include <android-base/logging.h>
+
 #include <android/hardware/wifi/1.0/IWifi.h>
 #include <android/hardware/wifi/1.0/IWifiApIface.h>
 #include <android/hardware/wifi/hostapd/1.0/IHostapd.h>
@@ -99,7 +100,6 @@ TEST_P(WifiApIfaceHidlTest, GetValidFrequenciesForBand) {
     EXPECT_GT(status_and_freqs.second.size(), 0u);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(WifiApIfaceHidlTest);
 INSTANTIATE_TEST_SUITE_P(
     PerInstance, WifiApIfaceHidlTest,
     testing::ValuesIn(

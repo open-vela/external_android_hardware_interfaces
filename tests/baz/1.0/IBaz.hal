@@ -94,7 +94,7 @@ interface IBaz extends IBase {
         int8_t[7] array;
         string oneString;
         vec<string> vectorOfStrings;
-        interface iface;
+        IBase dummy;
     };
     oneway doThis(float param);
 

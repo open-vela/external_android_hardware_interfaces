@@ -33,37 +33,12 @@ namespace V2_0 {
 
 namespace impl {
 
-JsonFakeValueGenerator::JsonFakeValueGenerator(const std::string& path, int32_t repetition) {
-    const char* file = path.c_str();
-    std::ifstream ifs(file);
-    if (!ifs) {
-        ALOGE("%s: couldn't open %s for parsing.", __func__, file);
-        mGenCfg = {
-                .index = 0,
-                .events = {},
-        };
-        mNumOfIterations = 0;
-        return;
-    }
-    mGenCfg = {
-            .index = 0,
-            .events = parseFakeValueJson(ifs),
-    };
-    mNumOfIterations = repetition;
-}
-
 JsonFakeValueGenerator::JsonFakeValueGenerator(const VehiclePropValue& request) {
     const auto& v = request.value;
     const char* file = v.stringValue.c_str();
     std::ifstream ifs(file);
     if (!ifs) {
         ALOGE("%s: couldn't open %s for parsing.", __func__, file);
-        mGenCfg = {
-                .index = 0,
-                .events = {},
-        };
-        mNumOfIterations = 0;
-        return;
     }
     mGenCfg = {
         .index = 0,
@@ -73,16 +48,10 @@ JsonFakeValueGenerator::JsonFakeValueGenerator(const VehiclePropValue& request) 
     mNumOfIterations = v.int32Values.size() < 2 ? -1 : v.int32Values[1];
 }
 
-JsonFakeValueGenerator::JsonFakeValueGenerator(const std::string& path) {
+JsonFakeValueGenerator::JsonFakeValueGenerator(std::string path) {
     std::ifstream ifs(path);
     if (!ifs) {
         ALOGE("%s: couldn't open %s for parsing.", __func__, path.c_str());
-        mGenCfg = {
-                .index = 0,
-                .events = {},
-        };
-        mNumOfIterations = 0;
-        return;
     }
     mGenCfg = {
         .index = 0,
@@ -127,12 +96,11 @@ bool JsonFakeValueGenerator::hasNext() {
 std::vector<VehiclePropValue> JsonFakeValueGenerator::parseFakeValueJson(std::istream& is) {
     std::vector<VehiclePropValue> fakeVhalEvents;
 
-    Json::CharReaderBuilder builder;
+    Json::Reader reader;
     Json::Value rawEvents;
-    std::string errorMessage;
-    if (!Json::parseFromStream(builder, is, &rawEvents, &errorMessage)) {
+    if (!reader.parse(is, rawEvents)) {
         ALOGE("%s: Failed to parse fake data JSON file. Error: %s", __func__,
-              errorMessage.c_str());
+              reader.getFormattedErrorMessages().c_str());
         return fakeVhalEvents;
     }
 
