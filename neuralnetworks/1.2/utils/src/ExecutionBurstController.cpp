@@ -328,8 +328,7 @@ ExecutionBurstController::execute(const nn::Request& request, nn::MeasureTiming 
     hal::utils::RequestRelocation relocation;
     const nn::Request& requestInShared =
             NN_TRY(hal::utils::makeExecutionFailure(hal::utils::convertRequestFromPointerToShared(
-                    &request, nn::kDefaultRequestMemoryAlignment, nn::kMinMemoryPadding,
-                    &maybeRequestInShared, &relocation)));
+                    &request, &maybeRequestInShared, &relocation)));
 
     // clear pools field of request, as they will be provided via slots
     const auto requestWithoutPools = nn::Request{
@@ -374,8 +373,7 @@ nn::GeneralResult<nn::SharedExecution> ExecutionBurstController::createReusableE
     std::optional<nn::Request> maybeRequestInShared;
     hal::utils::RequestRelocation relocation;
     const nn::Request& requestInShared = NN_TRY(hal::utils::convertRequestFromPointerToShared(
-            &request, nn::kDefaultRequestMemoryAlignment, nn::kMinMemoryPadding,
-            &maybeRequestInShared, &relocation));
+            &request, &maybeRequestInShared, &relocation));
 
     // clear pools field of request, as they will be provided via slots
     const auto requestWithoutPools = nn::Request{
