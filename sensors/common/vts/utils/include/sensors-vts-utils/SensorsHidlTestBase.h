@@ -425,10 +425,7 @@ class SensorsHidlTestBase : public testing::TestWithParam<std::string> {
             return;
         }
 
-        if (batchingPeriodInNs > maxBatchingTestTimeNs) {
-            batchingPeriodInNs = maxBatchingTestTimeNs;
-            minFifoCount = (uint32_t)(batchingPeriodInNs / minSamplingPeriodInNs);
-        }
+        batchingPeriodInNs = std::min(batchingPeriodInNs, maxBatchingTestTimeNs);
 
         ALOGI("Test batching for %d ms", (int)(batchingPeriodInNs / 1000 / 1000));
 
@@ -451,7 +448,7 @@ class SensorsHidlTestBase : public testing::TestWithParam<std::string> {
                       false /*change collection*/);
 
         // 0.8 + 0.2 times the batching period
-        usleep(batchingPeriodInNs / 1000 * 2 / 10);
+        usleep(batchingPeriodInNs / 1000 * 8 / 10);
         ASSERT_EQ(flush(handle), Result::OK);
 
         // plus some time for the event to deliver
