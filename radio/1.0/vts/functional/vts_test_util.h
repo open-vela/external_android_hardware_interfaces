@@ -80,17 +80,12 @@ int GetRandomSerialNumber();
 bool deviceSupportsFeature(const char* feature);
 
 /*
- * Check if device is in SsSs (Single SIM Single Standby).
- */
-bool isSsSsEnabled();
-
-/*
- * Check if device is in DSDS (Dual SIM Dual Standby).
+ * Check if device is in DSDS.
  */
 bool isDsDsEnabled();
 
 /*
- * Check if device is in TSTS (Triple SIM Triple Standby).
+ * Check if device is in TSTS.
  */
 bool isTsTsEnabled();
 
