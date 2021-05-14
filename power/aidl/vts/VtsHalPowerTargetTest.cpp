@@ -22,7 +22,6 @@
 #include <android/binder_ibinder.h>
 #include <android/binder_manager.h>
 #include <android/binder_process.h>
-#include <android/binder_status.h>
 
 #include <unistd.h>
 
@@ -82,11 +81,6 @@ const std::vector<WorkDuration> kDurations = {
         DurationWrapper(1000000L, 3L),
         DurationWrapper(1000000000L, 4L),
 };
-
-inline bool isUnknownOrUnsupported(const ndk::ScopedAStatus& status) {
-    return status.getStatus() == STATUS_UNKNOWN_TRANSACTION ||
-           status.getExceptionCode() == EX_UNSUPPORTED_OPERATION;
-}
 
 class PowerAidl : public testing::TestWithParam<std::string> {
   public:
@@ -153,7 +147,7 @@ TEST_P(PowerAidl, getHintSessionPreferredRate) {
     int64_t rate = -1;
     auto status = power->getHintSessionPreferredRate(&rate);
     if (!status.isOk()) {
-        EXPECT_TRUE(isUnknownOrUnsupported(status));
+        ASSERT_EQ(EX_UNSUPPORTED_OPERATION, status.getExceptionCode());
         return;
     }
 
@@ -165,7 +159,7 @@ TEST_P(PowerAidl, createAndCloseHintSession) {
     std::shared_ptr<IPowerHintSession> session;
     auto status = power->createHintSession(getpid(), getuid(), kSelfTids, 16666666L, &session);
     if (!status.isOk()) {
-        EXPECT_TRUE(isUnknownOrUnsupported(status));
+        ASSERT_EQ(EX_UNSUPPORTED_OPERATION, status.getExceptionCode());
         return;
     }
     ASSERT_NE(nullptr, session);
@@ -179,9 +173,10 @@ TEST_P(PowerAidl, createHintSessionFailed) {
     std::shared_ptr<IPowerHintSession> session;
     auto status = power->createHintSession(getpid(), getuid(), kEmptyTids, 16666666L, &session);
     ASSERT_FALSE(status.isOk());
-    if (isUnknownOrUnsupported(status)) {
+    if (EX_UNSUPPORTED_OPERATION == status.getExceptionCode()) {
         return;
     }
+    // Test with empty tid list
     ASSERT_EQ(EX_ILLEGAL_ARGUMENT, status.getExceptionCode());
 }
 
@@ -189,7 +184,7 @@ TEST_P(PowerAidl, updateAndReportDurations) {
     std::shared_ptr<IPowerHintSession> session;
     auto status = power->createHintSession(getpid(), getuid(), kSelfTids, 16666666L, &session);
     if (!status.isOk()) {
-        EXPECT_TRUE(isUnknownOrUnsupported(status));
+        ASSERT_EQ(EX_UNSUPPORTED_OPERATION, status.getExceptionCode());
         return;
     }
     ASSERT_NE(nullptr, session);
