@@ -105,6 +105,9 @@ EmulatedVehicleHal::EmulatedVehicleHal(VehiclePropertyStore* propStore, VehicleH
       mVehicleClient(client),
       mEmulatedUserHal(emulatedUserHal) {
     initStaticConfig();
+    for (size_t i = 0; i < arraysize(kVehicleProperties); i++) {
+        mPropStore->registerProperty(kVehicleProperties[i].config);
+    }
     mVehicleClient->registerPropertyValueCallback(std::bind(&EmulatedVehicleHal::onPropertyValue,
                                                             this, std::placeholders::_1,
                                                             std::placeholders::_2));
@@ -177,13 +180,7 @@ VehicleHal::VehiclePropValuePtr EmulatedVehicleHal::get(
                 v = getValuePool()->obtain(*internalPropValue);
             }
 
-            if (!v) {
-                *outStatus = StatusCode::INVALID_ARG;
-            } else if (v->status == VehiclePropertyStatus::AVAILABLE) {
-                *outStatus = StatusCode::OK;
-            } else {
-                *outStatus = StatusCode::TRY_AGAIN;
-            }
+            *outStatus = v != nullptr ? StatusCode::OK : StatusCode::INVALID_ARG;
             break;
     }
     if (v.get()) {
@@ -283,41 +280,57 @@ static bool isDiagnosticProperty(VehiclePropConfig propConfig) {
 void EmulatedVehicleHal::onCreate() {
     static constexpr bool shouldUpdateStatus = true;
 
-    auto configs = mVehicleClient->getAllPropertyConfig();
+    for (auto& it : kVehicleProperties) {
+        VehiclePropConfig cfg = it.config;
+        int32_t numAreas = cfg.areaConfigs.size();
 
-    for (const auto& cfg : configs) {
         if (isDiagnosticProperty(cfg)) {
             // do not write an initial empty value for the diagnostic properties
             // as we will initialize those separately.
             continue;
         }
 
-        int32_t numAreas = isGlobalProp(cfg.prop) ? 0 : cfg.areaConfigs.size();
+        // A global property will have only a single area
+        if (isGlobalProp(cfg.prop)) {
+            numAreas = 1;
+        }
 
         for (int i = 0; i < numAreas; i++) {
-            int32_t curArea = isGlobalProp(cfg.prop) ? 0 : cfg.areaConfigs[i].areaId;
+            int32_t curArea;
+
+            if (isGlobalProp(cfg.prop)) {
+                curArea = 0;
+            } else {
+                curArea = cfg.areaConfigs[i].areaId;
+            }
 
             // Create a separate instance for each individual zone
             VehiclePropValue prop = {
                     .areaId = curArea,
                     .prop = cfg.prop,
-                    .status = VehiclePropertyStatus::UNAVAILABLE,
             };
 
-            if (mInitVhalValueOverride) {
-                for (auto& itOverride : mVehiclePropertiesOverride) {
-                    if (itOverride.prop == cfg.prop) {
-                        prop.status = VehiclePropertyStatus::AVAILABLE;
-                        prop.value = itOverride.value;
+            if (it.initialAreaValues.size() > 0) {
+                auto valueForAreaIt = it.initialAreaValues.find(curArea);
+                if (valueForAreaIt != it.initialAreaValues.end()) {
+                    prop.value = valueForAreaIt->second;
+                } else {
+                    ALOGW("%s failed to get default value for prop 0x%x area 0x%x",
+                            __func__, cfg.prop, curArea);
+                }
+            } else {
+                prop.value = it.initialValue;
+                if (mInitVhalValueOverride) {
+                    for (auto& itOverride : mVehiclePropertiesOverride) {
+                        if (itOverride.prop == cfg.prop) {
+                            prop.value = itOverride.value;
+                        }
                     }
                 }
             }
             mPropStore->writeValue(prop, shouldUpdateStatus);
         }
     }
-
-    mVehicleClient->triggerSendAllValues();
-
     initObd2LiveFrame(*mPropStore->getConfigOrDie(OBD2_LIVE_FRAME));
     initObd2FreezeFrame(*mPropStore->getConfigOrDie(OBD2_FREEZE_FRAME));
     mInEmulator = isInEmulator();
@@ -401,8 +414,8 @@ void EmulatedVehicleHal::onPropertyValue(const VehiclePropValue& value, bool upd
 }
 
 void EmulatedVehicleHal::initStaticConfig() {
-    auto configs = mVehicleClient->getAllPropertyConfig();
-    for (auto&& cfg : configs) {
+    for (auto&& it = std::begin(kVehicleProperties); it != std::end(kVehicleProperties); ++it) {
+        const auto& cfg = it->config;
         VehiclePropertyStore::TokenFunction tokenFunction = nullptr;
 
         switch (cfg.prop) {
