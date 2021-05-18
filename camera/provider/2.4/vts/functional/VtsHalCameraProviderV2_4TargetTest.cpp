@@ -997,8 +997,7 @@ protected:
                 frameNumber(0),
                 partialResultCount(0),
                 errorStreamId(-1),
-                hasInputBuffer(false),
-                collectedResult(1, 10) {}
+                hasInputBuffer(false) {}
 
         InFlightRequest(ssize_t numBuffers, bool hasInput,
                 bool partialResults, uint32_t partialCount,
@@ -1014,8 +1013,7 @@ protected:
                 frameNumber(0),
                 partialResultCount(0),
                 errorStreamId(-1),
-                hasInputBuffer(hasInput),
-                collectedResult(1, 10) {}
+                hasInputBuffer(hasInput) {}
 
         InFlightRequest(ssize_t numBuffers, bool hasInput,
                 bool partialResults, uint32_t partialCount,
@@ -1033,7 +1031,6 @@ protected:
                 partialResultCount(0),
                 errorStreamId(-1),
                 hasInputBuffer(hasInput),
-                collectedResult(1, 10),
                 expectedPhysicalResults(extraPhysicalResult) {}
     };
 
@@ -1316,7 +1313,7 @@ bool CameraHidlTest::DeviceCb::processCaptureResultLocked(const CaptureResult& r
                 reinterpret_cast<const camera_metadata_t*>(resultMetadata.data());
         const camera_metadata_t* collectedMetadata = request->collectedResult.getAndLock();
         camera_metadata_ro_entry_t searchEntry, foundEntry;
-        for (size_t i = 0; i < get_camera_metadata_entry_count(partialMetadata); i++) {
+        for (size_t i = 0; i < get_camera_metadata_size(partialMetadata); i++) {
             if (0 != get_camera_metadata_ro_entry(partialMetadata, i, &searchEntry)) {
                 ADD_FAILURE();
                 request->collectedResult.unlock(collectedMetadata);
