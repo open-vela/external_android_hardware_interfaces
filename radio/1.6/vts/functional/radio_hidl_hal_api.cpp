@@ -158,6 +158,9 @@ TEST_P(RadioHidlTest_v1_6, setupDataCall_1_6_osAppId) {
                 {::android::hardware::radio::V1_6::RadioError::NONE,
                  ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
                  ::android::hardware::radio::V1_6::RadioError::OP_NOT_ALLOWED_BEFORE_REG_TO_NW}));
+        if (radioRsp_v1_6->setupDataCallResult.trafficDescriptors.size() <= 0) {
+            return;
+        }
         EXPECT_EQ(optionalTrafficDescriptor.value().osAppId.value().osAppId,
                 radioRsp_v1_6->setupDataCallResult.trafficDescriptors[0].osAppId.value().osAppId);
     }
@@ -172,7 +175,18 @@ TEST_P(RadioHidlTest_v1_6, getSlicingConfig) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    EXPECT_EQ(::android::hardware::radio::V1_6::RadioError::NONE, radioRsp_v1_6->rspInfo.error);
+    if (getRadioHalCapabilities()) {
+        ASSERT_TRUE(CheckAnyOfErrors(
+                radioRsp_v1_6->rspInfo.error,
+                {::android::hardware::radio::V1_6::RadioError::REQUEST_NOT_SUPPORTED}));
+    } else {
+        ASSERT_TRUE(
+                CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
+                                 {::android::hardware::radio::V1_6::RadioError::NONE,
+                                  ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
+                                  ::android::hardware::radio::V1_6::RadioError::INTERNAL_ERR,
+                                  ::android::hardware::radio::V1_6::RadioError::MODEM_ERR}));
+    }
 }
 
 /*
@@ -585,7 +599,7 @@ TEST_P(RadioHidlTest_v1_6, emergencyDial_1_6) {
     // or Emergency_Only.
     if (isDsDsEnabled() || isTsTsEnabled()) {
         serial = GetRandomSerialNumber();
-        radio_v1_6->getVoiceRegistrationState_1_6(serial);
+        radio_v1_6->getVoiceRegistrationState(serial);
         EXPECT_EQ(std::cv_status::no_timeout, wait());
         if (isVoiceEmergencyOnly(radioRsp_v1_6->voiceRegResp.regState) ||
             isVoiceInService(radioRsp_v1_6->voiceRegResp.regState)) {
@@ -639,7 +653,7 @@ TEST_P(RadioHidlTest_v1_6, emergencyDial_1_6_withServices) {
     // or Emergency_Only.
     if (isDsDsEnabled() || isTsTsEnabled()) {
         serial = GetRandomSerialNumber();
-        radio_v1_6->getVoiceRegistrationState_1_6(serial);
+        radio_v1_6->getVoiceRegistrationState(serial);
         EXPECT_EQ(std::cv_status::no_timeout, wait());
         if (isVoiceEmergencyOnly(radioRsp_v1_6->voiceRegResp.regState) ||
             isVoiceInService(radioRsp_v1_6->voiceRegResp.regState)) {
@@ -692,7 +706,7 @@ TEST_P(RadioHidlTest_v1_6, emergencyDial_1_6_withEmergencyRouting) {
     // or Emergency_Only.
     if (isDsDsEnabled() || isTsTsEnabled()) {
         serial = GetRandomSerialNumber();
-        radio_v1_6->getVoiceRegistrationState_1_6(serial);
+        radio_v1_6->getVoiceRegistrationState(serial);
         EXPECT_EQ(std::cv_status::no_timeout, wait());
         if (isVoiceEmergencyOnly(radioRsp_v1_6->voiceRegResp.regState) ||
             isVoiceInService(radioRsp_v1_6->voiceRegResp.regState)) {
@@ -750,7 +764,7 @@ TEST_P(RadioHidlTest_v1_6, setCarrierInfoForImsiEncryption_1_6) {
 /*
  * Test IRadio.getSimPhonebookRecords() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_6, getSimPhonebookRecords) {
+TEST_P(RadioHidlTest_v1_6, getSimPhonebookRecords) {
     serial = GetRandomSerialNumber();
     radio_v1_6->getSimPhonebookRecords(serial);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
@@ -821,7 +835,7 @@ TEST_P(RadioHidlTest_v1_6, getSimPhonebookCapacity) {
 /*
  * Test IRadio.updateSimPhonebookRecords() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_6, updateSimPhonebookRecords) {
+TEST_P(RadioHidlTest_v1_6, updateSimPhonebookRecords) {
     serial = GetRandomSerialNumber();
     radio_v1_6->getSimPhonebookCapacity(serial);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
