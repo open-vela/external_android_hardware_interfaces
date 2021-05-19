@@ -180,9 +180,7 @@ TEST_P(AttestKeyTest, RsaAttestedAttestKeys) {
     auto subject = "cert subj 2";
     vector<uint8_t> subject_der(make_name_from_str(subject));
 
-    // An X.509 certificate serial number SHOULD be >0, but this is not policed. Check
-    // that a zero value doesn't cause problems.
-    uint64_t serial_int = 0;
+    uint64_t serial_int = 66;
     vector<uint8_t> serial_blob(build_serial_blob(serial_int));
 
     /*
@@ -225,7 +223,7 @@ TEST_P(AttestKeyTest, RsaAttestedAttestKeys) {
     auto subject2 = "cert subject";
     vector<uint8_t> subject_der2(make_name_from_str(subject2));
 
-    uint64_t serial_int2 = 255;
+    uint64_t serial_int2 = 987;
     vector<uint8_t> serial_blob2(build_serial_blob(serial_int2));
 
     EXPECT_EQ(ErrorCode::OK,
