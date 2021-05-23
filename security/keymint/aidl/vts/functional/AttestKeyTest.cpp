@@ -180,9 +180,7 @@ TEST_P(AttestKeyTest, RsaAttestedAttestKeys) {
     auto subject = "cert subj 2";
     vector<uint8_t> subject_der(make_name_from_str(subject));
 
-    // An X.509 certificate serial number SHOULD be >0, but this is not policed. Check
-    // that a zero value doesn't cause problems.
-    uint64_t serial_int = 0;
+    uint64_t serial_int = 66;
     vector<uint8_t> serial_blob(build_serial_blob(serial_int));
 
     /*
@@ -225,7 +223,7 @@ TEST_P(AttestKeyTest, RsaAttestedAttestKeys) {
     auto subject2 = "cert subject";
     vector<uint8_t> subject_der2(make_name_from_str(subject2));
 
-    uint64_t serial_int2 = 255;
+    uint64_t serial_int2 = 987;
     vector<uint8_t> serial_blob2(build_serial_blob(serial_int2));
 
     EXPECT_EQ(ErrorCode::OK,
@@ -363,7 +361,7 @@ TEST_P(AttestKeyTest, EcAttestKeyChaining) {
 
         EXPECT_EQ(ErrorCode::OK,
                   GenerateKey(AuthorizationSetBuilder()
-                                      .EcdsaSigningKey(EcCurve::P_256)
+                                      .EcdsaSigningKey(224)
                                       .AttestKey()
                                       .AttestationChallenge("foo")
                                       .AttestationApplicationId("bar")
@@ -437,7 +435,7 @@ TEST_P(AttestKeyTest, AlternateAttestKeyChaining) {
         if ((i & 0x1) == 1) {
             EXPECT_EQ(ErrorCode::OK,
                       GenerateKey(AuthorizationSetBuilder()
-                                          .EcdsaSigningKey(EcCurve::P_256)
+                                          .EcdsaSigningKey(224)
                                           .AttestKey()
                                           .AttestationChallenge("foo")
                                           .AttestationApplicationId("bar")
@@ -515,7 +513,7 @@ TEST_P(AttestKeyTest, MissingChallenge) {
         vector<uint8_t> attested_key_blob;
         vector<KeyCharacteristics> attested_key_characteristics;
         vector<Certificate> attested_key_cert_chain;
-        EXPECT_EQ(ErrorCode::ATTESTATION_CHALLENGE_MISSING,
+        EXPECT_EQ(ErrorCode::INVALID_ARGUMENT,
                   GenerateKey(AuthorizationSetBuilder()
                                       .RsaSigningKey(2048, 65537)
                                       .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -524,7 +522,7 @@ TEST_P(AttestKeyTest, MissingChallenge) {
                               attest_key, &attested_key_blob, &attested_key_characteristics,
                               &attested_key_cert_chain));
 
-        EXPECT_EQ(ErrorCode::ATTESTATION_CHALLENGE_MISSING,
+        EXPECT_EQ(ErrorCode::INVALID_ARGUMENT,
                   GenerateKey(AuthorizationSetBuilder()
                                       .EcdsaSigningKey(EcCurve::P_256)
                                       .Authorization(TAG_NO_AUTH_REQUIRED)
