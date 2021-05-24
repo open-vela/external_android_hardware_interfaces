@@ -63,9 +63,4 @@ enum Error {
      * Used to enable vendor-specific error messages.
      */
     VENDOR,
-
-    /**
-     * There's a problem with the sensor's calibration.
-     */
-    BAD_CALIBRATION,
 }
