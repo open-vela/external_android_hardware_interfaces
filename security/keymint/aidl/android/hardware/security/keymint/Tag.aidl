@@ -234,7 +234,7 @@ enum Tag {
      * IKeyMintDevice::earlyBootEnded() is called.  Early boot keys may be created after
      * early boot.  Early boot keys may not be imported at all, if Tag::EARLY_BOOT_ONLY is
      * provided to IKeyMintDevice::importKey, the import must fail with
-     * ErrorCode::INVALID_ARGUMENT.
+     * ErrorCode::EARLY_BOOT_ENDED.
      */
     EARLY_BOOT_ONLY = (7 << 28) /* TagType:BOOL */ | 305,
 
@@ -935,15 +935,15 @@ enum Tag {
 
     /**
      * Tag::CERTIFICATE_NOT_BEFORE the beginning of the validity of the certificate in UNIX epoch
-     * time in seconds.  This value is used when generating attestation or self signed certificates.
-     * ErrorCode::MISSING_NOT_BEFORE must be returned if this tag is not provided if this tag is not
-     * provided to generateKey or importKey.
+     * time in milliseconds.  This value is used when generating attestation or self signed
+     * certificates.  ErrorCode::MISSING_NOT_BEFORE must be returned if this tag is not provided if
+     * this tag is not provided to generateKey or importKey.
      */
     CERTIFICATE_NOT_BEFORE = (6 << 28) /* TagType:DATE */ | 1008,
 
     /**
      * Tag::CERTIFICATE_NOT_AFTER the end of the validity of the certificate in UNIX epoch time in
-     * seconds.  This value is used when generating attestation or self signed certificates.
+     * milliseconds.  This value is used when generating attestation or self signed certificates.
      * ErrorCode::MISSING_NOT_AFTER must be returned if this tag is not provided to generateKey or
      * importKey.
      */
