@@ -32,8 +32,7 @@ static AssertionResult success() {
 namespace {
 
 bool initConfiguration() {
-    TunerTestingConfigReader1_0::setConfigFilePath(configFilePath);
-    if (!TunerTestingConfigReader1_0::checkConfigFileExists()) {
+    if (!TunerTestingConfigReader::checkConfigFileExists()) {
         return false;
     }
     initFrontendConfig();
