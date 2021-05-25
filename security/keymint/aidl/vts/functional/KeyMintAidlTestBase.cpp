@@ -44,9 +44,7 @@ using std::unique_ptr;
 using ::testing::AssertionFailure;
 using ::testing::AssertionResult;
 using ::testing::AssertionSuccess;
-using ::testing::ElementsAreArray;
 using ::testing::MatchesRegex;
-using ::testing::Not;
 
 ::std::ostream& operator<<(::std::ostream& os, const AuthorizationSet& set) {
     if (set.size() == 0)
@@ -1550,17 +1548,14 @@ void check_maced_pubkey(const MacedPublicKey& macedPubKey, bool testMode,
     EXPECT_EQ(extractedTag.size(), 32U);
 
     // Compare with tag generated with kTestMacKey.  Should only match in test mode
-    auto macFunction = [](const cppcose::bytevec& input) {
-        return cppcose::generateHmacSha256(remote_prov::kTestMacKey, input);
-    };
-    auto testTag =
-            cppcose::generateCoseMac0Mac(macFunction, {} /* external_aad */, payload->value());
+    auto testTag = cppcose::generateCoseMac0Mac(remote_prov::kTestMacKey, {} /* external_aad */,
+                                                payload->value());
     ASSERT_TRUE(testTag) << "Tag calculation failed: " << testTag.message();
 
     if (testMode) {
-        EXPECT_THAT(*testTag, ElementsAreArray(extractedTag));
+        EXPECT_EQ(*testTag, extractedTag);
     } else {
-        EXPECT_THAT(*testTag, Not(ElementsAreArray(extractedTag)));
+        EXPECT_NE(*testTag, extractedTag);
     }
     if (payload_value != nullptr) {
         *payload_value = payload->value();
