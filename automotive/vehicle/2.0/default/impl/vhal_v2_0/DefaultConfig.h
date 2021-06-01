@@ -124,7 +124,7 @@ const ConfigDeclaration kVehicleProperties[]{
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::STATIC,
                  },
-         .initialValue = {.int32Values = {1776, 4950, 2008, 2140, 2984, 1665, 1667, 11800}}},
+         .initialValue = {.floatValues = {1776, 4950, 2008, 2140, 2984, 1665, 1667, 11800}}},
         {.config =
                  {
                          .prop = toInt(VehicleProperty::PERF_VEHICLE_SPEED),
@@ -476,12 +476,8 @@ const ConfigDeclaration kVehicleProperties[]{
                     .changeMode = VehiclePropertyChangeMode::STATIC,
                     .areaConfigs = {VehicleAreaConfig{.areaId = HVAC_ALL}}},
          .initialValue = {.int32Values = {FAN_DIRECTION_FACE, FAN_DIRECTION_FLOOR,
-                                          FAN_DIRECTION_FACE | FAN_DIRECTION_FLOOR,
-                                          FAN_DIRECTION_DEFROST,
-                                          FAN_DIRECTION_FACE | FAN_DIRECTION_DEFROST,
-                                          FAN_DIRECTION_FLOOR | FAN_DIRECTION_DEFROST,
-                                          FAN_DIRECTION_FLOOR | FAN_DIRECTION_DEFROST |
-                                                  FAN_DIRECTION_FACE}}},
+                                          FAN_DIRECTION_FACE | FAN_DIRECTION_FLOOR}}},
+
         {.config = {.prop = toInt(VehicleProperty::HVAC_SEAT_VENTILATION),
                     .access = VehiclePropertyAccess::READ_WRITE,
                     .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
@@ -1068,8 +1064,8 @@ const ConfigDeclaration kVehicleProperties[]{
                                 .access = VehiclePropertyAccess::READ,
                                 .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                         },
-                .initialValue = {.int32Values = {0 /* Off */, -1, -1, -1, -1 /* Bounds */, -1, -1,
-                                                 -1, -1 /* Insets */}},
+                .initialValue = {.int32Values = {0 /* Off */, -1, -1, -1, -1 /* Bounds */,
+                                                 -1, -1, -1, -1 /* Insets */}},
         },
         {
                 .config =
@@ -1122,9 +1118,9 @@ const ConfigDeclaration kVehicleProperties[]{
                                 .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                                 .configArray = {0, 0, 0, 11, 0, 0, 0, 0, 16},
                         },
-                .initialValue = {.int32Values = {0 /* Off */, -1, -1, -1, -1 /* Bounds */, -1, -1,
-                                                 -1, -1 /* Insets */, 0 /* ClusterHome */,
-                                                 -1 /* ClusterNone */}},
+                .initialValue = {.int32Values = {0 /* Off */, -1, -1, -1, -1 /* Bounds */,
+                                                 -1, -1, -1, -1 /* Insets */,
+                                                 0 /* ClusterHome */, -1 /* ClusterNone */}},
         },
         {
                 .config =
