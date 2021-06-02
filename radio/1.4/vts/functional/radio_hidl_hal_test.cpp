@@ -17,11 +17,18 @@
 #include <radio_hidl_hal_utils_v1_4.h>
 
 void RadioHidlTest_v1_4::SetUp() {
-    radio_v1_4 = ::android::hardware::radio::V1_4::IRadio::getService(GetParam());
-
+    radio_v1_4 = ::testing::VtsHalHidlTargetTestBase::getService<
+            ::android::hardware::radio::V1_4::IRadio>(
+            RadioHidlEnvironment::Instance()
+                    ->getServiceName<::android::hardware::radio::V1_4::IRadio>(
+                            hidl_string(RADIO_SERVICE_NAME)));
     if (radio_v1_4 == NULL) {
         sleep(60);
-        radio_v1_4 = ::android::hardware::radio::V1_4::IRadio::getService(GetParam());
+        radio_v1_4 = ::testing::VtsHalHidlTargetTestBase::getService<
+                ::android::hardware::radio::V1_4::IRadio>(
+                RadioHidlEnvironment::Instance()
+                        ->getServiceName<::android::hardware::radio::V1_4::IRadio>(
+                                hidl_string(RADIO_SERVICE_NAME)));
     }
     ASSERT_NE(nullptr, radio_v1_4.get());
 
@@ -41,7 +48,8 @@ void RadioHidlTest_v1_4::SetUp() {
     EXPECT_EQ(RadioError::NONE, radioRsp_v1_4->rspInfo.error);
 
     sp<::android::hardware::radio::config::V1_1::IRadioConfig> radioConfig =
-            ::android::hardware::radio::config::V1_1::IRadioConfig::getService();
+            ::testing::VtsHalHidlTargetTestBase::getService<
+                    ::android::hardware::radio::config::V1_1::IRadioConfig>();
 
     /* Enforce Vts tesing with RadioConfig is existed. */
     ASSERT_NE(nullptr, radioConfig.get());
@@ -105,11 +113,5 @@ void RadioHidlTest_v1_4::clearPotentialEstablishedCalls() {
 void RadioHidlTest_v1_4::updateSimCardStatus() {
     serial = GetRandomSerialNumber();
     radio_v1_4->getIccCardStatus(serial);
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
-}
-
-void RadioHidlTest_v1_4::stopNetworkScan() {
-    serial = GetRandomSerialNumber();
-    radio_v1_4->stopNetworkScan(serial);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
 }

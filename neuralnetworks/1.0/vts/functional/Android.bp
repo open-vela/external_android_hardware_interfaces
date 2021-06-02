@@ -14,66 +14,39 @@
 // limitations under the License.
 //
 
-package {
-    // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "hardware_interfaces_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_interfaces_license"],
-}
-
-cc_defaults {
-    name: "neuralnetworks_vts_functional_defaults",
-    defaults: ["VtsHalTargetTestDefaults"],
-    arch: {
-        x86: {
-            cflags: [ "-D_Float16=__fp16",
-                      "-Xclang", "-fnative-half-type",
-                      "-Xclang", "-fallow-half-arguments-and-returns" ],
-        },
-        x86_64: {
-            cflags: [ "-D_Float16=__fp16",
-                      "-Xclang", "-fnative-half-type",
-                      "-Xclang", "-fallow-half-arguments-and-returns" ],
-        },
-    },
-}
-
 cc_library_static {
-    name: "VtsHalNeuralNetworksV1_0_utils",
+    name: "VtsHalNeuralnetworksTest_utils",
     srcs: [
         "Callbacks.cpp",
-        "Utils.cpp",
+        "GeneratedTestHarness.cpp",
     ],
-    defaults: ["neuralnetworks_vts_functional_defaults"],
-    export_include_dirs: ["include"],
+    defaults: ["VtsHalTargetTestDefaults"],
+    export_include_dirs: ["."],
     shared_libs: [
         "libfmq",
         "libnativewindow",
     ],
     static_libs: [
         "android.hardware.neuralnetworks@1.0",
+        "android.hardware.neuralnetworks@1.1",
+        "android.hardware.neuralnetworks@1.2",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
         "libgmock",
         "libhidlmemory",
-        "libneuralnetworks_generated_test_harness",
         "libneuralnetworks_utils",
     ],
     header_libs: [
         "libneuralnetworks_headers",
+        "libneuralnetworks_generated_test_harness_headers",
+        "libneuralnetworks_generated_tests",
     ],
 }
 
-cc_test {
-    name: "VtsHalNeuralnetworksV1_0TargetTest",
-    defaults: ["neuralnetworks_vts_functional_defaults"],
+cc_defaults {
+    name: "VtsHalNeuralNetworksTargetTestDefaults",
+    defaults: ["VtsHalTargetTestDefaults"],
     srcs: [
-        "BasicTests.cpp",
-        "GeneratedTestHarness.cpp",
-        "TestAssertions.cpp",
-        "TestMain.cpp",
         "ValidateModel.cpp",
         "ValidateRequest.cpp",
         "VtsHalNeuralnetworks.cpp",
@@ -84,19 +57,49 @@ cc_test {
     ],
     static_libs: [
         "android.hardware.neuralnetworks@1.0",
+        "android.hardware.neuralnetworks@1.1",
+        "android.hardware.neuralnetworks@1.2",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
         "libgmock",
         "libhidlmemory",
-        "libneuralnetworks_generated_test_harness",
         "libneuralnetworks_utils",
-        "VtsHalNeuralNetworksV1_0_utils",
-    ],
-    whole_static_libs: [
-        "neuralnetworks_generated_V1_0_example",
+        "VtsHalNeuralnetworksTest_utils",
     ],
     header_libs: [
         "libneuralnetworks_headers",
+        "libneuralnetworks_generated_test_harness_headers",
+        "libneuralnetworks_generated_tests",
     ],
-    test_suites: ["general-tests", "vts"],
+    // Bug: http://b/74200014 - Disable arm32 asan since it triggers internal
+    // error in ld.gold.
+    arch: {
+        arm: {
+            sanitize: {
+                never: true,
+            },
+        },
+    },
+    test_suites: ["general-tests"],
+}
+
+cc_test {
+    name: "VtsHalNeuralnetworksV1_0TargetTest",
+    defaults: ["VtsHalNeuralNetworksTargetTestDefaults"],
+    srcs: [
+        "BasicTests.cpp",
+        "GeneratedTests.cpp",
+    ],
+}
+
+cc_test {
+    name: "PresubmitHalNeuralnetworksV1_0TargetTest",
+    defaults: ["VtsHalNeuralNetworksTargetTestDefaults"],
+    srcs: [
+        "BasicTests.cpp",
+        "GeneratedTests.cpp",
+    ],
+    cflags: [
+        "-DPRESUBMIT_NOT_VTS",
+    ],
 }
