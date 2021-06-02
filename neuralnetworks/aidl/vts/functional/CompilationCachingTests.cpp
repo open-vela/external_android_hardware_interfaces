@@ -357,40 +357,16 @@ class CompilationCachingTestBase : public testing::Test {
         return false;
     }
 
-    // If fallbackModel is not provided, call prepareModelFromCache.
-    // If fallbackModel is provided, and prepareModelFromCache returns GENERAL_FAILURE,
-    // then prepareModel(fallbackModel) will be called.
-    // This replicates the behaviour of the runtime when loading a model from cache.
-    // NNAPI Shim depends on this behaviour and may try to load the model from cache in
-    // prepareModel (shim needs model information when loading from cache).
     void prepareModelFromCache(const std::vector<ndk::ScopedFileDescriptor>& modelCache,
                                const std::vector<ndk::ScopedFileDescriptor>& dataCache,
-                               std::shared_ptr<IPreparedModel>* preparedModel, ErrorStatus* status,
-                               const Model* fallbackModel = nullptr) {
+                               std::shared_ptr<IPreparedModel>* preparedModel,
+                               ErrorStatus* status) {
         // Launch prepare model from cache.
         std::shared_ptr<PreparedModelCallback> preparedModelCallback =
                 ndk::SharedRefBase::make<PreparedModelCallback>();
         std::vector<uint8_t> cacheToken(std::begin(mToken), std::end(mToken));
-        auto prepareLaunchStatus = kDevice->prepareModelFromCache(
+        const auto prepareLaunchStatus = kDevice->prepareModelFromCache(
                 kNoDeadline, modelCache, dataCache, cacheToken, preparedModelCallback);
-
-        // The shim does not support prepareModelFromCache() properly, but it
-        // will still attempt to create a model from cache when modelCache or
-        // dataCache is provided in prepareModel(). Instead of failing straight
-        // away, we try to utilize that other code path when fallbackModel is
-        // set. Note that we cannot verify whether the returned model was
-        // actually prepared from cache in that case.
-        if (!prepareLaunchStatus.isOk() &&
-            prepareLaunchStatus.getExceptionCode() == EX_SERVICE_SPECIFIC &&
-            static_cast<ErrorStatus>(prepareLaunchStatus.getServiceSpecificError()) ==
-                    ErrorStatus::GENERAL_FAILURE &&
-            mIsCachingSupported && fallbackModel != nullptr) {
-            preparedModelCallback = ndk::SharedRefBase::make<PreparedModelCallback>();
-            prepareLaunchStatus = kDevice->prepareModel(
-                    *fallbackModel, ExecutionPreference::FAST_SINGLE_ANSWER, kDefaultPriority,
-                    kNoDeadline, modelCache, dataCache, cacheToken, preparedModelCallback);
-        }
-
         ASSERT_TRUE(prepareLaunchStatus.isOk() ||
                     prepareLaunchStatus.getExceptionCode() == EX_SERVICE_SPECIFIC)
                 << "prepareLaunchStatus: " << prepareLaunchStatus.getDescription();
@@ -404,42 +380,6 @@ class CompilationCachingTestBase : public testing::Test {
         preparedModelCallback->wait();
         *status = preparedModelCallback->getStatus();
         *preparedModel = preparedModelCallback->getPreparedModel();
-    }
-
-    // Replicate behaviour of runtime when loading model from cache.
-    // Test if prepareModelFromCache behaves correctly when faced with bad
-    // arguments. If prepareModelFromCache is not supported (GENERAL_FAILURE),
-    // it attempts to call prepareModel with same arguments, which is expected either
-    // to not support the model (GENERAL_FAILURE) or return a valid model.
-    void verifyModelPreparationBehaviour(const std::vector<ndk::ScopedFileDescriptor>& modelCache,
-                                         const std::vector<ndk::ScopedFileDescriptor>& dataCache,
-                                         const Model* model, const TestModel& testModel) {
-        std::shared_ptr<IPreparedModel> preparedModel;
-        ErrorStatus status;
-
-        // Verify that prepareModelFromCache fails either due to bad
-        // arguments (INVALID_ARGUMENT) or GENERAL_FAILURE if not supported.
-        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status,
-                              /*fallbackModel=*/nullptr);
-        if (status != ErrorStatus::INVALID_ARGUMENT) {
-            ASSERT_EQ(status, ErrorStatus::GENERAL_FAILURE);
-        }
-        ASSERT_EQ(preparedModel, nullptr);
-
-        // If caching is not supported, attempt calling prepareModel.
-        if (status == ErrorStatus::GENERAL_FAILURE) {
-            // Fallback with prepareModel should succeed regardless of cache files
-            prepareModelFromCache(modelCache, dataCache, &preparedModel, &status,
-                                  /*fallbackModel=*/model);
-            // Unless caching is not supported?
-            if (status != ErrorStatus::GENERAL_FAILURE) {
-                // But if it is, we should see a valid model.
-                ASSERT_EQ(status, ErrorStatus::NONE);
-                ASSERT_NE(preparedModel, nullptr);
-                EvaluatePreparedModel(kDevice, preparedModel, testModel,
-                                      /*testKind=*/TestKind::GENERAL);
-            }
-        }
     }
 
     // Absolute path to the temporary cache directory.
@@ -457,7 +397,7 @@ class CompilationCachingTestBase : public testing::Test {
     uint8_t mToken[static_cast<uint32_t>(IDevice::BYTE_SIZE_OF_CACHE_TOKEN)] = {};
     uint32_t mNumModelCache;
     uint32_t mNumDataCache;
-    bool mIsCachingSupported;
+    uint32_t mIsCachingSupported;
 
     const std::shared_ptr<IDevice> kDevice;
     // The primary data type of the testModel.
@@ -498,8 +438,7 @@ TEST_P(CompilationCachingTest, CacheSavingAndRetrieval) {
         std::vector<ndk::ScopedFileDescriptor> modelCache, dataCache;
         createCacheFds(mModelCache, AccessMode::READ_WRITE, &modelCache);
         createCacheFds(mDataCache, AccessMode::READ_WRITE, &dataCache);
-        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status,
-                              /*fallbackModel=*/&model);
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
         if (!mIsCachingSupported) {
             ASSERT_EQ(status, ErrorStatus::GENERAL_FAILURE);
             ASSERT_EQ(preparedModel, nullptr);
@@ -559,8 +498,7 @@ TEST_P(CompilationCachingTest, CacheSavingAndRetrievalNonZeroOffset) {
         for (uint32_t i = 0; i < dataCache.size(); i++) {
             ASSERT_GE(read(dataCache[i].get(), &placeholderByte, 1), 0);
         }
-        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status,
-                              /*fallbackModel=*/&model);
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
         if (!mIsCachingSupported) {
             ASSERT_EQ(status, ErrorStatus::GENERAL_FAILURE);
             ASSERT_EQ(preparedModel, nullptr);
@@ -598,7 +536,13 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidNumCache) {
         // Execute and verify results.
         EvaluatePreparedModel(kDevice, preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
         // Check if prepareModelFromCache fails.
-        verifyModelPreparationBehaviour(modelCache, dataCache, &model, testModel);
+        preparedModel = nullptr;
+        ErrorStatus status;
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
+        if (status != ErrorStatus::INVALID_ARGUMENT) {
+            ASSERT_EQ(status, ErrorStatus::GENERAL_FAILURE);
+        }
+        ASSERT_EQ(preparedModel, nullptr);
     }
 
     // Test with number of model cache files smaller than mNumModelCache.
@@ -616,7 +560,13 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidNumCache) {
         // Execute and verify results.
         EvaluatePreparedModel(kDevice, preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
         // Check if prepareModelFromCache fails.
-        verifyModelPreparationBehaviour(modelCache, dataCache, &model, testModel);
+        preparedModel = nullptr;
+        ErrorStatus status;
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
+        if (status != ErrorStatus::INVALID_ARGUMENT) {
+            ASSERT_EQ(status, ErrorStatus::GENERAL_FAILURE);
+        }
+        ASSERT_EQ(preparedModel, nullptr);
     }
 
     // Test with number of data cache files greater than mNumDataCache.
@@ -633,7 +583,13 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidNumCache) {
         // Execute and verify results.
         EvaluatePreparedModel(kDevice, preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
         // Check if prepareModelFromCache fails.
-        verifyModelPreparationBehaviour(modelCache, dataCache, &model, testModel);
+        preparedModel = nullptr;
+        ErrorStatus status;
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
+        if (status != ErrorStatus::INVALID_ARGUMENT) {
+            ASSERT_EQ(status, ErrorStatus::GENERAL_FAILURE);
+        }
+        ASSERT_EQ(preparedModel, nullptr);
     }
 
     // Test with number of data cache files smaller than mNumDataCache.
@@ -651,7 +607,13 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidNumCache) {
         // Execute and verify results.
         EvaluatePreparedModel(kDevice, preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
         // Check if prepareModelFromCache fails.
-        verifyModelPreparationBehaviour(modelCache, dataCache, &model, testModel);
+        preparedModel = nullptr;
+        ErrorStatus status;
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
+        if (status != ErrorStatus::INVALID_ARGUMENT) {
+            ASSERT_EQ(status, ErrorStatus::GENERAL_FAILURE);
+        }
+        ASSERT_EQ(preparedModel, nullptr);
     }
 }
 
@@ -671,48 +633,68 @@ TEST_P(CompilationCachingTest, PrepareModelFromCacheInvalidNumCache) {
 
     // Test with number of model cache files greater than mNumModelCache.
     {
+        std::shared_ptr<IPreparedModel> preparedModel = nullptr;
+        ErrorStatus status;
         std::vector<ndk::ScopedFileDescriptor> modelCache, dataCache;
         mModelCache.push_back({mTmpCache});
         createCacheFds(mModelCache, AccessMode::READ_WRITE, &modelCache);
         createCacheFds(mDataCache, AccessMode::READ_WRITE, &dataCache);
         mModelCache.pop_back();
-
-        verifyModelPreparationBehaviour(modelCache, dataCache, &model, testModel);
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
+        if (status != ErrorStatus::GENERAL_FAILURE) {
+            ASSERT_EQ(status, ErrorStatus::INVALID_ARGUMENT);
+        }
+        ASSERT_EQ(preparedModel, nullptr);
     }
 
     // Test with number of model cache files smaller than mNumModelCache.
     if (mModelCache.size() > 0) {
+        std::shared_ptr<IPreparedModel> preparedModel = nullptr;
+        ErrorStatus status;
         std::vector<ndk::ScopedFileDescriptor> modelCache, dataCache;
         auto tmp = mModelCache.back();
         mModelCache.pop_back();
         createCacheFds(mModelCache, AccessMode::READ_WRITE, &modelCache);
         createCacheFds(mDataCache, AccessMode::READ_WRITE, &dataCache);
         mModelCache.push_back(tmp);
-
-        verifyModelPreparationBehaviour(modelCache, dataCache, &model, testModel);
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
+        if (status != ErrorStatus::GENERAL_FAILURE) {
+            ASSERT_EQ(status, ErrorStatus::INVALID_ARGUMENT);
+        }
+        ASSERT_EQ(preparedModel, nullptr);
     }
 
     // Test with number of data cache files greater than mNumDataCache.
     {
+        std::shared_ptr<IPreparedModel> preparedModel = nullptr;
+        ErrorStatus status;
         std::vector<ndk::ScopedFileDescriptor> modelCache, dataCache;
         mDataCache.push_back({mTmpCache});
         createCacheFds(mModelCache, AccessMode::READ_WRITE, &modelCache);
         createCacheFds(mDataCache, AccessMode::READ_WRITE, &dataCache);
         mDataCache.pop_back();
-
-        verifyModelPreparationBehaviour(modelCache, dataCache, &model, testModel);
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
+        if (status != ErrorStatus::GENERAL_FAILURE) {
+            ASSERT_EQ(status, ErrorStatus::INVALID_ARGUMENT);
+        }
+        ASSERT_EQ(preparedModel, nullptr);
     }
 
     // Test with number of data cache files smaller than mNumDataCache.
     if (mDataCache.size() > 0) {
+        std::shared_ptr<IPreparedModel> preparedModel = nullptr;
+        ErrorStatus status;
         std::vector<ndk::ScopedFileDescriptor> modelCache, dataCache;
         auto tmp = mDataCache.back();
         mDataCache.pop_back();
         createCacheFds(mModelCache, AccessMode::READ_WRITE, &modelCache);
         createCacheFds(mDataCache, AccessMode::READ_WRITE, &dataCache);
         mDataCache.push_back(tmp);
-
-        verifyModelPreparationBehaviour(modelCache, dataCache, &model, testModel);
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
+        if (status != ErrorStatus::GENERAL_FAILURE) {
+            ASSERT_EQ(status, ErrorStatus::INVALID_ARGUMENT);
+        }
+        ASSERT_EQ(preparedModel, nullptr);
     }
 }
 
@@ -737,7 +719,13 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidAccessMode) {
         // Execute and verify results.
         EvaluatePreparedModel(kDevice, preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
         // Check if prepareModelFromCache fails.
-        verifyModelPreparationBehaviour(modelCache, dataCache, &model, testModel);
+        preparedModel = nullptr;
+        ErrorStatus status;
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
+        if (status != ErrorStatus::INVALID_ARGUMENT) {
+            ASSERT_EQ(status, ErrorStatus::GENERAL_FAILURE);
+        }
+        ASSERT_EQ(preparedModel, nullptr);
     }
 
     // Go through each handle in data cache, test with invalid access mode.
@@ -753,7 +741,13 @@ TEST_P(CompilationCachingTest, SaveToCacheInvalidAccessMode) {
         // Execute and verify results.
         EvaluatePreparedModel(kDevice, preparedModel, testModel, /*testKind=*/TestKind::GENERAL);
         // Check if prepareModelFromCache fails.
-        verifyModelPreparationBehaviour(modelCache, dataCache, &model, testModel);
+        preparedModel = nullptr;
+        ErrorStatus status;
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
+        if (status != ErrorStatus::INVALID_ARGUMENT) {
+            ASSERT_EQ(status, ErrorStatus::GENERAL_FAILURE);
+        }
+        ASSERT_EQ(preparedModel, nullptr);
     }
 }
 
@@ -775,23 +769,30 @@ TEST_P(CompilationCachingTest, PrepareModelFromCacheInvalidAccessMode) {
 
     // Go through each handle in model cache, test with invalid access mode.
     for (uint32_t i = 0; i < mNumModelCache; i++) {
+        std::shared_ptr<IPreparedModel> preparedModel = nullptr;
+        ErrorStatus status;
         std::vector<ndk::ScopedFileDescriptor> modelCache, dataCache;
         modelCacheMode[i] = AccessMode::WRITE_ONLY;
         createCacheFds(mModelCache, modelCacheMode, &modelCache);
         createCacheFds(mDataCache, dataCacheMode, &dataCache);
         modelCacheMode[i] = AccessMode::READ_WRITE;
-
-        verifyModelPreparationBehaviour(modelCache, dataCache, &model, testModel);
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
+        ASSERT_EQ(status, ErrorStatus::GENERAL_FAILURE);
+        ASSERT_EQ(preparedModel, nullptr);
     }
 
     // Go through each handle in data cache, test with invalid access mode.
     for (uint32_t i = 0; i < mNumDataCache; i++) {
+        std::shared_ptr<IPreparedModel> preparedModel = nullptr;
+        ErrorStatus status;
         std::vector<ndk::ScopedFileDescriptor> modelCache, dataCache;
         dataCacheMode[i] = AccessMode::WRITE_ONLY;
         createCacheFds(mModelCache, modelCacheMode, &modelCache);
         createCacheFds(mDataCache, dataCacheMode, &dataCache);
         dataCacheMode[i] = AccessMode::READ_WRITE;
-        verifyModelPreparationBehaviour(modelCache, dataCache, &model, testModel);
+        prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
+        ASSERT_EQ(status, ErrorStatus::GENERAL_FAILURE);
+        ASSERT_EQ(preparedModel, nullptr);
     }
 }
 
@@ -871,8 +872,7 @@ TEST_P(CompilationCachingTest, SaveToCache_TOCTOU) {
             std::vector<ndk::ScopedFileDescriptor> modelCache, dataCache;
             createCacheFds(mModelCache, AccessMode::READ_WRITE, &modelCache);
             createCacheFds(mDataCache, AccessMode::READ_WRITE, &dataCache);
-            prepareModelFromCache(modelCache, dataCache, &preparedModel, &status,
-                                  /*fallbackModel=*/nullptr);
+            prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
 
             // The preparation may fail or succeed, but must not crash. If the preparation succeeds,
             // the prepared model must be executed with the correct result and not crash.
@@ -933,8 +933,7 @@ TEST_P(CompilationCachingTest, PrepareFromCache_TOCTOU) {
 
             // Spawn a thread to copy the cache content concurrently while preparing from cache.
             std::thread thread(copyCacheFiles, std::cref(modelCacheMul), std::cref(mModelCache));
-            prepareModelFromCache(modelCache, dataCache, &preparedModel, &status,
-                                  /*fallbackModel=*/nullptr);
+            prepareModelFromCache(modelCache, dataCache, &preparedModel, &status);
             thread.join();
 
             // The preparation may fail or succeed, but must not crash. If the preparation succeeds,
