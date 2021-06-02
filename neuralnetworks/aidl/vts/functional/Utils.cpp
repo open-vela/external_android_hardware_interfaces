@@ -23,7 +23,6 @@
 #include <android/binder_status.h>
 #include <android/hardware_buffer.h>
 
-#include <sys/mman.h>
 #include <iostream>
 #include <limits>
 #include <numeric>
@@ -99,39 +98,19 @@ uint32_t sizeOfData(const Operand& operand) {
                            std::multiplies<>{});
 }
 
-std::unique_ptr<TestAshmem> TestAshmem::create(uint32_t size, bool aidlReadonly) {
-    auto ashmem = std::make_unique<TestAshmem>(size, aidlReadonly);
+std::unique_ptr<TestAshmem> TestAshmem::create(uint32_t size) {
+    auto ashmem = std::make_unique<TestAshmem>(size);
     return ashmem->mIsValid ? std::move(ashmem) : nullptr;
 }
 
-// This function will create a readonly shared memory with PROT_READ only.
-// The input shared memory must be either Ashmem or mapped-FD.
-static nn::SharedMemory convertSharedMemoryToReadonly(const nn::SharedMemory& sharedMemory) {
-    if (std::holds_alternative<nn::Memory::Ashmem>(sharedMemory->handle)) {
-        const auto& memory = std::get<nn::Memory::Ashmem>(sharedMemory->handle);
-        return nn::createSharedMemoryFromFd(memory.size, PROT_READ, memory.fd.get(), /*offset=*/0)
-                .value();
-    } else if (std::holds_alternative<nn::Memory::Fd>(sharedMemory->handle)) {
-        const auto& memory = std::get<nn::Memory::Fd>(sharedMemory->handle);
-        return nn::createSharedMemoryFromFd(memory.size, PROT_READ, memory.fd.get(), memory.offset)
-                .value();
-    }
-    CHECK(false) << "Unexpected shared memory type";
-    return sharedMemory;
-}
-
-void TestAshmem::initialize(uint32_t size, bool aidlReadonly) {
+void TestAshmem::initialize(uint32_t size) {
     mIsValid = false;
     ASSERT_GT(size, 0);
     const auto sharedMemory = nn::createSharedMemory(size).value();
     mMappedMemory = nn::map(sharedMemory).value();
     mPtr = static_cast<uint8_t*>(std::get<void*>(mMappedMemory.pointer));
     CHECK_NE(mPtr, nullptr);
-    if (aidlReadonly) {
-        mAidlMemory = utils::convert(convertSharedMemoryToReadonly(sharedMemory)).value();
-    } else {
-        mAidlMemory = utils::convert(sharedMemory).value();
-    }
+    mAidlMemory = utils::convert(sharedMemory).value();
     mIsValid = true;
 }
 
