@@ -35,9 +35,6 @@ using ::std::tuple;
 using ::std::vector;
 using ::std::pair;
 
-// The semantic tag for a bstr which includes Encoded CBOR (RFC 7049, section 2.4)
-const int kSemanticTagEncodedCbor = 24;
-
 // ---------------------------------------------------------------------------
 // Miscellaneous utilities.
 // ---------------------------------------------------------------------------
@@ -111,47 +108,45 @@ optional<vector<uint8_t>> encryptAes128Gcm(const vector<uint8_t>& key, const vec
 // ---------------------------------------------------------------------------
 // EC crypto functionality / abstraction (only supports P-256).
 // ---------------------------------------------------------------------------
-
 // Creates an 256-bit EC key using the NID_X9_62_prime256v1 curve, returns the
-// DER encoded private key.  Also generates an attestation using the |challenge|
-// and |applicationId|, and returns the generated certificate chain.
+// PKCS#8 encoded key-pair.  Also generates an attestation
+// certificate using the |challenge| and |applicationId|, and returns the generated
+// certificate in X.509 certificate chain format.
 //
-// The notBeffore field will be the current time and the notAfter will be the same
-// same time as the batch certificate.
+// The attestation time fields used will be the current time, and expires in one year.
 //
 // The first parameter of the return value is the keyPair generated, second return in
 // the pair is the attestation certificate generated.
-//
 optional<std::pair<vector<uint8_t>, vector<vector<uint8_t>>>> createEcKeyPairAndAttestation(
-        const vector<uint8_t>& challenge, const vector<uint8_t>& applicationId,
-        bool isTestCredential);
+        const vector<uint8_t>& challenge, const vector<uint8_t>& applicationId);
 
-// (TODO: remove when no longer used by 3rd party.)
+// Like createEcKeyPairAndAttestation() but allows you to choose the public key.
+//
 optional<vector<vector<uint8_t>>> createAttestationForEcPublicKey(
         const vector<uint8_t>& publicKey, const vector<uint8_t>& challenge,
         const vector<uint8_t>& applicationId);
 
 // Creates an 256-bit EC key using the NID_X9_62_prime256v1 curve, returns the
-// private key in DER format (as specified in RFC 5915).
+// PKCS#8 encoded key-pair.
 //
 optional<vector<uint8_t>> createEcKeyPair();
 
-// For an EC key |keyPair| encoded in DER format, extracts the public key in
+// For an EC key |keyPair| encoded in PKCS#8 format, extracts the public key in
 // uncompressed point form.
 //
 optional<vector<uint8_t>> ecKeyPairGetPublicKey(const vector<uint8_t>& keyPair);
 
-// For an EC key |keyPair| encoded in DER format, extracts the private key as
+// For an EC key |keyPair| encoded in PKCS#8 format, extracts the private key as
 // an EC uncompressed key.
 //
 optional<vector<uint8_t>> ecKeyPairGetPrivateKey(const vector<uint8_t>& keyPair);
 
-// Creates a DER encoded representation from a private key (which must be uncompressed,
-// e.g. 32 bytes).
+// Creates a PKCS#8 encoded key-pair from a private key (which must be uncompressed,
+// e.g. 32 bytes). The public key is derived from the given private key..
 //
 optional<vector<uint8_t>> ecPrivateKeyToKeyPair(const vector<uint8_t>& privateKey);
 
-// For an EC key |keyPair| encoded in DER format, creates a PKCS#12 structure
+// For an EC key |keyPair| encoded in PKCS#8 format, creates a PKCS#12 structure
 // with the key-pair (not using a password to encrypt the data). The public key
 // in the created structure is included as a certificate, using the given fields
 // |serialDecimal|, |issuer|, |subject|, |validityNotBefore|, and
@@ -213,13 +208,6 @@ optional<pair<size_t, size_t>> certificateTbsCertificate(const vector<uint8_t>& 
 // Return offset and size of the Signature
 //
 optional<pair<size_t, size_t>> certificateFindSignature(const vector<uint8_t>& x509Certificate);
-
-// Extracts notBefore and notAfter from the top-most certificate in |certificateChain
-// (which should be a concatenated chain of DER-encoded X.509 certificates).
-//
-// Returns notBefore and notAfter in that order.
-//
-optional<pair<time_t, time_t>> certificateGetValidity(const vector<uint8_t>& x509Certificate);
 
 // Generates a X.509 certificate for |publicKey| (which must be in the format
 // returned by ecKeyPairGetPublicKey()).
@@ -362,15 +350,6 @@ optional<vector<uint8_t>> coseMacWithDigest(const vector<uint8_t>& digestToBeMac
 // ---------------------------------------------------------------------------
 // Utility functions specific to IdentityCredential.
 // ---------------------------------------------------------------------------
-
-optional<vector<uint8_t>> calcMac(const vector<uint8_t>& sessionTranscriptEncoded,
-                                  const string& docType,
-                                  const vector<uint8_t>& deviceNameSpacesEncoded,
-                                  const vector<uint8_t>& eMacKey);
-
-optional<vector<uint8_t>> calcEMacKey(const vector<uint8_t>& privateKey,
-                                      const vector<uint8_t>& publicKey,
-                                      const vector<uint8_t>& sessionTranscriptBytes);
 
 // Returns the testing AES-128 key where all bits are set to 0.
 const vector<uint8_t>& getTestHardwareBoundKey();
