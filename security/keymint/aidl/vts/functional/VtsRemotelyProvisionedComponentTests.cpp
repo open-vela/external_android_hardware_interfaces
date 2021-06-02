@@ -340,7 +340,6 @@ class CertificateRequestTest : public VtsRemotelyProvisionedComponentTests {
                                               cppbor::Array()  // SignedMacAad
                                                       .add(challenge_)
                                                       .add(std::move(deviceInfoMap))
-                                                      .add(keysToSignMac)
                                                       .encode());
         ASSERT_TRUE(macKey) << macKey.message();
 
