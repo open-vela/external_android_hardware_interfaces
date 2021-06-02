@@ -19,6 +19,7 @@
 #include <memory>
 #include <vector>
 
+#include <VtsHalHidlTargetTestBase.h>
 #include <android/hardware/graphics/composer/2.3/IComposer.h>
 #include <android/hardware/graphics/composer/2.3/IComposerClient.h>
 #include <composer-vts/2.2/ComposerVts.h>
@@ -48,9 +49,11 @@ class Composer : public V2_2::vts::Composer {
    public:
     Composer();
     explicit Composer(const std::string& name);
-    explicit Composer(const sp<IComposer>& composer);
 
     std::unique_ptr<ComposerClient> createClient();
+
+  protected:
+    explicit Composer(const sp<IComposer>& composer);
 
    private:
     const sp<IComposer> mComposer;

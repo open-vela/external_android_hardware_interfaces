@@ -16,32 +16,25 @@
 
 #include <android-base/logging.h>
 
-#include <android/hardware/wifi/1.0/IWifi.h>
 #include <android/hardware/wifi/1.0/IWifiP2pIface.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+
+#include <VtsHalHidlTargetTestBase.h>
 
 #include "wifi_hidl_test_utils.h"
 
-using ::android::sp;
-using ::android::hardware::wifi::V1_0::IWifi;
 using ::android::hardware::wifi::V1_0::IWifiP2pIface;
+using ::android::sp;
 
 /**
  * Fixture to use for all P2P Iface HIDL interface tests.
  */
-class WifiP2pIfaceHidlTest : public ::testing::TestWithParam<std::string> {
+class WifiP2pIfaceHidlTest : public ::testing::VtsHalHidlTargetTestBase {
    public:
-    virtual void SetUp() override {
-        // Make sure test starts with a clean state
-        stopWifi(GetInstanceName());
-    }
+    virtual void SetUp() override {}
 
-    virtual void TearDown() override { stopWifi(GetInstanceName()); }
+    virtual void TearDown() override { stopWifi(); }
 
    protected:
-    std::string GetInstanceName() { return GetParam(); }
 };
 
 /*
@@ -49,14 +42,7 @@ class WifiP2pIfaceHidlTest : public ::testing::TestWithParam<std::string> {
  * Ensures that an instance of the IWifiP2pIface proxy object is
  * successfully created.
  */
-TEST_P(WifiP2pIfaceHidlTest, Create) {
-    stopWifi(GetInstanceName());
-    EXPECT_NE(nullptr, getWifiP2pIface(GetInstanceName()).get());
+TEST(WifiP2pIfaceHidlTestNoFixture, Create) {
+    EXPECT_NE(nullptr, getWifiP2pIface().get());
+    stopWifi();
 }
-
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(WifiP2pIfaceHidlTest);
-INSTANTIATE_TEST_SUITE_P(
-    PerInstance, WifiP2pIfaceHidlTest,
-    testing::ValuesIn(
-        android::hardware::getAllHalInstanceNames(IWifi::descriptor)),
-    android::hardware::PrintInstanceNameToString);

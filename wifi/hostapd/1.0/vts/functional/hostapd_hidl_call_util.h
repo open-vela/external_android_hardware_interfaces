@@ -25,6 +25,8 @@
 #include <type_traits>
 #include <utility>
 
+#include <VtsHalHidlTargetTestBase.h>
+
 namespace {
 namespace detail {
 template <typename>
@@ -95,14 +97,6 @@ typename functionArgSaver<CallbackT>::StorageT invokeMethod(
     EXPECT_TRUE(res.isOk());
     return result_buffer.saved_values;
 }
-
-// Invokes |void method| on |object| without arguments.
-template <typename MethodT, typename ObjectT>
-void invokeVoidMethodWithoutArguments(MethodT method, ObjectT object) {
-    const auto& res = ((*object).*method)();
-    EXPECT_TRUE(res.isOk());
-}
-
 }  // namespace detail
 }  // namespace
 
@@ -131,9 +125,3 @@ void invokeVoidMethodWithoutArguments(MethodT method, ObjectT object) {
         std::remove_reference<decltype(*strong_pointer)>::type::method##_cb>( \
         &std::remove_reference<decltype(*strong_pointer)>::type::method,      \
         strong_pointer, ##__VA_ARGS__))
-
-// Invokes |void method| on |strong_pointer| without arguments.
-#define HIDL_INVOKE_VOID_WITHOUT_ARGUMENTS(strong_pointer, method)       \
-    (detail::invokeVoidMethodWithoutArguments(                           \
-        &std::remove_reference<decltype(*strong_pointer)>::type::method, \
-        strong_pointer))
