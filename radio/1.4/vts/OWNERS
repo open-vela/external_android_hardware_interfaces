@@ -1,1 +1,8 @@
-include ../../1.0/vts/OWNERS
+# Telephony team
+amitmahajan@google.com
+shuoq@google.com
+sasindran@google.com
+
+# VTS team
+yuexima@google.com
+yim@google.com

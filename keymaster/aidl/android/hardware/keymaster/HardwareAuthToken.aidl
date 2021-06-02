@@ -55,7 +55,7 @@ parcelable HardwareAuthToken {
      * authenticatorType describes the type of authentication that took place, e.g. password or
      * fingerprint.
      */
-    HardwareAuthenticatorType authenticatorType = HardwareAuthenticatorType.NONE;
+    HardwareAuthenticatorType authenticatorType;
 
     /**
      * timestamp indicates when the user authentication took place, in milliseconds since some

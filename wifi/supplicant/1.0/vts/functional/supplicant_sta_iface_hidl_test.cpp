@@ -25,7 +25,6 @@
 
 #include "supplicant_hidl_call_util.h"
 #include "supplicant_hidl_test_utils.h"
-#include <cutils/properties.h>
 
 using ::android::sp;
 using ::android::hardware::hidl_array;
@@ -62,7 +61,7 @@ constexpr char kTestRadioWorkName[] = "TestRadioWork";
 constexpr uint32_t kTestRadioWorkFrequency = 2412;
 constexpr uint32_t kTestRadioWorkTimeout = 8;
 constexpr uint32_t kTestRadioWorkId = 16;
-int8_t kTestCountryCode[] = {'U', 'S'};
+constexpr int8_t kTestCountryCode[] = {'U', 'S'};
 constexpr uint8_t kTestWpsDeviceType[] = {[0 ... 7] = 0x01};
 constexpr uint16_t kTestWpsConfigMethods = 0xffff;
 }  // namespace
@@ -455,10 +454,6 @@ TEST_P(SupplicantStaIfaceHidlTest, SetSuspendModeEnabled) {
  * SetCountryCode.
  */
 TEST_P(SupplicantStaIfaceHidlTest, SetCountryCode) {
-    std::array<char, PROPERTY_VALUE_MAX> buffer;
-    property_get("ro.boot.wificountrycode", buffer.data(), "US");
-    kTestCountryCode[0] = buffer.data()[0];
-    kTestCountryCode[1] = buffer.data()[1];
     sta_iface_->setCountryCode(
         kTestCountryCode, [](const SupplicantStatus& status) {
             EXPECT_EQ(SupplicantStatusCode::SUCCESS, status.code);
@@ -563,7 +558,6 @@ TEST_P(SupplicantStaIfaceHidlTest, RemoveExtRadioWork) {
         HIDL_INVOKE(sta_iface_, removeExtRadioWork, kTestRadioWorkId).code);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantStaIfaceHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantStaIfaceHidlTest,
     testing::Combine(
