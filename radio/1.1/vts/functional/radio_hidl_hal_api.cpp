@@ -20,7 +20,7 @@
 /*
  * Test IRadio.setSimCardPower() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_1, setSimCardPower_1_1) {
+TEST_P(RadioHidlTest_v1_1, setSimCardPower_1_1) {
     /* Record the sim card state for the testing environment */
     CardState cardStateForTest = cardStatus.cardState;
 
@@ -85,7 +85,7 @@ TEST_F(RadioHidlTest_v1_1, setSimCardPower_1_1) {
 /*
  * Test IRadio.startNetworkScan() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_1, startNetworkScan) {
+TEST_P(RadioHidlTest_v1_1, startNetworkScan) {
     serial = GetRandomSerialNumber();
 
     NetworkScanRequest request;
@@ -119,7 +119,7 @@ TEST_F(RadioHidlTest_v1_1, startNetworkScan) {
 /*
  * Test IRadio.startNetworkScan() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_1, startNetworkScan_InvalidArgument) {
+TEST_P(RadioHidlTest_v1_1, startNetworkScan_InvalidArgument) {
     serial = GetRandomSerialNumber();
 
     NetworkScanRequest request;
@@ -143,7 +143,7 @@ TEST_F(RadioHidlTest_v1_1, startNetworkScan_InvalidArgument) {
 /*
  * Test IRadio.stopNetworkScan() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_1, stopNetworkScan) {
+TEST_P(RadioHidlTest_v1_1, stopNetworkScan) {
     serial = GetRandomSerialNumber();
 
     radio_v1_1->stopNetworkScan(serial);
@@ -162,7 +162,7 @@ TEST_F(RadioHidlTest_v1_1, stopNetworkScan) {
 /*
  * Test IRadio.setCarrierInfoForImsiEncryption() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_1, setCarrierInfoForImsiEncryption) {
+TEST_P(RadioHidlTest_v1_1, setCarrierInfoForImsiEncryption) {
     serial = GetRandomSerialNumber();
     ImsiEncryptionInfo imsiInfo;
     imsiInfo.mcc = "310";
@@ -185,7 +185,7 @@ TEST_F(RadioHidlTest_v1_1, setCarrierInfoForImsiEncryption) {
 /*
  * Test IRadio.startKeepalive() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_1, startKeepalive) {
+TEST_P(RadioHidlTest_v1_1, startKeepalive) {
     std::vector<KeepaliveRequest> requests = {
         {
             // Invalid IPv4 source address
@@ -283,7 +283,7 @@ TEST_F(RadioHidlTest_v1_1, startKeepalive) {
 /*
  * Test IRadio.stopKeepalive() for the response returned.
  */
-TEST_F(RadioHidlTest_v1_1, stopKeepalive) {
+TEST_P(RadioHidlTest_v1_1, stopKeepalive) {
     serial = GetRandomSerialNumber();
 
     radio_v1_1->stopKeepalive(serial, 0xBAD);
