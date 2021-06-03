@@ -176,7 +176,6 @@ TEST_P(OffloadConfigHidlTest, TestSetHandle2OnlyNotOk) {
     ASSERT_TRUE(ret.isOk());
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(OffloadConfigHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, OffloadConfigHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IOffloadConfig::descriptor)),
