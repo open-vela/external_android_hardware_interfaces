@@ -865,11 +865,7 @@ TEST_P(RadioHidlTest_v1_6, updateSimPhonebookRecords) {
         EXPECT_EQ(std::cv_status::no_timeout, wait());
         EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
         EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-        ASSERT_TRUE(CheckAnyOfErrors(
-            radioRsp_v1_6->rspInfo.error,
-            {::android::hardware::radio::V1_6::RadioError::NONE,
-             ::android::hardware::radio::V1_6::RadioError::REQUEST_NOT_SUPPORTED},
-             CHECK_GENERAL_ERROR));
+        EXPECT_EQ(::android::hardware::radio::V1_6::RadioError::NONE, radioRsp_v1_6->rspInfo.error);
 
         if(pbCapacity.maxAdnRecords > 0
                 && pbCapacity.usedAdnRecords < pbCapacity.maxAdnRecords) {
