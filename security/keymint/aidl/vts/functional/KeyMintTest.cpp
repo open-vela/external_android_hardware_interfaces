@@ -560,7 +560,6 @@ TEST_P(NewKeyGenerationTest, Aes) {
 
                 EXPECT_GT(key_blob.size(), 0U);
                 CheckSymmetricParams(key_characteristics);
-                CheckCharacteristics(key_blob, key_characteristics);
 
                 AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -743,7 +742,6 @@ TEST_P(NewKeyGenerationTest, TripleDes) {
 
                 EXPECT_GT(key_blob.size(), 0U);
                 CheckSymmetricParams(key_characteristics);
-                CheckCharacteristics(key_blob, key_characteristics);
 
                 AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -790,7 +788,6 @@ TEST_P(NewKeyGenerationTest, TripleDesWithAttestation) {
 
                 EXPECT_GT(key_blob.size(), 0U);
                 CheckSymmetricParams(key_characteristics);
-                CheckCharacteristics(key_blob, key_characteristics);
 
                 AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -868,7 +865,6 @@ TEST_P(NewKeyGenerationTest, Rsa) {
 
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -915,7 +911,6 @@ TEST_P(NewKeyGenerationTest, RsaWithAttestation) {
 
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -983,7 +978,6 @@ TEST_P(NewKeyGenerationTest, RsaWithRpkAttestation) {
 
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -1114,7 +1108,6 @@ TEST_P(NewKeyGenerationTest, RsaWithSelfSign) {
 
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -1183,7 +1176,6 @@ TEST_P(NewKeyGenerationTest, RsaWithAttestationAppIdIgnored) {
 
     ASSERT_GT(key_blob.size(), 0U);
     CheckBaseParams(key_characteristics);
-    CheckCharacteristics(key_blob, key_characteristics);
 
     AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -1219,7 +1211,6 @@ TEST_P(NewKeyGenerationTest, LimitedUsageRsa) {
 
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -1275,7 +1266,6 @@ TEST_P(NewKeyGenerationTest, LimitedUsageRsaWithAttestation) {
 
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -1372,7 +1362,6 @@ TEST_P(NewKeyGenerationTest, Ecdsa) {
                                              &key_blob, &key_characteristics));
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -1416,7 +1405,6 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestation) {
                               &key_blob, &key_characteristics));
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -1464,7 +1452,6 @@ TEST_P(NewKeyGenerationTest, EcdsaSelfSignAttestation) {
                               &key_blob, &key_characteristics));
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -1524,7 +1511,6 @@ TEST_P(NewKeyGenerationTest, EcdsaIgnoreAppId) {
 
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -1569,7 +1555,6 @@ TEST_P(NewKeyGenerationTest, AttestationApplicationIDLengthProperlyEncoded) {
                                              &key_blob, &key_characteristics));
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -1609,7 +1594,6 @@ TEST_P(NewKeyGenerationTest, LimitedUsageEcdsa) {
 
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
 
@@ -1742,7 +1726,6 @@ TEST_P(NewKeyGenerationTest, Hmac) {
 
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
         EXPECT_TRUE(crypto_params.Contains(TAG_ALGORITHM, Algorithm::HMAC));
@@ -1778,7 +1761,6 @@ TEST_P(NewKeyGenerationTest, HmacNoAttestation) {
         ASSERT_GT(key_blob.size(), 0U);
         ASSERT_EQ(cert_chain_.size(), 0);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
         EXPECT_TRUE(crypto_params.Contains(TAG_ALGORITHM, Algorithm::HMAC));
@@ -1809,7 +1791,6 @@ TEST_P(NewKeyGenerationTest, LimitedUsageHmac) {
 
         ASSERT_GT(key_blob.size(), 0U);
         CheckBaseParams(key_characteristics);
-        CheckCharacteristics(key_blob, key_characteristics);
 
         AuthorizationSet crypto_params = SecLevelAuthorizations(key_characteristics);
         EXPECT_TRUE(crypto_params.Contains(TAG_ALGORITHM, Algorithm::HMAC));
@@ -2063,9 +2044,6 @@ TEST_P(SigningOperationsTest, RsaUseRequiresCorrectAppIdAppData) {
                                                  .Authorization(TAG_APPLICATION_ID, "clientid")
                                                  .Authorization(TAG_APPLICATION_DATA, "appdata")
                                                  .SetDefaultValidity()));
-
-    CheckAppIdCharacteristics(key_blob_, "clientid", "appdata", key_characteristics_);
-
     EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
               Begin(KeyPurpose::SIGN,
                     AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE)));
@@ -2580,9 +2558,6 @@ TEST_P(SigningOperationsTest, EcUseRequiresCorrectAppIdAppData) {
                                                  .Authorization(TAG_APPLICATION_ID, "clientid")
                                                  .Authorization(TAG_APPLICATION_DATA, "appdata")
                                                  .SetDefaultValidity()));
-
-    CheckAppIdCharacteristics(key_blob_, "clientid", "appdata", key_characteristics_);
-
     EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
               Begin(KeyPurpose::SIGN, AuthorizationSetBuilder().Digest(Digest::NONE)));
     AbortIfNeeded();
@@ -6355,11 +6330,6 @@ TEST_P(EarlyBootKeyTest, CreateEarlyBootKeys) {
     auto [aesKeyData, hmacKeyData, rsaKeyData, ecdsaKeyData] =
             CreateTestKeys(TAG_EARLY_BOOT_ONLY, ErrorCode::OK);
 
-    for (const auto& keyData : {aesKeyData, hmacKeyData, rsaKeyData, ecdsaKeyData}) {
-        ASSERT_GT(keyData.blob.size(), 0U);
-        AuthorizationSet crypto_params = SecLevelAuthorizations(keyData.characteristics);
-        EXPECT_TRUE(crypto_params.Contains(TAG_EARLY_BOOT_ONLY)) << crypto_params;
-    }
     CheckedDeleteKey(&aesKeyData.blob);
     CheckedDeleteKey(&hmacKeyData.blob);
     CheckedDeleteKey(&rsaKeyData.blob);
@@ -6367,30 +6337,7 @@ TEST_P(EarlyBootKeyTest, CreateEarlyBootKeys) {
 }
 
 /*
- * EarlyBootKeyTest.CreateAttestedEarlyBootKey
- *
- * Verifies that creating an early boot key with attestation succeeds.
- */
-TEST_P(EarlyBootKeyTest, CreateAttestedEarlyBootKey) {
-    auto [aesKeyData, hmacKeyData, rsaKeyData, ecdsaKeyData] = CreateTestKeys(
-            TAG_EARLY_BOOT_ONLY, ErrorCode::OK, [](AuthorizationSetBuilder* builder) {
-                builder->AttestationChallenge("challenge");
-                builder->AttestationApplicationId("app_id");
-            });
-
-    for (const auto& keyData : {aesKeyData, hmacKeyData, rsaKeyData, ecdsaKeyData}) {
-        ASSERT_GT(keyData.blob.size(), 0U);
-        AuthorizationSet crypto_params = SecLevelAuthorizations(keyData.characteristics);
-        EXPECT_TRUE(crypto_params.Contains(TAG_EARLY_BOOT_ONLY)) << crypto_params;
-    }
-    CheckedDeleteKey(&aesKeyData.blob);
-    CheckedDeleteKey(&hmacKeyData.blob);
-    CheckedDeleteKey(&rsaKeyData.blob);
-    CheckedDeleteKey(&ecdsaKeyData.blob);
-}
-
-/*
- * EarlyBootKeyTest.UseEarlyBootKeyFailure
+ * EarlyBootKeyTest.UsetEarlyBootKeyFailure
  *
  * Verifies that using early boot keys at a later stage fails.
  */
