@@ -14,6 +14,15 @@
 // limitations under the License.
 //
 
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
 cc_library_static {
     name: "VtsHalWifiV1_0TargetTestUtil",
     defaults: ["VtsHalTargetTestDefaults"],
@@ -89,10 +98,8 @@ cc_test {
     static_libs: [
         "VtsHalWifiV1_0TargetTestUtil",
         "android.hardware.wifi@1.0",
-        "android.hardware.wifi.hostapd@1.0",
         "libwifi-system-iface",
     ],
-    disable_framework: true,
     test_suites: [
         "general-tests",
         "vts",
