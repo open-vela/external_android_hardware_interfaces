@@ -79,6 +79,7 @@ class TunerFrontendHidlTest : public testing::TestWithParam<std::string> {
     FrontendTests mFrontendTests;
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerFrontendHidlTest);
 
 class TunerLnbHidlTest : public testing::TestWithParam<std::string> {
@@ -100,6 +101,7 @@ class TunerLnbHidlTest : public testing::TestWithParam<std::string> {
     LnbTests mLnbTests;
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerLnbHidlTest);
 
 class TunerDemuxHidlTest : public testing::TestWithParam<std::string> {
@@ -125,6 +127,7 @@ class TunerDemuxHidlTest : public testing::TestWithParam<std::string> {
     FilterTests mFilterTests;
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerDemuxHidlTest);
 
 class TunerFilterHidlTest : public testing::TestWithParam<std::string> {
@@ -176,6 +179,7 @@ class TunerFilterHidlTest : public testing::TestWithParam<std::string> {
     FilterTests mFilterTests;
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerFilterHidlTest);
 
 class TunerBroadcastHidlTest : public testing::TestWithParam<std::string> {
@@ -214,6 +218,7 @@ class TunerBroadcastHidlTest : public testing::TestWithParam<std::string> {
     uint32_t* mLnbId = nullptr;
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerBroadcastHidlTest);
 
 class TunerPlaybackHidlTest : public testing::TestWithParam<std::string> {
@@ -245,6 +250,7 @@ class TunerPlaybackHidlTest : public testing::TestWithParam<std::string> {
     void playbackSingleFilterTest(FilterConfig filterConf, DvrConfig dvrConf);
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerPlaybackHidlTest);
 
 class TunerRecordHidlTest : public testing::TestWithParam<std::string> {
@@ -284,6 +290,7 @@ class TunerRecordHidlTest : public testing::TestWithParam<std::string> {
     uint32_t* mLnbId = nullptr;
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerRecordHidlTest);
 
 class TunerDescramblerHidlTest : public testing::TestWithParam<std::string> {
@@ -320,5 +327,6 @@ class TunerDescramblerHidlTest : public testing::TestWithParam<std::string> {
     DvrTests mDvrTests;
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerDescramblerHidlTest);
 }  // namespace

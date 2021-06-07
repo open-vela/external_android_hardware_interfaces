@@ -156,5 +156,6 @@ class TunerBroadcastHidlTest : public testing::TestWithParam<std::string> {
                                           FrontendConfig1_1 frontendConf);
 };
 
+// TODO remove from the allow list once the cf tv target is enabled for testing
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(TunerBroadcastHidlTest);
 }  // namespace
