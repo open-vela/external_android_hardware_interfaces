@@ -190,7 +190,7 @@ TEST_P(SensorsHidlTest, SensorListValid) {
     });
 }
 
-// Test if sensor list returned is valid
+// Test if sensor hal can switch to different operation modes
 TEST_P(SensorsHidlTest, SetOperationMode) {
     std::vector<SensorInfo> sensorList = getSensorsList();
 
@@ -208,7 +208,7 @@ TEST_P(SensorsHidlTest, SetOperationMode) {
     ASSERT_EQ(Result::OK, S()->setOperationMode(OperationMode::NORMAL));
 }
 
-// Test if sensor list returned is valid
+// Test if sensor hal can receive injected events in loopback mode
 TEST_P(SensorsHidlTest, InjectSensorEventData) {
     std::vector<SensorInfo> sensorList = getSensorsList();
     std::vector<SensorInfo> sensorSupportInjection;
@@ -448,6 +448,7 @@ TEST_P(SensorsHidlTest, MagnetometerGrallocDirectReportOperationVeryFast) {
                               RateLevel::VERY_FAST, NullChecker<Event>());
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SensorsHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, SensorsHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(ISensors::descriptor)),

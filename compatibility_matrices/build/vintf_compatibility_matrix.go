@@ -41,7 +41,7 @@ var (
 	}, "inputs")
 
 	xmllintXsd = pctx.AndroidStaticRule("xmllint-xsd", blueprint.RuleParams{
-		Command:     `$XmlLintCmd --schema $xsd $in > /dev/null && touch -a $out`,
+		Command:     `$XmlLintCmd --quiet --schema $xsd $in > /dev/null && touch -a $out`,
 		CommandDeps: []string{"$XmlLintCmd"},
 		Restat:      true,
 	}, "xsd")
@@ -153,7 +153,7 @@ func (g *vintfCompatibilityMatrixRule) GenerateAndroidBuildActions(ctx android.M
 		if k, ok := m.(*configs.KernelConfigRule); ok {
 			inputPaths = append(inputPaths, k.OutputPath())
 		} else {
-			ctx.PropertyErrorf("kernel_config",
+			ctx.PropertyErrorf("kernel_configs",
 				"module %q is not a kernel_config", ctx.OtherModuleName(m))
 		}
 	})

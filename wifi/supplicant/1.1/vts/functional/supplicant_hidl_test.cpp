@@ -36,9 +36,9 @@ using ::android::hardware::wifi::supplicant::V1_1::ISupplicant;
 using ::android::hardware::wifi::V1_0::IWifi;
 using ::android::sp;
 
-class SupplicantHidlTest : public SupplicantHidlTestBaseV1_1 {
+class SupplicantHidlTest : public SupplicantHidlTestBase {
    public:
-    virtual void SetUp() override { SupplicantHidlTestBaseV1_1::SetUp(); }
+    virtual void SetUp() override { SupplicantHidlTestBase::SetUp(); }
 
    protected:
     std::string getWlan0IfaceName() {
@@ -140,6 +140,7 @@ TEST_P(SupplicantHidlTest, RemoveP2pInterface) {
  */
 TEST_P(SupplicantHidlTest, Terminate) { supplicant_->terminate(); }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantHidlTest,
     testing::Combine(
