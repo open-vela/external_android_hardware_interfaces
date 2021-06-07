@@ -29,7 +29,7 @@
 #include <future>
 #include <map>
 
-#include "VtsIdentityTestUtils.h"
+#include "Util.h"
 
 namespace android::hardware::identity {
 
@@ -182,7 +182,7 @@ TEST_P(IdentityCredentialTests, verifyStartPersonalizationLarge) {
                                                     false /* testCredential */));
 
     // Verify set a large number of profile count and entry count is ok
-    const vector<int32_t> entryCounts = {3000};
+    const vector<int32_t> entryCounts = {255};
     writableCredential->setExpectedProofOfProvisioningSize(123456);
     result = writableCredential->startPersonalization(25, entryCounts);
     EXPECT_TRUE(result.isOk()) << result.exceptionCode() << "; " << result.exceptionMessage()
@@ -338,8 +338,7 @@ TEST_P(IdentityCredentialTests, verifyOneProfileAndEntryPass) {
     optional<vector<uint8_t>> proofOfProvisioning =
             support::coseSignGetPayload(proofOfProvisioningSignature);
     ASSERT_TRUE(proofOfProvisioning);
-    string cborPretty =
-            support::cborPrettyPrint(proofOfProvisioning.value(), 32, {"readerCertificate"});
+    string cborPretty = cppbor::prettyPrint(proofOfProvisioning.value(), 32, {"readerCertificate"});
     EXPECT_EQ(
             "[\n"
             "  'ProofOfProvisioning',\n"
@@ -449,9 +448,9 @@ TEST_P(IdentityCredentialTests, verifyManyProfilesAndEntriesPass) {
     optional<vector<uint8_t>> proofOfProvisioning =
             support::coseSignGetPayload(proofOfProvisioningSignature);
     ASSERT_TRUE(proofOfProvisioning);
-    string cborPretty = support::cborPrettyPrint(proofOfProvisioning.value(),
-                                                 32,  //
-                                                 {"readerCertificate"});
+    string cborPretty = cppbor::prettyPrint(proofOfProvisioning.value(),
+                                            32,  //
+                                            {"readerCertificate"});
     EXPECT_EQ(
             "[\n"
             "  'ProofOfProvisioning',\n"
@@ -717,6 +716,7 @@ TEST_P(IdentityCredentialTests, verifyAccessControlProfileIdOutOfRange) {
     ASSERT_EQ(IIdentityCredentialStore::STATUS_INVALID_DATA, result.serviceSpecificErrorCode());
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(IdentityCredentialTests);
 INSTANTIATE_TEST_SUITE_P(
         Identity, IdentityCredentialTests,
         testing::ValuesIn(android::getAidlHalInstanceNames(IIdentityCredentialStore::descriptor)),
