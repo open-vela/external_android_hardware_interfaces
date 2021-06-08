@@ -241,7 +241,6 @@ TEST_P(VehicleHalHidlTest, subscribeInvalidProp) {
     ASSERT_NE(StatusCode::OK, mVehicle->subscribe(cb, options));
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(VehicleHalHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, VehicleHalHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IVehicle::descriptor)),
