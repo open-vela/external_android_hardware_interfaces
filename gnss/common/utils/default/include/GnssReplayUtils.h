@@ -35,15 +35,11 @@ namespace gnss {
 namespace common {
 
 struct ReplayUtils {
-    static std::string getGnssPath();
-
-    static std::string getFixedLocationPath();
+    static const char* getGnssPath();
 
     static std::string getDataFromDeviceFile(const std::string& command, int mMinIntervalMs);
 
     static bool hasGnssDeviceFile();
-
-    static bool hasFixedLocationDeviceFile();
 
     static bool isGnssRawMeasurement(const std::string& inputStr);
 
