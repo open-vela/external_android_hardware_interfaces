@@ -18,7 +18,7 @@
 #define ANDROID_SENSORS_HIDL_ENVIRONMENT_V2_X_H
 
 #include "ISensorsWrapper.h"
-#include "sensors-vts-utils/SensorsVtsEnvironmentBase.h"
+#include "sensors-vts-utils/SensorsHidlEnvironmentBase.h"
 
 #include <android/hardware/sensors/2.1/ISensors.h>
 #include <android/hardware/sensors/2.1/types.h>
@@ -46,14 +46,14 @@ class SensorsHalDeathRecipient : public ::android::hardware::hidl_death_recipien
 };
 
 class SensorsHidlEnvironmentV2_X
-    : public SensorsVtsEnvironmentBase<::android::hardware::sensors::V2_1::Event> {
+    : public SensorsHidlEnvironmentBase<::android::hardware::sensors::V2_1::Event> {
   public:
-    virtual void TearDown() override;
+    virtual void HidlTearDown() override;
 
   protected:
     friend SensorsHidlTest;
     SensorsHidlEnvironmentV2_X(const std::string& service_name)
-        : SensorsVtsEnvironmentBase(service_name), mEventQueueFlag(nullptr) {}
+        : SensorsHidlEnvironmentBase(service_name), mEventQueueFlag(nullptr) {}
 
     /**
      * Resets the HAL with new FMQs and a new Event Flag

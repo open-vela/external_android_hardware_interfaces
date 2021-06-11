@@ -80,7 +80,6 @@ struct PortStatusCallbacks {
 
 class BluetoothAudioSession {
   friend class BluetoothAudioSession_2_1;
-  friend class BluetoothAudioSession_2_2;
 
  private:
   // using recursive_mutex to allow hwbinder to re-enter agian.

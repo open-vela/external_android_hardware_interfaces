@@ -32,11 +32,10 @@
 namespace aidl::android::hardware::neuralnetworks::utils {
 
 // An AIDL callback class to receive the results of IDevice::prepareModel* asynchronously.
-class PreparedModelCallback final : public BnPreparedModelCallback, public IProtectedCallback {
+class PreparedModelCallback final : public BnPreparedModelCallback,
+                                    public hal::utils::IProtectedCallback {
   public:
     using Data = nn::GeneralResult<nn::SharedPreparedModel>;
-
-    PreparedModelCallback(nn::Version featureLevel) : kFeatureLevel(featureLevel) {}
 
     ndk::ScopedAStatus notify(ErrorStatus status,
                               const std::shared_ptr<IPreparedModel>& preparedModel) override;
@@ -46,7 +45,6 @@ class PreparedModelCallback final : public BnPreparedModelCallback, public IProt
     Data get();
 
   private:
-    const nn::Version kFeatureLevel;
     hal::utils::TransferValue<Data> mData;
 };
 

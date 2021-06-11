@@ -40,6 +40,8 @@
 using namespace android;
 using namespace std::chrono_literals;
 
+#define POWER_SUPPLY_SUBSYSTEM "power_supply"
+
 namespace android {
 namespace hardware {
 namespace health {
@@ -141,7 +143,7 @@ void HealthLoop::UeventEvent(uint32_t /*epevents*/) {
     cp = msg;
 
     while (*cp) {
-        if (!strcmp(cp, "SUBSYSTEM=power_supply")) {
+        if (!strcmp(cp, "SUBSYSTEM=" POWER_SUPPLY_SUBSYSTEM)) {
             ScheduleBatteryUpdate();
             break;
         }

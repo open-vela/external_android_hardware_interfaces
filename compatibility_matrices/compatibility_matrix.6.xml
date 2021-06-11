@@ -268,10 +268,7 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <!-- Either the AIDL or the HIDL health HAL must exist on the device.
-         If the HIDL health HAL exists, it must be at least version 2.1.
-         See DeviceManifestTest.HealthHal -->
-    <hal format="hidl" optional="true">
+    <hal format="hidl" optional="false">
         <name>android.hardware.health</name>
         <version>2.1</version>
         <interface>
