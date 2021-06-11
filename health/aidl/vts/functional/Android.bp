@@ -29,9 +29,6 @@ cc_test {
         "VtsHalTargetTestDefaults",
         "use_libaidlvintf_gtest_helper_static",
     ],
-    tidy_timeout_srcs: [
-        "VtsHalHealthTargetTest.cpp",
-    ],
     srcs: [
         "VtsHalHealthTargetTest.cpp",
     ],

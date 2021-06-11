@@ -86,9 +86,6 @@ cc_library {
 
 cc_test {
     name: "cppbor_test",
-    tidy_timeout_srcs: [
-        "tests/cppbor_test.cpp",
-    ],
     srcs: [
         "tests/cppbor_test.cpp",
     ],
@@ -104,9 +101,6 @@ cc_test {
 
 cc_test_host {
     name: "cppbor_host_test",
-    tidy_timeout_srcs: [
-        "tests/cppbor_test.cpp",
-    ],
     srcs: [
         "tests/cppbor_test.cpp",
     ],

@@ -27,12 +27,6 @@ cc_test {
         "VtsHalTargetTestDefaults",
         "use_libaidlvintf_gtest_helper_static",
     ],
-    tidy_timeout_srcs: [
-        "radio_messaging_test.cpp",
-        "radio_network_test.cpp",
-        "radio_sim_test.cpp",
-        "radio_voice_test.cpp",
-    ],
     srcs: [
         "radio_aidl_hal_utils.cpp",
         "radio_config_indication.cpp",
@@ -72,8 +66,9 @@ cc_test {
         "android.hardware.radio.sim-V1-ndk",
         "android.hardware.radio.voice-V1-ndk",
     ],
-    test_suites: [
-        "general-tests",
-        "vts",
-    ],
+    // TODO(b/210712359): enable after b/207695009 is resolved.
+    //test_suites: [
+    //    "general-tests",
+    //    "vts",
+    //],
 }

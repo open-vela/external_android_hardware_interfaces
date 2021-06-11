@@ -30,10 +30,6 @@ cc_test {
         // Needed for librenderengine
         "skia_deps",
     ],
-    tidy_timeout_srcs: [
-        "VtsHalGraphicsComposerV2_2ReadbackTest.cpp",
-        "VtsHalGraphicsComposerV2_2TargetTest.cpp",
-    ],
     srcs: [
         "VtsHalGraphicsComposerV2_2ReadbackTest.cpp",
         "VtsHalGraphicsComposerV2_2TargetTest.cpp",
@@ -71,8 +67,6 @@ cc_test {
         "android.hardware.graphics.mapper@4.0-vts",
         "libgtest",
         "librenderengine",
-        "libshaders",
-        "libtonemap",
     ],
     header_libs: [
         "android.hardware.graphics.composer@2.1-command-buffer",

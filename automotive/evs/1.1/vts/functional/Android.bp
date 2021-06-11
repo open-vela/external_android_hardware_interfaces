@@ -25,9 +25,6 @@ package {
 
 cc_test {
     name: "VtsHalEvsV1_1TargetTest",
-    tidy_timeout_srcs: [
-        "VtsHalEvsV1_1TargetTest.cpp",
-    ],
     srcs: [
         "FrameHandler.cpp",
         "FrameHandlerUltrasonics.cpp",
