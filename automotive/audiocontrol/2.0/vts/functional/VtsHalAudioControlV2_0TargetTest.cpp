@@ -149,7 +149,6 @@ TEST_P(CarAudioControlHidlTest, FocusChangeExercise) {
                                       AudioFocusChange::GAIN_TRANSIENT | 0);
 };
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(CarAudioControlHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, CarAudioControlHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IAudioControl::descriptor)),
