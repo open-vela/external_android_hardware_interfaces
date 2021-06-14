@@ -1172,13 +1172,10 @@ Return<void> RadioResponse_v1_6::setAllowedNetworkTypesBitmapResponse(
 }
 
 Return<void> RadioResponse_v1_6::getAllowedNetworkTypesBitmapResponse(
-        const ::android::hardware::radio::V1_6::RadioResponseInfo& info,
+        const ::android::hardware::radio::V1_6::RadioResponseInfo& /*info*/,
         const ::android::hardware::hidl_bitfield<
                 ::android::hardware::radio::V1_4::RadioAccessFamily>
-                networkTypeBitmap) {
-    rspInfo = info;
-    networkTypeBitmapResponse = networkTypeBitmap;
-    parent_v1_6.notify(info.serial);
+        /*networkTypeBitmap*/) {
     return Void();
 }
 
