@@ -19,82 +19,6 @@
 #define ASSERT_OK(ret) ASSERT_TRUE(ret.isOk())
 
 /*
- * Test IRadio.setAllowedNetworkTypesBitmap for the response returned.
- */
-TEST_P(RadioHidlTest_v1_6, setAllowedNetworkTypesBitmap) {
-    serial = GetRandomSerialNumber();
-    ::android::hardware::hidl_bitfield<::android::hardware::radio::V1_4::RadioAccessFamily>
-            allowedNetworkTypesBitmap{};
-    allowedNetworkTypesBitmap |= ::android::hardware::radio::V1_4::RadioAccessFamily::LTE;
-
-    radio_v1_6->setAllowedNetworkTypesBitmap(serial, allowedNetworkTypesBitmap);
-
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
-    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
-    EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-
-    if (getRadioHalCapabilities()) {
-        ASSERT_TRUE(CheckAnyOfErrors(
-                radioRsp_v1_6->rspInfo.error,
-                {::android::hardware::radio::V1_6::RadioError::REQUEST_NOT_SUPPORTED}));
-    } else {
-        ASSERT_TRUE(CheckAnyOfErrors(
-                radioRsp_v1_6->rspInfo.error,
-                {::android::hardware::radio::V1_6::RadioError::NONE,
-                 ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
-                 ::android::hardware::radio::V1_6::RadioError::OPERATION_NOT_ALLOWED,
-                 ::android::hardware::radio::V1_6::RadioError::MODE_NOT_SUPPORTED,
-                 ::android::hardware::radio::V1_6::RadioError::INTERNAL_ERR,
-                 ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
-                 ::android::hardware::radio::V1_6::RadioError::MODEM_ERR,
-                 ::android::hardware::radio::V1_6::RadioError::NO_RESOURCES}));
-    }
-}
-
-/*
- * Test IRadio.getAllowedNetworkTypesBitmap for the response returned.
- */
-TEST_P(RadioHidlTest_v1_6, getAllowedNetworkTypesBitmap) {
-    serial = GetRandomSerialNumber();
-    ::android::hardware::hidl_bitfield<::android::hardware::radio::V1_4::RadioAccessFamily>
-            allowedNetworkTypesBitmap{};
-    allowedNetworkTypesBitmap |= ::android::hardware::radio::V1_4::RadioAccessFamily::LTE;
-
-    radio_v1_6->setAllowedNetworkTypesBitmap(serial, allowedNetworkTypesBitmap);
-
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
-    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
-    EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-
-    if (radioRsp_v1_6->rspInfo.error == ::android::hardware::radio::V1_6::RadioError::NONE) {
-        sleep(3);  // wait for modem
-        serial = GetRandomSerialNumber();
-        radio_v1_6->getAllowedNetworkTypesBitmap(serial);
-
-        EXPECT_EQ(std::cv_status::no_timeout, wait());
-        EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
-        EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-
-        if (getRadioHalCapabilities()) {
-            ASSERT_TRUE(CheckAnyOfErrors(
-                    radioRsp_v1_6->rspInfo.error,
-                    {::android::hardware::radio::V1_6::RadioError::REQUEST_NOT_SUPPORTED}));
-        } else {
-            ASSERT_TRUE(CheckAnyOfErrors(
-                    radioRsp_v1_6->rspInfo.error,
-                    {::android::hardware::radio::V1_6::RadioError::NONE,
-                     ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
-                     ::android::hardware::radio::V1_6::RadioError::OPERATION_NOT_ALLOWED,
-                     ::android::hardware::radio::V1_6::RadioError::MODE_NOT_SUPPORTED,
-                     ::android::hardware::radio::V1_6::RadioError::INTERNAL_ERR,
-                     ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
-                     ::android::hardware::radio::V1_6::RadioError::MODEM_ERR,
-                     ::android::hardware::radio::V1_6::RadioError::NO_RESOURCES}));
-        }
-    }
-}
-
-/*
  * Test IRadio.setupDataCall_1_6() for the response returned.
  */
 TEST_P(RadioHidlTest_v1_6, setupDataCall_1_6) {
@@ -588,11 +512,11 @@ TEST_P(RadioHidlTest_v1_6, setSimCardPower_1_6) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
-                                 {::android::hardware::radio::V1_6::RadioError::NONE,
-                                  ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
-                                  ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
-                                  ::android::hardware::radio::V1_6::RadioError::SIM_ERR}));
+    ASSERT_TRUE(
+            CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
+                             {::android::hardware::radio::V1_6::RadioError::NONE,
+                              ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
+                              ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE}));
 
     // setSimCardPower_1_6 does not return  until the request is handled, and should not trigger
     // CardState::ABSENT when turning off power
@@ -610,11 +534,11 @@ TEST_P(RadioHidlTest_v1_6, setSimCardPower_1_6) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
-                                 {::android::hardware::radio::V1_6::RadioError::NONE,
-                                  ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
-                                  ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
-                                  ::android::hardware::radio::V1_6::RadioError::SIM_ERR}));
+    ASSERT_TRUE(
+            CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
+                             {::android::hardware::radio::V1_6::RadioError::NONE,
+                              ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
+                              ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE}));
 
     // setSimCardPower_1_6 does not return  until the request is handled. Just verify that we still
     // have CardState::PRESENT after turning the power back on
@@ -897,7 +821,7 @@ TEST_P(RadioHidlTest_v1_6, getSimPhonebookCapacity) {
 /*
  * Test IRadio.updateSimPhonebookRecords() for the response returned.
  */
-TEST_P(RadioHidlTest_v1_6, updateSimPhonebookRecords) {
+TEST_F(RadioHidlTest_v1_6, updateSimPhonebookRecords) {
     serial = GetRandomSerialNumber();
     radio_v1_6->getSimPhonebookCapacity(serial);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
@@ -927,11 +851,7 @@ TEST_P(RadioHidlTest_v1_6, updateSimPhonebookRecords) {
         EXPECT_EQ(std::cv_status::no_timeout, wait());
         EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
         EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-        ASSERT_TRUE(CheckAnyOfErrors(
-            radioRsp_v1_6->rspInfo.error,
-            {::android::hardware::radio::V1_6::RadioError::NONE,
-             ::android::hardware::radio::V1_6::RadioError::REQUEST_NOT_SUPPORTED},
-             CHECK_GENERAL_ERROR));
+        EXPECT_EQ(::android::hardware::radio::V1_6::RadioError::NONE, radioRsp_v1_6->rspInfo.error);
 
         if(pbCapacity.maxAdnRecords > 0
                 && pbCapacity.usedAdnRecords < pbCapacity.maxAdnRecords) {
