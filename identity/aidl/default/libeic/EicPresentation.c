@@ -633,8 +633,6 @@ EicAccessCheckResult eicPresentationStartRetrieveEntryValue(
 
     // We'll need to calc and store a digest of additionalData to check that it's the same
     // additionalData being passed in for every eicPresentationRetrieveEntryValue() call...
-    //
-    ctx->accessCheckOk = false;
     if (!eicCborCalcEntryAdditionalData(accessControlProfileIds, numAccessControlProfileIds,
                                         nameSpace, name, additionalDataCbor,
                                         additionalDataCborBufSize, &additionalDataCborSize,
@@ -682,7 +680,6 @@ EicAccessCheckResult eicPresentationStartRetrieveEntryValue(
 
     if (result == EIC_ACCESS_CHECK_RESULT_OK) {
         eicCborAppendString(&ctx->cbor, name);
-        ctx->accessCheckOk = true;
     }
     return result;
 }
@@ -705,13 +702,8 @@ bool eicPresentationRetrieveEntryValue(EicPresentation* ctx, const uint8_t* encr
                                         calculatedSha256)) {
         return false;
     }
-
     if (eicCryptoMemCmp(calculatedSha256, ctx->additionalDataSha256, EIC_SHA256_DIGEST_SIZE) != 0) {
         eicDebug("SHA-256 mismatch of additionalData");
-        return false;
-    }
-    if (!ctx->accessCheckOk) {
-        eicDebug("Attempting to retrieve a value for which access is not granted");
         return false;
     }
 
