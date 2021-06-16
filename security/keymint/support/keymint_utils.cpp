@@ -32,11 +32,10 @@ constexpr size_t kPlatformVersionMatchCount = kSubminorVersionMatch + 1;
 
 constexpr char kPlatformPatchlevelProp[] = "ro.build.version.security_patch";
 constexpr char kVendorPatchlevelProp[] = "ro.vendor.build.security_patch";
-constexpr char kPatchlevelRegex[] = "^([0-9]{4})-([0-9]{2})-([0-9]{2})$";
+constexpr char kPatchlevelRegex[] = "^([0-9]{4})-([0-9]{2})-[0-9]{2}$";
 constexpr size_t kYearMatch = 1;
 constexpr size_t kMonthMatch = 2;
-constexpr size_t kDayMatch = 3;
-constexpr size_t kPatchlevelMatchCount = kDayMatch + 1;
+constexpr size_t kPatchlevelMatchCount = kMonthMatch + 1;
 
 uint32_t match_to_uint32(const char* expression, const regmatch_t& match) {
     if (match.rm_so == -1) return 0;
@@ -53,6 +52,8 @@ std::string wait_and_get_property(const char* prop) {
     prop_value = ::android::base::GetProperty(prop, "" /* default */);
     return prop_value;
 }
+
+}  // anonymous namespace
 
 uint32_t getOsVersion(const char* version_str) {
     regex_t regex;
@@ -75,9 +76,12 @@ uint32_t getOsVersion(const char* version_str) {
     return (major * 100 + minor) * 100 + subminor;
 }
 
-enum class PatchlevelOutput { kYearMonthDay, kYearMonth };
+uint32_t getOsVersion() {
+    std::string version = wait_and_get_property(kPlatformVersionProp);
+    return getOsVersion(version.c_str());
+}
 
-uint32_t getPatchlevel(const char* patchlevel_str, PatchlevelOutput detail) {
+uint32_t getPatchlevel(const char* patchlevel_str) {
     regex_t regex;
     if (regcomp(&regex, kPatchlevelRegex, REG_EXTENDED) != 0) {
         return 0;
@@ -96,35 +100,17 @@ uint32_t getPatchlevel(const char* patchlevel_str, PatchlevelOutput detail) {
     if (month < 1 || month > 12) {
         return 0;
     }
-
-    switch (detail) {
-        case PatchlevelOutput::kYearMonthDay: {
-            uint32_t day = match_to_uint32(patchlevel_str, matches[kDayMatch]);
-            if (day < 1 || day > 31) {
-                return 0;
-            }
-            return year * 10000 + month * 100 + day;
-        }
-        case PatchlevelOutput::kYearMonth:
-            return year * 100 + month;
-    }
-}
-
-}  // anonymous namespace
-
-uint32_t getOsVersion() {
-    std::string version = wait_and_get_property(kPlatformVersionProp);
-    return getOsVersion(version.c_str());
+    return year * 100 + month;
 }
 
 uint32_t getOsPatchlevel() {
     std::string patchlevel = wait_and_get_property(kPlatformPatchlevelProp);
-    return getPatchlevel(patchlevel.c_str(), PatchlevelOutput::kYearMonth);
+    return getPatchlevel(patchlevel.c_str());
 }
 
 uint32_t getVendorPatchlevel() {
     std::string patchlevel = wait_and_get_property(kVendorPatchlevelProp);
-    return getPatchlevel(patchlevel.c_str(), PatchlevelOutput::kYearMonthDay);
+    return getPatchlevel(patchlevel.c_str());
 }
 
 }  // namespace aidl::android::hardware::security::keymint
