@@ -114,7 +114,6 @@ TEST_P(SecureClockAidlTest, TestCreation) {
     EXPECT_EQ(ErrorCode::OK, result1.error);
     EXPECT_EQ(1U, result1.token.challenge);
     EXPECT_GT(result1.token.timestamp.milliSeconds, 0U);
-    EXPECT_EQ(32U, result1.token.mac.size());
 
     unsigned long time_to_sleep = 200;
     sleep_ms(time_to_sleep);
@@ -124,7 +123,6 @@ TEST_P(SecureClockAidlTest, TestCreation) {
     EXPECT_EQ(ErrorCode::OK, result2.error);
     EXPECT_EQ(2U, result2.token.challenge);
     EXPECT_GT(result2.token.timestamp.milliSeconds, 0U);
-    EXPECT_EQ(32U, result2.token.mac.size());
 
     auto host_time_delta = result2_time - result1_time;
 
@@ -155,7 +153,6 @@ TEST_P(SecureClockAidlTest, MacChangesOnChangingTimestamp) {
     EXPECT_EQ(ErrorCode::OK, result1.error);
     EXPECT_EQ(0U, result1.token.challenge);
     EXPECT_GT(result1.token.timestamp.milliSeconds, 0U);
-    EXPECT_EQ(32U, result1.token.mac.size());
 
     unsigned long time_to_sleep = 200;
     sleep_ms(time_to_sleep);
@@ -165,7 +162,6 @@ TEST_P(SecureClockAidlTest, MacChangesOnChangingTimestamp) {
     EXPECT_EQ(ErrorCode::OK, result2.error);
     EXPECT_EQ(1U, result2.token.challenge);
     EXPECT_GT(result2.token.timestamp.milliSeconds, 0U);
-    EXPECT_EQ(32U, result2.token.mac.size());
 
     auto host_time_delta = result2_time - result1_time;
 
