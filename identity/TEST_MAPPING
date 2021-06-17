@@ -8,9 +8,6 @@
     },
     {
       "name": "android.hardware.identity-support-lib-test"
-    },
-    {
-      "name": "libeic_test"
     }
   ]
 }
