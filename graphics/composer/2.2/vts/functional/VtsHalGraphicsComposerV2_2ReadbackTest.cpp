@@ -39,13 +39,15 @@ namespace V2_2 {
 namespace vts {
 namespace {
 
+using android::GraphicBuffer;
 using android::Rect;
+using android::hardware::hidl_handle;
 using common::V1_1::BufferUsage;
 using common::V1_1::Dataspace;
 using common::V1_1::PixelFormat;
+using mapper::V2_1::IMapper;
 using V2_1::Config;
 using V2_1::Display;
-using V2_1::vts::NativeHandleWrapper;
 using V2_1::vts::TestCommandReader;
 using vts::Gralloc;
 
@@ -353,9 +355,9 @@ TEST_P(GraphicsCompositionTest, SetLayerBufferNoEffect) {
         // This following buffer call should have no effect
         uint64_t usage =
                 static_cast<uint64_t>(BufferUsage::CPU_READ_OFTEN | BufferUsage::CPU_WRITE_OFTEN);
-        NativeHandleWrapper bufferHandle =
+        const native_handle_t* bufferHandle =
                 mGralloc->allocate(mDisplayWidth, mDisplayHeight, 1, PixelFormat::RGBA_8888, usage);
-        mWriter->setLayerBuffer(0, bufferHandle.get(), -1);
+        mWriter->setLayerBuffer(0, bufferHandle, -1);
 
         // expected color for each pixel
         std::vector<IComposerClient::Color> expectedColors(mDisplayWidth * mDisplayHeight);
@@ -463,24 +465,24 @@ TEST_P(GraphicsCompositionTest, ClientComposition) {
 
             // create client target buffer
             uint32_t clientStride;
-            NativeHandleWrapper clientBufferHandle =
+            const native_handle_t* clientBufferHandle =
                     mGralloc->allocate(layer->mWidth, layer->mHeight, layer->mLayerCount,
                                        clientFormat, clientUsage, /*import*/ true, &clientStride);
-            ASSERT_NE(nullptr, clientBufferHandle.get());
+            ASSERT_NE(nullptr, clientBufferHandle);
 
             void* clientBufData =
-                    mGralloc->lock(clientBufferHandle.get(), clientUsage, layer->mAccessRegion, -1);
+                    mGralloc->lock(clientBufferHandle, clientUsage, layer->mAccessRegion, -1);
 
             ASSERT_NO_FATAL_FAILURE(ReadbackHelper::fillBuffer(layer->mWidth, layer->mHeight,
                                                                clientStride, clientBufData,
                                                                clientFormat, expectedColors));
-            int clientFence = mGralloc->unlock(clientBufferHandle.get());
+            int clientFence = mGralloc->unlock(clientBufferHandle);
             if (clientFence != -1) {
                 sync_wait(clientFence, -1);
                 close(clientFence);
             }
 
-            mWriter->setClientTarget(0, clientBufferHandle.get(), clientFence, clientDataspace,
+            mWriter->setClientTarget(0, clientBufferHandle, clientFence, clientDataspace,
                                      std::vector<IComposerClient::Rect>(1, damage));
 
             layer->setToClientComposition(mWriter);
@@ -591,12 +593,12 @@ TEST_P(GraphicsCompositionTest, DeviceAndClientComposition) {
         // create client target buffer
         ASSERT_EQ(1, mReader->mCompositionChanges[0].second);
         uint32_t clientStride;
-        NativeHandleWrapper clientBufferHandle =
+        const native_handle_t* clientBufferHandle =
                 mGralloc->allocate(mDisplayWidth, mDisplayHeight, clientLayer->mLayerCount,
                                    clientFormat, clientUsage, /*import*/ true, &clientStride);
-        ASSERT_NE(nullptr, clientBufferHandle.get());
+        ASSERT_NE(nullptr, clientBufferHandle);
 
-        void* clientBufData = mGralloc->lock(clientBufferHandle.get(), clientUsage,
+        void* clientBufData = mGralloc->lock(clientBufferHandle, clientUsage,
                                              {0, 0, mDisplayWidth, mDisplayHeight}, -1);
 
         std::vector<IComposerClient::Color> clientColors(mDisplayWidth * mDisplayHeight);
@@ -604,13 +606,13 @@ TEST_P(GraphicsCompositionTest, DeviceAndClientComposition) {
         ASSERT_NO_FATAL_FAILURE(ReadbackHelper::fillBuffer(mDisplayWidth, mDisplayHeight,
                                                            clientStride, clientBufData,
                                                            clientFormat, clientColors));
-        int clientFence = mGralloc->unlock(clientBufferHandle.get());
+        int clientFence = mGralloc->unlock(clientBufferHandle);
         if (clientFence != -1) {
             sync_wait(clientFence, -1);
             close(clientFence);
         }
 
-        mWriter->setClientTarget(0, clientBufferHandle.get(), clientFence, clientDataspace,
+        mWriter->setClientTarget(0, clientBufferHandle, clientFence, clientDataspace,
                                  std::vector<IComposerClient::Rect>(1, clientFrame));
         clientLayer->setToClientComposition(mWriter);
         mWriter->validateDisplay();
