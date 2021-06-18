@@ -233,6 +233,8 @@ interface IKeyMintDevice {
      * indistinguishable from random.  Thus, if the entropy from any source is good, the output
      * must be good.
      *
+     * TODO(seleneh) specify what mixing functions and cprng we allow.
+     *
      * @param data Bytes to be mixed into the CRNG seed.  The caller must not provide more than 2
      *        KiB of data per invocation.
      *
@@ -803,9 +805,10 @@ interface IKeyMintDevice {
     byte[] convertStorageKeyToEphemeral(in byte[] storageKeyBlob);
 
     /**
-     * Returns parameters associated with the provided key. This should match the
-     * KeyCharacteristics present in the KeyCreationResult returned by generateKey(),
-     * importKey(), or importWrappedKey().
+     * Returns KeyMint-enforced parameters associated with the provided key. The returned tags are
+     * a subset of KeyCharacteristics found in the KeyCreationResult returned by generateKey(),
+     * importKey(), or importWrappedKey(). The returned value is a subset, as it does not include
+     * any Keystore-enforced parameters.
      *
      * @param keyBlob The opaque descriptor returned by generateKey, importKey or importWrappedKey.
      *
