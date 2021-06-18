@@ -69,10 +69,9 @@ void TestRenderEngine::drawLayers() {
                    [](renderengine::LayerSettings& settings) -> renderengine::LayerSettings* {
                        return &settings;
                    });
-    auto texture = std::make_shared<renderengine::ExternalTexture>(
-            mGraphicBuffer, *mRenderEngine, renderengine::ExternalTexture::Usage::WRITEABLE);
-    mRenderEngine->drawLayers(mDisplaySettings, compositionLayerPointers, texture, true,
-                              std::move(bufferFence), &readyFence);
+    mRenderEngine->drawLayers(mDisplaySettings, compositionLayerPointers,
+                              mGraphicBuffer->getNativeBuffer(), true, std::move(bufferFence),
+                              &readyFence);
     int fd = readyFence.release();
     if (fd != -1) {
         ASSERT_EQ(0, sync_wait(fd, -1));
