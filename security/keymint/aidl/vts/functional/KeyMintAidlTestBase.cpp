@@ -1022,7 +1022,16 @@ vector<uint32_t> KeyMintAidlTestBase::ValidKeySizes(Algorithm algorithm) {
             }
             break;
         case Algorithm::EC:
-            ADD_FAILURE() << "EC keys must be specified by curve not size";
+            switch (SecLevel()) {
+                case SecurityLevel::SOFTWARE:
+                case SecurityLevel::TRUSTED_ENVIRONMENT:
+                    return {224, 256, 384, 521};
+                case SecurityLevel::STRONGBOX:
+                    return {256};
+                default:
+                    ADD_FAILURE() << "Invalid security level " << uint32_t(SecLevel());
+                    break;
+            }
             break;
         case Algorithm::AES:
             return {128, 256};
@@ -1138,11 +1147,9 @@ vector<EcCurve> KeyMintAidlTestBase::ValidCurves() {
 }
 
 vector<EcCurve> KeyMintAidlTestBase::InvalidCurves() {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        return {EcCurve::P_224, EcCurve::P_384, EcCurve::P_521};
-    } else {
-        return {};
-    }
+    if (SecLevel() == SecurityLevel::TRUSTED_ENVIRONMENT) return {};
+    CHECK(SecLevel() == SecurityLevel::STRONGBOX);
+    return {EcCurve::P_224, EcCurve::P_384, EcCurve::P_521};
 }
 
 vector<Digest> KeyMintAidlTestBase::ValidDigests(bool withNone, bool withMD5) {
