@@ -236,10 +236,6 @@ TEST_P(GatekeeperHidlTest, VerifySuccess) {
   generatePassword(password, 0);
   enrollNewPassword(password, enrollRsp, true);
   verifyPassword(password, enrollRsp.data, 1, verifyRsp, true);
-
-  ALOGI("Testing unenrolled password doesn't verify");
-  generatePassword(password, 1);
-  verifyPassword(password, enrollRsp.data, 1, verifyRsp, false);
   ALOGI("Testing Enroll+Verify done");
 }
 
