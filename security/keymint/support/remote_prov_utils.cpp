@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-#include <tuple>
-
 #include <remote_prov/remote_prov_utils.h>
 
 #include <openssl/rand.h>
@@ -33,10 +31,6 @@ bytevec randomBytes(size_t numBytes) {
 }
 
 ErrMsgOr<EekChain> generateEekChain(size_t length, const bytevec& eekId) {
-    if (length < 2) {
-        return "EEK chain must contain at least 2 certs.";
-    }
-
     auto eekChain = cppbor::Array();
 
     bytevec prev_priv_key;
@@ -84,19 +78,7 @@ ErrMsgOr<EekChain> generateEekChain(size_t length, const bytevec& eekId) {
     return EekChain{eekChain.encode(), pub_key, priv_key};
 }
 
-bytevec getProdEekChain() {
-    bytevec prodEek;
-    prodEek.reserve(1 + sizeof(kCoseEncodedRootCert) + sizeof(kCoseEncodedGeekCert));
-
-    // In CBOR encoding, 0x82 indicates an array of two items
-    prodEek.push_back(0x82);
-    prodEek.insert(prodEek.end(), std::begin(kCoseEncodedRootCert), std::end(kCoseEncodedRootCert));
-    prodEek.insert(prodEek.end(), std::begin(kCoseEncodedGeekCert), std::end(kCoseEncodedGeekCert));
-
-    return prodEek;
-}
-
-ErrMsgOr<bytevec> verifyAndParseCoseSign1Cwt(const cppbor::Array* coseSign1,
+ErrMsgOr<bytevec> verifyAndParseCoseSign1Cwt(bool ignoreSignature, const cppbor::Array* coseSign1,
                                              const bytevec& signingCoseKey, const bytevec& aad) {
     if (!coseSign1 || coseSign1->size() != kCoseSign1EntryCount) {
         return "Invalid COSE_Sign1";
@@ -133,22 +115,27 @@ ErrMsgOr<bytevec> verifyAndParseCoseSign1Cwt(const cppbor::Array* coseSign1,
     auto serializedKey = parsedPayload->asMap()->get(-4670552)->clone();
     if (!serializedKey || !serializedKey->asBstr()) return "Could not find key entry";
 
-    bool selfSigned = signingCoseKey.empty();
-    auto key =
-            CoseKey::parseEd25519(selfSigned ? serializedKey->asBstr()->value() : signingCoseKey);
-    if (!key) return "Bad signing key: " + key.moveMessage();
+    if (!ignoreSignature) {
+        bool selfSigned = signingCoseKey.empty();
+        auto key = CoseKey::parseEd25519(selfSigned ? serializedKey->asBstr()->value()
+                                                    : signingCoseKey);
+        if (!key) return "Bad signing key: " + key.moveMessage();
 
-    bytevec signatureInput =
-            cppbor::Array().add("Signature1").add(*protectedParams).add(aad).add(*payload).encode();
+        bytevec signatureInput = cppbor::Array()
+                                         .add("Signature1")
+                                         .add(*protectedParams)
+                                         .add(aad)
+                                         .add(*payload)
+                                         .encode();
 
-    if (!ED25519_verify(signatureInput.data(), signatureInput.size(), signature->value().data(),
-                        key->getBstrValue(CoseKey::PUBKEY_X)->data())) {
-        return "Signature verification failed";
+        if (!ED25519_verify(signatureInput.data(), signatureInput.size(), signature->value().data(),
+                            key->getBstrValue(CoseKey::PUBKEY_X)->data())) {
+            return "Signature verification failed";
+        }
     }
 
     return serializedKey->asBstr()->value();
 }
-
 ErrMsgOr<std::vector<BccEntryData>> validateBcc(const cppbor::Array* bcc) {
     if (!bcc || bcc->size() == 0) return "Invalid BCC";
 
@@ -161,7 +148,8 @@ ErrMsgOr<std::vector<BccEntryData>> validateBcc(const cppbor::Array* bcc) {
         if (!entry || entry->size() != kCoseSign1EntryCount) {
             return "Invalid BCC entry " + std::to_string(i) + ": " + prettyPrint(entry);
         }
-        auto payload = verifyAndParseCoseSign1Cwt(entry, std::move(prevKey), bytevec{} /* AAD */);
+        auto payload = verifyAndParseCoseSign1Cwt(false /* ignoreSignature */, entry,
+                                                  std::move(prevKey), bytevec{} /* AAD */);
         if (!payload) {
             return "Failed to verify entry " + std::to_string(i) + ": " + payload.moveMessage();
         }
