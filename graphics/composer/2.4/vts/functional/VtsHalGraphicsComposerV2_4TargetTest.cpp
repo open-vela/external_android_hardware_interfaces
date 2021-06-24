@@ -19,8 +19,6 @@
 #include <algorithm>
 #include <regex>
 #include <thread>
-#include <unordered_map>
-#include <utility>
 
 #include <android-base/logging.h>
 #include <android-base/properties.h>
@@ -52,8 +50,8 @@ using common::V1_1::RenderIntent;
 using common::V1_2::ColorMode;
 using common::V1_2::Dataspace;
 using common::V1_2::PixelFormat;
+using mapper::V2_0::IMapper;
 using V2_1::Layer;
-using V2_1::vts::NativeHandleWrapper;
 using V2_2::Transform;
 using V2_2::vts::Gralloc;
 
@@ -159,9 +157,9 @@ class GraphicsComposerHidlTest : public ::testing::TestWithParam<std::string> {
 
     void execute() { mComposerClient->execute(mReader.get(), mWriter.get()); }
 
-    NativeHandleWrapper allocate(int32_t width, int32_t height) {
+    const native_handle_t* allocate() {
         return mGralloc->allocate(
-                width, height, /*layerCount*/ 1,
+                /*width*/ 64, /*height*/ 64, /*layerCount*/ 1,
                 static_cast<common::V1_1::PixelFormat>(PixelFormat::RGBA_8888),
                 static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN));
     }
@@ -317,59 +315,6 @@ TEST_P(GraphicsComposerHidlTest, GetDisplayAttribute_2_4) {
     }
 }
 
-TEST_P(GraphicsComposerHidlTest, GetDisplayAttribute_2_4_ConfigsInAGroupDifferOnlyByVsyncPeriod) {
-    struct Resolution {
-        int32_t width, height;
-    };
-    struct Dpi {
-        int32_t x, y;
-    };
-    for (const auto& display : mDisplays) {
-        std::vector<Config> configs = mComposerClient->getDisplayConfigs(display.get());
-        std::unordered_map<int32_t, Resolution> configGroupToResolutionMap;
-        std::unordered_map<int32_t, Dpi> configGroupToDpiMap;
-        for (auto config : configs) {
-            const auto configGroup = mComposerClient->getDisplayAttribute_2_4(
-                    display.get(), config, IComposerClient::Attribute::CONFIG_GROUP);
-            const auto width = mComposerClient->getDisplayAttribute_2_4(
-                    display.get(), config, IComposerClient::Attribute::WIDTH);
-            const auto height = mComposerClient->getDisplayAttribute_2_4(
-                    display.get(), config, IComposerClient::Attribute::HEIGHT);
-            if (configGroupToResolutionMap.find(configGroup) == configGroupToResolutionMap.end()) {
-                configGroupToResolutionMap[configGroup] = {width, height};
-            }
-            EXPECT_EQ(configGroupToResolutionMap[configGroup].width, width);
-            EXPECT_EQ(configGroupToResolutionMap[configGroup].height, height);
-
-            int32_t dpiX = -1;
-            mComposerClient->getRaw()->getDisplayAttribute_2_4(
-                    display.get(), config, IComposerClient::Attribute::DPI_X,
-                    [&](const auto& tmpError, const auto& value) {
-                        if (tmpError == Error::NONE) {
-                            dpiX = value;
-                        }
-                    });
-            int32_t dpiY = -1;
-            mComposerClient->getRaw()->getDisplayAttribute_2_4(
-                    display.get(), config, IComposerClient::Attribute::DPI_Y,
-                    [&](const auto& tmpError, const auto& value) {
-                        if (tmpError == Error::NONE) {
-                            dpiY = value;
-                        }
-                    });
-            if (dpiX == -1 && dpiY == -1) {
-                continue;
-            }
-
-            if (configGroupToDpiMap.find(configGroup) == configGroupToDpiMap.end()) {
-                configGroupToDpiMap[configGroup] = {dpiX, dpiY};
-            }
-            EXPECT_EQ(configGroupToDpiMap[configGroup].x, dpiX);
-            EXPECT_EQ(configGroupToDpiMap[configGroup].y, dpiY);
-        }
-    }
-}
-
 TEST_P(GraphicsComposerHidlTest, getDisplayVsyncPeriod_BadDisplay) {
     VsyncPeriodNanos vsyncPeriodNanos;
     EXPECT_EQ(Error::BAD_DISPLAY,
@@ -490,56 +435,46 @@ void GraphicsComposerHidlTest::sendRefreshFrame(const VtsDisplay& display,
     mComposerClient->setPowerMode(display.get(), V2_1::IComposerClient::PowerMode::ON);
     mComposerClient->setColorMode_2_3(display.get(), ColorMode::NATIVE, RenderIntent::COLORIMETRIC);
 
-    IComposerClient::FRect displayCrop = display.getCrop();
-    int32_t displayWidth = static_cast<int32_t>(std::ceilf(displayCrop.right - displayCrop.left));
-    int32_t displayHeight = static_cast<int32_t>(std::ceilf(displayCrop.bottom - displayCrop.top));
+    auto handle = allocate();
+    ASSERT_NE(nullptr, handle);
+
     Layer layer;
     ASSERT_NO_FATAL_FAILURE(layer = mComposerClient->createLayer(display.get(), kBufferSlotCount));
+    mWriter->selectLayer(layer);
+    mWriter->setLayerCompositionType(IComposerClient::Composition::DEVICE);
+    mWriter->setLayerDisplayFrame(display.getFrameRect());
+    mWriter->setLayerPlaneAlpha(1);
+    mWriter->setLayerSourceCrop(display.getCrop());
+    mWriter->setLayerTransform(static_cast<Transform>(0));
+    mWriter->setLayerVisibleRegion(std::vector<IComposerClient::Rect>(1, display.getFrameRect()));
+    mWriter->setLayerZOrder(10);
+    mWriter->setLayerBlendMode(IComposerClient::BlendMode::NONE);
+    mWriter->setLayerSurfaceDamage(std::vector<IComposerClient::Rect>(1, display.getFrameRect()));
+    mWriter->setLayerBuffer(0, handle, -1);
+    mWriter->setLayerDataspace(Dataspace::UNKNOWN);
 
-    {
-        auto handle = allocate(displayWidth, displayHeight);
-        ASSERT_NE(nullptr, handle.get());
+    mWriter->validateDisplay();
+    execute();
+    ASSERT_EQ(0, mReader->mErrors.size());
+    mReader->mCompositionChanges.clear();
 
-        mWriter->selectLayer(layer);
-        mWriter->setLayerCompositionType(IComposerClient::Composition::DEVICE);
-        mWriter->setLayerDisplayFrame(display.getFrameRect());
-        mWriter->setLayerPlaneAlpha(1);
-        mWriter->setLayerSourceCrop(display.getCrop());
-        mWriter->setLayerTransform(static_cast<Transform>(0));
-        mWriter->setLayerVisibleRegion(
-                std::vector<IComposerClient::Rect>(1, display.getFrameRect()));
-        mWriter->setLayerZOrder(10);
-        mWriter->setLayerBlendMode(IComposerClient::BlendMode::NONE);
-        mWriter->setLayerSurfaceDamage(
-                std::vector<IComposerClient::Rect>(1, display.getFrameRect()));
-        mWriter->setLayerBuffer(0, handle.get(), -1);
-        mWriter->setLayerDataspace(Dataspace::UNKNOWN);
+    mWriter->presentDisplay();
+    execute();
+    ASSERT_EQ(0, mReader->mErrors.size());
 
-        mWriter->validateDisplay();
-        execute();
-        ASSERT_EQ(0, mReader->mErrors.size());
-        mReader->mCompositionChanges.clear();
+    mWriter->selectLayer(layer);
+    auto handle2 = allocate();
+    ASSERT_NE(nullptr, handle2);
 
-        mWriter->presentDisplay();
-        execute();
-        ASSERT_EQ(0, mReader->mErrors.size());
-    }
+    mWriter->setLayerBuffer(0, handle2, -1);
+    mWriter->setLayerSurfaceDamage(std::vector<IComposerClient::Rect>(1, {0, 0, 10, 10}));
+    mWriter->validateDisplay();
+    execute();
+    ASSERT_EQ(0, mReader->mErrors.size());
+    mReader->mCompositionChanges.clear();
 
-    {
-        auto handle = allocate(displayWidth, displayHeight);
-        ASSERT_NE(nullptr, handle.get());
-
-        mWriter->selectLayer(layer);
-        mWriter->setLayerBuffer(0, handle.get(), -1);
-        mWriter->setLayerSurfaceDamage(std::vector<IComposerClient::Rect>(1, {0, 0, 10, 10}));
-        mWriter->validateDisplay();
-        execute();
-        ASSERT_EQ(0, mReader->mErrors.size());
-        mReader->mCompositionChanges.clear();
-
-        mWriter->presentDisplay();
-        execute();
-    }
+    mWriter->presentDisplay();
+    execute();
 
     ASSERT_NO_FATAL_FAILURE(mComposerClient->destroyLayer(display.get(), layer));
 }
@@ -568,25 +503,14 @@ void GraphicsComposerHidlTest::Test_setActiveConfigWithConstraints(const TestPar
             setActiveConfig(display, config1);
             sendRefreshFrame(display, nullptr);
 
-            const auto vsyncPeriod1 = mComposerClient->getDisplayAttribute_2_4(
+            int32_t vsyncPeriod1 = mComposerClient->getDisplayAttribute_2_4(
                     display.get(), config1,
                     IComposerClient::IComposerClient::Attribute::VSYNC_PERIOD);
-            const auto configGroup1 = mComposerClient->getDisplayAttribute_2_4(
-                    display.get(), config1,
-                    IComposerClient::IComposerClient::Attribute::CONFIG_GROUP);
-            const auto vsyncPeriod2 = mComposerClient->getDisplayAttribute_2_4(
+            int32_t vsyncPeriod2 = mComposerClient->getDisplayAttribute_2_4(
                     display.get(), config2,
                     IComposerClient::IComposerClient::Attribute::VSYNC_PERIOD);
-            const auto configGroup2 = mComposerClient->getDisplayAttribute_2_4(
-                    display.get(), config2,
-                    IComposerClient::IComposerClient::Attribute::CONFIG_GROUP);
 
             if (vsyncPeriod1 == vsyncPeriod2) {
-                return;  // continue
-            }
-
-            // We don't allow delayed change when changing config groups
-            if (params.delayForChange > 0 && configGroup1 != configGroup2) {
                 return;  // continue
             }
 
@@ -763,7 +687,6 @@ TEST_P(GraphicsComposerHidlTest, setGameContentType) {
     Test_setContentType(ContentType::GAME, "GAME");
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GraphicsComposerHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, GraphicsComposerHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IComposer::descriptor)),
