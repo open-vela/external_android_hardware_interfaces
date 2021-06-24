@@ -16,7 +16,6 @@
 
 #include <android-base/file.h>
 #include <android-base/logging.h>
-#include <android-base/stringprintf.h>
 
 #include "AtraceDevice.h"
 
@@ -40,11 +39,15 @@ const std::map<std::string, TracingConfig> kTracingMap = {
         // gfx
         {
                 "gfx",
-                {"Graphics", {{"mdss", false}, {"sde", false}, {"mali_systrace", false}}},
+                {"Graphics",
+                 {{"/sys/kernel/debug/tracing/events/mdss/enable", false},
+                  {"/sys/kernel/debug/tracing/events/sde/enable", false},
+                  {"/sys/kernel/debug/tracing/events/mali_systrace/enable", false}}},
         },
         {
                 "ion",
-                {"ION allocation", {{"kmem/ion_alloc_buffer_start", false}}},
+                {"ION allocation",
+                 {{"/sys/kernel/debug/tracing/events/kmem/ion_alloc_buffer_start/enable", false}}},
         },
 };
 
@@ -62,31 +65,16 @@ Return<void> AtraceDevice::listCategories(listCategories_cb _hidl_cb) {
     return Void();
 }
 
-AtraceDevice::AtraceDevice() {
-    struct stat st;
-
-    tracefs_event_root_ = "/sys/kernel/tracing/events/";
-    if (stat(tracefs_event_root_.c_str(), &st) != 0) {
-        tracefs_event_root_ = "/sys/kernel/debug/tracing/events/";
-        CHECK(stat(tracefs_event_root_.c_str(), &st) == 0) << "tracefs must be mounted at either"
-                                                              "/sys/kernel/tracing or "
-                                                              "/sys/kernel/debug/tracing";
-    }
-}
-
 Return<::android::hardware::atrace::V1_0::Status> AtraceDevice::enableCategories(
-        const hidl_vec<hidl_string>& categories) {
+    const hidl_vec<hidl_string>& categories) {
     if (!categories.size()) {
         return Status::ERROR_INVALID_ARGUMENT;
     }
-
     for (auto& c : categories) {
         if (kTracingMap.count(c)) {
             for (auto& p : kTracingMap.at(c).paths) {
-                std::string tracefs_event_enable_path = android::base::StringPrintf(
-                        "%s%s/enable", tracefs_event_root_.c_str(), p.first.c_str());
-                if (!android::base::WriteStringToFile("1", tracefs_event_enable_path)) {
-                    LOG(ERROR) << "Failed to enable tracing on: " << tracefs_event_enable_path;
+                if (!android::base::WriteStringToFile("1", p.first)) {
+                    LOG(ERROR) << "Failed to enable tracing on: " << p.first;
                     if (p.second) {
                         // disable before return
                         disableAllCategories();
@@ -103,13 +91,10 @@ Return<::android::hardware::atrace::V1_0::Status> AtraceDevice::enableCategories
 
 Return<::android::hardware::atrace::V1_0::Status> AtraceDevice::disableAllCategories() {
     auto ret = Status::SUCCESS;
-
     for (auto& c : kTracingMap) {
         for (auto& p : c.second.paths) {
-            std::string tracefs_event_enable_path = android::base::StringPrintf(
-                    "%s%s/enable", tracefs_event_root_.c_str(), p.first.c_str());
-            if (!android::base::WriteStringToFile("0", tracefs_event_enable_path)) {
-                LOG(ERROR) << "Failed to disable tracing on: " << tracefs_event_enable_path;
+            if (!android::base::WriteStringToFile("0", p.first)) {
+                LOG(ERROR) << "Failed to disable tracing on: " << p.first;
                 if (p.second) {
                     ret = Status::ERROR_TRACING_POINT;
                 }
