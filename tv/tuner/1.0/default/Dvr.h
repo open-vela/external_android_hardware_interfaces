@@ -44,13 +44,6 @@ using ::android::hardware::tv::tuner::V1_0::Result;
 
 using DvrMQ = MessageQueue<uint8_t, kSynchronizedReadWrite>;
 
-struct MediaEsMetaData {
-    bool isAudio;
-    int startIndex;
-    int len;
-    int pts;
-};
-
 class Demux;
 class Filter;
 class Frontend;
@@ -91,10 +84,8 @@ class Dvr : public IDvr {
     bool addPlaybackFilter(uint32_t filterId, sp<IFilter> filter);
     bool removePlaybackFilter(uint32_t filterId);
     bool readPlaybackFMQ(bool isVirtualFrontend, bool isRecording);
-    bool processEsDataOnPlayback(bool isVirtualFrontend, bool isRecording);
     bool startFilterDispatcher(bool isVirtualFrontend, bool isRecording);
     EventFlag* getDvrEventFlag();
-    DvrSettings getSettings() { return mDvrSettings; }
 
   private:
     // Demux service
@@ -107,7 +98,6 @@ class Dvr : public IDvr {
 
     void deleteEventFlag();
     bool readDataFromMQ();
-    void getMetaDataValue(int& index, uint8_t* dataOutputBuffer, int& value);
     void maySendPlaybackStatusCallback();
     void maySendRecordStatusCallback();
     PlaybackStatus checkPlaybackStatusChange(uint32_t availableToWrite, uint32_t availableToRead,
