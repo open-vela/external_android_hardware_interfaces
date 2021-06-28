@@ -92,12 +92,7 @@ bool FactoryLoader<T>::findFactoryForScheme(
     }
 
     // no luck, have to search
-#ifdef __LP64__
-    String8 dirPath("/vendor/lib64/mediacas");
-#else
     String8 dirPath("/vendor/lib/mediacas");
-#endif
-
     DIR* pDir = opendir(dirPath.string());
 
     if (pDir == NULL) {
@@ -132,12 +127,7 @@ bool FactoryLoader<T>::enumeratePlugins(
 
     results->clear();
 
-#ifdef __LP64__
-    String8 dirPath("/vendor/lib64/mediacas");
-#else
     String8 dirPath("/vendor/lib/mediacas");
-#endif
-
     DIR* pDir = opendir(dirPath.string());
 
     if (pDir == NULL) {
