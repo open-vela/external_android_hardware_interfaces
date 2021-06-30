@@ -14,24 +14,41 @@
 // limitations under the License.
 //
 
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
 cc_test {
     name: "VtsHalMediaOmxV1_0TargetAudioEncTest",
+    stem: "vts_hal_media_omx_v1_0_audio_enc_test",
     defaults: ["VtsHalMediaOmxV1_0Defaults"],
     srcs: [
         "VtsHalMediaOmxV1_0TargetAudioEncTest.cpp",
-        "media_audio_hidl_test_common.cpp"
+        "media_audio_hidl_test_common.cpp",
     ],
-    test_suites: ["general-tests"],
+    data: [":media_omx_audio_res"],
+    test_config: "VtsHalMediaOmxV1_0TargetAudioEncTest.xml",
+    test_suites: [
+        "vts",
+    ],
 }
 
 cc_test {
     name: "VtsHalMediaOmxV1_0TargetAudioDecTest",
+    stem: "vts_hal_media_omx_v1_0_audio_dec_test",
     defaults: ["VtsHalMediaOmxV1_0Defaults"],
     srcs: [
         "VtsHalMediaOmxV1_0TargetAudioDecTest.cpp",
-        "media_audio_hidl_test_common.cpp"
+        "media_audio_hidl_test_common.cpp",
     ],
-    test_suites: ["general-tests"],
+    data: [":media_omx_audio_res"],
+    test_config: "VtsHalMediaOmxV1_0TargetAudioDecTest.xml",
+    test_suites: [
+        "vts",
+    ],
 }
-
-

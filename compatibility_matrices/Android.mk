@@ -24,6 +24,9 @@ my_empty_manifest := $(LOCAL_PATH)/manifest.empty.xml
 include $(CLEAR_VARS)
 include $(LOCAL_PATH)/clear_vars.mk
 LOCAL_MODULE := framework_compatibility_matrix.device.xml
+LOCAL_LICENSE_KINDS := SPDX-license-identifier-Apache-2.0
+LOCAL_LICENSE_CONDITIONS := notice
+LOCAL_NOTICE_FILE := $(LOCAL_PATH)/../NOTICE
 LOCAL_MODULE_STEM := compatibility_matrix.device.xml
 # define LOCAL_MODULE_CLASS for local-generated-sources-dir.
 LOCAL_MODULE_CLASS := ETC
@@ -33,7 +36,7 @@ ifndef DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE
 LOCAL_SRC_FILES := compatibility_matrix.empty.xml
 else
 
-# DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE specify an absolute path
+# DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE specifies absolute paths
 LOCAL_GENERATED_SOURCES := $(DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE)
 
 # Enforce that DEVICE_FRAMEWORK_COMPATIBILITY_MATRIX_FILE does not specify required HALs
@@ -66,6 +69,9 @@ include $(BUILD_FRAMEWORK_COMPATIBILITY_MATRIX)
 include $(CLEAR_VARS)
 include $(LOCAL_PATH)/clear_vars.mk
 LOCAL_MODULE := product_compatibility_matrix.xml
+LOCAL_LICENSE_KINDS := SPDX-license-identifier-Apache-2.0
+LOCAL_LICENSE_CONDITIONS := notice
+LOCAL_NOTICE_FILE := $(LOCAL_PATH)/../NOTICE
 
 ifndef DEVICE_PRODUCT_COMPATIBILITY_MATRIX_FILE
 my_framework_matrix_deps :=
@@ -77,7 +83,7 @@ LOCAL_PRODUCT_MODULE := true
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_RELATIVE_PATH := vintf
 
-# DEVICE_PRODUCT_COMPATIBILITY_MATRIX_FILE specify an absolute path
+# DEVICE_PRODUCT_COMPATIBILITY_MATRIX_FILE specifies absolute paths
 LOCAL_GENERATED_SOURCES := $(DEVICE_PRODUCT_COMPATIBILITY_MATRIX_FILE)
 
 # Enforce that DEVICE_PRODUCT_COMPATIBILITY_MATRIX_FILE does not specify required HALs
@@ -92,11 +98,11 @@ include $(BUILD_FRAMEWORK_COMPATIBILITY_MATRIX)
 endif # DEVICE_PRODUCT_COMPATIBILITY_MATRIX_FILE
 
 my_system_matrix_deps := \
-    framework_compatibility_matrix.legacy.xml \
-    framework_compatibility_matrix.1.xml \
-    framework_compatibility_matrix.2.xml \
     framework_compatibility_matrix.3.xml \
     framework_compatibility_matrix.4.xml \
+    framework_compatibility_matrix.5.xml \
+    framework_compatibility_matrix.6.xml \
+    framework_compatibility_matrix.current.xml \
     framework_compatibility_matrix.device.xml \
 
 my_framework_matrix_deps += \
@@ -105,35 +111,20 @@ my_framework_matrix_deps += \
 # Phony target that installs all system compatibility matrix files
 include $(CLEAR_VARS)
 LOCAL_MODULE := system_compatibility_matrix.xml
+LOCAL_LICENSE_KINDS := SPDX-license-identifier-Apache-2.0
+LOCAL_LICENSE_CONDITIONS := notice
+LOCAL_NOTICE_FILE := $(LOCAL_PATH)/../NOTICE
 LOCAL_REQUIRED_MODULES := $(my_system_matrix_deps)
 include $(BUILD_PHONY_PACKAGE)
 
 # Phony target that installs all framework compatibility matrix files (system + product)
 include $(CLEAR_VARS)
 LOCAL_MODULE := framework_compatibility_matrix.xml
+LOCAL_LICENSE_KINDS := SPDX-license-identifier-Apache-2.0
+LOCAL_LICENSE_CONDITIONS := notice
+LOCAL_NOTICE_FILE := $(LOCAL_PATH)/../NOTICE
 LOCAL_REQUIRED_MODULES := $(my_framework_matrix_deps)
 include $(BUILD_PHONY_PACKAGE)
-
-# Final Framework Compatibility Matrix for OTA
-include $(CLEAR_VARS)
-include $(LOCAL_PATH)/clear_vars.mk
-LOCAL_MODULE := verified_assembled_system_matrix.xml
-LOCAL_MODULE_PATH := $(PRODUCT_OUT)
-LOCAL_REQUIRED_MODULES := $(my_framework_matrix_deps)
-LOCAL_GENERATED_SOURCES := $(call module-installed-files,$(LOCAL_REQUIRED_MODULES))
-LOCAL_ADD_VBMETA_VERSION_OVERRIDE := true
-
-ifdef BUILT_VENDOR_MANIFEST
-LOCAL_GEN_FILE_DEPENDENCIES += $(BUILT_VENDOR_MANIFEST)
-LOCAL_ASSEMBLE_VINTF_FLAGS += -c "$(BUILT_VENDOR_MANIFEST)"
-endif
-
-ifneq ($(PRODUCT_OTA_ENFORCE_VINTF_KERNEL_REQUIREMENTS),true)
-LOCAL_ASSEMBLE_VINTF_FLAGS += --no-kernel-requirements
-endif
-
-include $(BUILD_FRAMEWORK_COMPATIBILITY_MATRIX)
-BUILT_SYSTEM_MATRIX := $(LOCAL_BUILT_MODULE)
 
 my_system_matrix_deps :=
 my_framework_matrix_deps :=

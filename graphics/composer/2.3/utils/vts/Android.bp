@@ -14,6 +14,15 @@
 // limitations under the License.
 //
 
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
 cc_library_static {
     name: "android.hardware.graphics.composer@2.3-vts",
     defaults: ["hidl_defaults"],
@@ -21,22 +30,18 @@ cc_library_static {
         "ComposerVts.cpp",
     ],
     static_libs: [
-        "VtsHalHidlTargetTestBase",
-        "android.hardware.graphics.composer@2.1",
-        "android.hardware.graphics.composer@2.1-vts",
-        "android.hardware.graphics.composer@2.2",
         "android.hardware.graphics.composer@2.2-vts",
         "android.hardware.graphics.composer@2.3",
-	"android.hardware.graphics.mapper@2.0",
-	"android.hardware.graphics.mapper@2.0-vts",
-	"android.hardware.graphics.mapper@2.1",
-	"android.hardware.graphics.mapper@2.1-vts",
-	"android.hardware.graphics.mapper@3.0",
-	"android.hardware.graphics.mapper@3.0-vts",
+        "libgtest",
+    ],
+    export_static_lib_headers: [
+        "android.hardware.graphics.composer@2.2-vts",
+        "android.hardware.graphics.composer@2.3",
     ],
     header_libs: [
-        "android.hardware.graphics.composer@2.1-command-buffer",
-        "android.hardware.graphics.composer@2.2-command-buffer",
+        "android.hardware.graphics.composer@2.3-command-buffer",
+    ],
+    export_header_lib_headers: [
         "android.hardware.graphics.composer@2.3-command-buffer",
     ],
     cflags: [
