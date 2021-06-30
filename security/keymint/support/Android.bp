@@ -57,11 +57,9 @@ cc_library {
         "include",
     ],
     shared_libs: [
-        "libbase",
         "libcppbor_external",
         "libcppcose_rkp",
         "libcrypto",
-        "libjsoncpp",
     ],
 }
 
@@ -73,11 +71,9 @@ cc_test {
         "libgtest_main",
     ],
     shared_libs: [
-        "libbase",
         "libcppbor_external",
         "libcppcose_rkp",
         "libcrypto",
-        "libjsoncpp",
         "libkeymaster_portable",
         "libkeymint_remote_prov_support",
     ],
