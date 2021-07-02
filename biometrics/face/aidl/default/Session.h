@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include <random>
-
 #include <aidl/android/hardware/biometrics/face/BnSession.h>
 #include <aidl/android/hardware/biometrics/face/ISessionCallback.h>
 
@@ -70,7 +68,6 @@ class Session : public BnSession {
 
   private:
     std::shared_ptr<ISessionCallback> cb_;
-    std::mt19937 mRandom;
 };
 
 }  // namespace aidl::android::hardware::biometrics::face
