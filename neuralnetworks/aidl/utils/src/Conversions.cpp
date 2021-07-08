@@ -108,6 +108,17 @@ GeneralResult<std::vector<UnvalidatedConvertOutput<Type>>> validatedConvert(
     return canonical;
 }
 
+GeneralResult<Handle> unvalidatedConvertHelper(const NativeHandle& aidlNativeHandle) {
+    std::vector<base::unique_fd> fds;
+    fds.reserve(aidlNativeHandle.fds.size());
+    for (const auto& fd : aidlNativeHandle.fds) {
+        auto duplicatedFd = NN_TRY(dupFd(fd.get()));
+        fds.emplace_back(duplicatedFd.release());
+    }
+
+    return Handle{.fds = std::move(fds), .ints = aidlNativeHandle.ints};
+}
+
 struct NativeHandleDeleter {
     void operator()(native_handle_t* handle) const {
         if (handle) {
@@ -487,14 +498,18 @@ GeneralResult<ExecutionPreference> unvalidatedConvert(
     return static_cast<ExecutionPreference>(executionPreference);
 }
 
+GeneralResult<SharedHandle> unvalidatedConvert(const NativeHandle& aidlNativeHandle) {
+    return std::make_shared<const Handle>(NN_TRY(unvalidatedConvertHelper(aidlNativeHandle)));
+}
+
 GeneralResult<std::vector<Operation>> unvalidatedConvert(
         const std::vector<aidl_hal::Operation>& operations) {
     return unvalidatedConvertVec(operations);
 }
 
-GeneralResult<SharedHandle> unvalidatedConvert(const ndk::ScopedFileDescriptor& handle) {
-    auto duplicatedFd = NN_TRY(dupFd(handle.get()));
-    return std::make_shared<const Handle>(std::move(duplicatedFd));
+GeneralResult<SyncFence> unvalidatedConvert(const ndk::ScopedFileDescriptor& syncFence) {
+    auto duplicatedFd = NN_TRY(dupFd(syncFence.get()));
+    return SyncFence::create(std::move(duplicatedFd));
 }
 
 GeneralResult<Capabilities> convert(const aidl_hal::Capabilities& capabilities) {
@@ -538,8 +553,8 @@ GeneralResult<Timing> convert(const aidl_hal::Timing& timing) {
     return validatedConvert(timing);
 }
 
-GeneralResult<SharedHandle> convert(const ndk::ScopedFileDescriptor& handle) {
-    return validatedConvert(handle);
+GeneralResult<SyncFence> convert(const ndk::ScopedFileDescriptor& syncFence) {
+    return validatedConvert(syncFence);
 }
 
 GeneralResult<std::vector<Extension>> convert(const std::vector<aidl_hal::Extension>& extension) {
@@ -602,6 +617,17 @@ nn::GeneralResult<std::vector<UnvalidatedConvertOutput<Type>>> validatedConvert(
         halObject[i] = NN_TRY(validatedConvert(arguments[i]));
     }
     return halObject;
+}
+
+nn::GeneralResult<common::NativeHandle> unvalidatedConvert(const nn::Handle& handle) {
+    common::NativeHandle aidlNativeHandle;
+    aidlNativeHandle.fds.reserve(handle.fds.size());
+    for (const auto& fd : handle.fds) {
+        auto duplicatedFd = NN_TRY(nn::dupFd(fd.get()));
+        aidlNativeHandle.fds.emplace_back(duplicatedFd.release());
+    }
+    aidlNativeHandle.ints = handle.ints;
+    return aidlNativeHandle;
 }
 
 // Helper template for std::visit
@@ -727,6 +753,11 @@ nn::GeneralResult<BufferRole> unvalidatedConvert(const nn::BufferRole& bufferRol
 
 nn::GeneralResult<bool> unvalidatedConvert(const nn::MeasureTiming& measureTiming) {
     return measureTiming == nn::MeasureTiming::YES;
+}
+
+nn::GeneralResult<common::NativeHandle> unvalidatedConvert(const nn::SharedHandle& sharedHandle) {
+    CHECK(sharedHandle != nullptr);
+    return unvalidatedConvert(*sharedHandle);
 }
 
 nn::GeneralResult<Memory> unvalidatedConvert(const nn::SharedMemory& memory) {
@@ -966,8 +997,16 @@ nn::GeneralResult<ndk::ScopedFileDescriptor> unvalidatedConvert(const nn::SyncFe
     return ndk::ScopedFileDescriptor(duplicatedFd.release());
 }
 
-nn::GeneralResult<ndk::ScopedFileDescriptor> unvalidatedConvert(const nn::SharedHandle& handle) {
-    auto duplicatedFd = NN_TRY(nn::dupFd(handle->get()));
+nn::GeneralResult<ndk::ScopedFileDescriptor> unvalidatedConvertCache(
+        const nn::SharedHandle& handle) {
+    if (handle->ints.size() != 0) {
+        NN_ERROR() << "Cache handle must not contain ints";
+    }
+    if (handle->fds.size() != 1) {
+        NN_ERROR() << "Cache handle must contain exactly one fd but contains "
+                   << handle->fds.size();
+    }
+    auto duplicatedFd = NN_TRY(nn::dupFd(handle->fds.front().get()));
     return ndk::ScopedFileDescriptor(duplicatedFd.release());
 }
 
@@ -1030,7 +1069,16 @@ nn::GeneralResult<std::vector<OutputShape>> convert(
 
 nn::GeneralResult<std::vector<ndk::ScopedFileDescriptor>> convert(
         const std::vector<nn::SharedHandle>& cacheHandles) {
-    return validatedConvert(cacheHandles);
+    const auto version = NN_TRY(hal::utils::makeGeneralFailure(nn::validate(cacheHandles)));
+    if (version > kVersion) {
+        return NN_ERROR() << "Insufficient version: " << version << " vs required " << kVersion;
+    }
+    std::vector<ndk::ScopedFileDescriptor> cacheFds;
+    cacheFds.reserve(cacheHandles.size());
+    for (const auto& cacheHandle : cacheHandles) {
+        cacheFds.push_back(NN_TRY(unvalidatedConvertCache(cacheHandle)));
+    }
+    return cacheFds;
 }
 
 nn::GeneralResult<std::vector<ndk::ScopedFileDescriptor>> convert(
