@@ -158,7 +158,20 @@ parcelable ProtectedData {
      *         payload: bstr .cbor BccPayload
      *     ]
      *
-     *     VerifiedDeviceInfo = DeviceInfo  // See DeviceInfo.aidl
+     *     VerifiedDeviceInfo = {
+     *         ? "brand" : tstr,
+     *         ? "manufacturer" : tstr,
+     *         ? "product" : tstr,
+     *         ? "model" : tstr,
+     *         ? "board" : tstr,
+     *         ? "device" : tstr,
+     *         ? "vb_state" : "green" / "yellow" / "orange",
+     *         ? "bootloader_state" : "locked" / "unlocked",
+     *         ? "os_version" : tstr,
+     *         ? "system_patch_level" : uint,        // YYYYMMDD
+     *         ? "boot_patch_level" : uint,          // YYYYMMDD
+     *         ? "vendor_patch_level" : uint,        // YYYYMMDD
+     *     }
      *
      *     PubKeyX25519 = {                 // COSE_Key
      *          1 : 1,                      // Key type : Octet Key Pair
