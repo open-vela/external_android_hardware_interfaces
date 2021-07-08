@@ -286,7 +286,7 @@ enum Tag {
      *
      * Must be hardware-enforced.
      *
-     * TODO(b/191458710): find out if this tag is still supported.
+     * TODO(b/191738660): Remove in KeyMint V2. Currently only used for FDE.
      */
     MIN_SECONDS_BETWEEN_OPS = TagType.UINT | 403,
 
@@ -477,12 +477,12 @@ enum Tag {
 
     /**
      * Tag::TRUSTED_CONFIRMATION_REQUIRED is only applicable to keys with KeyPurpose SIGN, and
-     *  specifies that this key must not be usable unless the user provides confirmation of the data
-     *  to be signed.  Confirmation is proven to keyMint via an approval token.  See
-     *  CONFIRMATION_TOKEN, as well as the ConfirmationUI HAL.
+     * specifies that this key must not be usable unless the user provides confirmation of the data
+     * to be signed.  Confirmation is proven to keyMint via an approval token.  See the authToken
+     * parameter of begin(), as well as the ConfirmationUI HAL.
      *
      * If an attempt to use a key with this tag does not have a cryptographically valid
-     * CONFIRMATION_TOKEN provided to finish() or if the data provided to update()/finish() does not
+     * token provided to finish() or if the data provided to update()/finish() does not
      * match the data described in the token, keyMint must return NO_USER_CONFIRMATION.
      *
      * Must be hardware-enforced.
@@ -491,9 +491,11 @@ enum Tag {
 
     /**
      * Tag::UNLOCKED_DEVICE_REQUIRED specifies that the key may only be used when the device is
-     * unlocked.
+     * unlocked, as reported to KeyMint via authToken operation parameter and the
+     * IKeyMintDevice::deviceLocked() method
      *
-     * Must be software-enforced.
+     * Must be hardware-enforced (but is also keystore-enforced on a per-user basis: see the
+     * deviceLocked() documentation).
      */
     UNLOCKED_DEVICE_REQUIRED = TagType.BOOL | 509,
 
@@ -825,11 +827,22 @@ enum Tag {
     /**
      * DEVICE_UNIQUE_ATTESTATION is an argument to IKeyMintDevice::attested key generation/import
      * operations.  It indicates that attestation using a device-unique key is requested, rather
-     * than a batch key.  When a device-unique key is used, the returned chain should contain two
-     * certificates:
+     * than a batch key. When a device-unique key is used, the returned chain should contain two or
+     * three certificates.
+     *
+     * In case the chain contains two certificates, they should be:
      *    * The attestation certificate, containing the attestation extension, as described in
-            KeyCreationResult.aidl.
+     *      KeyCreationResult.aidl.
      *    * A self-signed root certificate, signed by the device-unique key.
+     *
+     * In case the chain contains three certificates, they should be:
+     *    * The attestation certificate, containing the attestation extension, as described in
+     *      KeyCreationResult.aidl, signed by the device-unique key.
+     *    * An intermediate certificate, containing the public portion of the device-unique key.
+     *    * A self-signed root certificate, signed by a dedicated key, certifying the
+     *      intermediate. Ideally, the dedicated key would be the same for all StrongBox
+     *      instances of the same manufacturer to ease validation.
+     *
      * No additional chained certificates are provided. Only SecurityLevel::STRONGBOX
      * IKeyMintDevices may support device-unique attestations.  SecurityLevel::TRUSTED_ENVIRONMENT
      * IKeyMintDevices must return ErrorCode::INVALID_ARGUMENT if they receive
@@ -864,8 +877,9 @@ enum Tag {
      *
      * STORAGE_KEY is used to denote that a key generated or imported is a key used for storage
      * encryption. Keys of this type can either be generated or imported or secure imported using
-     * keyMint. exportKey() can be used to re-wrap storage key with a per-boot ephemeral key
-     * wrapped key once the key characteristics are enforced.
+     * keyMint. The convertStorageKeyToEphemeral() method of IKeyMintDevice can be used to re-wrap
+     * storage key with a per-boot ephemeral key wrapped key once the key characteristics are
+     * enforced.
      *
      * Keys with this tag cannot be used for any operation within keyMint.
      * ErrorCode::INVALID_OPERATION is returned when a key with Tag::STORAGE_KEY is provided to
@@ -875,7 +889,7 @@ enum Tag {
 
     /**
      * OBSOLETE: Do not use. See IKeyMintOperation.updateAad instead.
-     * TODO: Delete when keystore1 is deleted.
+     * TODO(b/191738660): Remove in KeyMint v2.
      */
     ASSOCIATED_DATA = TagType.BYTES | 1000,
 
@@ -914,11 +928,10 @@ enum Tag {
     RESET_SINCE_ID_ROTATION = TagType.BOOL | 1004,
 
     /**
-     * Tag::CONFIRMATION_TOKEN is used to deliver a cryptographic token proving that the user
-     * confirmed a signing request.  The content is a full-length HMAC-SHA256 value.  See the
-     * ConfirmationUI HAL for details of token computation.
+     * OBSOLETE: Do not use. See the authToken parameter for IKeyMintDevice::begin and for
+     * IKeyMintOperation methods instead.
      *
-     * Must never appear in KeyCharacteristics.
+     * TODO(b/191738660): Delete when keystore1 is deleted.
      */
     CONFIRMATION_TOKEN = TagType.BYTES | 1005,
 
