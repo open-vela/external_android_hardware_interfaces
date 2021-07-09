@@ -1493,8 +1493,7 @@ AuthorizationSet SwEnforcedAuthorizations(const vector<KeyCharacteristics>& key_
     return authList;
 }
 
-AssertionResult ChainSignaturesAreValid(const vector<Certificate>& chain,
-                                        bool strict_issuer_check) {
+AssertionResult ChainSignaturesAreValid(const vector<Certificate>& chain) {
     std::stringstream cert_data;
 
     for (size_t i = 0; i < chain.size(); ++i) {
@@ -1521,7 +1520,7 @@ AssertionResult ChainSignaturesAreValid(const vector<Certificate>& chain,
 
         string cert_issuer = x509NameToStr(X509_get_issuer_name(key_cert.get()));
         string signer_subj = x509NameToStr(X509_get_subject_name(signing_cert.get()));
-        if (cert_issuer != signer_subj && strict_issuer_check) {
+        if (cert_issuer != signer_subj) {
             return AssertionFailure() << "Cert " << i << " has wrong issuer.\n"
                                       << " Signer subject is " << signer_subj
                                       << " Issuer subject is " << cert_issuer << endl
