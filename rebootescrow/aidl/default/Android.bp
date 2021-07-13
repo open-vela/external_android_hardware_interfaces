@@ -14,22 +14,13 @@
 // limitations under the License.
 //
 
-package {
-    // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "hardware_interfaces_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_interfaces_license"],
-}
-
 cc_library_static {
     name: "librebootescrowdefaultimpl",
     vendor: true,
     shared_libs: [
         "libbase",
         "libbinder_ndk",
-        "android.hardware.rebootescrow-V1-ndk_platform",
+        "android.hardware.rebootescrow-ndk_platform",
     ],
     export_include_dirs: ["include"],
     srcs: [
@@ -56,7 +47,7 @@ cc_binary {
     shared_libs: [
         "libbase",
         "libbinder_ndk",
-        "android.hardware.rebootescrow-V1-ndk_platform",
+        "android.hardware.rebootescrow-ndk_platform",
     ],
     static_libs: [
         "libhadamardutils",
@@ -87,9 +78,7 @@ cc_test {
     ],
     static_libs: [
         "libhadamardutils",
-    ],
-    header_libs: [
-        "libgtest_prod_headers",
+        "libgtest_prod",
     ],
     shared_libs: [
         "liblog",

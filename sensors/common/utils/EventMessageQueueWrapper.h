@@ -33,7 +33,7 @@ namespace sensors {
 namespace V2_1 {
 namespace implementation {
 
-class EventMessageQueueWrapperBase {
+class EventMessageQueueWrapperBase : public RefBase {
   public:
     virtual ~EventMessageQueueWrapperBase() {}
 
