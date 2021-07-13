@@ -25,7 +25,7 @@ namespace implementation {
 
 // Methods from ::android::hardware::tests::msgq::V1_0::ITestMsgQ follow.
 Return<bool> TestMsgQ::configureFmqSyncReadWrite(
-        const android::hardware::MQDescriptorSync<int32_t>& mqDesc) {
+    const android::hardware::MQDescriptorSync<uint16_t>& mqDesc) {
     mFmqSynchronized.reset(new (std::nothrow) MessageQueueSync(mqDesc));
     if ((mFmqSynchronized == nullptr) || (mFmqSynchronized->isValid() == false)) {
         return false;
@@ -41,19 +41,10 @@ Return<bool> TestMsgQ::configureFmqSyncReadWrite(
     return true;
 }
 
-Return<void> TestMsgQ::getFmqUnsyncWrite(bool configureFmq, bool userFd,
-                                         getFmqUnsyncWrite_cb _hidl_cb) {
+Return<void> TestMsgQ::getFmqUnsyncWrite(bool configureFmq, getFmqUnsyncWrite_cb _hidl_cb) {
     if (configureFmq) {
         static constexpr size_t kNumElementsInQueue = 1024;
-        static constexpr size_t kElementSizeBytes = sizeof(int32_t);
-        android::base::unique_fd ringbufferFd;
-        if (userFd) {
-            ringbufferFd.reset(
-                    ::ashmem_create_region("UnsyncWrite", kNumElementsInQueue * kElementSizeBytes));
-        }
-        mFmqUnsynchronized.reset(new (std::nothrow) MessageQueueUnsync(
-                kNumElementsInQueue, false, std::move(ringbufferFd),
-                kNumElementsInQueue * kElementSizeBytes));
+        mFmqUnsynchronized.reset(new (std::nothrow) MessageQueueUnsync(kNumElementsInQueue));
     }
     if ((mFmqUnsynchronized == nullptr) ||
         (mFmqUnsynchronized->isValid() == false)) {
@@ -65,7 +56,7 @@ Return<void> TestMsgQ::getFmqUnsyncWrite(bool configureFmq, bool userFd,
 }
 
 Return<bool> TestMsgQ::requestWriteFmqSync(int32_t count) {
-    std::vector<int32_t> data(count);
+    std::vector<uint16_t> data(count);
     for (int i = 0; i < count; i++) {
         data[i] = i;
     }
@@ -74,14 +65,14 @@ Return<bool> TestMsgQ::requestWriteFmqSync(int32_t count) {
 }
 
 Return<bool> TestMsgQ::requestReadFmqSync(int32_t count) {
-    std::vector<int32_t> data(count);
+    std::vector<uint16_t> data(count);
     bool result = mFmqSynchronized->read(&data[0], count)
             && verifyData(&data[0], count);
     return result;
 }
 
 Return<bool> TestMsgQ::requestWriteFmqUnsync(int32_t count) {
-    std::vector<int32_t> data(count);
+    std::vector<uint16_t> data(count);
     for (int i = 0; i < count; i++) {
         data[i] = i;
     }
@@ -90,14 +81,14 @@ Return<bool> TestMsgQ::requestWriteFmqUnsync(int32_t count) {
 }
 
 Return<bool> TestMsgQ::requestReadFmqUnsync(int32_t count) {
-    std::vector<int32_t> data(count);
+    std::vector<uint16_t> data(count);
     bool result =
             mFmqUnsynchronized->read(&data[0], count) && verifyData(&data[0], count);
     return result;
 }
 
 Return<void> TestMsgQ::requestBlockingRead(int32_t count) {
-    std::vector<int32_t> data(count);
+    std::vector<uint16_t> data(count);
     bool result = mFmqSynchronized->readBlocking(
             &data[0],
             count,
@@ -112,7 +103,7 @@ Return<void> TestMsgQ::requestBlockingRead(int32_t count) {
 }
 
 Return<void> TestMsgQ::requestBlockingReadDefaultEventFlagBits(int32_t count) {
-    std::vector<int32_t> data(count);
+    std::vector<uint16_t> data(count);
     bool result = mFmqSynchronized->readBlocking(
             &data[0],
             count);
@@ -125,7 +116,7 @@ Return<void> TestMsgQ::requestBlockingReadDefaultEventFlagBits(int32_t count) {
 }
 
 Return<void> TestMsgQ::requestBlockingReadRepeat(int32_t count, int32_t numIter) {
-    std::vector<int32_t> data(count);
+    std::vector<uint16_t> data(count);
     for (int i = 0; i < numIter; i++) {
         bool result = mFmqSynchronized->readBlocking(
                 &data[0],
