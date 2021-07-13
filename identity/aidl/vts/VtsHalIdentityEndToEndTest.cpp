@@ -174,17 +174,16 @@ TEST_P(IdentityAidl, createAndRetrieveCredential) {
 
     string cborPretty;
     sp<IWritableIdentityCredential> writableCredential;
-    ASSERT_TRUE(test_utils::setupWritableCredential(writableCredential, credentialStore_,
-                                                    true /* testCredential */));
+    ASSERT_TRUE(test_utils::setupWritableCredential(writableCredential, credentialStore_));
 
     string challenge = "attestationChallenge";
-    test_utils::AttestationData attData(writableCredential, challenge,
-                                        {1} /* atteestationApplicationId */);
+    test_utils::AttestationData attData(writableCredential, challenge, {});
     ASSERT_TRUE(attData.result.isOk())
             << attData.result.exceptionCode() << "; " << attData.result.exceptionMessage() << endl;
 
-    validateAttestationCertificate(attData.attestationCertificate, attData.attestationChallenge,
-                                   attData.attestationApplicationId, true);
+    EXPECT_TRUE(validateAttestationCertificate(attData.attestationCertificate,
+                                               attData.attestationChallenge,
+                                               attData.attestationApplicationId, hwInfo));
 
     // This is kinda of a hack but we need to give the size of
     // ProofOfProvisioning that we'll expect to receive.
@@ -369,7 +368,6 @@ TEST_P(IdentityAidl, createAndRetrieveCredential) {
     optional<vector<uint8_t>> signingPubKey =
             support::certificateChainGetTopMostKey(signingKeyCertificate.encodedCertificate);
     EXPECT_TRUE(signingPubKey);
-    test_utils::verifyAuthKeyCertificate(signingKeyCertificate.encodedCertificate);
 
     // Since we're using a test-credential we know storageKey meaning we can get the
     // private key. Do this, derive the public key from it, and check this matches what
@@ -420,9 +418,9 @@ TEST_P(IdentityAidl, createAndRetrieveCredential) {
     }
 
     vector<uint8_t> mac;
-    vector<uint8_t> deviceNameSpacesEncoded;
-    ASSERT_TRUE(credential->finishRetrieval(&mac, &deviceNameSpacesEncoded).isOk());
-    cborPretty = support::cborPrettyPrint(deviceNameSpacesEncoded, 32, {});
+    vector<uint8_t> deviceNameSpacesBytes;
+    ASSERT_TRUE(credential->finishRetrieval(&mac, &deviceNameSpacesBytes).isOk());
+    cborPretty = support::cborPrettyPrint(deviceNameSpacesBytes, 32, {});
     ASSERT_EQ(
             "{\n"
             "  'PersonalData' : {\n"
@@ -437,19 +435,37 @@ TEST_P(IdentityAidl, createAndRetrieveCredential) {
             "  },\n"
             "}",
             cborPretty);
+    // The data that is MACed is ["DeviceAuthentication", sessionTranscript, docType,
+    // deviceNameSpacesBytes] so build up that structure
+    cppbor::Array deviceAuthentication;
+    deviceAuthentication.add("DeviceAuthentication");
+    deviceAuthentication.add(sessionTranscript.clone());
 
     string docType = "org.iso.18013-5.2019.mdl";
+    deviceAuthentication.add(docType);
+    deviceAuthentication.add(cppbor::Semantic(24, deviceNameSpacesBytes));
+    vector<uint8_t> deviceAuthenticationBytes =
+            cppbor::Semantic(24, deviceAuthentication.encode()).encode();
+    // Derive the key used for MACing.
     optional<vector<uint8_t>> readerEphemeralPrivateKey =
             support::ecKeyPairGetPrivateKey(readerEphemeralKeyPair.value());
-    optional<vector<uint8_t>> eMacKey = support::calcEMacKey(
-            readerEphemeralPrivateKey.value(),                           // Private Key
-            signingPubKey.value(),                                       // Public Key
-            cppbor::Semantic(24, sessionTranscript.encode()).encode());  // SessionTranscriptBytes
+    optional<vector<uint8_t>> sharedSecret =
+            support::ecdh(signingPubKey.value(), readerEphemeralPrivateKey.value());
+    ASSERT_TRUE(sharedSecret);
+    // Mix-in SessionTranscriptBytes
+    vector<uint8_t> sessionTranscriptBytes =
+            cppbor::Semantic(24, sessionTranscript.encode()).encode();
+    vector<uint8_t> sharedSecretWithSessionTranscriptBytes = sharedSecret.value();
+    std::copy(sessionTranscriptBytes.begin(), sessionTranscriptBytes.end(),
+              std::back_inserter(sharedSecretWithSessionTranscriptBytes));
+    vector<uint8_t> salt = {0x00};
+    vector<uint8_t> info = {};
+    optional<vector<uint8_t>> derivedKey =
+            support::hkdf(sharedSecretWithSessionTranscriptBytes, salt, info, 32);
+    ASSERT_TRUE(derivedKey);
     optional<vector<uint8_t>> calculatedMac =
-            support::calcMac(sessionTranscript.encode(),  // SessionTranscript
-                             docType,                     // DocType
-                             deviceNameSpacesEncoded,     // DeviceNamespaces
-                             eMacKey.value());            // EMacKey
+            support::coseMac0(derivedKey.value(), {},      // payload
+                              deviceAuthenticationBytes);  // detached content
     ASSERT_TRUE(calculatedMac);
     EXPECT_EQ(mac, calculatedMac);
 
@@ -464,14 +480,18 @@ TEST_P(IdentityAidl, createAndRetrieveCredential) {
                                 signingKeyBlob, sessionTranscriptEncoded, {},  // readerSignature,
                                 testEntriesEntryCounts)
                         .isOk());
-    ASSERT_TRUE(credential->finishRetrieval(&mac, &deviceNameSpacesEncoded).isOk());
-    cborPretty = support::cborPrettyPrint(deviceNameSpacesEncoded, 32, {});
+    ASSERT_TRUE(credential->finishRetrieval(&mac, &deviceNameSpacesBytes).isOk());
+    cborPretty = support::cborPrettyPrint(deviceNameSpacesBytes, 32, {});
     ASSERT_EQ("{}", cborPretty);
     // Calculate DeviceAuthentication and MAC (MACing key hasn't changed)
-    calculatedMac = support::calcMac(sessionTranscript.encode(),  // SessionTranscript
-                                     docType,                     // DocType
-                                     deviceNameSpacesEncoded,     // DeviceNamespaces
-                                     eMacKey.value());            // EMacKey
+    deviceAuthentication = cppbor::Array();
+    deviceAuthentication.add("DeviceAuthentication");
+    deviceAuthentication.add(sessionTranscript.clone());
+    deviceAuthentication.add(docType);
+    deviceAuthentication.add(cppbor::Semantic(24, deviceNameSpacesBytes));
+    deviceAuthenticationBytes = cppbor::Semantic(24, deviceAuthentication.encode()).encode();
+    calculatedMac = support::coseMac0(derivedKey.value(), {},      // payload
+                                      deviceAuthenticationBytes);  // detached content
     ASSERT_TRUE(calculatedMac);
     EXPECT_EQ(mac, calculatedMac);
 
@@ -486,14 +506,18 @@ TEST_P(IdentityAidl, createAndRetrieveCredential) {
                                 signingKeyBlob, sessionTranscriptEncoded, {},  // readerSignature,
                                 testEntriesEntryCounts)
                         .isOk());
-    ASSERT_TRUE(credential->finishRetrieval(&mac, &deviceNameSpacesEncoded).isOk());
-    cborPretty = support::cborPrettyPrint(deviceNameSpacesEncoded, 32, {});
+    ASSERT_TRUE(credential->finishRetrieval(&mac, &deviceNameSpacesBytes).isOk());
+    cborPretty = support::cborPrettyPrint(deviceNameSpacesBytes, 32, {});
     ASSERT_EQ("{}", cborPretty);
     // Calculate DeviceAuthentication and MAC (MACing key hasn't changed)
-    calculatedMac = support::calcMac(sessionTranscript.encode(),  // SessionTranscript
-                                     docType,                     // DocType
-                                     deviceNameSpacesEncoded,     // DeviceNamespaces
-                                     eMacKey.value());            // EMacKey
+    deviceAuthentication = cppbor::Array();
+    deviceAuthentication.add("DeviceAuthentication");
+    deviceAuthentication.add(sessionTranscript.clone());
+    deviceAuthentication.add(docType);
+    deviceAuthentication.add(cppbor::Semantic(24, deviceNameSpacesBytes));
+    deviceAuthenticationBytes = cppbor::Semantic(24, deviceAuthentication.encode()).encode();
+    calculatedMac = support::coseMac0(derivedKey.value(), {},      // payload
+                                      deviceAuthenticationBytes);  // detached content
     ASSERT_TRUE(calculatedMac);
     EXPECT_EQ(mac, calculatedMac);
 }
