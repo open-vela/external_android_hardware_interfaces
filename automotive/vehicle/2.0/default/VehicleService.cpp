@@ -20,10 +20,12 @@
 
 #include <iostream>
 
-#include <EmulatedUserHal.h>
-#include <EmulatedVehicleConnector.h>
-#include <EmulatedVehicleHal.h>
+#include <android/binder_process.h>
+#include <utils/Looper.h>
+#include <vhal_v2_0/EmulatedVehicleConnector.h>
+#include <vhal_v2_0/EmulatedVehicleHal.h>
 #include <vhal_v2_0/VehicleHalManager.h>
+#include <vhal_v2_0/WatchdogClient.h>
 
 using namespace android;
 using namespace android::hardware;
@@ -32,13 +34,12 @@ using namespace android::hardware::automotive::vehicle::V2_0;
 int main(int /* argc */, char* /* argv */ []) {
     auto store = std::make_unique<VehiclePropertyStore>();
     auto connector = std::make_unique<impl::EmulatedVehicleConnector>();
-    auto userHal = connector->getEmulatedUserHal();
-    auto hal = std::make_unique<impl::EmulatedVehicleHal>(store.get(), connector.get(), userHal);
-    auto emulator = connector->getEmulator();
+    auto hal = std::make_unique<impl::EmulatedVehicleHal>(store.get(), connector.get());
+    auto emulator = std::make_unique<impl::VehicleEmulator>(hal.get());
     auto service = std::make_unique<VehicleHalManager>(hal.get());
     connector->setValuePool(hal->getValuePool());
 
-    configureRpcThreadpool(4, true /* callerWillJoin */);
+    configureRpcThreadpool(4, false /* callerWillJoin */);
 
     ALOGI("Registering as service...");
     status_t status = service->registerAsService();
@@ -48,8 +49,22 @@ int main(int /* argc */, char* /* argv */ []) {
         return 1;
     }
 
+    // Setup a binder thread pool to be a car watchdog client.
+    ABinderProcess_setThreadPoolMaxThreadCount(1);
+    ABinderProcess_startThreadPool();
+    sp<Looper> looper(Looper::prepare(0 /* opts */));
+    std::shared_ptr<WatchdogClient> watchdogClient =
+            ndk::SharedRefBase::make<WatchdogClient>(looper, service.get());
+    // The current health check is done in the main thread, so it falls short of capturing the real
+    // situation. Checking through HAL binder thread should be considered.
+    if (!watchdogClient->initialize()) {
+        ALOGE("Failed to initialize car watchdog client");
+        return 1;
+    }
     ALOGI("Ready");
-    joinRpcThreadpool();
+    while (true) {
+        looper->pollAll(-1 /* timeoutMillis */);
+    }
 
     return 1;
 }

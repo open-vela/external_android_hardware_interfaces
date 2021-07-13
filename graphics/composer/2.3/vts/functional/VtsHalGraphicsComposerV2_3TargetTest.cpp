@@ -19,7 +19,6 @@
 #include <algorithm>
 
 #include <android-base/logging.h>
-#include <android-base/properties.h>
 #include <android/hardware/graphics/mapper/2.0/IMapper.h>
 #include <composer-command-buffer/2.3/ComposerCommandBuffer.h>
 #include <composer-vts/2.1/GraphicsComposerCallback.h>
@@ -38,10 +37,12 @@ namespace V2_3 {
 namespace vts {
 namespace {
 
+using common::V1_0::BufferUsage;
 using common::V1_1::RenderIntent;
 using common::V1_2::ColorMode;
 using common::V1_2::Dataspace;
 using common::V1_2::PixelFormat;
+using mapper::V2_0::IMapper;
 using V2_2::vts::Gralloc;
 
 class GraphicsComposerHidlTest : public ::testing::TestWithParam<std::string> {
@@ -136,6 +137,12 @@ class GraphicsComposerHidlCommandTest : public GraphicsComposerHidlTest {
     void TearDown() override {
         ASSERT_EQ(0, mReader->mErrors.size());
         ASSERT_NO_FATAL_FAILURE(GraphicsComposerHidlTest::TearDown());
+    }
+
+    const native_handle_t* allocate() {
+        return mGralloc->allocate(
+                64, 64, 1, static_cast<common::V1_1::PixelFormat>(PixelFormat::RGBA_8888),
+                static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN));
     }
 
     void execute() { mComposerClient->execute(mReader.get(), mWriter.get()); }
@@ -604,13 +611,11 @@ TEST_P(GraphicsComposerHidlTest, setDisplayBrightness) {
     EXPECT_EQ(mComposerClient->setDisplayBrightness(mPrimaryDisplay, -2.0f), Error::BAD_PARAMETER);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GraphicsComposerHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, GraphicsComposerHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IComposer::descriptor)),
         android::hardware::PrintInstanceNameToString);
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GraphicsComposerHidlCommandTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, GraphicsComposerHidlCommandTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IComposer::descriptor)),
@@ -623,15 +628,3 @@ INSTANTIATE_TEST_SUITE_P(
 }  // namespace graphics
 }  // namespace hardware
 }  // namespace android
-
-int main(int argc, char** argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-
-    using namespace std::chrono_literals;
-    if (!android::base::WaitForProperty("init.svc.surfaceflinger", "stopped", 10s)) {
-        ALOGE("Failed to stop init.svc.surfaceflinger");
-        return -1;
-    }
-
-    return RUN_ALL_TESTS();
-}
