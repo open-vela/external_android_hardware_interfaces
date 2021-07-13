@@ -385,10 +385,7 @@ interface IRadio {
      *                  Note this is for backward compatibility with the old radio modem. The modem
      *                  must not use this param for any other reason.
      *
-     * Response function is IRadioResponse.setupDataCallResponse() which may return
-     * RadioError:REQUEST_NOT_SUPPORTED if @1.2::IRadio or higher is supported.
-     *
-     * DEPRECATED in @1.2 or higher, use @1.2::IRadio.setupDataCall_1_2() instead.
+     * Response function is IRadioResponse.setupDataCallResponse()
      */
     oneway setupDataCall(int32_t serial, RadioTechnology radioTechnology,
             DataProfileInfo dataProfileInfo, bool modemCognitive, bool roamingAllowed,
@@ -549,10 +546,7 @@ interface IRadio {
      *        false => No specific reason specified
      *        true => Radio shutdown requested
      *
-     * Response function is IRadioResponse.deactivateDataCallResponse() which may return
-     * RadioError:REQUEST_NOT_SUPPORTED if @1.2::IRadio or higher is supported.
-     *
-     * DEPRECATED in @1.2 or higher, use @1.2::IRadio.deactivateDataCall_1_2() instead.
+     * Response function is IRadioResponse.deactivateDataCallResponse()
      */
     oneway deactivateDataCall(int32_t serial, int32_t cid,
             bool reasonRadioShutDown);
@@ -1462,10 +1456,7 @@ interface IRadio {
      * @param reportInterval desired reporting interval (ms).
      * @param pullMode LCE service mode. true: PULL; false: PUSH.
      *
-     * Response callback is IRadioResponse.startLceServiceResponse() which may return
-     * RadioError:REQUEST_NOT_SUPPORTED if @1.2::IRadio or higher is supported.
-     *
-     * DEPRECATED in @1.2 or higher which use the always-on LCE that relies on indications.
+     * Response callback is IRadioResponse.startLceServiceResponse()
      */
     oneway startLceService(int32_t serial, int32_t reportInterval, bool pullMode);
 
@@ -1475,10 +1466,7 @@ interface IRadio {
      *
      * @param serial Serial number of request.
      *
-     * Response callback is IRadioResponse.stopLceServiceResponse() which may return
-     * RadioError:REQUEST_NOT_SUPPORTED if @1.2::IRadio or higher is supported.
-     *
-     * DEPRECATED in @1.2 or higher which use the always-on LCE that relies on indications.
+     * Response callback is IRadioResponse.stopLceServiceResponse()
      */
     oneway stopLceService(int32_t serial);
 
@@ -1487,10 +1475,7 @@ interface IRadio {
      *
      * @param serial Serial number of request.
      *
-     * Response callback is IRadioResponse.pullLceDataResponse() which may return
-     * RadioError:REQUEST_NOT_SUPPORTED if @1.2::IRadio or higher is supported.
-     *
-     * DEPRECATED in @1.2 or higher which use the always-on LCE that relies on indications.
+     * Response callback is IRadioResponse.pullLceDataResponse()
      */
     oneway pullLceData(int32_t serial);
 
@@ -1561,10 +1546,7 @@ interface IRadio {
      * @param indicationFilter 32-bit bitmap of IndicationFilter. Bits set to 1 indicate the
      *        indications are enabled. See IndicationFilter for the definition of each bit.
      *
-     * Response callback is IRadioResponse.setIndicationFilterResponse() which may return
-     * RadioError:REQUEST_NOT_SUPPORTED if @1.2::IRadio or higher is supported.
-     *
-     * DEPRECATED in @1.2 or higher, use @1.2::IRadio.setIndicationFilter_1_2() instead.
+     * Response callback is IRadioResponse.setIndicationFilterResponse()
      */
     oneway setIndicationFilter(int32_t serial, bitfield<IndicationFilter> indicationFilter);
 
@@ -1578,10 +1560,7 @@ interface IRadio {
      * @param serial Serial number of request
      * @param powerUp True if powering up the sim card
      *
-     * Response callback is IRadioResponse.setSimCardPowerResponse() which may return
-     * RadioError:REQUEST_NOT_SUPPORTED if @1.1::IRadio or higher is supported.
-     *
-     * DEPRECATED in @1.1 or higher, use @1.1::IRadio.setSimCardPower_1_1() instead.
+     * Response callback is IRadioResponse.setSimCardPowerResponse()
      */
     oneway setSimCardPower(int32_t serial, bool powerUp);
 

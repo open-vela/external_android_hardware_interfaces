@@ -25,13 +25,6 @@ using ::android::hardware::sensors::V1_0::ISensors;
 using ::android::hardware::sensors::V1_0::Result;
 using ::android::hardware::sensors::V1_0::SensorInfo;
 
-void SensorsHidlEnvironmentV1_0::HidlTearDown() {
-    mStopThread = true;
-    if (mPollThread.joinable()) {
-        mPollThread.detach();
-    }
-}
-
 bool SensorsHidlEnvironmentV1_0::resetHal() {
     // wait upto 100ms * 10 = 1s for hidl service.
     constexpr auto RETRY_DELAY = std::chrono::milliseconds(100);
@@ -42,7 +35,8 @@ bool SensorsHidlEnvironmentV1_0::resetHal() {
         // this do ... while is for easy error handling
         do {
             step = "getService()";
-            sensors = ISensors::getService(mServiceName);
+            sensors = ISensors::getService(
+                SensorsHidlEnvironmentV1_0::Instance()->getServiceName<ISensors>());
             if (sensors == nullptr) {
                 break;
             }
@@ -110,23 +104,18 @@ void SensorsHidlEnvironmentV1_0::pollingThread(SensorsHidlEnvironmentV1_0* env,
     ALOGD("polling thread start");
 
     while (!stop) {
-        if (!env->sensors
-                     ->poll(64,
-                            [&](auto result, const auto& events, const auto& dynamicSensorsAdded) {
-                                if (result != Result::OK ||
-                                    (events.size() == 0 && dynamicSensorsAdded.size() == 0) ||
-                                    stop) {
-                                    stop = true;
-                                    return;
-                                }
+        env->sensors->poll(
+            64, [&](auto result, const auto& events, const auto& dynamicSensorsAdded) {
+                if (result != Result::OK ||
+                    (events.size() == 0 && dynamicSensorsAdded.size() == 0) || stop) {
+                    stop = true;
+                    return;
+                }
 
-                                for (const auto& e : events) {
-                                    env->addEvent(e);
-                                }
-                            })
-                     .isOk()) {
-            break;
-        }
+                for (const auto& e : events) {
+                    env->addEvent(e);
+                }
+            });
     }
     ALOGD("polling thread end");
 }
