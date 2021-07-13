@@ -197,7 +197,6 @@ cc_test {
     static_libs: [
         "libbase",
         "libcutils",
-        "libgmock",
         "libjsoncpp",
         "libprotobuf-cpp-lite",
     ],
@@ -213,7 +212,6 @@ cc_test {
         "android.hardware.automotive.vehicle@2.0-default-impl-lib",
         "android.hardware.automotive.vehicle@2.0-libproto-native",
     ],
-    data: [":vhal_test_json"],
     test_suites: ["general-tests"],
 }
 
@@ -235,7 +233,7 @@ cc_binary {
     static_libs: [
         "android.hardware.automotive.vehicle@2.0-manager-lib",
         "android.hardware.automotive.vehicle@2.0-libproto-native",
-        "android.hardware.automotive.vehicle@2.0-emulator-impl-lib",
+        "//device/generic/car/emulator/vhal_v2_0:android.hardware.automotive.vehicle@2.0-emulator-impl-lib",
     ],
 }
 
