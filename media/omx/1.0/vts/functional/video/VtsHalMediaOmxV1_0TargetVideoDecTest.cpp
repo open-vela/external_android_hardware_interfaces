@@ -451,7 +451,6 @@ void portReconfiguration(sp<IOmxNode> omxNode, sp<CodecObserver> observer,
                     status,
                     android::hardware::media::omx::V1_0::Status::TIMED_OUT);
 
-                ASSERT_NO_FATAL_FAILURE(freePortBuffers(oBuffer, oPortMode, true));
                 ASSERT_NO_FATAL_FAILURE(allocatePortBuffers(
                     omxNode, oBuffer, kPortIndexOutput, oPortMode, true));
                 status = observer->dequeueMessage(&msg, DEFAULT_TIMEOUT,
@@ -854,9 +853,9 @@ TEST_P(VideoDecHidlTest, DecodeTest) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
-                                                    kPortIndexInput, kPortIndexOutput, portMode,
-                                                    true));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
+                                                    &oBuffer, kPortIndexInput,
+                                                    kPortIndexOutput));
 }
 
 // Test for adaptive playback support
@@ -1002,9 +1001,9 @@ TEST_P(VideoDecHidlTest, AdaptivePlaybackTest) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
-                                                    kPortIndexInput, kPortIndexOutput, portMode,
-                                                    true));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
+                                                    &oBuffer, kPortIndexInput,
+                                                    kPortIndexOutput));
 }
 
 // end of sequence test
@@ -1068,9 +1067,9 @@ TEST_P(VideoDecHidlTest, EOSTest_M) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
-                                                    kPortIndexInput, kPortIndexOutput, portMode,
-                                                    true));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
+                                                    &oBuffer, kPortIndexInput,
+                                                    kPortIndexOutput));
 }
 
 // end of sequence test
@@ -1189,9 +1188,9 @@ TEST_P(VideoDecHidlTest, ThumbnailTest) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
-                                                    kPortIndexInput, kPortIndexOutput, portMode,
-                                                    true));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
+                                                    &oBuffer, kPortIndexInput,
+                                                    kPortIndexOutput));
 }
 
 // end of sequence test
@@ -1296,9 +1295,9 @@ TEST_P(VideoDecHidlTest, SimpleEOSTest) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
-                                                    kPortIndexInput, kPortIndexOutput, portMode,
-                                                    true));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
+                                                    &oBuffer, kPortIndexInput,
+                                                    kPortIndexOutput));
 }
 
 // test input/output port flush
@@ -1415,12 +1414,11 @@ TEST_P(VideoDecHidlTest, FlushTest) {
     ASSERT_NO_FATAL_FAILURE(
         changeStateExecutetoIdle(omxNode, observer, &iBuffer, &oBuffer));
     // set state to executing
-    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer, &oBuffer,
-                                                    kPortIndexInput, kPortIndexOutput, portMode,
-                                                    true));
+    ASSERT_NO_FATAL_FAILURE(changeStateIdletoLoaded(omxNode, observer, &iBuffer,
+                                                    &oBuffer, kPortIndexInput,
+                                                    kPortIndexOutput));
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(VideoDecHidlTest);
 INSTANTIATE_TEST_SUITE_P(PerInstance, VideoDecHidlTest, testing::ValuesIn(kTestParameters),
                          android::hardware::PrintInstanceTupleNameToString<>);
 
