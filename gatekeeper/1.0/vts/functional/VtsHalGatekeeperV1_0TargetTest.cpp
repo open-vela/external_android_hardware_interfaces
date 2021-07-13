@@ -24,16 +24,16 @@
 #include <inttypes.h>
 #include <unistd.h>
 
-#include <gtest/gtest.h>
 #include <hardware/hw_auth_token.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 
 #include <android/log.h>
 #include <android/hardware/gatekeeper/1.0/IGatekeeper.h>
 #include <android/hardware/gatekeeper/1.0/types.h>
 
 #include <log/log.h>
+
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 
 using ::android::hardware::hidl_string;
 using ::android::hardware::hidl_vec;
@@ -78,8 +78,22 @@ static const hw_auth_token_t *toAuthToken(GatekeeperResponse &rsp) {
   return auth_token;
 }
 
+// Test environment for Gatekeeper HIDL HAL.
+class GatekeeperHidlEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+ public:
+  // get the test environment singleton
+  static GatekeeperHidlEnvironment* Instance() {
+    static GatekeeperHidlEnvironment* instance = new GatekeeperHidlEnvironment;
+    return instance;
+  }
+
+  virtual void registerTestServices() override { registerTestService<IGatekeeper>(); }
+ private:
+  GatekeeperHidlEnvironment() {}
+};
+
 // The main test class for Gatekeeper HIDL HAL.
-class GatekeeperHidlTest : public ::testing::TestWithParam<std::string> {
+class GatekeeperHidlTest : public ::testing::VtsHalHidlTargetTestBase {
  protected:
   void setUid(uint32_t uid) { uid_ = uid; }
 
@@ -190,7 +204,8 @@ class GatekeeperHidlTest : public ::testing::TestWithParam<std::string> {
   GatekeeperHidlTest() : uid_(0) {}
   virtual void SetUp() override {
     GatekeeperResponse rsp;
-    gatekeeper_ = IGatekeeper::getService(GetParam());
+    gatekeeper_ = ::testing::VtsHalHidlTargetTestBase::getService<IGatekeeper>(
+        GatekeeperHidlEnvironment::Instance()->getServiceName<IGatekeeper>());
     ASSERT_NE(nullptr, gatekeeper_.get());
     doDeleteAllUsers(rsp);
   }
@@ -204,7 +219,7 @@ class GatekeeperHidlTest : public ::testing::TestWithParam<std::string> {
 /**
  * Ensure we can enroll new password
  */
-TEST_P(GatekeeperHidlTest, EnrollSuccess) {
+TEST_F(GatekeeperHidlTest, EnrollSuccess) {
   hidl_vec<uint8_t> password;
   GatekeeperResponse rsp;
   ALOGI("Testing Enroll (expected success)");
@@ -216,7 +231,7 @@ TEST_P(GatekeeperHidlTest, EnrollSuccess) {
 /**
  * Ensure we can not enroll empty password
  */
-TEST_P(GatekeeperHidlTest, EnrollNoPassword) {
+TEST_F(GatekeeperHidlTest, EnrollNoPassword) {
   hidl_vec<uint8_t> password;
   GatekeeperResponse rsp;
   ALOGI("Testing Enroll (expected failure)");
@@ -227,7 +242,7 @@ TEST_P(GatekeeperHidlTest, EnrollNoPassword) {
 /**
  * Ensure we can successfully verify previously enrolled password
  */
-TEST_P(GatekeeperHidlTest, VerifySuccess) {
+TEST_F(GatekeeperHidlTest, VerifySuccess) {
   GatekeeperResponse enrollRsp;
   GatekeeperResponse verifyRsp;
   hidl_vec<uint8_t> password;
@@ -236,10 +251,6 @@ TEST_P(GatekeeperHidlTest, VerifySuccess) {
   generatePassword(password, 0);
   enrollNewPassword(password, enrollRsp, true);
   verifyPassword(password, enrollRsp.data, 1, verifyRsp, true);
-
-  ALOGI("Testing unenrolled password doesn't verify");
-  generatePassword(password, 1);
-  verifyPassword(password, enrollRsp.data, 1, verifyRsp, false);
   ALOGI("Testing Enroll+Verify done");
 }
 
@@ -247,7 +258,7 @@ TEST_P(GatekeeperHidlTest, VerifySuccess) {
  * Ensure we can securely update password (keep the same
  * secure user_id) if we prove we know old password
  */
-TEST_P(GatekeeperHidlTest, TrustedReenroll) {
+TEST_F(GatekeeperHidlTest, TrustedReenroll) {
   GatekeeperResponse enrollRsp;
   GatekeeperRequest reenrollReq;
   GatekeeperResponse reenrollRsp;
@@ -286,7 +297,7 @@ TEST_P(GatekeeperHidlTest, TrustedReenroll) {
  * Ensure we can update password (and get new
  * secure user_id) if we don't know old password
  */
-TEST_P(GatekeeperHidlTest, UntrustedReenroll) {
+TEST_F(GatekeeperHidlTest, UntrustedReenroll) {
   GatekeeperResponse enrollRsp;
   GatekeeperResponse reenrollRsp;
   GatekeeperResponse verifyRsp;
@@ -310,15 +321,13 @@ TEST_P(GatekeeperHidlTest, UntrustedReenroll) {
   if (first != nullptr && second != nullptr) {
     EXPECT_NE(first->user_id, second->user_id);
   }
-  // the old enrollment should be invalid now
-  verifyPassword(password, enrollRsp.data, 0, verifyRsp, false);
   ALOGI("Testing Untrusted Reenroll done");
 }
 
 /**
  * Ensure we dont get successful verify with invalid data
  */
-TEST_P(GatekeeperHidlTest, VerifyNoData) {
+TEST_F(GatekeeperHidlTest, VerifyNoData) {
   hidl_vec<uint8_t> password;
   hidl_vec<uint8_t> passwordHandle;
   GatekeeperResponse verifyRsp;
@@ -332,7 +341,7 @@ TEST_P(GatekeeperHidlTest, VerifyNoData) {
 /**
  * Ensure we can not verify password after we enrolled it and then deleted user
  */
-TEST_P(GatekeeperHidlTest, DeleteUserTest) {
+TEST_F(GatekeeperHidlTest, DeleteUserTest) {
   hidl_vec<uint8_t> password;
   GatekeeperResponse enrollRsp;
   GatekeeperResponse verifyRsp;
@@ -359,7 +368,7 @@ TEST_P(GatekeeperHidlTest, DeleteUserTest) {
 /**
  * Ensure we can not delete a user that does not exist
  */
-TEST_P(GatekeeperHidlTest, DeleteInvalidUserTest) {
+TEST_F(GatekeeperHidlTest, DeleteInvalidUserTest) {
   hidl_vec<uint8_t> password;
   GatekeeperResponse enrollRsp;
   GatekeeperResponse verifyRsp;
@@ -391,7 +400,7 @@ TEST_P(GatekeeperHidlTest, DeleteInvalidUserTest) {
  * Ensure we can not verify passwords after we enrolled them and then deleted
  * all users
  */
-TEST_P(GatekeeperHidlTest, DeleteAllUsersTest) {
+TEST_F(GatekeeperHidlTest, DeleteAllUsersTest) {
   struct UserData {
     uint32_t userId;
     hidl_vec<uint8_t> password;
@@ -439,8 +448,11 @@ TEST_P(GatekeeperHidlTest, DeleteAllUsersTest) {
   ALOGI("Testing deleteAllUsers done: rsp=%" PRIi32, delAllRsp.code);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GatekeeperHidlTest);
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, GatekeeperHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IGatekeeper::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char **argv) {
+  ::testing::AddGlobalTestEnvironment(GatekeeperHidlEnvironment::Instance());
+  ::testing::InitGoogleTest(&argc, argv);
+  GatekeeperHidlEnvironment::Instance()->init(&argc, argv);
+  int status = RUN_ALL_TESTS();
+  ALOGI("Test result = %d", status);
+  return status;
+}

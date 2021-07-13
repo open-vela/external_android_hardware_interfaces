@@ -14,32 +14,15 @@
  * limitations under the License.
  */
 
-#pragma once
-
 #include <android-base/logging.h>
 
+#include <VtsHalHidlTargetTestBase.h>
+
 #include <android/hardware/radio/1.0/types.h>
-#include <android/log.h>
-#include <gtest/gtest.h>
 
 using ::android::hardware::radio::V1_0::RadioError;
-using ::android::hardware::radio::V1_0::RegState;
 using ::android::hardware::radio::V1_0::SapResultCode;
 using namespace std;
-
-/*
- * MACRO used to skip test case when radio response return error REQUEST_NOT_SUPPORTED
- * on HAL versions which has deprecated the request interfaces. The MACRO can only be used
- * AFTER receiving radio response.
- */
-#define SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL(__ver__, __radio__, __radioRsp__)      \
-    do {                                                                                   \
-        sp<::android::hardware::radio::V##__ver__::IRadio> __radio =                       \
-                ::android::hardware::radio::V##__ver__::IRadio::castFrom(__radio__);       \
-        if (__radio && __radioRsp__->rspInfo.error == RadioError::REQUEST_NOT_SUPPORTED) { \
-            GTEST_SKIP() << "REQUEST_NOT_SUPPORTED";                                       \
-        }                                                                                  \
-    } while (0)
 
 enum CheckFlag {
     CHECK_DEFAULT = 0,
@@ -48,14 +31,6 @@ enum CheckFlag {
     CHECK_OEM_AND_GENERAL_ERROR = 3,
     CHECK_SAP_ERROR = 4,
 };
-
-static constexpr const char* FEATURE_VOICE_CALL = "android.software.connectionservice";
-
-static constexpr const char* FEATURE_TELEPHONY = "android.hardware.telephony";
-
-static constexpr const char* FEATURE_TELEPHONY_GSM = "android.hardware.telephony.gsm";
-
-static constexpr const char* FEATURE_TELEPHONY_CDMA = "android.hardware.telephony.cdma";
 
 /*
  * Generate random serial number for radio test
@@ -73,53 +48,3 @@ int GetRandomSerialNumber();
  * vendor/devices implementations.
  */
 ::testing::AssertionResult CheckAnyOfErrors(SapResultCode err, std::vector<SapResultCode> errors);
-
-/*
- * Check if device supports feature.
- */
-bool deviceSupportsFeature(const char* feature);
-
-/*
- * Check if device is in SsSs (Single SIM Single Standby).
- */
-bool isSsSsEnabled();
-
-/*
- * Check if device is in DSDS (Dual SIM Dual Standby).
- */
-bool isDsDsEnabled();
-
-/*
- * Check if device is in TSTS (Triple SIM Triple Standby).
- */
-bool isTsTsEnabled();
-
-/*
- * Check if voice status is in emergency only.
- */
-bool isVoiceEmergencyOnly(RegState state);
-
-/*
- * Check if voice status is in service.
- */
-bool isVoiceInService(RegState state);
-
-/**
- * Used when waiting for an asynchronous response from the HAL.
- */
-class RadioResponseWaiter {
-  protected:
-    std::mutex mtx_;
-    std::condition_variable cv_;
-    int count_;
-
-  public:
-    /* Serial number for radio request */
-    int serial;
-
-    /* Used as a mechanism to inform the test about data/event callback */
-    void notify(int receivedSerial);
-
-    /* Test code calls this function to wait for response */
-    std::cv_status wait();
-};

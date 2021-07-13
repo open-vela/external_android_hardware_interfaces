@@ -16,14 +16,10 @@
 
 #include <android-base/logging.h>
 
-#include <VtsCoreUtil.h>
-#include <android/hardware/wifi/1.0/IWifi.h>
 #include <android/hardware/wifi/1.0/IWifiNanIface.h>
 #include <android/hardware/wifi/1.0/IWifiNanIfaceEventCallback.h>
-#include <android/hardware/wifi/1.5/IWifiNanIface.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
+
+#include <VtsHalHidlTargetTestBase.h>
 #include <chrono>
 #include <condition_variable>
 #include <mutex>
@@ -33,34 +29,27 @@
 
 using namespace ::android::hardware::wifi::V1_0;
 
-using ::android::sp;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
-using ::android::hardware::wifi::V1_0::IWifi;
+using ::android::sp;
 
 #define TIMEOUT_PERIOD 10
 
 /**
  * Fixture to use for all NAN Iface HIDL interface tests.
  */
-class WifiNanIfaceHidlTest : public ::testing::TestWithParam<std::string> {
-   public:
+class WifiNanIfaceHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+  public:
     virtual void SetUp() override {
-        if (!::testing::deviceSupportsFeature("android.hardware.wifi.aware"))
-            GTEST_SKIP() << "Skipping this test since NAN is not supported.";
-
-        // Make sure test starts with a clean state
-        stopWifi(GetInstanceName());
-
-        iwifiNanIface = getWifiNanIface(GetInstanceName());
-        ASSERT_NE(nullptr, iwifiNanIface.get());
-        ASSERT_EQ(WifiStatusCode::SUCCESS,
-                  HIDL_INVOKE(iwifiNanIface, registerEventCallback,
-                              new WifiNanIfaceEventCallback(*this))
-                      .code);
+      iwifiNanIface = getWifiNanIface();
+      ASSERT_NE(nullptr, iwifiNanIface.get());
+      ASSERT_EQ(WifiStatusCode::SUCCESS, HIDL_INVOKE(iwifiNanIface, registerEventCallback,
+            new WifiNanIfaceEventCallback(*this)).code);
     }
 
-    virtual void TearDown() override { stopWifi(GetInstanceName()); }
+    virtual void TearDown() override {
+      stopWifi();
+    }
 
     /* Used as a mechanism to inform the test about data/event callback */
     inline void notify() {
@@ -449,8 +438,6 @@ class WifiNanIfaceHidlTest : public ::testing::TestWithParam<std::string> {
       NanFollowupReceivedInd nanFollowupReceivedInd;
       NanDataPathRequestInd nanDataPathRequestInd;
       NanDataPathConfirmInd nanDataPathConfirmInd;
-
-      std::string GetInstanceName() { return GetParam(); }
 };
 
 /*
@@ -458,8 +445,9 @@ class WifiNanIfaceHidlTest : public ::testing::TestWithParam<std::string> {
  * Ensures that an instance of the IWifiNanIface proxy object is
  * successfully created.
  */
-TEST_P(WifiNanIfaceHidlTest, Create) {
-    // The creation of a proxy object is tested as part of SetUp method.
+TEST(WifiNanIfaceHidlTestNoFixture, Create) {
+  ASSERT_NE(nullptr, getWifiNanIface().get());
+  stopWifi();
 }
 
 /*
@@ -467,62 +455,41 @@ TEST_P(WifiNanIfaceHidlTest, Create) {
  * Ensure that API calls fail with ERROR_WIFI_IFACE_INVALID when using an interface once wifi
  * is disabled.
  */
-TEST_P(WifiNanIfaceHidlTest, FailOnIfaceInvalid) {
-    stopWifi(GetInstanceName());
-    android::sp<IWifiNanIface> iwifiNanIface =
-        getWifiNanIface(GetInstanceName());
-    ASSERT_NE(nullptr, iwifiNanIface.get());
-    stopWifi(GetInstanceName());
-    sleep(5);  // make sure that all chips/interfaces are invalidated
-    ASSERT_EQ(WifiStatusCode::ERROR_WIFI_IFACE_INVALID,
-              HIDL_INVOKE(iwifiNanIface, getCapabilitiesRequest, 0).code);
+TEST(WifiNanIfaceHidlTestNoFixture, FailOnIfaceInvalid) {
+  android::sp<IWifiNanIface> iwifiNanIface = getWifiNanIface();
+  ASSERT_NE(nullptr, iwifiNanIface.get());
+  stopWifi();
+  sleep(5); // make sure that all chips/interfaces are invalidated
+  ASSERT_EQ(WifiStatusCode::ERROR_WIFI_IFACE_INVALID,
+          HIDL_INVOKE(iwifiNanIface, getCapabilitiesRequest, 0).code);
 }
 
 /*
  * getCapabilitiesRequest: validate that returns capabilities.
  */
-TEST_P(WifiNanIfaceHidlTest, getCapabilitiesRequest) {
-    uint16_t inputCmdId = 10;
-    callbackType = INVALID;
-    sp<::android::hardware::wifi::V1_5::IWifiNanIface> iface_converted =
-        ::android::hardware::wifi::V1_5::IWifiNanIface::castFrom(iwifiNanIface);
-    if (iface_converted != nullptr) {
-        ASSERT_EQ(WifiStatusCode::ERROR_NOT_SUPPORTED,
-                  HIDL_INVOKE(iwifiNanIface, getCapabilitiesRequest, inputCmdId)
-                      .code);
-        // Skip this test since this API is deprecated in this newer HAL version
-        return;
-    }
-
-    ASSERT_EQ(
-        WifiStatusCode::SUCCESS,
+TEST_F(WifiNanIfaceHidlTest, getCapabilitiesRequest) {
+  uint16_t inputCmdId = 10;
+  callbackType = INVALID;
+  ASSERT_EQ(WifiStatusCode::SUCCESS,
         HIDL_INVOKE(iwifiNanIface, getCapabilitiesRequest, inputCmdId).code);
-    // wait for a callback
-    ASSERT_EQ(std::cv_status::no_timeout, wait(NOTIFY_CAPABILITIES_RESPONSE));
-    ASSERT_EQ(NOTIFY_CAPABILITIES_RESPONSE, callbackType);
-    ASSERT_EQ(id, inputCmdId);
+  // wait for a callback
+  ASSERT_EQ(std::cv_status::no_timeout, wait(NOTIFY_CAPABILITIES_RESPONSE));
+  ASSERT_EQ(NOTIFY_CAPABILITIES_RESPONSE, callbackType);
+  ASSERT_EQ(id, inputCmdId);
 
-    // check for reasonable capability values
-    EXPECT_GT(capabilities.maxConcurrentClusters, (unsigned int)0);
-    EXPECT_GT(capabilities.maxPublishes, (unsigned int)0);
-    EXPECT_GT(capabilities.maxSubscribes, (unsigned int)0);
-    EXPECT_EQ(capabilities.maxServiceNameLen, (unsigned int)255);
-    EXPECT_EQ(capabilities.maxMatchFilterLen, (unsigned int)255);
-    EXPECT_GT(capabilities.maxTotalMatchFilterLen, (unsigned int)255);
-    EXPECT_EQ(capabilities.maxServiceSpecificInfoLen, (unsigned int)255);
-    EXPECT_GE(capabilities.maxExtendedServiceSpecificInfoLen,
-              (unsigned int)255);
-    EXPECT_GT(capabilities.maxNdiInterfaces, (unsigned int)0);
-    EXPECT_GT(capabilities.maxNdpSessions, (unsigned int)0);
-    EXPECT_GT(capabilities.maxAppInfoLen, (unsigned int)0);
-    EXPECT_GT(capabilities.maxQueuedTransmitFollowupMsgs, (unsigned int)0);
-    EXPECT_GT(capabilities.maxSubscribeInterfaceAddresses, (unsigned int)0);
-    EXPECT_NE(capabilities.supportedCipherSuites, (unsigned int)0);
+  // check for reasonable capability values
+  EXPECT_GT(capabilities.maxConcurrentClusters, (unsigned int) 0);
+  EXPECT_GT(capabilities.maxPublishes, (unsigned int) 0);
+  EXPECT_GT(capabilities.maxSubscribes, (unsigned int) 0);
+  EXPECT_EQ(capabilities.maxServiceNameLen, (unsigned int) 255);
+  EXPECT_EQ(capabilities.maxMatchFilterLen, (unsigned int) 255);
+  EXPECT_GT(capabilities.maxTotalMatchFilterLen, (unsigned int) 255);
+  EXPECT_EQ(capabilities.maxServiceSpecificInfoLen, (unsigned int) 255);
+  EXPECT_GE(capabilities.maxExtendedServiceSpecificInfoLen, (unsigned int) 255);
+  EXPECT_GT(capabilities.maxNdiInterfaces, (unsigned int) 0);
+  EXPECT_GT(capabilities.maxNdpSessions, (unsigned int) 0);
+  EXPECT_GT(capabilities.maxAppInfoLen, (unsigned int) 0);
+  EXPECT_GT(capabilities.maxQueuedTransmitFollowupMsgs, (unsigned int) 0);
+  EXPECT_GT(capabilities.maxSubscribeInterfaceAddresses, (unsigned int) 0);
+  EXPECT_NE(capabilities.supportedCipherSuites, (unsigned int) 0);
 }
-
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(WifiNanIfaceHidlTest);
-INSTANTIATE_TEST_SUITE_P(
-    PerInstance, WifiNanIfaceHidlTest,
-    testing::ValuesIn(
-        android::hardware::getAllHalInstanceNames(IWifi::descriptor)),
-    android::hardware::PrintInstanceNameToString);
