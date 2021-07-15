@@ -452,7 +452,6 @@ TEST_P(RadioHidlTest_v1_5, togglingUiccApplicationsSimAbsent) {
 TEST_P(RadioHidlTest_v1_5, togglingUiccApplicationsSimPresent) {
     // This test case only test SIM ABSENT case.
     if (cardStatus.base.base.base.cardState != CardState::PRESENT) return;
-    if (cardStatus.applications.size() == 0) return;
 
     // Disable Uicc applications.
     serial = GetRandomSerialNumber();
@@ -1251,20 +1250,8 @@ TEST_P(RadioHidlTest_v1_5, sendCdmaSmsExpectMore) {
  * Test IRadio.getBarringInfo() for the response returned.
  */
 TEST_P(RadioHidlTest_v1_5, getBarringInfo) {
-    // If the previous setRadioPower_1_5_emergencyCall_cancelled test has just finished.
-    // Due to radio restarting, modem may need a little more time to acquire network service
-    // and barring infos. If voice status is in-service, waiting 3s to get barring infos ready.
-    // Or waiting 10s if voice status is not in-service.
     serial = GetRandomSerialNumber();
-    radio_v1_5->getVoiceRegistrationState_1_5(serial);
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
-    if (isVoiceInService(radioRsp_v1_5->voiceRegResp.regState)) {
-        sleep(BARRING_INFO_MAX_WAIT_TIME_SECONDS);
-    } else {
-        sleep(VOICE_SERVICE_MAX_WAIT_TIME_SECONDS);
-    }
 
-    serial = GetRandomSerialNumber();
     Return<void> res = radio_v1_5->getBarringInfo(serial);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_5->rspInfo.type);
@@ -1293,7 +1280,7 @@ TEST_P(RadioHidlTest_v1_5, getBarringInfo) {
                      info.serviceType <= BarringInfo::ServiceType::OPERATOR_32));
         reportedServices.insert(info.serviceType);
 
-        // Any type that is "conditional" must have valid values for conditional barring
+        // Any type that is "conditional" must have sane values for conditional barring
         // factor and time.
         switch (info.barringType) {
             case BarringInfo::BarringType::NONE:  // fall through
@@ -1312,7 +1299,7 @@ TEST_P(RadioHidlTest_v1_5, getBarringInfo) {
 
     // Certain types of barring are relevant for certain RANs. Ensure that only the right
     // types are reported. Note that no types are required, simply that for a given technology
-    // only certain types are valid. This is one way to check that implementations are
+    // only certain types are valid. This is one way to sanity check that implementations are
     // not providing information that they don't have.
     static const std::set<BarringInfo::ServiceType> UTRA_SERVICES{
             BarringInfo::ServiceType::CS_SERVICE, BarringInfo::ServiceType::PS_SERVICE,

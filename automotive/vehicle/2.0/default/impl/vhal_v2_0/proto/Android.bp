@@ -13,21 +13,8 @@
 // limitations under the License.
 
 // Vehicle HAL Protobuf library
-package {
-    // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "hardware_interfaces_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_interfaces_license"],
-}
-
 cc_library_static {
     name: "android.hardware.automotive.vehicle@2.0-libproto-native",
-    visibility: [
-        "//hardware/interfaces/automotive/vehicle/2.0/default:__subpackages__",
-        "//device/generic/car/emulator/vhal_v2_0:__subpackages__",
-    ],
     vendor: true,
     host_supported: true,
     proto: {
