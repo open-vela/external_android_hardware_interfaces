@@ -23,11 +23,16 @@ package {
     default_applicable_licenses: ["hardware_interfaces_license"],
 }
 
-cc_defaults {
-    name: "keymint_vts_defaults",
+cc_test {
+    name: "VtsAidlKeyMintTargetTest",
     defaults: [
-        "use_libaidlvintf_gtest_helper_static",
         "VtsHalTargetTestDefaults",
+        "use_libaidlvintf_gtest_helper_static",
+    ],
+    srcs: [
+        "AttestKeyTest.cpp",
+        "DeviceUniqueAttestationTest.cpp",
+        "KeyMintTest.cpp",
     ],
     shared_libs: [
         "libbinder_ndk",
@@ -38,24 +43,9 @@ cc_defaults {
         "android.hardware.security.secureclock-V1-ndk_platform",
         "libcppbor_external",
         "libcppcose_rkp",
-        "libjsoncpp",
         "libkeymint",
         "libkeymint_remote_prov_support",
         "libkeymint_support",
-    ],
-}
-
-cc_test {
-    name: "VtsAidlKeyMintTargetTest",
-    defaults: [
-        "keymint_vts_defaults",
-    ],
-    srcs: [
-        "AttestKeyTest.cpp",
-        "DeviceUniqueAttestationTest.cpp",
-        "KeyMintTest.cpp",
-    ],
-    static_libs: [
         "libkeymint_vts_test_utils",
     ],
     test_suites: [
@@ -67,7 +57,8 @@ cc_test {
 cc_test_library {
     name: "libkeymint_vts_test_utils",
     defaults: [
-        "keymint_vts_defaults",
+        "VtsHalTargetTestDefaults",
+        "use_libaidlvintf_gtest_helper_static",
     ],
     srcs: [
         "KeyMintAidlTestBase.cpp",
@@ -75,22 +66,45 @@ cc_test_library {
     export_include_dirs: [
         ".",
     ],
+    shared_libs: [
+        "libbinder_ndk",
+        "libcrypto",
+    ],
     static_libs: [
+        "android.hardware.security.keymint-V1-ndk_platform",
+        "android.hardware.security.secureclock-V1-ndk_platform",
+        "libcppbor_external",
+        "libcppcose_rkp",
         "libgmock_ndk",
+        "libkeymint",
+        "libkeymint_remote_prov_support",
+        "libkeymint_support",
     ],
 }
 
 cc_test {
     name: "VtsHalRemotelyProvisionedComponentTargetTest",
     defaults: [
-        "keymint_vts_defaults",
+        "VtsHalTargetTestDefaults",
+        "use_libaidlvintf_gtest_helper_static",
     ],
     srcs: [
         "VtsRemotelyProvisionedComponentTests.cpp",
     ],
+    shared_libs: [
+        "libbinder_ndk",
+        "libcrypto",
+    ],
     static_libs: [
+        "android.hardware.security.keymint-V1-ndk_platform",
+        "android.hardware.security.secureclock-V1-ndk_platform",
+        "libcppbor_external",
+        "libcppcose_rkp",
         "libgmock_ndk",
         "libkeymaster_portable",
+        "libkeymint",
+        "libkeymint_support",
+        "libkeymint_remote_prov_support",
         "libkeymint_vts_test_utils",
         "libpuresoftkeymasterdevice",
     ],

@@ -17,19 +17,14 @@
 #pragma once
 
 #include <android-base/logging.h>
-#include <random>
 
 namespace aidl::android::hardware::biometrics::fingerprint {
 
 class FakeFingerprintEngine {
   public:
-    FakeFingerprintEngine() : mRandom(std::mt19937::default_seed) {}
-
     void generateChallengeImpl(ISessionCallback* cb) {
         LOG(INFO) << "generateChallengeImpl";
-        std::uniform_int_distribution<int64_t> dist;
-        auto challenge = dist(mRandom);
-        cb->onChallengeGenerated(challenge);
+        cb->onChallengeGenerated(0 /* challenge */);
     }
 
     void revokeChallengeImpl(ISessionCallback* cb, int64_t challenge) {
@@ -37,13 +32,8 @@ class FakeFingerprintEngine {
         cb->onChallengeRevoked(challenge);
     }
 
-    void enrollImpl(ISessionCallback* cb, const keymaster::HardwareAuthToken& hat) {
+    void enrollImpl(ISessionCallback* cb, const keymaster::HardwareAuthToken& /*hat*/) {
         LOG(INFO) << "enrollImpl";
-        // Do proper HAT verification in the real implementation.
-        if (hat.mac.empty()) {
-            cb->onError(Error::UNABLE_TO_PROCESS, 0 /* vendorError */);
-            return;
-        }
         cb->onEnrollmentProgress(0 /* enrollmentId */, 0 /* remaining */);
     }
 
@@ -81,8 +71,6 @@ class FakeFingerprintEngine {
         LOG(INFO) << "resetLockoutImpl";
         cb->onLockoutCleared();
     }
-
-    std::mt19937 mRandom;
 };
 
 }  // namespace aidl::android::hardware::biometrics::fingerprint
