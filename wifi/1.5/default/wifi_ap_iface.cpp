@@ -136,25 +136,24 @@ WifiApIface::getValidFrequenciesForBandInternal(V1_0::WifiBand band) {
 
 WifiStatus WifiApIface::setMacAddressInternal(
     const std::array<uint8_t, 6>& mac) {
+    bool status;
     // Support random MAC up to 2 interfaces
     if (instances_.size() == 2) {
         int rbyte = 1;
         for (auto const& intf : instances_) {
             std::array<uint8_t, 6> rmac = mac;
-            // reverse the bits to avoid collision
+            // reverse the bits to avoid clision
             rmac[rbyte] = 0xff - rmac[rbyte];
-            if (!iface_util_.lock()->setMacAddress(intf, rmac)) {
+            status = iface_util_.lock()->setMacAddress(intf, rmac);
+            if (!status) {
                 LOG(INFO) << "Failed to set random mac address on " << intf;
-                return createWifiStatus(WifiStatusCode::ERROR_UNKNOWN);
             }
             rbyte++;
         }
+    } else {
+        status = iface_util_.lock()->setMacAddress(ifname_, mac);
     }
-    // It also needs to set mac address for bridged interface, otherwise the mac
-    // address of bridged interface will be changed after one of instance
-    // down.
-    if (!iface_util_.lock()->setMacAddress(ifname_, mac)) {
-        LOG(ERROR) << "Fail to config MAC for interface " << ifname_;
+    if (!status) {
         return createWifiStatus(WifiStatusCode::ERROR_UNKNOWN);
     }
     return createWifiStatus(WifiStatusCode::SUCCESS);
@@ -181,18 +180,6 @@ WifiStatus WifiApIface::resetToFactoryMacAddressInternal() {
                 !iface_util_.lock()->setMacAddress(intf, getMacResult.second)) {
                 return createWifiStatus(WifiStatusCode::ERROR_UNKNOWN);
             }
-        }
-        // It needs to set mac address for bridged interface, otherwise the mac
-        // address of the bridged interface will be changed after one of the
-        // instance down. Thus we are generating a random MAC address for the
-        // bridged interface even if we got the request to reset the Factory
-        // MAC. Since the bridged interface is an internal interface for the
-        // operation of bpf and others networking operation.
-        if (!iface_util_.lock()->setMacAddress(
-                ifname_, iface_util_.lock()->createRandomMacAddress())) {
-            LOG(ERROR) << "Fail to config MAC for bridged interface "
-                       << ifname_;
-            return createWifiStatus(WifiStatusCode::ERROR_UNKNOWN);
         }
     } else {
         getMacResult = getFactoryMacAddressInternal(ifname_);
