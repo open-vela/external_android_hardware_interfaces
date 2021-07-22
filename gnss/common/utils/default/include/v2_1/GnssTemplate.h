@@ -35,7 +35,6 @@
 #include "GnssDebug.h"
 #include "GnssMeasurement.h"
 #include "GnssMeasurementCorrections.h"
-#include "GnssReplayUtils.h"
 #include "MockLocation.h"
 #include "NmeaFixInfo.h"
 #include "Utils.h"
@@ -114,7 +113,6 @@ struct GnssTemplate : public T_IGnss {
     void reportLocation(const V2_0::GnssLocation&) const;
     void reportLocation(const V1_0::GnssLocation&) const;
     void reportSvStatus(const hidl_vec<V2_1::IGnssCallback::GnssSvInfo>&) const;
-    void reportGnssStatusValue(const V1_0::IGnssCallback::GnssStatusValue) const;
 
     Return<void> help(const hidl_handle& fd);
     Return<void> setLocation(const hidl_handle& fd, const hidl_vec<hidl_string>& options);
@@ -160,19 +158,52 @@ GnssTemplate<T_IGnss>::~GnssTemplate() {
 
 template <class T_IGnss>
 std::unique_ptr<V2_0::GnssLocation> GnssTemplate<T_IGnss>::getLocationFromHW() {
+    char inputBuffer[INPUT_BUFFER_SIZE];
     if (!mHardwareModeChecked) {
-        // default using /dev/gnss0
-        std::string gnss_dev_path = ReplayUtils::getGnssPath();
+        // default using gnss0
+        const char * gnss_dev_path = GNSS_PATH;
+        char devname_value[PROPERTY_VALUE_MAX] = "";
+        if (property_get("debug.location.gnss.devname", devname_value, NULL) > 0) {
+            gnss_dev_path = devname_value;
+            ALOGD("using %s instead of the default %s", gnss_dev_path, GNSS_PATH);
+        }
 
-        mGnssFd = open(gnss_dev_path.c_str(), O_RDWR | O_NONBLOCK);
+        mGnssFd = open(gnss_dev_path, O_RDWR | O_NONBLOCK);
         if (mGnssFd == -1) {
-            ALOGW("Failed to open %s errno: %d", gnss_dev_path.c_str(), errno);
+            ALOGW("Failed to open %s errno: %d", gnss_dev_path, errno);
         }
         mHardwareModeChecked = true;
     }
 
-    std::string inputStr = ::android::hardware::gnss::common::ReplayUtils::getDataFromDeviceFile(
-            CMD_GET_LOCATION, mMinIntervalMs);
+    if (mGnssFd == -1) {
+        return nullptr;
+    }
+
+    int bytes_write = write(mGnssFd, CMD_GET_LOCATION, strlen(CMD_GET_LOCATION));
+    if (bytes_write <= 0) {
+        return nullptr;
+    }
+
+    struct epoll_event ev, events[1];
+    ev.data.fd = mGnssFd;
+    ev.events = EPOLLIN;
+    int epoll_fd = epoll_create1(0);
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, mGnssFd, &ev);
+    int bytes_read = -1;
+    std::string inputStr = "";
+    int epoll_ret = epoll_wait(epoll_fd, events, 1, mMinIntervalMs);
+
+    if (epoll_ret == -1) {
+        return nullptr;
+    }
+    while (true) {
+        memset(inputBuffer, 0, INPUT_BUFFER_SIZE);
+        bytes_read = read(mGnssFd, &inputBuffer, INPUT_BUFFER_SIZE);
+        if (bytes_read <= 0) {
+            break;
+        }
+        inputStr += std::string(inputBuffer, bytes_read);
+    }
     return NmeaFixInfo::getLocationFromInputStr(inputStr);
 }
 
@@ -184,7 +215,6 @@ Return<bool> GnssTemplate<T_IGnss>::start() {
     }
 
     mIsActive = true;
-    this->reportGnssStatusValue(V1_0::IGnssCallback::GnssStatusValue::SESSION_BEGIN);
     mThread = std::thread([this]() {
         while (mIsActive == true) {
             auto svStatus = filterBlocklistedSatellitesV2_1(Utils::getMockSvInfoListV2_1());
@@ -236,7 +266,6 @@ template <class T_IGnss>
 Return<bool> GnssTemplate<T_IGnss>::stop() {
     ALOGD("stop");
     mIsActive = false;
-    this->reportGnssStatusValue(V1_0::IGnssCallback::GnssStatusValue::SESSION_END);
     if (mThread.joinable()) {
         mThread.join();
     }
@@ -574,20 +603,6 @@ template <class T_IGnss>
 Return<sp<V2_1::IGnssAntennaInfo>> GnssTemplate<T_IGnss>::getExtensionGnssAntennaInfo() {
     ALOGD("Gnss::getExtensionGnssAntennaInfo");
     return new V2_1::implementation::GnssAntennaInfo();
-}
-
-template <class T_IGnss>
-void GnssTemplate<T_IGnss>::reportGnssStatusValue(
-        const V1_0::IGnssCallback::GnssStatusValue gnssStatusValue) const {
-    std::unique_lock<std::mutex> lock(mMutex);
-    if (sGnssCallback_2_1 == nullptr) {
-        ALOGE("%s: sGnssCallback v2.1 is null.", __func__);
-        return;
-    }
-    auto ret = sGnssCallback_2_1->gnssStatusCb(gnssStatusValue);
-    if (!ret.isOk()) {
-        ALOGE("%s: Unable to invoke callback", __func__);
-    }
 }
 
 template <class T_IGnss>

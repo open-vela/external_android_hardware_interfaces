@@ -833,7 +833,6 @@ e3865e74cb1a6e6afd38c7aa84115cb109ce47b972132de5242bc3838d2771f6 android.hardwar
 b3caf524c46a47d67e6453a34419e1881942d059e146cda740502670e9a752c3 android.hardware.automotive.vehicle@2.0::IVehicle
 7ce8728b27600e840cacf0a832f6942819fe535f9d3797ae052d5eef5065921c android.hardware.automotive.vehicle@2.0::IVehicleCallback
 b525e91d886379c13588f4975bb04d625d46e1f41b4453792c4b2db1e7ff4340 android.hardware.biometrics.fingerprint@2.3::IBiometricsFingerprint
-7a78e9963bec0b071e7d46928c6100e2174270892d3f15a1eaad074997adf279 android.hardware.biometrics.fingerprint@2.3::IBiometricsFingerprint # Added for b/160189286 for Android S
 4baf8e0eca4aa896cc9ceb7bb676aaf4fa21372ef8b49eed68eced1221c3dc0d android.hardware.bluetooth.audio@2.1::IBluetoothAudioProvider
 d417a9212c8f96e3a06a2f221c8c5756c765355b2b81de2b2a65d4c9eee85401 android.hardware.bluetooth.audio@2.1::IBluetoothAudioProvidersFactory
 c17d9e27abd37ae5a8ff8da08fc5c9b13a264670feef6bbbc9d3ab1915216130 android.hardware.bluetooth.audio@2.1::types
@@ -898,8 +897,5 @@ ea465970e96d9605ee6f6706b3b512726c66d2644738added9128c739f8f8b0c android.hardwar
 c8a57364f6ad20842be14f4db284df5304f7521ca8eac6bcc1fa6c5b466fb8a6 android.hardware.wifi.supplicant@1.4::ISupplicantStaNetwork
 2123482b69f3b531c88023aa2a007110e130efbf4ed68ac9ce0bc55d5e82bc8b android.hardware.wifi.supplicant@1.4::ISupplicantStaNetworkCallback
 0821f516e4d428bc15251969f7e19411c94d8f2ccbd99e1fc8168d8e49e38b0f android.hardware.wifi.supplicant@1.4::types
-
-# ABI preserving changes to HALs during Android T
-62ace52d9c3ff1f60f94118557a2aaf0b953513e59dcd34d5f94ae28d4c7e780 android.hardware.fastboot@1.0::IFastboot
 
 # There should be no more HIDL HALs - please use AIDL instead.

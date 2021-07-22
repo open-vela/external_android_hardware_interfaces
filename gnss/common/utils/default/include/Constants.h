@@ -29,22 +29,6 @@ const float kMockVerticalAccuracyMeters = 5;
 const float kMockSpeedAccuracyMetersPerSecond = 1;
 const float kMockBearingAccuracyDegrees = 90;
 const int64_t kMockTimestamp = 1519930775453L;
-const float kGpsL1FreqHz = 1575.42 * 1e6;
-const float kGpsL5FreqHz = 1176.45 * 1e6;
-const float kGloG1FreqHz = 1602.0 * 1e6;
-const float kIrnssL5FreqHz = 1176.45 * 1e6;
-
-// Location replay constants
-constexpr char GNSS_PATH[] = "/dev/gnss0";
-constexpr int INPUT_BUFFER_SIZE = 256;
-constexpr char CMD_GET_LOCATION[] = "CMD_GET_LOCATION";
-constexpr char CMD_GET_RAWMEASUREMENT[] = "CMD_GET_RAWMEASUREMENT";
-constexpr char LINE_SEPARATOR = '\n';
-constexpr char COMMA_SEPARATOR = ',';
-constexpr char GPGA_RECORD_TAG[] = "$GPGGA";
-constexpr char GPRMC_RECORD_TAG[] = "$GPRMC";
-constexpr double TIMESTAMP_EPSILON = 0.001;
-constexpr int MIN_COL_NUM = 13;
 
 }  // namespace common
 }  // namespace gnss
