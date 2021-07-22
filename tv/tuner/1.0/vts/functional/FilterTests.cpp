@@ -16,7 +16,7 @@
 
 #include "FilterTests.h"
 
-void FilterCallback::startFilterEventThread(DemuxFilterEvent& event) {
+void FilterCallback::startFilterEventThread(DemuxFilterEvent event) {
     struct FilterThreadArgs* threadArgs =
             (struct FilterThreadArgs*)malloc(sizeof(struct FilterThreadArgs));
     threadArgs->user = this;
@@ -69,44 +69,50 @@ void FilterCallback::filterThreadLoop(DemuxFilterEvent& /* event */) {
     // end thread
 }
 
-bool FilterCallback::readFilterEventData(const DemuxFilterEvent& filterEvent) {
+bool FilterCallback::readFilterEventData() {
+    if (mFilterMQ == NULL) {
+        ALOGW("[vts] FMQ is not configured and does not need to be tested.");
+        return true;
+    }
     bool result = false;
+    DemuxFilterEvent filterEvent = mFilterEvent;
     ALOGW("[vts] reading from filter FMQ or buffer %d", mFilterId);
     // todo separate filter handlers
-    for (auto event : filterEvent.events) {
-        switch (event.getDiscriminator()) {
-            case DemuxFilterEvent::Event::hidl_discriminator::section:
-                mDataLength = event.section().dataLength;
+    for (int i = 0; i < filterEvent.events.size(); i++) {
+        switch (mFilterEventType) {
+            case FilterEventType::SECTION:
+                mDataLength = filterEvent.events[i].section().dataLength;
                 break;
-            case DemuxFilterEvent::Event::hidl_discriminator::pes:
-                mDataLength = event.pes().dataLength;
+            case FilterEventType::PES:
+                mDataLength = filterEvent.events[i].pes().dataLength;
                 break;
-            case DemuxFilterEvent::Event::hidl_discriminator::media:
-                return dumpAvData(event.media());
-            case DemuxFilterEvent::Event::hidl_discriminator::tsRecord:
-                return readRecordData(event.tsRecord());
+            case FilterEventType::MEDIA:
+                return dumpAvData(filterEvent.events[i].media());
+            case FilterEventType::RECORD:
+                break;
+            case FilterEventType::MMTPRECORD:
+                break;
+            case FilterEventType::DOWNLOAD:
+                break;
             default:
-                continue;
+                break;
         }
         // EXPECT_TRUE(mDataLength == goldenDataOutputBuffer.size()) << "buffer size does not
         // match";
-        if (mFilterMQ != NULL) {
-            mDataOutputBuffer.resize(mDataLength);
-            result = mFilterMQ->read(mDataOutputBuffer.data(), mDataLength);
-            EXPECT_TRUE(result) << "can't read from Filter MQ";
-        }
+
+        mDataOutputBuffer.resize(mDataLength);
+        result = mFilterMQ->read(mDataOutputBuffer.data(), mDataLength);
+        EXPECT_TRUE(result) << "can't read from Filter MQ";
 
         /*for (int i = 0; i < mDataLength; i++) {
             EXPECT_TRUE(goldenDataOutputBuffer[i] == mDataOutputBuffer[i]) << "data does not match";
         }*/
     }
-    if (mFilterMQ != NULL) {
-        mFilterMQEventFlag->wake(static_cast<uint32_t>(DemuxQueueNotifyBits::DATA_CONSUMED));
-    }
+    mFilterMQEventFlag->wake(static_cast<uint32_t>(DemuxQueueNotifyBits::DATA_CONSUMED));
     return result;
 }
 
-bool FilterCallback::dumpAvData(DemuxFilterMediaEvent& event) {
+bool FilterCallback::dumpAvData(DemuxFilterMediaEvent event) {
     uint32_t length = event.dataLength;
     uint64_t dataId = event.avDataId;
     // read data from buffer pointed by a handle
@@ -126,11 +132,6 @@ bool FilterCallback::dumpAvData(DemuxFilterMediaEvent& event) {
     return true;
 }
 
-bool FilterCallback::readRecordData(DemuxFilterTsRecordEvent& event) {
-    ALOGD("[vts] got DemuxFilterTsRecordEvent with pid=%d.", event.pid.tPid());
-    return true;
-}
-
 AssertionResult FilterTests::openFilterInDemux(DemuxFilterType type, uint32_t bufferSize) {
     Result status;
     EXPECT_TRUE(mDemux) << "Test with openDemux first.";
@@ -144,6 +145,11 @@ AssertionResult FilterTests::openFilterInDemux(DemuxFilterType type, uint32_t bu
                            mFilter = filter;
                            status = result;
                        });
+
+    if (status == Result::SUCCESS) {
+        mFilterCallback->setFilterEventType(getFilterEventType(type));
+    }
+
     return AssertionResult(status == Result::SUCCESS);
 }
 
