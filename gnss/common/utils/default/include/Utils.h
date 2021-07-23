@@ -44,8 +44,7 @@ struct Utils {
     static V1_0::IGnssCallback::GnssSvInfo getMockSvInfoV1_0(int16_t svid,
                                                              V1_0::GnssConstellationType type,
                                                              float cN0DbHz, float elevationDegrees,
-                                                             float azimuthDegrees,
-                                                             float carrierFrequencyHz);
+                                                             float azimuthDegrees);
     static hidl_vec<V2_1::IGnssAntennaInfoCallback::GnssAntennaInfo> getMockAntennaInfos();
 };
 
