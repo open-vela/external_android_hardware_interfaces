@@ -152,6 +152,7 @@ Return<Result> Dvr::stop() {
     mDvrThreadRunning = false;
     lock_guard<mutex> lock(mDvrThreadLock);
 
+    mIsRecordStarted = false;
     mDemux->setIsRecording(false);
 
     return Result::SUCCESS;
