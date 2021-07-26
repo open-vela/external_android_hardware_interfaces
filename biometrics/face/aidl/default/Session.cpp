@@ -63,8 +63,7 @@ ndk::ScopedAStatus Session::getEnrollmentConfig(EnrollmentType /*enrollmentType*
 
 ndk::ScopedAStatus Session::enroll(
         const keymaster::HardwareAuthToken& /*hat*/, EnrollmentType /*enrollmentType*/,
-        const std::vector<Feature>& /*features*/,
-        const std::optional<NativeHandle>& /*previewSurface*/,
+        const std::vector<Feature>& /*features*/, const NativeHandle& /*previewSurface*/,
         std::shared_ptr<biometrics::common::ICancellationSignal>* /*return_val*/) {
     LOG(INFO) << "enroll";
     if (cb_) {
