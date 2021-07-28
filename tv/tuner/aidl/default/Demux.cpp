@@ -18,7 +18,6 @@
 #define LOG_TAG "android.hardware.tv.tuner-service.example-Demux"
 
 #include <aidl/android/hardware/tv/tuner/DemuxQueueNotifyBits.h>
-#include <aidl/android/hardware/tv/tuner/Result.h>
 
 #include <utils/Log.h>
 #include "Demux.h"
@@ -33,7 +32,7 @@ namespace tuner {
 
 Demux::Demux(int32_t demuxId, std::shared_ptr<Tuner> tuner) {
     mDemuxId = demuxId;
-    mTuner = tuner;
+    mTunerService = tuner;
 }
 
 Demux::~Demux() {
@@ -44,18 +43,17 @@ Demux::~Demux() {
 ::ndk::ScopedAStatus Demux::setFrontendDataSource(int32_t in_frontendId) {
     ALOGV("%s", __FUNCTION__);
 
-    if (mTuner == nullptr) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::NOT_INITIALIZED));
+    if (mTunerService == nullptr) {
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_NO_INIT);
     }
 
-    mFrontend = mTuner->getFrontendById(in_frontendId);
+    mFrontend = mTunerService->getFrontendById(in_frontendId);
+
     if (mFrontend == nullptr) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_STATE));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
-    mTuner->setFrontendAsDemuxSource(in_frontendId, mDemuxId);
+    mTunerService->setFrontendAsDemuxSource(in_frontendId, mDemuxId);
 
     return ::ndk::ScopedAStatus::ok();
 }
@@ -71,16 +69,14 @@ Demux::~Demux() {
     if (in_cb == nullptr) {
         ALOGW("[Demux] callback can't be null");
         *_aidl_return = nullptr;
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_ARGUMENT));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
     std::shared_ptr<Filter> filter =
             ndk::SharedRefBase::make<Filter>(in_type, filterId, in_bufferSize, in_cb, ref<Demux>());
     if (!filter->createFilterMQ()) {
         *_aidl_return = nullptr;
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::UNKNOWN_ERROR));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_UNKNOWN_ERROR);
     }
 
     mFilters[filterId] = filter;
@@ -99,8 +95,7 @@ Demux::~Demux() {
 
     if (!result) {
         *_aidl_return = nullptr;
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_ARGUMENT));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
     *_aidl_return = filter;
@@ -127,15 +122,13 @@ Demux::~Demux() {
     if (!status.isOk()) {
         ALOGE("[Demux] Can't get filter Id.");
         *_aidl_return = -1;
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_STATE));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
     if (!mFilters[id]->isMediaFilter()) {
         ALOGE("[Demux] Given filter is not a media filter.");
         *_aidl_return = -1;
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_STATE));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
     if (!mPcrFilterIds.empty()) {
@@ -146,8 +139,7 @@ Demux::~Demux() {
 
     ALOGE("[Demux] No PCR filter opened.");
     *_aidl_return = -1;
-    return ::ndk::ScopedAStatus::fromServiceSpecificError(
-            static_cast<int32_t>(Result::INVALID_STATE));
+    return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
 }
 
 ::ndk::ScopedAStatus Demux::getAvSyncTime(int32_t in_avSyncHwId, int64_t* _aidl_return) {
@@ -155,13 +147,11 @@ Demux::~Demux() {
 
     if (mPcrFilterIds.empty()) {
         *_aidl_return = -1;
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_STATE));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
     if (in_avSyncHwId != *mPcrFilterIds.begin()) {
         *_aidl_return = -1;
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_ARGUMENT));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
     *_aidl_return = -1;
@@ -179,7 +169,7 @@ Demux::~Demux() {
     mRecordFilterIds.clear();
     mFilters.clear();
     mLastUsedFilterId = -1;
-    mTuner->removeDemux(mDemuxId);
+    mTunerService->removeDemux(mDemuxId);
     mFrontendInputThreadRunning = false;
     std::lock_guard<std::mutex> lock(mFrontendInputThreadLock);
 
@@ -194,8 +184,7 @@ Demux::~Demux() {
     if (in_cb == nullptr) {
         ALOGW("[Demux] DVR callback can't be null");
         *_aidl_return = nullptr;
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_ARGUMENT));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
     set<int64_t>::iterator it;
@@ -206,8 +195,7 @@ Demux::~Demux() {
             if (!mDvrPlayback->createDvrMQ()) {
                 mDvrPlayback = nullptr;
                 *_aidl_return = mDvrPlayback;
-                return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                        static_cast<int32_t>(Result::UNKNOWN_ERROR));
+                return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_UNKNOWN_ERROR);
             }
 
             for (it = mPlaybackFilterIds.begin(); it != mPlaybackFilterIds.end(); it++) {
@@ -215,8 +203,7 @@ Demux::~Demux() {
                     ALOGE("[Demux] Can't get filter info for DVR playback");
                     mDvrPlayback = nullptr;
                     *_aidl_return = mDvrPlayback;
-                    return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                            static_cast<int32_t>(Result::UNKNOWN_ERROR));
+                    return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_UNKNOWN_ERROR);
                 }
             }
 
@@ -227,16 +214,14 @@ Demux::~Demux() {
             if (!mDvrRecord->createDvrMQ()) {
                 mDvrRecord = nullptr;
                 *_aidl_return = mDvrRecord;
-                return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                        static_cast<int32_t>(Result::UNKNOWN_ERROR));
+                return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_UNKNOWN_ERROR);
             }
 
             *_aidl_return = mDvrRecord;
             return ::ndk::ScopedAStatus::ok();
         default:
             *_aidl_return = nullptr;
-            return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                    static_cast<int32_t>(Result::INVALID_ARGUMENT));
+            return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 }
 

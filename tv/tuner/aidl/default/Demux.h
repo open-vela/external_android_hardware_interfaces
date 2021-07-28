@@ -95,7 +95,7 @@ class Demux : public BnDemux {
 
   private:
     // Tuner service
-    std::shared_ptr<Tuner> mTuner;
+    std::shared_ptr<Tuner> mTunerService;
 
     // Frontend source
     std::shared_ptr<Frontend> mFrontend;

@@ -17,14 +17,12 @@
 //#define LOG_NDEBUG 0
 #define LOG_TAG "android.hardware.tv.tuner-service.example-Tuner"
 
-#include <aidl/android/hardware/tv/tuner/Result.h>
+#include "Tuner.h"
 #include <utils/Log.h>
-
 #include "Demux.h"
 #include "Descrambler.h"
 #include "Frontend.h"
 #include "Lnb.h"
-#include "Tuner.h"
 
 namespace aidl {
 namespace android {
@@ -200,8 +198,7 @@ Tuner::~Tuner() {}
     if (in_frontendId >= mFrontendSize || in_frontendId < 0) {
         ALOGW("[   WARN   ] Frontend with id %d isn't available", in_frontendId);
         *_aidl_return = nullptr;
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_ARGUMENT));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
     *_aidl_return = mFrontends[in_frontendId];
@@ -244,8 +241,7 @@ Tuner::~Tuner() {}
     ALOGV("%s", __FUNCTION__);
 
     if (in_frontendId >= mFrontendSize) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_ARGUMENT));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
     // assign randomly selected values for testing.
@@ -280,8 +276,7 @@ Tuner::~Tuner() {}
 
     if (in_lnbId >= mLnbs.size()) {
         *_aidl_return = nullptr;
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_ARGUMENT));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
     *_aidl_return = mLnbs[in_lnbId];
