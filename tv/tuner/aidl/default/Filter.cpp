@@ -20,7 +20,6 @@
 #include <BufferAllocator/BufferAllocator.h>
 #include <aidl/android/hardware/tv/tuner/DemuxFilterMonitorEventType.h>
 #include <aidl/android/hardware/tv/tuner/DemuxQueueNotifyBits.h>
-#include <aidl/android/hardware/tv/tuner/Result.h>
 #include <aidlcommonsupport/NativeHandle.h>
 #include <utils/Log.h>
 
@@ -215,8 +214,7 @@ Filter::~Filter() {
     }
 
     if (mDataId2Avfd.find(in_avDataId) == mDataId2Avfd.end()) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_ARGUMENT));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
     ::close(mDataId2Avfd[in_avDataId]);
@@ -235,8 +233,7 @@ Filter::~Filter() {
     ALOGV("%s", __FUNCTION__);
 
     if (mType.mainType != DemuxFilterMainType::IP) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_STATE));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
     mCid = in_ipCid;
@@ -247,8 +244,7 @@ Filter::~Filter() {
     ALOGV("%s", __FUNCTION__);
 
     if (!mIsMediaFilter) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::INVALID_STATE));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
     if (mSharedAvMemHandle != nullptr) {
@@ -260,16 +256,14 @@ Filter::~Filter() {
 
     int av_fd = createAvIonFd(BUFFER_SIZE_16M);
     if (av_fd < 0) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::OUT_OF_MEMORY));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_NO_MEMORY);
     }
 
     mSharedAvMemHandle = createNativeHandle(av_fd);
     if (mSharedAvMemHandle == nullptr) {
         ::close(av_fd);
         *_aidl_return = 0;
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::UNKNOWN_ERROR));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_UNKNOWN_ERROR);
     }
     ::close(av_fd);
     mUsingSharedAvMem = true;
@@ -283,8 +277,7 @@ Filter::~Filter() {
     ALOGV("%s", __FUNCTION__);
 
     if (!mIsMediaFilter) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::UNAVAILABLE));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
     }
 
     switch (in_avStreamType.getTag()) {
@@ -326,8 +319,7 @@ Filter::~Filter() {
                 events[0].set<DemuxFilterEvent::monitorEvent>(monitorEvent);
                 mCallback->onFilterEvent(events);
             } else {
-                return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                        static_cast<int32_t>(Result::INVALID_STATE));
+                return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
             }
         }
     }
@@ -345,8 +337,7 @@ Filter::~Filter() {
                 events[0].set<DemuxFilterEvent::monitorEvent>(monitorEvent);
                 mCallback->onFilterEvent(events);
             } else {
-                return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                        static_cast<int32_t>(Result::INVALID_STATE));
+                return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
             }
         }
     }
@@ -588,8 +579,7 @@ void Filter::updateRecordOutput(vector<int8_t> data) {
     }
     if (!writeSectionsAndCreateEvent(mFilterOutput)) {
         ALOGD("[Filter] filter %" PRIu64 " fails to write into FMQ. Ending thread", mFilterId);
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::UNKNOWN_ERROR));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_UNKNOWN_ERROR);
     }
 
     mFilterOutput.clear();
@@ -639,8 +629,7 @@ void Filter::updateRecordOutput(vector<int8_t> data) {
         if (!writeDataToFilterMQ(mPesOutput)) {
             ALOGD("[Filter] pes data write failed");
             mFilterOutput.clear();
-            return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                    static_cast<int32_t>(Result::INVALID_ARGUMENT));
+            return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_INVALID_OPERATION);
         }
         maySendFilterStatusCallback();
         DemuxFilterPesEvent pesEvent;
@@ -731,8 +720,7 @@ void Filter::updateRecordOutput(vector<int8_t> data) {
 ::ndk::ScopedAStatus Filter::createMediaFilterEventWithIon(vector<int8_t>& output) {
     if (mUsingSharedAvMem) {
         if (mSharedAvMemHandle == nullptr) {
-            return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                    static_cast<int32_t>(Result::UNKNOWN_ERROR));
+            return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_UNKNOWN_ERROR);
         }
         return createShareMemMediaEvents(output);
     }
@@ -748,8 +736,7 @@ void Filter::updateRecordOutput(vector<int8_t> data) {
 
     if (mDvr == nullptr || !mDvr->writeRecordFMQ(mRecordFilterOutput)) {
         ALOGD("[Filter] dvr fails to write into record FMQ.");
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::UNKNOWN_ERROR));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_UNKNOWN_ERROR);
     }
 
     DemuxFilterTsRecordEvent recordEvent;
@@ -862,21 +849,18 @@ native_handle_t* Filter::createNativeHandle(int fd) {
 ::ndk::ScopedAStatus Filter::createIndependentMediaEvents(vector<int8_t>& output) {
     int av_fd = createAvIonFd(output.size());
     if (av_fd == -1) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::UNKNOWN_ERROR));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_UNKNOWN_ERROR);
     }
     // copy the filtered data to the buffer
     uint8_t* avBuffer = getIonBuffer(av_fd, output.size());
     if (avBuffer == NULL) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::UNKNOWN_ERROR));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_UNKNOWN_ERROR);
     }
     memcpy(avBuffer, output.data(), output.size() * sizeof(uint8_t));
 
     native_handle_t* nativeHandle = createNativeHandle(av_fd);
     if (nativeHandle == NULL) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::UNKNOWN_ERROR));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_UNKNOWN_ERROR);
     }
 
     // Create a dataId and add a <dataId, av_fd> pair into the dataId2Avfd map
@@ -914,16 +898,14 @@ native_handle_t* Filter::createNativeHandle(int fd) {
     uint8_t* sharedAvBuffer =
             getIonBuffer(mSharedAvMemHandle->data[0], output.size() + mSharedAvMemOffset);
     if (sharedAvBuffer == NULL) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::UNKNOWN_ERROR));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_UNKNOWN_ERROR);
     }
     memcpy(sharedAvBuffer + mSharedAvMemOffset, output.data(), output.size() * sizeof(uint8_t));
 
     // Create a memory handle with numFds == 0
     native_handle_t* nativeHandle = createNativeHandle(-1);
     if (nativeHandle == NULL) {
-        return ::ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(Result::UNKNOWN_ERROR));
+        return ::ndk::ScopedAStatus::fromExceptionCode(STATUS_UNKNOWN_ERROR);
     }
 
     // Create mediaEvent and send callback
