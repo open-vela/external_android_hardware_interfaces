@@ -19,11 +19,10 @@
 
 #include <cstdint>
 #include <unordered_map>
-#include <map>
 #include <memory>
 #include <mutex>
 
-#include <android/hardware/automotive/vehicle/2.0/types.h>
+#include <android/hardware/automotive/vehicle/2.0/IVehicle.h>
 
 namespace android {
 namespace hardware {
