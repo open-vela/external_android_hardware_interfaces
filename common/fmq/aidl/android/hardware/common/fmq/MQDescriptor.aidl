@@ -26,7 +26,6 @@ import android.hardware.common.fmq.GrantorDescriptor;
  * T - is used to specify the type of the payload
  * Flavor - is used to specify the type of the queue using
  * android.hardware.common.SynchronizedReadWrite or UnsynchronizedWrite
- * @hide
  */
 @VintfStability
 parcelable MQDescriptor<T, Flavor> {
