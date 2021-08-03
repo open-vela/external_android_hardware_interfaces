@@ -25,6 +25,7 @@
 #include <android-base/mapped_file.h>
 #include <android-base/unique_fd.h>
 #include <android/binder_auto_utils.h>
+#include <android/hardware_buffer.h>
 #include <cutils/native_handle.h>
 #include <nnapi/OperandTypes.h>
 #include <nnapi/OperationTypes.h>
@@ -35,6 +36,7 @@
 #include <nnapi/Validation.h>
 #include <nnapi/hal/CommonUtils.h>
 #include <nnapi/hal/HandleError.h>
+#include <vndk/hardware_buffer.h>
 
 #include <algorithm>
 #include <chrono>
@@ -45,11 +47,6 @@
 #include <utility>
 
 #include "Utils.h"
-
-#ifdef __ANDROID__
-#include <android/hardware_buffer.h>
-#include <vndk/hardware_buffer.h>
-#endif  // __ANDROID__
 
 #define VERIFY_NON_NEGATIVE(value) \
     while (UNLIKELY(value < 0)) return NN_ERROR()
@@ -111,17 +108,6 @@ GeneralResult<std::vector<UnvalidatedConvertOutput<Type>>> validatedConvert(
     return canonical;
 }
 
-GeneralResult<Handle> unvalidatedConvertHelper(const NativeHandle& aidlNativeHandle) {
-    std::vector<base::unique_fd> fds;
-    fds.reserve(aidlNativeHandle.fds.size());
-    for (const auto& fd : aidlNativeHandle.fds) {
-        auto duplicatedFd = NN_TRY(dupFd(fd.get()));
-        fds.emplace_back(duplicatedFd.release());
-    }
-
-    return Handle{.fds = std::move(fds), .ints = aidlNativeHandle.ints};
-}
-
 struct NativeHandleDeleter {
     void operator()(native_handle_t* handle) const {
         if (handle) {
@@ -133,7 +119,6 @@ struct NativeHandleDeleter {
 
 using UniqueNativeHandle = std::unique_ptr<native_handle_t, NativeHandleDeleter>;
 
-#ifdef __ANDROID__
 GeneralResult<UniqueNativeHandle> nativeHandleFromAidlHandle(const NativeHandle& handle) {
     auto nativeHandle = UniqueNativeHandle(dupFromAidl(handle));
     if (nativeHandle.get() == nullptr) {
@@ -146,7 +131,6 @@ GeneralResult<UniqueNativeHandle> nativeHandleFromAidlHandle(const NativeHandle&
     }
     return nativeHandle;
 }
-#endif  // __ANDROID__
 
 }  // anonymous namespace
 
@@ -387,7 +371,6 @@ GeneralResult<SharedMemory> unvalidatedConvert(const aidl_hal::Memory& memory) {
             return createSharedMemoryFromFd(size, prot, fd, offset);
         }
         case Tag::hardwareBuffer: {
-#ifdef __ANDROID__
             const auto& hardwareBuffer = memory.get<Tag::hardwareBuffer>();
 
             const UniqueNativeHandle handle =
@@ -410,11 +393,6 @@ GeneralResult<SharedMemory> unvalidatedConvert(const aidl_hal::Memory& memory) {
             }
 
             return createSharedMemoryFromAHWB(ahwb, /*takeOwnership=*/true);
-#else   // __ANDROID__
-            LOG(FATAL) << "GeneralResult<SharedMemory> unvalidatedConvert(const aidl_hal::Memory& "
-                          "memory): Not Available on Host Build";
-            return NN_ERROR() << "createFromHandle failed";
-#endif  // __ANDROID__
         }
     }
     return NN_ERROR() << "Unrecognized Memory::Tag: " << memory.getTag();
@@ -509,18 +487,14 @@ GeneralResult<ExecutionPreference> unvalidatedConvert(
     return static_cast<ExecutionPreference>(executionPreference);
 }
 
-GeneralResult<SharedHandle> unvalidatedConvert(const NativeHandle& aidlNativeHandle) {
-    return std::make_shared<const Handle>(NN_TRY(unvalidatedConvertHelper(aidlNativeHandle)));
-}
-
 GeneralResult<std::vector<Operation>> unvalidatedConvert(
         const std::vector<aidl_hal::Operation>& operations) {
     return unvalidatedConvertVec(operations);
 }
 
-GeneralResult<SyncFence> unvalidatedConvert(const ndk::ScopedFileDescriptor& syncFence) {
-    auto duplicatedFd = NN_TRY(dupFd(syncFence.get()));
-    return SyncFence::create(std::move(duplicatedFd));
+GeneralResult<SharedHandle> unvalidatedConvert(const ndk::ScopedFileDescriptor& handle) {
+    auto duplicatedFd = NN_TRY(dupFd(handle.get()));
+    return std::make_shared<const Handle>(std::move(duplicatedFd));
 }
 
 GeneralResult<Capabilities> convert(const aidl_hal::Capabilities& capabilities) {
@@ -564,8 +538,8 @@ GeneralResult<Timing> convert(const aidl_hal::Timing& timing) {
     return validatedConvert(timing);
 }
 
-GeneralResult<SyncFence> convert(const ndk::ScopedFileDescriptor& syncFence) {
-    return validatedConvert(syncFence);
+GeneralResult<SharedHandle> convert(const ndk::ScopedFileDescriptor& handle) {
+    return validatedConvert(handle);
 }
 
 GeneralResult<std::vector<Extension>> convert(const std::vector<aidl_hal::Extension>& extension) {
@@ -630,17 +604,6 @@ nn::GeneralResult<std::vector<UnvalidatedConvertOutput<Type>>> validatedConvert(
     return halObject;
 }
 
-nn::GeneralResult<common::NativeHandle> unvalidatedConvert(const nn::Handle& handle) {
-    common::NativeHandle aidlNativeHandle;
-    aidlNativeHandle.fds.reserve(handle.fds.size());
-    for (const auto& fd : handle.fds) {
-        auto duplicatedFd = NN_TRY(nn::dupFd(fd.get()));
-        aidlNativeHandle.fds.emplace_back(duplicatedFd.release());
-    }
-    aidlNativeHandle.ints = handle.ints;
-    return aidlNativeHandle;
-}
-
 // Helper template for std::visit
 template <class... Ts>
 struct overloaded : Ts... {
@@ -649,7 +612,6 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...)->overloaded<Ts...>;
 
-#ifdef __ANDROID__
 nn::GeneralResult<common::NativeHandle> aidlHandleFromNativeHandle(
         const native_handle_t& nativeHandle) {
     auto handle = ::android::dupToAidl(&nativeHandle);
@@ -659,7 +621,6 @@ nn::GeneralResult<common::NativeHandle> aidlHandleFromNativeHandle(
     }
     return handle;
 }
-#endif  // __ANDROID__
 
 nn::GeneralResult<Memory> unvalidatedConvert(const nn::Memory::Ashmem& memory) {
     if constexpr (std::numeric_limits<size_t>::max() > std::numeric_limits<int64_t>::max()) {
@@ -707,7 +668,6 @@ nn::GeneralResult<Memory> unvalidatedConvert(const nn::Memory::Fd& memory) {
 }
 
 nn::GeneralResult<Memory> unvalidatedConvert(const nn::Memory::HardwareBuffer& memory) {
-#ifdef __ANDROID__
     const native_handle_t* nativeHandle = AHardwareBuffer_getNativeHandle(memory.handle.get());
     if (nativeHandle == nullptr) {
         return (NN_ERROR() << "unvalidatedConvert failed because AHardwareBuffer_getNativeHandle "
@@ -735,12 +695,6 @@ nn::GeneralResult<Memory> unvalidatedConvert(const nn::Memory::HardwareBuffer& m
             .handle = std::move(handle),
     };
     return Memory::make<Memory::Tag::hardwareBuffer>(std::move(hardwareBuffer));
-#else   // __ANDROID__
-    LOG(FATAL) << "nn::GeneralResult<Memory> unvalidatedConvert(const nn::Memory::HardwareBuffer& "
-                  "memory): Not Available on Host Build";
-    (void)memory;
-    return (NN_ERROR() << "unvalidatedConvert failed").operator nn::GeneralResult<Memory>();
-#endif  // __ANDROID__
 }
 
 nn::GeneralResult<Memory> unvalidatedConvert(const nn::Memory::Unknown& /*memory*/) {
@@ -773,11 +727,6 @@ nn::GeneralResult<BufferRole> unvalidatedConvert(const nn::BufferRole& bufferRol
 
 nn::GeneralResult<bool> unvalidatedConvert(const nn::MeasureTiming& measureTiming) {
     return measureTiming == nn::MeasureTiming::YES;
-}
-
-nn::GeneralResult<common::NativeHandle> unvalidatedConvert(const nn::SharedHandle& sharedHandle) {
-    CHECK(sharedHandle != nullptr);
-    return unvalidatedConvert(*sharedHandle);
 }
 
 nn::GeneralResult<Memory> unvalidatedConvert(const nn::SharedMemory& memory) {
@@ -1017,16 +966,8 @@ nn::GeneralResult<ndk::ScopedFileDescriptor> unvalidatedConvert(const nn::SyncFe
     return ndk::ScopedFileDescriptor(duplicatedFd.release());
 }
 
-nn::GeneralResult<ndk::ScopedFileDescriptor> unvalidatedConvertCache(
-        const nn::SharedHandle& handle) {
-    if (handle->ints.size() != 0) {
-        NN_ERROR() << "Cache handle must not contain ints";
-    }
-    if (handle->fds.size() != 1) {
-        NN_ERROR() << "Cache handle must contain exactly one fd but contains "
-                   << handle->fds.size();
-    }
-    auto duplicatedFd = NN_TRY(nn::dupFd(handle->fds.front().get()));
+nn::GeneralResult<ndk::ScopedFileDescriptor> unvalidatedConvert(const nn::SharedHandle& handle) {
+    auto duplicatedFd = NN_TRY(nn::dupFd(handle->get()));
     return ndk::ScopedFileDescriptor(duplicatedFd.release());
 }
 
@@ -1089,16 +1030,7 @@ nn::GeneralResult<std::vector<OutputShape>> convert(
 
 nn::GeneralResult<std::vector<ndk::ScopedFileDescriptor>> convert(
         const std::vector<nn::SharedHandle>& cacheHandles) {
-    const auto version = NN_TRY(hal::utils::makeGeneralFailure(nn::validate(cacheHandles)));
-    if (version > kVersion) {
-        return NN_ERROR() << "Insufficient version: " << version << " vs required " << kVersion;
-    }
-    std::vector<ndk::ScopedFileDescriptor> cacheFds;
-    cacheFds.reserve(cacheHandles.size());
-    for (const auto& cacheHandle : cacheHandles) {
-        cacheFds.push_back(NN_TRY(unvalidatedConvertCache(cacheHandle)));
-    }
-    return cacheFds;
+    return validatedConvert(cacheHandles);
 }
 
 nn::GeneralResult<std::vector<ndk::ScopedFileDescriptor>> convert(
