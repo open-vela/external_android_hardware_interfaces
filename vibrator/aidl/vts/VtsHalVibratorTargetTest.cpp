@@ -34,7 +34,6 @@ using android::hardware::vibrator::CompositePrimitive;
 using android::hardware::vibrator::Effect;
 using android::hardware::vibrator::EffectStrength;
 using android::hardware::vibrator::IVibrator;
-using std::chrono::high_resolution_clock;
 
 const std::vector<Effect> kEffects{android::enum_range<Effect>().begin(),
                                    android::enum_range<Effect>().end()};
@@ -55,12 +54,9 @@ const std::vector<CompositePrimitive> kCompositePrimitives{
         android::enum_range<CompositePrimitive>().begin(),
         android::enum_range<CompositePrimitive>().end()};
 
-const std::vector<CompositePrimitive> kRequiredPrimitives = {
-        CompositePrimitive::CLICK,
-        CompositePrimitive::LIGHT_TICK,
-        CompositePrimitive::QUICK_RISE,
-        CompositePrimitive::SLOW_RISE,
-        CompositePrimitive::QUICK_FALL,
+const std::vector<CompositePrimitive> kOptionalPrimitives = {
+        CompositePrimitive::THUD,
+        CompositePrimitive::SPIN,
 };
 
 const std::vector<CompositePrimitive> kInvalidPrimitives = {
@@ -277,11 +273,11 @@ TEST_P(VibratorAidl, GetSupportedPrimitives) {
         for (auto primitive : kCompositePrimitives) {
             bool isPrimitiveSupported =
                     std::find(supported.begin(), supported.end(), primitive) != supported.end();
-            bool isPrimitiveRequired =
-                    std::find(kRequiredPrimitives.begin(), kRequiredPrimitives.end(), primitive) !=
-                    kRequiredPrimitives.end();
+            bool isPrimitiveOptional =
+                    std::find(kOptionalPrimitives.begin(), kOptionalPrimitives.end(), primitive) !=
+                    kOptionalPrimitives.end();
 
-            EXPECT_TRUE(isPrimitiveSupported || !isPrimitiveRequired) << toString(primitive);
+            EXPECT_TRUE(isPrimitiveSupported || isPrimitiveOptional) << toString(primitive);
         }
     }
 }
@@ -446,52 +442,26 @@ TEST_P(VibratorAidl, ComposeSizeBoundary) {
 }
 
 TEST_P(VibratorAidl, ComposeCallback) {
-    constexpr std::chrono::milliseconds allowedLatency{10};
-
     if (capabilities & IVibrator::CAP_COMPOSE_EFFECTS) {
-        std::vector<CompositePrimitive> supported;
+        std::promise<void> completionPromise;
+        std::future<void> completionFuture{completionPromise.get_future()};
+        sp<CompletionCallback> callback =
+                new CompletionCallback([&completionPromise] { completionPromise.set_value(); });
+        CompositePrimitive primitive = CompositePrimitive::CLICK;
+        CompositeEffect effect;
+        std::vector<CompositeEffect> composite;
+        int32_t duration;
 
-        ASSERT_TRUE(vibrator->getSupportedPrimitives(&supported).isOk());
+        effect.delayMs = 0;
+        effect.primitive = primitive;
+        effect.scale = 1.0f;
+        composite.emplace_back(effect);
 
-        for (auto primitive : supported) {
-            if (primitive == CompositePrimitive::NOOP) {
-                continue;
-            }
-
-            std::promise<void> completionPromise;
-            std::future<void> completionFuture{completionPromise.get_future()};
-            sp<CompletionCallback> callback =
-                    new CompletionCallback([&completionPromise] { completionPromise.set_value(); });
-            CompositeEffect effect;
-            std::vector<CompositeEffect> composite;
-            int32_t durationMs;
-            std::chrono::milliseconds duration;
-            std::chrono::time_point<high_resolution_clock> start, end;
-            std::chrono::milliseconds elapsed;
-
-            effect.delayMs = 0;
-            effect.primitive = primitive;
-            effect.scale = 1.0f;
-            composite.emplace_back(effect);
-
-            EXPECT_EQ(Status::EX_NONE,
-                      vibrator->getPrimitiveDuration(primitive, &durationMs).exceptionCode())
-                    << toString(primitive);
-            duration = std::chrono::milliseconds(durationMs);
-
-            EXPECT_EQ(Status::EX_NONE, vibrator->compose(composite, callback).exceptionCode())
-                    << toString(primitive);
-            start = high_resolution_clock::now();
-
-            EXPECT_EQ(completionFuture.wait_for(duration + allowedLatency),
-                      std::future_status::ready)
-                    << toString(primitive);
-            end = high_resolution_clock::now();
-
-            elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-            EXPECT_LE(elapsed.count(), (duration + allowedLatency).count()) << toString(primitive);
-            EXPECT_GE(elapsed.count(), (duration - allowedLatency).count()) << toString(primitive);
-        }
+        EXPECT_EQ(Status::EX_NONE,
+                  vibrator->getPrimitiveDuration(primitive, &duration).exceptionCode());
+        EXPECT_EQ(Status::EX_NONE, vibrator->compose(composite, callback).exceptionCode());
+        EXPECT_EQ(completionFuture.wait_for(std::chrono::milliseconds(duration * 2)),
+                  std::future_status::ready);
     }
 }
 
@@ -521,7 +491,6 @@ TEST_P(VibratorAidl, AlwaysOn) {
     }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(VibratorAidl);
 INSTANTIATE_TEST_SUITE_P(Vibrator, VibratorAidl,
                          testing::ValuesIn(android::getAidlHalInstanceNames(IVibrator::descriptor)),
                          android::PrintInstanceNameToString);

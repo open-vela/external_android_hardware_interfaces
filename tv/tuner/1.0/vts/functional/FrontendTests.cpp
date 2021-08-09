@@ -370,11 +370,13 @@ AssertionResult FrontendTests::tuneFrontend(FrontendConfig config, bool testWith
     mIsSoftwareFe = config.isSoftwareFe;
     bool result = true;
     if (mIsSoftwareFe && testWithDemux) {
-        result &= mDvrTests.openDvrInDemux(mDvrConfig.type, mDvrConfig.bufferSize) == success();
-        result &= mDvrTests.configDvrPlayback(mDvrConfig.settings) == success();
+        DvrConfig dvrConfig;
+        getSoftwareFrontendPlaybackConfig(dvrConfig);
+        result &= mDvrTests.openDvrInDemux(dvrConfig.type, dvrConfig.bufferSize) == success();
+        result &= mDvrTests.configDvrPlayback(dvrConfig.settings) == success();
         result &= mDvrTests.getDvrPlaybackMQDescriptor() == success();
-        mDvrTests.startPlaybackInputThread(mDvrConfig.playbackInputFile,
-                                           mDvrConfig.settings.playback());
+        mDvrTests.startPlaybackInputThread(dvrConfig.playbackInputFile,
+                                           dvrConfig.settings.playback());
         if (!result) {
             ALOGW("[vts] Software frontend dvr configure failed.");
             return failure();
@@ -428,6 +430,9 @@ void FrontendTests::getFrontendIdByType(FrontendType feType, uint32_t& feId) {
 
 void FrontendTests::tuneTest(FrontendConfig frontendConf) {
     uint32_t feId;
+    if (frontendConf.type != FrontendType::DVBC)
+        GTEST_SKIP() << "Skipping this test since not DVBC.";
+
     getFrontendIdByType(frontendConf.type, feId);
     ASSERT_TRUE(feId != INVALID_ID);
     ASSERT_TRUE(openFrontendById(feId));
@@ -440,6 +445,8 @@ void FrontendTests::tuneTest(FrontendConfig frontendConf) {
 
 void FrontendTests::scanTest(FrontendConfig frontendConf, FrontendScanType scanType) {
     uint32_t feId;
+    if (frontendConf.type != FrontendType::DVBC)
+        GTEST_SKIP() << "Skipping this test since not DVBC.";
     getFrontendIdByType(frontendConf.type, feId);
     ASSERT_TRUE(feId != INVALID_ID);
     ASSERT_TRUE(openFrontendById(feId));

@@ -1531,9 +1531,10 @@ Return<void> CameraHidlTest::DeviceCb::requestStreamBuffers(
                 w = stream.bufferSize;
                 h = 1;
             }
-            mParent->allocateGraphicBuffer(w, h,
-                    android_convertGralloc1To0Usage(
-                            halStream.producerUsage, halStream.consumerUsage),
+            mParent->allocateGraphicBuffer(
+                    w, h,
+                    (uint32_t)android_convertGralloc1To0Usage(halStream.producerUsage,
+                                                              halStream.consumerUsage),
                     halStream.overrideFormat, &buffer_handle);
 
             tmpRetBuffers[j] = {stream.v3_2.id, mNextBufferId, buffer_handle, BufferStatus::OK,
@@ -4443,7 +4444,7 @@ void CameraHidlTest::processCaptureRequestInternal(uint64_t bufferUsage,
                                   /* We don't look at halStreamConfig.streams[0].consumerUsage
                                    * since that is 0 for output streams
                                    */
-                                  android_convertGralloc1To0Usage(
+                                  (uint32_t)android_convertGralloc1To0Usage(
                                           halStreamConfig.streams[0].producerUsage, bufferUsage),
                                   halStreamConfig.streams[0].overrideFormat, &buffer_handle);
             outputBuffer = {halStreamConfig.streams[0].id,
@@ -4665,9 +4666,10 @@ TEST_P(CameraHidlTest, processMultiCaptureRequestPreview) {
                     BufferStatus::OK, nullptr, nullptr};
             } else {
                 allocateGraphicBuffer(previewStream.width, previewStream.height,
-                        android_convertGralloc1To0Usage(halStream.v3_3.v3_2.producerUsage,
-                            halStream.v3_3.v3_2.consumerUsage),
-                        halStream.v3_3.v3_2.overrideFormat, &buffer_handle);
+                                      (uint32_t)android_convertGralloc1To0Usage(
+                                              halStream.v3_3.v3_2.producerUsage,
+                                              halStream.v3_3.v3_2.consumerUsage),
+                                      halStream.v3_3.v3_2.overrideFormat, &buffer_handle);
                 graphicBuffers.push_back(buffer_handle);
                 outputBuffers[k] = {halStream.v3_3.v3_2.id, bufferId, buffer_handle,
                     BufferStatus::OK, nullptr, nullptr};
@@ -4878,9 +4880,10 @@ TEST_P(CameraHidlTest, processCaptureRequestBurstISO) {
                     nullptr, BufferStatus::OK, nullptr, nullptr};
             } else {
                 allocateGraphicBuffer(previewStream.width, previewStream.height,
-                        android_convertGralloc1To0Usage(halStreamConfig.streams[0].producerUsage,
-                            halStreamConfig.streams[0].consumerUsage),
-                        halStreamConfig.streams[0].overrideFormat, &buffers[i]);
+                                      (uint32_t)android_convertGralloc1To0Usage(
+                                              halStreamConfig.streams[0].producerUsage,
+                                              halStreamConfig.streams[0].consumerUsage),
+                                      halStreamConfig.streams[0].overrideFormat, &buffers[i]);
                 outputBuffers[i] = {halStreamConfig.streams[0].id, bufferId + i,
                     buffers[i], BufferStatus::OK, nullptr, nullptr};
             }
@@ -4984,9 +4987,10 @@ TEST_P(CameraHidlTest, processCaptureRequestInvalidSinglePreview) {
             bufferId = 0;
         } else {
             allocateGraphicBuffer(previewStream.width, previewStream.height,
-                    android_convertGralloc1To0Usage(halStreamConfig.streams[0].producerUsage,
-                        halStreamConfig.streams[0].consumerUsage),
-                    halStreamConfig.streams[0].overrideFormat, &buffer_handle);
+                                  (uint32_t)android_convertGralloc1To0Usage(
+                                          halStreamConfig.streams[0].producerUsage,
+                                          halStreamConfig.streams[0].consumerUsage),
+                                  halStreamConfig.streams[0].overrideFormat, &buffer_handle);
         }
 
         StreamBuffer outputBuffer = {halStreamConfig.streams[0].id,
@@ -5107,9 +5111,10 @@ TEST_P(CameraHidlTest, switchToOffline) {
                         buffers[i], BufferStatus::OK, nullptr, nullptr};
             } else {
                 // jpeg buffer (w,h) = (blobLen, 1)
-                allocateGraphicBuffer(jpegBufferSize, /*height*/1,
-                        android_convertGralloc1To0Usage(halStreamConfig3_2.producerUsage,
-                            halStreamConfig3_2.consumerUsage),
+                allocateGraphicBuffer(
+                        jpegBufferSize, /*height*/ 1,
+                        (uint32_t)android_convertGralloc1To0Usage(halStreamConfig3_2.producerUsage,
+                                                                  halStreamConfig3_2.consumerUsage),
                         halStreamConfig3_2.overrideFormat, &buffers[i]);
                 outputBuffers[i] = {halStreamConfig3_2.id, bufferId + i,
                     buffers[i], BufferStatus::OK, nullptr, nullptr};
@@ -5351,9 +5356,10 @@ TEST_P(CameraHidlTest, flushPreviewRequest) {
             bufferId = 0;
         } else {
             allocateGraphicBuffer(previewStream.width, previewStream.height,
-                    android_convertGralloc1To0Usage(halStreamConfig.streams[0].producerUsage,
-                        halStreamConfig.streams[0].consumerUsage),
-                    halStreamConfig.streams[0].overrideFormat, &buffer_handle);
+                                  (uint32_t)android_convertGralloc1To0Usage(
+                                          halStreamConfig.streams[0].producerUsage,
+                                          halStreamConfig.streams[0].consumerUsage),
+                                  halStreamConfig.streams[0].overrideFormat, &buffer_handle);
         }
 
         StreamBuffer outputBuffer = {halStreamConfig.streams[0].id,

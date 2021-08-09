@@ -125,11 +125,6 @@ ndk::ScopedAStatus Vibrator::getSupportedPrimitives(std::vector<CompositePrimiti
 
 ndk::ScopedAStatus Vibrator::getPrimitiveDuration(CompositePrimitive primitive,
                                                   int32_t* durationMs) {
-    std::vector<CompositePrimitive> supported;
-    getSupportedPrimitives(&supported);
-    if (std::find(supported.begin(), supported.end(), primitive) == supported.end()) {
-        return ndk::ScopedAStatus::fromExceptionCode(EX_UNSUPPORTED_OPERATION);
-    }
     if (primitive != CompositePrimitive::NOOP) {
         *durationMs = 100;
     } else {
@@ -168,10 +163,6 @@ ndk::ScopedAStatus Vibrator::compose(const std::vector<CompositeEffect>& composi
             }
             LOG(INFO) << "triggering primitive " << static_cast<int>(e.primitive) << " @ scale "
                       << e.scale;
-
-            int32_t durationMs;
-            getPrimitiveDuration(e.primitive, &durationMs);
-            usleep(durationMs * 1000);
         }
 
         if (callback != nullptr) {

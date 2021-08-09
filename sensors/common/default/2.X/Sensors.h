@@ -64,6 +64,7 @@ struct Sensors : public ISensorsInterface, public ISensorsEventCallback {
         AddSensor<AccelSensor>();
         AddSensor<GyroSensor>();
         AddSensor<AmbientTempSensor>();
+        AddSensor<DeviceTempSensor>();
         AddSensor<PressureSensor>();
         AddSensor<MagnetometerSensor>();
         AddSensor<LightSensor>();
