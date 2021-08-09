@@ -39,8 +39,5 @@ aidl_interface {
             min_sdk_version: "29",
         },
     },
-    versions: [
-        "1",
-        "2",
-    ],
+    versions: ["1"],
 }
