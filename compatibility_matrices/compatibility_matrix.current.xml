@@ -85,12 +85,19 @@
             <instance>default</instance>
         </interface>
     </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.automotive.vehicle</name>
+        <interface>
+            <name>IVehicle</name>
+            <regex-instance>.*</regex-instance>
+        </interface>
+    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.automotive.vehicle</name>
         <version>2.0</version>
         <interface>
             <name>IVehicle</name>
-            <instance>default</instance>
+            <regex-instance>.*</regex-instance>
         </interface>
     </hal>
     <hal format="hidl" optional="true">
@@ -522,11 +529,19 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.soundtrigger</name>
-        <version>2.3</version>
+        <version>2.3-4</version>
         <interface>
             <name>ISoundTriggerHw</name>
             <instance>default</instance>
         </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+         <name>android.hardware.soundtrigger3</name>
+         <version>1</version>
+         <interface>
+             <name>ISoundTriggerHw</name>
+             <instance>default</instance>
+         </interface>
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.tetheroffload.config</name>
@@ -571,6 +586,14 @@
     <hal format="hidl" optional="true">
         <name>android.hardware.tv.tuner</name>
         <version>1.0-1</version>
+        <interface>
+            <name>ITuner</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.tv.tuner</name>
+        <version>1</version>
         <interface>
             <name>ITuner</name>
             <instance>default</instance>
