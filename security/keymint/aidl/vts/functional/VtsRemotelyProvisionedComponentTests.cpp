@@ -222,7 +222,7 @@ TEST_P(GenerateKeyTests, generateAndUseEcdsaP256Key_prodMode) {
     // Generate an ECDSA key that is attested by the generated P256 keypair.
     AuthorizationSet keyDesc = AuthorizationSetBuilder()
                                        .Authorization(TAG_NO_AUTH_REQUIRED)
-                                       .EcdsaSigningKey(EcCurve::P_256)
+                                       .EcdsaSigningKey(256)
                                        .AttestationChallenge("foo")
                                        .AttestationApplicationId("bar")
                                        .Digest(Digest::NONE)
@@ -236,11 +236,9 @@ TEST_P(GenerateKeyTests, generateAndUseEcdsaP256Key_prodMode) {
     vector<Certificate> attested_key_cert_chain = std::move(creationResult.certificateChain);
     EXPECT_EQ(attested_key_cert_chain.size(), 1);
 
-    int32_t aidl_version = 0;
-    ASSERT_TRUE(keyMint->getInterfaceVersion(&aidl_version).isOk());
     AuthorizationSet hw_enforced = HwEnforcedAuthorizations(attested_key_characteristics);
     AuthorizationSet sw_enforced = SwEnforcedAuthorizations(attested_key_characteristics);
-    EXPECT_TRUE(verify_attestation_record(aidl_version, "foo", "bar", sw_enforced, hw_enforced,
+    EXPECT_TRUE(verify_attestation_record("foo", "bar", sw_enforced, hw_enforced,
                                           info.securityLevel,
                                           attested_key_cert_chain[0].encodedCertificate));
 
