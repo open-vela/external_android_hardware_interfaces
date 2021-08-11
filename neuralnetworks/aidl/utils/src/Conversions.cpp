@@ -25,7 +25,6 @@
 #include <android-base/mapped_file.h>
 #include <android-base/unique_fd.h>
 #include <android/binder_auto_utils.h>
-#include <android/hardware_buffer.h>
 #include <cutils/native_handle.h>
 #include <nnapi/OperandTypes.h>
 #include <nnapi/OperationTypes.h>
@@ -36,7 +35,6 @@
 #include <nnapi/Validation.h>
 #include <nnapi/hal/CommonUtils.h>
 #include <nnapi/hal/HandleError.h>
-#include <vndk/hardware_buffer.h>
 
 #include <algorithm>
 #include <chrono>
@@ -47,6 +45,11 @@
 #include <utility>
 
 #include "Utils.h"
+
+#ifdef __ANDROID__
+#include <android/hardware_buffer.h>
+#include <vndk/hardware_buffer.h>
+#endif  // __ANDROID__
 
 #define VERIFY_NON_NEGATIVE(value) \
     while (UNLIKELY(value < 0)) return NN_ERROR()
@@ -130,6 +133,7 @@ struct NativeHandleDeleter {
 
 using UniqueNativeHandle = std::unique_ptr<native_handle_t, NativeHandleDeleter>;
 
+#ifdef __ANDROID__
 GeneralResult<UniqueNativeHandle> nativeHandleFromAidlHandle(const NativeHandle& handle) {
     auto nativeHandle = UniqueNativeHandle(dupFromAidl(handle));
     if (nativeHandle.get() == nullptr) {
@@ -142,6 +146,7 @@ GeneralResult<UniqueNativeHandle> nativeHandleFromAidlHandle(const NativeHandle&
     }
     return nativeHandle;
 }
+#endif  // __ANDROID__
 
 }  // anonymous namespace
 
@@ -382,6 +387,7 @@ GeneralResult<SharedMemory> unvalidatedConvert(const aidl_hal::Memory& memory) {
             return createSharedMemoryFromFd(size, prot, fd, offset);
         }
         case Tag::hardwareBuffer: {
+#ifdef __ANDROID__
             const auto& hardwareBuffer = memory.get<Tag::hardwareBuffer>();
 
             const UniqueNativeHandle handle =
@@ -404,6 +410,11 @@ GeneralResult<SharedMemory> unvalidatedConvert(const aidl_hal::Memory& memory) {
             }
 
             return createSharedMemoryFromAHWB(ahwb, /*takeOwnership=*/true);
+#else   // __ANDROID__
+            LOG(FATAL) << "GeneralResult<SharedMemory> unvalidatedConvert(const aidl_hal::Memory& "
+                          "memory): Not Available on Host Build";
+            return NN_ERROR() << "createFromHandle failed";
+#endif  // __ANDROID__
         }
     }
     return NN_ERROR() << "Unrecognized Memory::Tag: " << memory.getTag();
@@ -638,6 +649,7 @@ struct overloaded : Ts... {
 template <class... Ts>
 overloaded(Ts...)->overloaded<Ts...>;
 
+#ifdef __ANDROID__
 nn::GeneralResult<common::NativeHandle> aidlHandleFromNativeHandle(
         const native_handle_t& nativeHandle) {
     auto handle = ::android::dupToAidl(&nativeHandle);
@@ -647,6 +659,7 @@ nn::GeneralResult<common::NativeHandle> aidlHandleFromNativeHandle(
     }
     return handle;
 }
+#endif  // __ANDROID__
 
 nn::GeneralResult<Memory> unvalidatedConvert(const nn::Memory::Ashmem& memory) {
     if constexpr (std::numeric_limits<size_t>::max() > std::numeric_limits<int64_t>::max()) {
@@ -694,6 +707,7 @@ nn::GeneralResult<Memory> unvalidatedConvert(const nn::Memory::Fd& memory) {
 }
 
 nn::GeneralResult<Memory> unvalidatedConvert(const nn::Memory::HardwareBuffer& memory) {
+#ifdef __ANDROID__
     const native_handle_t* nativeHandle = AHardwareBuffer_getNativeHandle(memory.handle.get());
     if (nativeHandle == nullptr) {
         return (NN_ERROR() << "unvalidatedConvert failed because AHardwareBuffer_getNativeHandle "
@@ -721,6 +735,12 @@ nn::GeneralResult<Memory> unvalidatedConvert(const nn::Memory::HardwareBuffer& m
             .handle = std::move(handle),
     };
     return Memory::make<Memory::Tag::hardwareBuffer>(std::move(hardwareBuffer));
+#else   // __ANDROID__
+    LOG(FATAL) << "nn::GeneralResult<Memory> unvalidatedConvert(const nn::Memory::HardwareBuffer& "
+                  "memory): Not Available on Host Build";
+    (void)memory;
+    return (NN_ERROR() << "unvalidatedConvert failed").operator nn::GeneralResult<Memory>();
+#endif  // __ANDROID__
 }
 
 nn::GeneralResult<Memory> unvalidatedConvert(const nn::Memory::Unknown& /*memory*/) {
