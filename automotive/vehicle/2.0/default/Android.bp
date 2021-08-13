@@ -41,7 +41,7 @@ cc_defaults {
     defaults: ["vhal_v2_0_defaults"],
     shared_libs: [
         "libbinder_ndk",
-        "android.automotive.watchdog-V2-ndk",
+        "android.automotive.watchdog-V2-ndk_platform",
     ],
 }
 
@@ -182,7 +182,6 @@ cc_test {
     ],
     shared_libs: [
         "libbase",
-        "libcutils",
     ],
     header_libs: ["libbase_headers"],
     test_suites: ["general-tests"],
