@@ -24,7 +24,8 @@ aidl_interface {
     stability: "vintf",
     backend: {
         java: {
-            enabled: false,
+            sdk_version: "module_current",
+            srcs_available: true,
         },
         cpp: {
             enabled: false,
