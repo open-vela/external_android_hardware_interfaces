@@ -64,11 +64,11 @@ void FilterCallback::testStartIdAfterReconfigure() {
     ALOGW("[vts] pass and stop");
 }
 
-void FilterCallback::readFilterEventData(const DemuxFilterEvent& filterEvent) {
+void FilterCallback::readFilterEventData() {
     ALOGW("[vts] reading filter event");
     // todo separate filter handlers
-    for (int i = 0; i < filterEvent.events.size(); i++) {
-        auto event = filterEvent.events[i];
+    for (int i = 0; i < mFilterEvent.events.size(); i++) {
+        auto event = mFilterEvent.events[i];
         switch (event.getDiscriminator()) {
             case DemuxFilterEvent::Event::hidl_discriminator::media:
                 ALOGD("[vts] Media filter event, avMemHandle numFds=%d.",
@@ -79,13 +79,8 @@ void FilterCallback::readFilterEventData(const DemuxFilterEvent& filterEvent) {
                 break;
         }
     }
-}
-
-void FilterCallback::readFilterEventExtData(const DemuxFilterEventExt& filterEventExt) {
-    ALOGW("[vts] reading filter event ext");
-    // todo separate filter handlers
-    for (int i = 0; i < filterEventExt.events.size(); i++) {
-        auto eventExt = filterEventExt.events[i];
+    for (int i = 0; i < mFilterEventExt.events.size(); i++) {
+        auto eventExt = mFilterEventExt.events[i];
         switch (eventExt.getDiscriminator()) {
             case DemuxFilterEventExt::Event::hidl_discriminator::tsRecord:
                 ALOGD("[vts] Extended TS record filter event, pts=%" PRIu64 ", firstMbInSlice=%d",
@@ -119,7 +114,7 @@ void FilterCallback::readFilterEventExtData(const DemuxFilterEventExt& filterEve
     }
 }
 
-bool FilterCallback::dumpAvData(DemuxFilterMediaEvent& event) {
+bool FilterCallback::dumpAvData(DemuxFilterMediaEvent event) {
     uint32_t length = event.dataLength;
     uint32_t offset = event.offset;
     // read data from buffer pointed by a handle
