@@ -35,9 +35,10 @@ namespace health {
 namespace V2_1 {
 namespace implementation {
 
-bool IsDeadObject(const Return<void>& ret) {
+bool IsDeadObjectLogged(const Return<void>& ret) {
     if (ret.isOk()) return false;
     if (ret.isDeadObject()) return true;
+    LOG(ERROR) << "Cannot call healthInfoChanged* on callback: " << ret.description();
     return false;
 }
 
@@ -76,7 +77,7 @@ Return<Result> BinderHealth::registerCallback(const sp<V2_0::IHealthInfoCallback
             return;
         }
         auto ret = wrapped->Notify(health_info);
-        if (IsDeadObject(ret)) {
+        if (IsDeadObjectLogged(ret)) {
             // Remove callback reference.
             std::lock_guard<decltype(callbacks_lock_)> lock(callbacks_lock_);
             auto it = std::find_if(callbacks_.begin(), callbacks_.end(),
@@ -132,7 +133,7 @@ void BinderHealth::OnHealthInfoChanged(const HealthInfo& health_info) {
     std::unique_lock<decltype(callbacks_lock_)> lock(callbacks_lock_);
     for (auto it = callbacks_.begin(); it != callbacks_.end();) {
         auto ret = (*it)->Notify(health_info);
-        if (IsDeadObject(ret)) {
+        if (IsDeadObjectLogged(ret)) {
             it = callbacks_.erase(it);
         } else {
             ++it;
