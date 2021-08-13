@@ -182,7 +182,6 @@ cc_test {
     ],
     shared_libs: [
         "libbase",
-        "libcutils",
     ],
     header_libs: ["libbase_headers"],
     test_suites: ["general-tests"],
