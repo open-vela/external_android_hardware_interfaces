@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-package android.hardware.contexthub;
+package android.hardware.tests.lazy_cb@1.0;
 
-@VintfStability
-@Backing(type="int")
-enum AsyncEventType {
-    /** An event where the Context Hub has restarted (e.g. due to a crash). */
-    RESTARTED = 1,
-}
+interface ILazyCb {
+    /**
+     * Set the eventfd used to notify that the active services
+     * callback is being executed and is about to terminate the process.
+     */
+    setEventFd(handle fds) generates (bool success);
+};

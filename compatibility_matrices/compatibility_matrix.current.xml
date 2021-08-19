@@ -187,13 +187,6 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.contexthub</name>
-        <interface>
-            <name>IContextHub</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.contexthub</name>
         <version>1.2</version>
