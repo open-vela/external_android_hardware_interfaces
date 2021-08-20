@@ -20,7 +20,6 @@ package android.hardware.common.fmq;
  * For use with android.hardware.common.MQDescriptor to specify which type of
  * queue to use. UnsynchronizedWrite is single writer, multiple reader, with
  * overflow. If messages are not read fast enough, they can be overwritten.
- * @hide
  */
 @VintfStability
 enum UnsynchronizedWrite {
