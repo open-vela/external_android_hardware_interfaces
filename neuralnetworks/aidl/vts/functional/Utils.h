@@ -102,10 +102,11 @@ class TestBlobAHWB : public TestMemoryBase {
     // The constructor calls initialize, which constructs the memory resources. This is a
     // workaround that gtest macros cannot be used directly in a constructor.
     TestBlobAHWB(uint32_t size) { initialize(size); }
+    ~TestBlobAHWB();
 
   private:
     void initialize(uint32_t size);
-    nn::SharedMemory mMemory;
+    AHardwareBuffer* mAhwb = nullptr;
     nn::Mapping mMapping;
 };
 

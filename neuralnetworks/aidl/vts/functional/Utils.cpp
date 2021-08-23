@@ -153,17 +153,24 @@ void TestBlobAHWB::initialize(uint32_t size) {
             .stride = size,
     };
 
-    AHardwareBuffer* ahwb = nullptr;
-    ASSERT_EQ(AHardwareBuffer_allocate(&desc, &ahwb), 0);
-    ASSERT_NE(ahwb, nullptr);
+    ASSERT_EQ(AHardwareBuffer_allocate(&desc, &mAhwb), 0);
+    ASSERT_NE(mAhwb, nullptr);
 
-    mMemory = nn::createSharedMemoryFromAHWB(ahwb, /*takeOwnership=*/true).value();
-    mMapping = nn::map(mMemory).value();
+    const auto sharedMemory =
+            nn::createSharedMemoryFromAHWB(mAhwb, /*takeOwnership=*/false).value();
+    mMapping = nn::map(sharedMemory).value();
     mPtr = static_cast<uint8_t*>(std::get<void*>(mMapping.pointer));
     CHECK_NE(mPtr, nullptr);
-    mAidlMemory = utils::convert(mMemory).value();
+    mAidlMemory = utils::convert(sharedMemory).value();
 
     mIsValid = true;
+}
+
+TestBlobAHWB::~TestBlobAHWB() {
+    if (mAhwb) {
+        AHardwareBuffer_unlock(mAhwb, nullptr);
+        AHardwareBuffer_release(mAhwb);
+    }
 }
 
 std::string gtestCompliantName(std::string name) {
