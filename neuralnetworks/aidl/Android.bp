@@ -9,7 +9,6 @@ package {
 
 aidl_interface {
     name: "android.hardware.neuralnetworks",
-    host_supported: true,
     vendor_available: true,
     srcs: [
         "android/hardware/neuralnetworks/*.aidl",
@@ -35,4 +34,5 @@ aidl_interface {
             min_sdk_version: "30",
         },
     },
+    versions: ["1"],
 }
