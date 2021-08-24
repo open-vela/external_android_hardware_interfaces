@@ -60,6 +60,7 @@ void TestRenderEngine::initGraphicBuffer(uint32_t width, uint32_t height, uint32
 
 void TestRenderEngine::drawLayers() {
     base::unique_fd bufferFence;
+    base::unique_fd readyFence;
 
     std::vector<const renderengine::LayerSettings*> compositionLayerPointers;
     compositionLayerPointers.reserve(mCompositionLayers.size());
@@ -68,12 +69,9 @@ void TestRenderEngine::drawLayers() {
                    [](renderengine::LayerSettings& settings) -> renderengine::LayerSettings* {
                        return &settings;
                    });
-    auto texture = std::make_shared<renderengine::ExternalTexture>(
-            mGraphicBuffer, *mRenderEngine, renderengine::ExternalTexture::Usage::WRITEABLE);
-    auto [status, readyFence] = mRenderEngine
-                                        ->drawLayers(mDisplaySettings, compositionLayerPointers,
-                                                     texture, true, std::move(bufferFence))
-                                        .get();
+    mRenderEngine->drawLayers(mDisplaySettings, compositionLayerPointers,
+                              mGraphicBuffer->getNativeBuffer(), true, std::move(bufferFence),
+                              &readyFence);
     int fd = readyFence.release();
     if (fd != -1) {
         ASSERT_EQ(0, sync_wait(fd, -1));
