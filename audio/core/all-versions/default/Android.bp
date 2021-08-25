@@ -48,8 +48,6 @@ cc_defaults {
         "libhidlbase",
         "liblog",
         "libmedia_helper",
-        "libmediautils_vendor",
-        "libmemunreachable",
         "libutils",
         "android.hardware.audio.common-util",
     ],
@@ -57,12 +55,10 @@ cc_defaults {
     header_libs: [
         "android.hardware.audio-impl_headers",
         "android.hardware.audio.common.util@all-versions",
-        "libaudioclient_headers",
         "libaudioutils_headers",
         "libaudio_system_headers",
         "libhardware_headers",
         "libmedia_headers",
-        "libmediautils_headers",
     ],
 
     export_header_lib_headers: [
