@@ -14,7 +14,7 @@ aidl_interface {
         "android/hardware/security/keymint/*.aidl",
     ],
     imports: [
-        "android.hardware.security.secureclock-V1",
+        "android.hardware.security.secureclock",
     ],
     stability: "vintf",
     backend: {
@@ -36,4 +36,5 @@ aidl_interface {
             ],
         },
     },
+    versions: ["1"],
 }
