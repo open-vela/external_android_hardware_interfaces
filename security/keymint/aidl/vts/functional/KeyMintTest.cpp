@@ -71,12 +71,6 @@ namespace {
 
 bool check_patchLevels = false;
 
-// The maximum number of times we'll attempt to verify that corruption
-// of an ecrypted blob results in an error. Retries are necessary as there
-// is a small (roughly 1/256) chance that corrupting ciphertext still results
-// in valid PKCS7 padding.
-constexpr size_t kMaxPaddingCorruptionRetries = 8;
-
 template <TagType tag_type, Tag tag, typename ValueT>
 bool contains(const vector<KeyParameter>& set, TypedTag<tag_type, tag> ttag,
               ValueT expected_value) {
@@ -951,12 +945,8 @@ TEST_P(NewKeyGenerationTest, RsaWithAttestation) {
  *
  * Verifies that keymint can generate all required RSA key sizes, using an attestation key
  * that has been generated using an associate IRemotelyProvisionedComponent.
- *
- * This test is disabled because the KeyMint specification does not require that implementations
- * of the first version of KeyMint have to also implement IRemotelyProvisionedComponent.
- * However, the test is kept in the code because KeyMint v2 will impose this requirement.
  */
-TEST_P(NewKeyGenerationTest, DISABLED_RsaWithRpkAttestation) {
+TEST_P(NewKeyGenerationTest, RsaWithRpkAttestation) {
     // There should be an IRemotelyProvisionedComponent instance associated with the KeyMint
     // instance.
     std::shared_ptr<IRemotelyProvisionedComponent> rp;
@@ -1847,13 +1837,12 @@ TEST_P(NewKeyGenerationTest, EcdsaMismatchKeySize) {
     if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     auto result = GenerateKey(AuthorizationSetBuilder()
-                                      .Authorization(TAG_ALGORITHM, Algorithm::EC)
                                       .Authorization(TAG_KEY_SIZE, 224)
                                       .Authorization(TAG_EC_CURVE, EcCurve::P_256)
-                                      .SigningKey()
                                       .Digest(Digest::NONE)
                                       .SetDefaultValidity());
-    ASSERT_TRUE(result == ErrorCode::INVALID_ARGUMENT);
+    ASSERT_TRUE(result == ErrorCode::INVALID_ARGUMENT ||
+                result == ErrorCode::UNSUPPORTED_ALGORITHM);
 }
 
 /*
@@ -3276,10 +3265,10 @@ TEST_P(ImportKeyTest, AesFailure) {
     for (uint32_t key_size : {bitlen - 1, bitlen + 1, bitlen - 8, bitlen + 8}) {
         // Explicit key size doesn't match that of the provided key.
         auto result = ImportKey(AuthorizationSetBuilder()
-                                        .Authorization(TAG_NO_AUTH_REQUIRED)
-                                        .AesEncryptionKey(key_size)
-                                        .EcbMode()
-                                        .Padding(PaddingMode::PKCS7),
+                                    .Authorization(TAG_NO_AUTH_REQUIRED)
+                                    .AesEncryptionKey(key_size)
+                                    .EcbMode()
+                                    .Padding(PaddingMode::PKCS7),
                                 KeyFormat::RAW, key);
         ASSERT_TRUE(result == ErrorCode::IMPORT_PARAMETER_MISMATCH ||
                     result == ErrorCode::UNSUPPORTED_KEY_SIZE)
@@ -3343,10 +3332,10 @@ TEST_P(ImportKeyTest, TripleDesFailure) {
     for (uint32_t key_size : {bitlen - 1, bitlen + 1, bitlen - 8, bitlen + 8}) {
         // Explicit key size doesn't match that of the provided key.
         auto result = ImportKey(AuthorizationSetBuilder()
-                                        .Authorization(TAG_NO_AUTH_REQUIRED)
-                                        .TripleDesEncryptionKey(key_size)
-                                        .EcbMode()
-                                        .Padding(PaddingMode::PKCS7),
+                                    .Authorization(TAG_NO_AUTH_REQUIRED)
+                                    .TripleDesEncryptionKey(key_size)
+                                    .EcbMode()
+                                    .Padding(PaddingMode::PKCS7),
                                 KeyFormat::RAW, key);
         ASSERT_TRUE(result == ErrorCode::IMPORT_PARAMETER_MISMATCH ||
                     result == ErrorCode::UNSUPPORTED_KEY_SIZE)
@@ -4385,22 +4374,11 @@ TEST_P(EncryptionOperationsTest, AesEcbPkcs7PaddingCorrupted) {
     string ciphertext = EncryptMessage(message, params);
     EXPECT_EQ(16U, ciphertext.size());
     EXPECT_NE(ciphertext, message);
+    ++ciphertext[ciphertext.size() / 2];
 
-    for (size_t i = 0; i < kMaxPaddingCorruptionRetries; ++i) {
-        ++ciphertext[ciphertext.size() / 2];
-
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, params));
-        string plaintext;
-        ErrorCode error = Finish(message, &plaintext);
-        if (error == ErrorCode::INVALID_INPUT_LENGTH) {
-            // This is the expected error, we can exit the test now.
-            return;
-        } else {
-            // Very small chance we got valid decryption, so try again.
-            ASSERT_EQ(error, ErrorCode::OK);
-        }
-    }
-    FAIL() << "Corrupt ciphertext should have failed to decrypt by now.";
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, params));
+    string plaintext;
+    EXPECT_EQ(ErrorCode::INVALID_INPUT_LENGTH, Finish(message, &plaintext));
 }
 
 vector<uint8_t> CopyIv(const AuthorizationSet& set) {
@@ -5363,27 +5341,15 @@ TEST_P(EncryptionOperationsTest, TripleDesEcbPkcs7PaddingCorrupted) {
     string ciphertext = EncryptMessage(message, BlockMode::ECB, PaddingMode::PKCS7);
     EXPECT_EQ(8U, ciphertext.size());
     EXPECT_NE(ciphertext, message);
+    ++ciphertext[ciphertext.size() / 2];
 
     AuthorizationSetBuilder begin_params;
     begin_params.push_back(TAG_BLOCK_MODE, BlockMode::ECB);
     begin_params.push_back(TAG_PADDING, PaddingMode::PKCS7);
-
-    for (size_t i = 0; i < kMaxPaddingCorruptionRetries; ++i) {
-        ++ciphertext[ciphertext.size() / 2];
-
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
-        string plaintext;
-        EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext));
-        ErrorCode error = Finish(&plaintext);
-        if (error == ErrorCode::INVALID_ARGUMENT) {
-            // This is the expected error, we can exit the test now.
-            return;
-        } else {
-            // Very small chance we got valid decryption, so try again.
-            ASSERT_EQ(error, ErrorCode::OK);
-        }
-    }
-    FAIL() << "Corrupt ciphertext should have failed to decrypt by now.";
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
+    string plaintext;
+    EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext));
+    EXPECT_EQ(ErrorCode::INVALID_ARGUMENT, Finish(&plaintext));
 }
 
 struct TripleDesTestVector {
@@ -5711,27 +5677,16 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcPkcs7PaddingCorrupted) {
     string ciphertext = EncryptMessage(message, BlockMode::CBC, PaddingMode::PKCS7, &iv);
     EXPECT_EQ(8U, ciphertext.size());
     EXPECT_NE(ciphertext, message);
+    ++ciphertext[ciphertext.size() / 2];
 
     auto begin_params = AuthorizationSetBuilder()
                                 .BlockMode(BlockMode::CBC)
                                 .Padding(PaddingMode::PKCS7)
                                 .Authorization(TAG_NONCE, iv);
-
-    for (size_t i = 0; i < kMaxPaddingCorruptionRetries; ++i) {
-        ++ciphertext[ciphertext.size() / 2];
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
-        string plaintext;
-        EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext));
-        ErrorCode error = Finish(&plaintext);
-        if (error == ErrorCode::INVALID_ARGUMENT) {
-            // This is the expected error, we can exit the test now.
-            return;
-        } else {
-            // Very small chance we got valid decryption, so try again.
-            ASSERT_EQ(error, ErrorCode::OK);
-        }
-    }
-    FAIL() << "Corrupt ciphertext should have failed to decrypt by now.";
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
+    string plaintext;
+    EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext));
+    EXPECT_EQ(ErrorCode::INVALID_ARGUMENT, Finish(&plaintext));
 }
 
 /*
@@ -6208,8 +6163,7 @@ TEST_P(KeyDeletionTest, DeleteAllKeys) {
                                      .Digest(Digest::NONE)
                                      .Padding(PaddingMode::NONE)
                                      .Authorization(TAG_NO_AUTH_REQUIRED)
-                                     .Authorization(TAG_ROLLBACK_RESISTANCE)
-                                     .SetDefaultValidity());
+                                     .Authorization(TAG_ROLLBACK_RESISTANCE));
     ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
 
     // Delete must work if rollback protection is implemented
