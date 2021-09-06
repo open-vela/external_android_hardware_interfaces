@@ -16,7 +16,7 @@ aidl_interface {
     stability: "vintf",
     backend: {
         java: {
-            sdk_version: "module_current",
+            platform_apis: true,
         },
         ndk: {
             vndk: {
@@ -24,8 +24,5 @@ aidl_interface {
             },
         },
     },
-    versions: [
-        "1",
-        "2",
-    ],
+    versions: ["1"],
 }
