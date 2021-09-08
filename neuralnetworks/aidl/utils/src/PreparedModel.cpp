@@ -160,7 +160,7 @@ PreparedModel::executeFencedInternal(const Request& request,
 
     auto resultSyncFence = nn::SyncFence::createAsSignaled();
     if (result.syncFence.get() != -1) {
-        resultSyncFence = nn::SyncFence::create(NN_TRY(nn::convert(result.syncFence))).value();
+        resultSyncFence = NN_TRY(nn::convert(result.syncFence));
     }
 
     auto callback = result.callback;
