@@ -31,18 +31,22 @@ cc_library_static {
     export_include_dirs: ["include"],
     cflags: ["-Wthread-safety"],
     static_libs: [
-        "android.hardware.graphics.common-V2-ndk_platform",
+        "android.hardware.graphics.common-V2-ndk",
         "libaidlcommonsupport",
         "libarect",
         "neuralnetworks_types",
         "neuralnetworks_utils_hal_common",
     ],
     shared_libs: [
-        "android.hardware.neuralnetworks-V1-ndk_platform",
+        "android.hardware.neuralnetworks-V1-ndk",
         "libbinder_ndk",
         "libhidlbase",
-        "libnativewindow",
     ],
+    target: {
+        android: {
+            shared_libs: ["libnativewindow"],
+        },
+    },
 }
 
 cc_test {
@@ -52,9 +56,9 @@ cc_test {
         "test/*.cpp",
     ],
     static_libs: [
-        "android.hardware.common-V2-ndk_platform",
-        "android.hardware.graphics.common-V2-ndk_platform",
-        "android.hardware.neuralnetworks-V1-ndk_platform",
+        "android.hardware.common-V2-ndk",
+        "android.hardware.graphics.common-V2-ndk",
+        "android.hardware.neuralnetworks-V1-ndk",
         "libaidlcommonsupport",
         "libgmock",
         "libneuralnetworks_common",
@@ -70,9 +74,21 @@ cc_test {
         "libhidlbase",
         "libhidlmemory",
         "liblog",
-        "libnativewindow",
         "libutils",
     ],
+    target: {
+        android: {
+            shared_libs: ["libnativewindow"],
+        },
+        host: {
+            cflags: [
+                "-D__INTRODUCED_IN(x)=",
+                "-D__assert(a,b,c)=",
+                // We want all the APIs to be available on the host.
+                "-D__ANDROID_API__=10000",
+            ],
+        },
+    },
     cflags: [
         /* GMOCK defines functions for printing all MOCK_DEVICE arguments and
          * MockDevice contains a string pointer which triggers a warning in the
