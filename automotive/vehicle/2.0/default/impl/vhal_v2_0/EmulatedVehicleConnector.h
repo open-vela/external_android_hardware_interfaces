@@ -33,13 +33,11 @@ namespace impl {
 
 class EmulatedVehicleConnector : public IPassThroughConnector<VehicleHalClient, VehicleHalServer> {
   public:
-    EmulatedVehicleConnector() = default;
+    EmulatedVehicleConnector() {}
 
     EmulatedUserHal* getEmulatedUserHal();
 
     // Methods from VehicleHalServer
-    void triggerSendAllValues() override;
-
     StatusCode onSetProperty(const VehiclePropValue& value, bool updateStatus) override;
 
     bool onDump(const hidl_handle& fd, const hidl_vec<hidl_string>& options) override;
