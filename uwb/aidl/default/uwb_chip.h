@@ -43,7 +43,6 @@ class UwbChip : public BnUwbChip {
 
   private:
     std::string name_;
-    std::shared_ptr<IUwbClientCallback> mClientCallback;
 };
 }  // namespace impl
 }  // namespace uwb
