@@ -27,10 +27,11 @@ aidl_interface {
     srcs: [
         "android/hardware/automotive/vehicle/**/*.aidl",
     ],
-    stability: "vintf",
+    // TODO(b/148703287) Make it stable with new APIs
+    unstable: true,
     backend: {
         cpp: {
-            enabled: false,
+            enabled: true,
         },
         java: {
             sdk_version: "module_current",

@@ -16,29 +16,28 @@
 
 package android.hardware.automotive.vehicle;
 
-import android.hardware.automotive.vehicle.CreateUserStatus;
-
-/**
- * Defines the result of a CreateUserRequest.
- *
- * NOTE: this struct is not used in the HAL properties directly, it must be converted to
- * VehiclePropValue.RawValue through libraries provided by the default Vehicle HAL implementation.
- */
 // @VintfStability
-parcelable CreateUserResponse {
+@Backing(type="int")
+enum SubscribeFlags {
+    UNDEFINED = 0x0,
+
     /**
-     * Id of the request being responded.
+     * Subscribe to event that was originated in vehicle HAL
+     * (most likely this event came from the vehicle itself).
      */
-    int requestId;
+    EVENTS_FROM_CAR = 0x1,
+
     /**
-     * Status of the request.
+     * Use this flag to subscribe on events when IVehicle#set(...) was called by
+     * vehicle HAL's client (e.g. Car Service).
      */
-    CreateUserStatus status;
+    EVENTS_FROM_ANDROID = 0x2,
+
     /**
-     * HAL-specific error message.
-     *
-     * This argument is optional, and when defined, it's passed "as-is" to the caller. It could be
-     * used to show custom error messages to the end user.
+     * Property event for this property should be passed through shared memory with only this
+     * property's data included. This can be helpful for reducing memory copy in upper layer
+     * for data with bigger payload. If payload size is small, VHAL can send this through non-shared
+     * memory path instead.
      */
-    @utf8InCpp String errorMessage;
+    EXCLUSIVE_SHARED_MEMORY = 0x4,
 }
