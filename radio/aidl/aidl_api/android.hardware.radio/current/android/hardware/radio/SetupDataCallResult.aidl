@@ -37,7 +37,7 @@ parcelable SetupDataCallResult {
   android.hardware.radio.DataCallFailCause cause;
   long suggestedRetryTime;
   int cid;
-  int active;
+  android.hardware.radio.DataConnActiveStatus active;
   android.hardware.radio.PdpProtocolType type;
   String ifname;
   android.hardware.radio.LinkAddress[] addresses;
@@ -48,15 +48,8 @@ parcelable SetupDataCallResult {
   int mtuV6;
   android.hardware.radio.Qos defaultQos;
   android.hardware.radio.QosSession[] qosSessions;
-  byte handoverFailureMode;
+  android.hardware.radio.HandoverFailureMode handoverFailureMode;
   int pduSessionId;
-  @nullable android.hardware.radio.SliceInfo sliceInfo;
+  android.hardware.radio.OptionalSliceInfo sliceInfo;
   android.hardware.radio.TrafficDescriptor[] trafficDescriptors;
-  const int DATA_CONNECTION_STATUS_INACTIVE = 0;
-  const int DATA_CONNECTION_STATUS_DORMANT = 1;
-  const int DATA_CONNECTION_STATUS_ACTIVE = 2;
-  const byte HANDOVER_FAILURE_MODE_LEGACY = 0;
-  const byte HANDOVER_FAILURE_MODE_DO_FALLBACK = 1;
-  const byte HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_HANDOVER = 2;
-  const byte HANDOVER_FAILURE_MODE_NO_FALLBACK_RETRY_SETUP_NORMAL = 3;
 }

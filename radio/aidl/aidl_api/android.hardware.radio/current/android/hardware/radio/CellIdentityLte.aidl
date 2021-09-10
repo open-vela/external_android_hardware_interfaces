@@ -43,6 +43,6 @@ parcelable CellIdentityLte {
   android.hardware.radio.CellIdentityOperatorNames operatorNames;
   int bandwidth;
   String[] additionalPlmns;
-  @nullable android.hardware.radio.ClosedSubscriberGroupInfo csgInfo;
+  android.hardware.radio.OptionalCsgInfo optionalCsgInfo;
   android.hardware.radio.EutranBands[] bands;
 }

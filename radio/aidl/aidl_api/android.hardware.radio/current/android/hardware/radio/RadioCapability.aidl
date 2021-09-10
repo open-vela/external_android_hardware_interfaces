@@ -35,16 +35,8 @@ package android.hardware.radio;
 @VintfStability
 parcelable RadioCapability {
   int session;
-  int phase;
+  android.hardware.radio.RadioCapabilityPhase phase;
   android.hardware.radio.RadioAccessFamily raf;
   String logicalModemUuid;
-  int status;
-  const int PHASE_CONFIGURED = 0;
-  const int PHASE_START = 1;
-  const int PHASE_APPLY = 2;
-  const int PHASE_UNSOL_RSP = 3;
-  const int PHASE_FINISH = 4;
-  const int STATUS_NONE = 0;
-  const int STATUS_SUCCESS = 1;
-  const int STATUS_FAIL = 2;
+  android.hardware.radio.RadioCapabilityStatus status;
 }

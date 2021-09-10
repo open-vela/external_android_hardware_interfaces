@@ -16,7 +16,8 @@
 
 package android.hardware.radio;
 
-import android.hardware.radio.PdpProtocolType;
+import android.hardware.radio.OptionalPdpProtocolType;
+import android.hardware.radio.OptionalSscMode;
 import android.hardware.radio.SliceInfo;
 
 /**
@@ -24,24 +25,15 @@ import android.hardware.radio.SliceInfo;
  */
 @VintfStability
 parcelable RouteSelectionDescriptor {
-    const byte SSC_MODE_UNKNOWN = -1;
-    const byte SSC_MODE_1 = 1;
-    const byte SSC_MODE_2 = 2;
-    const byte SSC_MODE_3 = 3;
-
     /**
      * Precedence value in the range of 0 to 255. Higher value has lower precedence.
      */
     byte precedence;
     /**
-     * Valid values are IP, IPV6, IPV4V6, and UNKNOWN.
+     * Valid values are IP, IPV6 and IPV4V6.
      */
-    PdpProtocolType sessionType;
-    /**
-     * Session and service continuity mode as defined in 3GPP TS 23.501.
-     * Valid values are SSC_MODE_
-     */
-    byte sscMode;
+    OptionalPdpProtocolType sessionType;
+    OptionalSscMode sscMode;
     /**
      * There can be 0 or more SliceInfo specified in a route descriptor.
      */

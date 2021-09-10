@@ -36,11 +36,6 @@ package android.hardware.radio;
 parcelable SelectUiccSub {
   int slot;
   int appIndex;
-  int subType;
-  int actStatus;
-  const int SUBSCRIPTION_TYPE_1 = 0;
-  const int SUBSCRIPTION_TYPE_2 = 1;
-  const int SUBSCRIPTION_TYPE_3 = 2;
-  const int ACT_STATUS_DEACTIVATE = 0;
-  const int ACT_STATUS_ACTIVATE = 1;
+  android.hardware.radio.SubscriptionType subType;
+  android.hardware.radio.UiccSubActStatus actStatus;
 }

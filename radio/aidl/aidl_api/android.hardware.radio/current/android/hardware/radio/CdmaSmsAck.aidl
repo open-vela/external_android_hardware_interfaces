@@ -34,6 +34,6 @@
 package android.hardware.radio;
 @VintfStability
 parcelable CdmaSmsAck {
-  boolean errorClass;
+  android.hardware.radio.CdmaSmsErrorClass errorClass;
   int smsCauseCode;
 }

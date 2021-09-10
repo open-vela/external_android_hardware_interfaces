@@ -17,38 +17,13 @@
 package android.hardware.radio;
 
 import android.hardware.radio.AudioQuality;
+import android.hardware.radio.CallPresentation;
+import android.hardware.radio.CallState;
 import android.hardware.radio.UusInfo;
 
 @VintfStability
 parcelable Call {
-    const int PRESENTATION_ALLOWED = 0;
-    const int PRESENTATION_RESTRICTED = 1;
-    const int PRESENTATION_UNKNOWN = 2;
-    const int PRESENTATION_PAYPHONE = 3;
-
-    const int STATE_ACTIVE = 0;
-    const int STATE_HOLDING = 1;
-    /**
-     * MO call only
-     */
-    const int STATE_DIALING = 2;
-    /**
-     * MO call only
-     */
-    const int STATE_ALERTING = 3;
-    /**
-     * MT call only
-     */
-    const int STATE_INCOMING = 4;
-    /**
-     * MT call only
-     */
-    const int STATE_WAITING = 5;
-
-    /**
-     * Values are STATE_
-     */
-    int state;
+    CallState state;
     /**
      * Connection index for use with, eg, AT+CHLD
      */
@@ -81,18 +56,12 @@ parcelable Call {
      * Remote party nummber
      */
     String number;
-    /**
-     * Values are PRESENTATION_
-     */
-    int numberPresentation;
+    CallPresentation numberPresentation;
     /**
      * Remote party name
      */
     String name;
-    /**
-     * Values are PRESENTATION_
-     */
-    int namePresentation;
+    CallPresentation namePresentation;
     /**
      * Vector of User-User Signaling Information
      */

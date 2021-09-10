@@ -34,9 +34,7 @@
 package android.hardware.radio;
 @VintfStability
 parcelable CdmaSmsSubaddress {
-  int subaddressType;
+  android.hardware.radio.CdmaSmsSubaddressType subaddressType;
   boolean odd;
   byte[] digits;
-  const int SUBADDRESS_TYPE_NSAP = 0;
-  const int SUBADDRESS_TYPE_USER_SPECIFIED = 1;
 }

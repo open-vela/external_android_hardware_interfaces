@@ -16,35 +16,18 @@
 
 package android.hardware.radio;
 
+import android.hardware.radio.CdmaCallWaitingNumberPlan;
+import android.hardware.radio.CdmaCallWaitingNumberPresentation;
+import android.hardware.radio.CdmaCallWaitingNumberType;
 import android.hardware.radio.CdmaSignalInfoRecord;
 
 @VintfStability
 parcelable CdmaCallWaiting {
-    const int NUMBER_PLAN_UNKNOWN = 0;
-    const int NUMBER_PLAN_ISDN = 1;
-    const int NUMBER_PLAN_DATA = 3;
-    const int NUMBER_PLAN_TELEX = 4;
-    const int NUMBER_PLAN_NATIONAL = 8;
-    const int NUMBER_PLAN_PRIVATE = 9;
-
-    const int NUMBER_PRESENTATION_ALLOWED = 0;
-    const int NUMBER_PRESENTATION_RESTRICTED = 1;
-    const int NUMBER_PRESENTATION_UNKNOWN = 2;
-
-    const int NUMBER_TYPE_UNKNOWN = 0;
-    const int NUMBER_TYPE_INTERNATIONAL = 1;
-    const int NUMBER_TYPE_NATIONAL = 2;
-    const int NUMBER_TYPE_NETWORK_SPECIFIC = 3;
-    const int NUMBER_TYPE_SUBSCRIBER = 4;
-
     /**
      * Remote party number
      */
     String number;
-    /**
-     * Values are NUMBER_PRESENTATION_
-     */
-    int numberPresentation;
+    CdmaCallWaitingNumberPresentation numberPresentation;
     /**
      * Remote party name
      */
@@ -52,12 +35,10 @@ parcelable CdmaCallWaiting {
     CdmaSignalInfoRecord signalInfoRecord;
     /**
      * Required to support International Call Waiting
-     * Values are NUMBER_TYPE_
      */
-    int numberType;
+    CdmaCallWaitingNumberType numberType;
     /**
      * Required to support International Call Waiting
-     * Values are NUMBER_PLAN_
      */
-    int numberPlan;
+    CdmaCallWaitingNumberPlan numberPlan;
 }

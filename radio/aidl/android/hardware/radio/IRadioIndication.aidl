@@ -53,7 +53,7 @@ import android.hardware.radio.UssdModeType;
  * Interface declaring unsolicited radio indications.
  */
 @VintfStability
-oneway interface IRadioIndication {
+interface IRadioIndication {
     /**
      * Indicate barring information for the user’s access category / access class and PLMN.
      *
@@ -68,7 +68,7 @@ oneway interface IRadioIndication {
      * when PLMN selection is completed, when the device attempts to access a conditionally barred
      * service, and when the System Information including barring info for a camped cell is updated.
      */
-    void barringInfoChanged(in RadioIndicationType type, in CellIdentity cellIdentity,
+    oneway void barringInfoChanged(in RadioIndicationType type, in CellIdentity cellIdentity,
             in BarringInfo[] barringInfos);
 
     /**
@@ -84,7 +84,8 @@ oneway interface IRadioIndication {
      * @param isGsm true for GSM & false for CDMA
      * @param record Cdma Signal Information
      */
-    void callRing(in RadioIndicationType type, in boolean isGsm, in CdmaSignalInfoRecord record);
+    oneway void callRing(
+            in RadioIndicationType type, in boolean isGsm, in CdmaSignalInfoRecord record);
 
     /**
      * Indicates when call state has changed. Callee must invoke IRadio.getCurrentCalls(). Must be
@@ -93,7 +94,7 @@ oneway interface IRadioIndication {
      *
      * @param type Type of radio indication
      */
-    void callStateChanged(in RadioIndicationType type);
+    oneway void callStateChanged(in RadioIndicationType type);
 
     /**
      * Indicates that the modem requires the Carrier info for IMSI/IMPI encryption. This might
@@ -101,7 +102,7 @@ oneway interface IRadioIndication {
      *
      * @param type Type of radio indication
      */
-    void carrierInfoForImsiEncryption(in RadioIndicationType info);
+    oneway void carrierInfoForImsiEncryption(in RadioIndicationType info);
 
     /**
      * Indicates when CDMA radio receives a call waiting indication.
@@ -109,7 +110,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param callWaitingRecord Cdma CallWaiting information
      */
-    void cdmaCallWaiting(in RadioIndicationType type, in CdmaCallWaiting callWaitingRecord);
+    oneway void cdmaCallWaiting(in RadioIndicationType type, in CdmaCallWaiting callWaitingRecord);
 
     /**
      * Indicates when CDMA radio receives one or more info recs.
@@ -117,7 +118,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param records New Cdma Information
      */
-    void cdmaInfoRec(in RadioIndicationType type, in CdmaInformationRecords records);
+    oneway void cdmaInfoRec(in RadioIndicationType type, in CdmaInformationRecords records);
 
     /**
      * Indicates when new CDMA SMS is received. Callee must subsequently confirm the receipt of the
@@ -127,7 +128,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param msg Cdma Sms Message
      */
-    void cdmaNewSms(in RadioIndicationType type, in CdmaSmsMessage msg);
+    oneway void cdmaNewSms(in RadioIndicationType type, in CdmaSmsMessage msg);
 
     /**
      * Indicates when CDMA radio receives an update of the progress of an OTASP/OTAPA call.
@@ -135,7 +136,8 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param status Cdma OTA provision status
      */
-    void cdmaOtaProvisionStatus(in RadioIndicationType type, in CdmaOtaProvisionStatus status);
+    oneway void cdmaOtaProvisionStatus(
+            in RadioIndicationType type, in CdmaOtaProvisionStatus status);
 
     /**
      * Indicates when PRL (preferred roaming list) changes.
@@ -143,7 +145,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param version PRL version after PRL changes
      */
-    void cdmaPrlChanged(in RadioIndicationType type, in int version);
+    oneway void cdmaPrlChanged(in RadioIndicationType type, in int version);
 
     /**
      * Indicates that SMS storage on the RUIM is full. Messages cannot be saved on the RUIM until
@@ -151,7 +153,7 @@ oneway interface IRadioIndication {
      *
      * @param type Type of radio indication
      */
-    void cdmaRuimSmsStorageFull(in RadioIndicationType type);
+    oneway void cdmaRuimSmsStorageFull(in RadioIndicationType type);
 
     /**
      * Indicates when CDMA subscription source changed.
@@ -159,7 +161,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param cdmaSource New Cdma SubscriptionSource
      */
-    void cdmaSubscriptionSourceChanged(
+    oneway void cdmaSubscriptionSourceChanged(
             in RadioIndicationType type, in CdmaSubscriptionSource cdmaSource);
 
     /**
@@ -168,7 +170,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param records Current cell information
      */
-    void cellInfoList(in RadioIndicationType type, in CellInfo[] records);
+    oneway void cellInfoList(in RadioIndicationType type, in CellInfo[] records);
 
     /**
      * Report the current list of emergency numbers. Each emergency number in the emergency number
@@ -192,7 +194,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param emergencyNumberList Current list of emergency numbers known to radio.
      */
-    void currentEmergencyNumberList(
+    oneway void currentEmergencyNumberList(
             in RadioIndicationType type, in EmergencyNumber[] emergencyNumberList);
 
     /**
@@ -203,7 +205,8 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param lce LinkCapacityEstimate
      */
-    void currentLinkCapacityEstimate(in RadioIndicationType type, in LinkCapacityEstimate lce);
+    oneway void currentLinkCapacityEstimate(
+            in RadioIndicationType type, in LinkCapacityEstimate lce);
 
     /**
      * Indicates physical channel configurations. An empty configs list shall be returned when the
@@ -212,7 +215,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param configs Vector of PhysicalChannelConfigs
      */
-    void currentPhysicalChannelConfigs(
+    oneway void currentPhysicalChannelConfigs(
             in RadioIndicationType type, in PhysicalChannelConfig[] configs);
 
     /**
@@ -221,7 +224,8 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param signalStrength SignalStrength information
      */
-    void currentSignalStrength(in RadioIndicationType type, in SignalStrength signalStrength);
+    oneway void currentSignalStrength(
+            in RadioIndicationType type, in SignalStrength signalStrength);
 
     /**
      * Indicates data call contexts have changed.
@@ -235,7 +239,7 @@ oneway interface IRadioIndication {
      *        - The radio is powered off/on.
      *        - Unsolicited disconnect from either modem or network side.
      */
-    void dataCallListChanged(in RadioIndicationType type, in SetupDataCallResult[] dcList);
+    oneway void dataCallListChanged(in RadioIndicationType type, in SetupDataCallResult[] dcList);
 
     /**
      * Indicates that the radio system selection module has autonomously entered emergency
@@ -243,7 +247,7 @@ oneway interface IRadioIndication {
      *
      * @param type Type of radio indication
      */
-    void enterEmergencyCallbackMode(in RadioIndicationType type);
+    oneway void enterEmergencyCallbackMode(in RadioIndicationType type);
 
     /**
      * Indicates when Emergency Callback Mode Ends. Indicates that the radio system selection module
@@ -251,7 +255,7 @@ oneway interface IRadioIndication {
      *
      * @param type Type of radio indication
      */
-    void exitEmergencyCallbackMode(in RadioIndicationType type);
+    oneway void exitEmergencyCallbackMode(in RadioIndicationType type);
 
     /**
      * Indicates when the hardware configuration associated with the RILd changes.
@@ -259,7 +263,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param configs Array of hardware configs
      */
-    void hardwareConfigChanged(in RadioIndicationType type, in HardwareConfig[] configs);
+    oneway void hardwareConfigChanged(in RadioIndicationType type, in HardwareConfig[] configs);
 
     /**
      * Indicates when IMS registration state has changed. To get IMS registration state and IMS SMS
@@ -267,7 +271,7 @@ oneway interface IRadioIndication {
      *
      * @param type Type of radio indication
      */
-    void imsNetworkStateChanged(in RadioIndicationType type);
+    oneway void imsNetworkStateChanged(in RadioIndicationType type);
 
     /**
      * Indicates that nework doesn't have in-band information, need to play out-band tone.
@@ -275,7 +279,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param start true = start play ringback tone, false = stop playing ringback tone
      */
-    void indicateRingbackTone(in RadioIndicationType type, in boolean start);
+    oneway void indicateRingbackTone(in RadioIndicationType type, in boolean start);
 
     /**
      * Indicates a status update for a particular Keepalive session. This must include a handle for
@@ -286,7 +290,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param status Status information for a Keepalive session
      */
-    void keepaliveStatus(in RadioIndicationType type, in KeepaliveStatus status);
+    oneway void keepaliveStatus(in RadioIndicationType type, in KeepaliveStatus status);
 
     /**
      * Indicates when there is an incoming Link Capacity Estimate (LCE) info report.
@@ -296,7 +300,7 @@ oneway interface IRadioIndication {
      *
      * DEPRECATED in @1.2 and above, use IRadioIndication.currentLinkCapacityEstimate() instead.
      */
-    void lceData(in RadioIndicationType type, in LceDataInfo lce);
+    oneway void lceData(in RadioIndicationType type, in LceDataInfo lce);
 
     /**
      * Indicates when there is a modem reset.
@@ -314,7 +318,7 @@ oneway interface IRadioIndication {
      *        a crash or some string such as "user-initiated restart" or "AT command initiated
      *        restart" that explains the cause of the modem restart
      */
-    void modemReset(in RadioIndicationType type, in String reason);
+    oneway void modemReset(in RadioIndicationType type, in String reason);
 
     /**
      * Incremental network scan results.
@@ -322,7 +326,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param result the result of the network scan
      */
-    void networkScanResult(in RadioIndicationType type, in NetworkScanResult result);
+    oneway void networkScanResult(in RadioIndicationType type, in NetworkScanResult result);
 
     /**
      * Indicates when voice or data network state changed. Callee must invoke
@@ -331,7 +335,7 @@ oneway interface IRadioIndication {
      *
      * @param type Type of radio indication
      */
-    void networkStateChanged(in RadioIndicationType type);
+    oneway void networkStateChanged(in RadioIndicationType type);
 
     /**
      * Indicates when new Broadcast SMS is received
@@ -343,7 +347,7 @@ oneway interface IRadioIndication {
      *        which contain between 1 and 15 CBS Message pages sent as one packet to the MS by the
      *        BTS as coded in 3GPP 23.041 Section 9.4.2.2
      */
-    void newBroadcastSms(in RadioIndicationType type, in byte[] data);
+    oneway void newBroadcastSms(in RadioIndicationType type, in byte[] data);
 
     /**
      * Indicates when new SMS is received. Callee must subsequently confirm the receipt of the SMS
@@ -354,7 +358,7 @@ oneway interface IRadioIndication {
      * @param pdu PDU of SMS-DELIVER represented as byte array.
      *        The PDU starts with the SMSC address per TS 27.005 (+CMT:)
      */
-    void newSms(in RadioIndicationType type, in byte[] pdu);
+    oneway void newSms(in RadioIndicationType type, in byte[] pdu);
 
     /**
      * Indicates when new SMS has been stored on SIM card
@@ -362,7 +366,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param recordNumber Record number on the sim
      */
-    void newSmsOnSim(in RadioIndicationType type, in int recordNumber);
+    oneway void newSmsOnSim(in RadioIndicationType type, in int recordNumber);
 
     /**
      * Indicates when new SMS Status Report is received. Callee must subsequently confirm the
@@ -373,7 +377,7 @@ oneway interface IRadioIndication {
      * @param pdu PDU of SMS-STATUS-REPORT represented as byte array.
      *        The PDU starts with the SMSC address per TS 27.005 (+CMT:)
      */
-    void newSmsStatusReport(in RadioIndicationType type, in byte[] pdu);
+    oneway void newSmsStatusReport(in RadioIndicationType type, in byte[] pdu);
 
     /**
      * Indicates when radio has received a NITZ time message.
@@ -382,7 +386,8 @@ oneway interface IRadioIndication {
      * @param nitzTime NITZ time string in the form "yy/mm/dd,hh:mm:ss(+/-)tz,dt"
      * @param receivedTime milliseconds since boot that the NITZ time was received
      */
-    void nitzTimeReceived(in RadioIndicationType type, in String nitzTime, in long receivedTime);
+    oneway void nitzTimeReceived(
+            in RadioIndicationType type, in String nitzTime, in long receivedTime);
 
     /**
      * Indicates when Supplementary service(SS) response is received when DIAL/USSD/SS is changed to
@@ -390,7 +395,8 @@ oneway interface IRadioIndication {
      *
      * @param type Type of radio indication
      */
-    void onSupplementaryServiceIndication(in RadioIndicationType type, in StkCcUnsolSsResult ss);
+    oneway void onSupplementaryServiceIndication(
+            in RadioIndicationType type, in StkCcUnsolSsResult ss);
 
     /**
      * Indicates when a new USSD message is received. The USSD session is assumed to persist if the
@@ -400,7 +406,7 @@ oneway interface IRadioIndication {
      * @param modeType USSD type code
      * @param msg Message string in UTF-8, if applicable
      */
-    void onUssd(in RadioIndicationType type, in UssdModeType modeType, in String msg);
+    oneway void onUssd(in RadioIndicationType type, in UssdModeType modeType, in String msg);
 
     /**
      * Indicates when there is new Carrier PCO data received for a data call. Ideally only new data
@@ -410,7 +416,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param pco New PcoData
      */
-    void pcoData(in RadioIndicationType type, in PcoDataInfo pco);
+    oneway void pcoData(in RadioIndicationType type, in PcoDataInfo pco);
 
     /**
      * Sent when setRadioCapability() completes. Returns the phone radio capability exactly as
@@ -419,7 +425,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param rc Current radio capability
      */
-    void radioCapabilityIndication(in RadioIndicationType type, in RadioCapability rc);
+    oneway void radioCapabilityIndication(in RadioIndicationType type, in RadioCapability rc);
 
     /**
      * Indicates when radio state changes.
@@ -427,7 +433,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param radioState Current radio state
      */
-    void radioStateChanged(in RadioIndicationType type, in RadioState radioState);
+    oneway void radioStateChanged(in RadioIndicationType type, in RadioState radioState);
 
     /**
      * Report that Registration or a Location/Routing/Tracking Area update has failed.
@@ -454,7 +460,7 @@ oneway interface IRadioIndication {
      *        For LTE (ESM), cause codes are in TS 24.301 9.9.4.4
      *        MAX_INT if this value is unused.
      */
-    void registrationFailed(in RadioIndicationType type, in CellIdentity cellIdentity,
+    oneway void registrationFailed(in RadioIndicationType type, in CellIdentity cellIdentity,
             in String chosenPlmn, in Domain domain, in int causeCode, in int additionalCauseCode);
 
     /**
@@ -462,7 +468,7 @@ oneway interface IRadioIndication {
      *
      * @param type Type of radio indication
      */
-    void resendIncallMute(in RadioIndicationType type);
+    oneway void resendIncallMute(in RadioIndicationType type);
 
     /**
      * Indicates a restricted state change (eg, for Domain Specific Access Control).
@@ -471,14 +477,14 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param state Bitmask of restricted state as defined by PhoneRestrictedState
      */
-    void restrictedStateChanged(in RadioIndicationType type, in PhoneRestrictedState state);
+    oneway void restrictedStateChanged(in RadioIndicationType type, in PhoneRestrictedState state);
 
     /**
      * Indicates the ril connects and returns the version
      *
      * @param type Type of radio indication
      */
-    void rilConnected(in RadioIndicationType type);
+    oneway void rilConnected(in RadioIndicationType type);
 
     /**
      * Indicates whether SIM phonebook is changed. This indication is sent whenever the SIM
@@ -487,7 +493,7 @@ oneway interface IRadioIndication {
      *
      * @param type Type of radio indication
      */
-    void simPhonebookChanged(in RadioIndicationType type);
+    oneway void simPhonebookChanged(in RadioIndicationType type);
 
     /**
      * Indicates the content of all the used records in the SIM phonebook. This indication is
@@ -498,7 +504,7 @@ oneway interface IRadioIndication {
      * @param status Status of PbReceivedStatus
      * @param records Vector of PhonebookRecordInfo
      */
-    void simPhonebookRecordsReceived(in RadioIndicationType type, in PbReceivedStatus status,
+    oneway void simPhonebookRecordsReceived(in RadioIndicationType type, in PbReceivedStatus status,
             in PhonebookRecordInfo[] records);
 
     /**
@@ -509,7 +515,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param refreshResult Result of sim refresh
      */
-    void simRefresh(in RadioIndicationType type, in SimRefreshResult refreshResult);
+    oneway void simRefresh(in RadioIndicationType type, in SimRefreshResult refreshResult);
 
     /**
      * Indicates that SMS storage on the SIM is full. Sent when the network attempts to deliver a
@@ -518,14 +524,14 @@ oneway interface IRadioIndication {
      *
      * @param type Type of radio indication
      */
-    void simSmsStorageFull(in RadioIndicationType type);
+    oneway void simSmsStorageFull(in RadioIndicationType type);
 
     /**
      * Indicates that SIM state changes. Callee must invoke getIccCardStatus().
      *
      * @param type Type of radio indication
      */
-    void simStatusChanged(in RadioIndicationType type);
+    oneway void simStatusChanged(in RadioIndicationType type);
 
     /**
      * Indicates when Single Radio Voice Call Continuity (SRVCC) progress state has changed.
@@ -533,7 +539,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param state New Srvcc State
      */
-    void srvccStateNotify(in RadioIndicationType type, in SrvccState state);
+    oneway void srvccStateNotify(in RadioIndicationType type, in SrvccState state);
 
     /**
      * Indicates when there is an ALPHA from UICC during Call Control.
@@ -541,7 +547,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param alpha ALPHA string from UICC in UTF-8 format
      */
-    void stkCallControlAlphaNotify(in RadioIndicationType type, in String alpha);
+    oneway void stkCallControlAlphaNotify(in RadioIndicationType type, in String alpha);
 
     /**
      * Indicates when SIM wants application to setup a voice call.
@@ -549,7 +555,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param timeout Timeout value in millisec for setting up voice call
      */
-    void stkCallSetup(in RadioIndicationType type, in long timeout);
+    oneway void stkCallSetup(in RadioIndicationType type, in long timeout);
 
     /**
      * Indicates when SIM notifies applcations some event happens.
@@ -559,7 +565,7 @@ oneway interface IRadioIndication {
      *        represented as byte array starting with first byte of response data for command tag.
      *        Refer to TS 102.223 section 9.4 for command types
      */
-    void stkEventNotify(in RadioIndicationType type, in String cmd);
+    oneway void stkEventNotify(in RadioIndicationType type, in String cmd);
 
     /**
      * Indicates when SIM issue a STK proactive command to applications
@@ -568,14 +574,14 @@ oneway interface IRadioIndication {
      * @param cmd SAT/USAT proactive represented as byte array starting with command tag.
      *        Refer to TS 102.223 section 9.4 for command types
      */
-    void stkProactiveCommand(in RadioIndicationType type, in String cmd);
+    oneway void stkProactiveCommand(in RadioIndicationType type, in String cmd);
 
     /**
      * Indicates when STK session is terminated by SIM.
      *
      * @param type Type of radio indication
      */
-    void stkSessionEnd(in RadioIndicationType type);
+    oneway void stkSessionEnd(in RadioIndicationType type);
 
     /**
      * Indicated when there is a change in subscription status.
@@ -587,7 +593,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param activate false for subscription deactivated, true for subscription activated
      */
-    void subscriptionStatusChanged(in RadioIndicationType type, in boolean activate);
+    oneway void subscriptionStatusChanged(in RadioIndicationType type, in boolean activate);
 
     /**
      * Reports supplementary service related notification from the network.
@@ -595,7 +601,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param suppSvc SuppSvcNotification as defined in types.hal
      */
-    void suppSvcNotify(in RadioIndicationType type, in SuppSvcNotification suppSvc);
+    oneway void suppSvcNotify(in RadioIndicationType type, in SuppSvcNotification suppSvc);
 
     /**
      * Report change of whether uiccApplications are enabled, or disabled.
@@ -603,7 +609,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param enabled whether uiccApplications are enabled, or disabled
      */
-    void uiccApplicationsEnablementChanged(in RadioIndicationType type, in boolean enabled);
+    oneway void uiccApplicationsEnablementChanged(in RadioIndicationType type, in boolean enabled);
 
     /**
      * The modem can explicitly set SetupDataCallResult::suggestedRetryTime after a failure in
@@ -614,7 +620,7 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param apn Apn to unthrottle
      */
-    void unthrottleApn(in RadioIndicationType type, in String apn);
+    oneway void unthrottleApn(in RadioIndicationType type, in String apn);
 
     /**
      * Indicates that voice technology has changed. Responds with new rat.
@@ -622,5 +628,5 @@ oneway interface IRadioIndication {
      * @param type Type of radio indication
      * @param rat Current new voice rat
      */
-    void voiceRadioTechChanged(in RadioIndicationType type, in RadioTechnology rat);
+    oneway void voiceRadioTechChanged(in RadioIndicationType type, in RadioTechnology rat);
 }

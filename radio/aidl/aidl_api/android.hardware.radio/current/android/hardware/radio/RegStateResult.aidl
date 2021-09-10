@@ -39,5 +39,5 @@ parcelable RegStateResult {
   android.hardware.radio.RegistrationFailCause reasonForDenial;
   android.hardware.radio.CellIdentity cellIdentity;
   String registeredPlmn;
-  android.hardware.radio.AccessTechnologySpecificInfo accessTechnologySpecificInfo;
+  android.hardware.radio.RegStateResultAccessTechnologySpecificInfo accessTechnologySpecificInfo;
 }
