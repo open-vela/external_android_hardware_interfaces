@@ -34,9 +34,6 @@
 package android.hardware.radio;
 @VintfStability
 parcelable LceStatusInfo {
-  int lceStatus;
+  android.hardware.radio.LceStatus lceStatus;
   byte actualIntervalMs;
-  const int LCE_STATUS_NOT_SUPPORTED = 0;
-  const int LCE_STATUS_STOPPED = 1;
-  const int LCE_STATUS_ACTIVE = 2;
 }

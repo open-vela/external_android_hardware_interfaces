@@ -16,16 +16,13 @@
 
 package android.hardware.radio;
 
+import android.hardware.radio.AddressProperty;
+
 /**
  * Describes a data link address for mobile data connection.
  */
 @VintfStability
 parcelable LinkAddress {
-    const int ADDRESS_PROPERTY_NONE = 0;
-    /**
-     * Indicates this address is deprecated
-     */
-    const int ADDRESS_PROPERTY_DEPRECATED = 0x20;
     /**
      * The format is IP address with optional "/" prefix length (The format is defined in RFC-4291
      * section 2.3). For example, "192.0.1.3", "192.0.1.11/16", or "2001:db8::1/64". Typically one
@@ -34,10 +31,9 @@ parcelable LinkAddress {
      */
     String address;
     /**
-     * The properties of the link address, as defined in if_addr.h in the Linux kernel.
-     * Values are ADDRESS_PROPERTY_
+     * The properties of the link address
      */
-    int addressProperties;
+    AddressProperty properties;
     /**
      * The time, as reported by SystemClock.elapsedRealtime(), when this link address will be or
      * was deprecated. -1 indicates this information is not available. At the time existing

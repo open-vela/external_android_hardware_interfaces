@@ -16,42 +16,15 @@
 
 package android.hardware.radio;
 
+import android.hardware.radio.AppState;
+import android.hardware.radio.AppType;
 import android.hardware.radio.PersoSubstate;
 import android.hardware.radio.PinState;
 
 @VintfStability
 parcelable AppStatus {
-    const int APP_STATE_UNKNOWN = 0;
-    const int APP_STATE_DETECTED = 1;
-    /**
-     * If PIN1 or UPin is required
-     */
-    const int APP_STATE_PIN = 2;
-    /**
-     * If PUK1 or Puk for Upin is required
-     */
-    const int APP_STATE_PUK = 3;
-    /**
-     * perso_substate must be looked at when app_state is assigned to this value
-     */
-    const int APP_STATE_SUBSCRIPTION_PERSO = 4;
-    const int APP_STATE_READY = 5;
-
-    const int APP_TYPE_UNKNOWN = 0;
-    const int APP_TYPE_SIM = 1;
-    const int APP_TYPE_USIM = 2;
-    const int APP_TYPE_RUIM = 3;
-    const int APP_TYPE_CSIM = 4;
-    const int APP_TYPE_ISIM = 5;
-
-    /**
-     * Values are APP_TYPE_
-     */
-    int appType;
-    /**
-     * Values are APP_STATE_
-     */
-    int appState;
+    AppType appType;
+    AppState appState;
     /**
      * Applicable only if appState == SUBSCRIPTION_PERSO
      */
@@ -64,7 +37,7 @@ parcelable AppStatus {
     /**
      * Applicable to USIM, CSIM and ISIM
      */
-    boolean pin1Replaced;
+    int pin1Replaced;
     PinState pin1;
     PinState pin2;
 }

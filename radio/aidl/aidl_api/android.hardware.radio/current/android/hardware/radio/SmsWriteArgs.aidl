@@ -34,11 +34,7 @@
 package android.hardware.radio;
 @VintfStability
 parcelable SmsWriteArgs {
-  int status;
+  android.hardware.radio.SmsWriteArgsStatus status;
   String pdu;
   String smsc;
-  const int STATUS_REC_UNREAD = 0;
-  const int STATUS_REC_READ = 1;
-  const int STATUS_STO_UNSENT = 2;
-  const int STATUS_STO_SENT = 3;
 }

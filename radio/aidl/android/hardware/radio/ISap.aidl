@@ -24,7 +24,7 @@ import android.hardware.radio.SapTransferProtocol;
  * Empty top level interface.
  */
 @VintfStability
-oneway interface ISap {
+interface ISap {
     /**
      * TRANSFER_APDU_REQ from SAP 1.1 spec 5.1.6
      *
@@ -32,7 +32,7 @@ oneway interface ISap {
      * @param type APDU command type
      * @param command CommandAPDU/CommandAPDU7816 parameter depending on type
      */
-    void apduReq(in int token, in SapApduType type, in byte[] command);
+    oneway void apduReq(in int token, in SapApduType type, in byte[] command);
 
     /**
      * CONNECT_REQ from SAP 1.1 spec 5.1.1
@@ -40,14 +40,14 @@ oneway interface ISap {
      * @param token Id to match req-resp. Resp must include same token.
      * @param maxMsgSize MaxMsgSize to be used for SIM Access Profile connection
      */
-    void connectReq(in int token, in int maxMsgSize);
+    oneway void connectReq(in int token, in int maxMsgSize);
 
     /**
      * DISCONNECT_REQ from SAP 1.1 spec 5.1.3
      *
      * @param token Id to match req-resp. Resp must include same token.
      */
-    void disconnectReq(in int token);
+    oneway void disconnectReq(in int token);
 
     /**
      * POWER_SIM_OFF_REQ and POWER_SIM_ON_REQ from SAP 1.1 spec 5.1.10 + 5.1.12
@@ -55,14 +55,14 @@ oneway interface ISap {
      * @param token Id to match req-resp. Resp must include same token.
      * @param state true for on, false for off
      */
-    void powerReq(in int token, in boolean state);
+    oneway void powerReq(in int token, in boolean state);
 
     /**
      * RESET_SIM_REQ from SAP 1.1 spec 5.1.14
      *
      * @param token Id to match req-resp. Resp must include same token.
      */
-    void resetSimReq(in int token);
+    oneway void resetSimReq(in int token);
 
     /**
      * Set callback that has response and unsolicited indication functions
@@ -77,19 +77,19 @@ oneway interface ISap {
      * @param token Id to match req-resp. Resp must include same token.
      * @param transferProtocol Transport Protocol
      */
-    void setTransferProtocolReq(in int token, in SapTransferProtocol transferProtocol);
+    oneway void setTransferProtocolReq(in int token, in SapTransferProtocol transferProtocol);
 
     /**
      * TRANSFER_ATR_REQ from SAP 1.1 spec 5.1.8
      *
      * @param token Id to match req-resp. Resp must include same token.
      */
-    void transferAtrReq(in int token);
+    oneway void transferAtrReq(in int token);
 
     /**
      * TRANSFER_CARD_READER_STATUS_REQ from SAP 1.1 spec 5.1.17
      *
      * @param token Id to match req-resp. Resp must include same token.
      */
-    void transferCardReaderStatusReq(in int token);
+    oneway void transferCardReaderStatusReq(in int token);
 }

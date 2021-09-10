@@ -34,6 +34,6 @@
 package android.hardware.radio;
 @VintfStability
 parcelable TrafficDescriptor {
-  @nullable String dnn;
-  @nullable android.hardware.radio.OsAppId osAppId;
+  android.hardware.radio.OptionalDnn dnn;
+  android.hardware.radio.OptionalOsAppId osAppId;
 }

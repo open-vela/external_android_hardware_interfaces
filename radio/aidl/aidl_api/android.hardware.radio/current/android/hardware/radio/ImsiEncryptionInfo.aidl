@@ -39,7 +39,5 @@ parcelable ImsiEncryptionInfo {
   byte[] carrierKey;
   String keyIdentifier;
   long expirationTime;
-  byte keyType;
-  const byte PUBLIC_KEY_TYPE_EPDG = 1;
-  const byte PUBLIC_KEY_TYPE_WLAN = 2;
+  android.hardware.radio.PublicKeyType keyType;
 }

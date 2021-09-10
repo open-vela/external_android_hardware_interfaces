@@ -34,13 +34,11 @@
 package android.hardware.radio;
 @VintfStability
 parcelable KeepaliveRequest {
-  int type;
+  android.hardware.radio.KeepaliveType type;
   byte[] sourceAddress;
   int sourcePort;
   byte[] destinationAddress;
   int destinationPort;
   int maxKeepaliveIntervalMillis;
   int cid;
-  const int TYPE_NATT_IPV4 = 0;
-  const int TYPE_NATT_IPV6 = 1;
 }

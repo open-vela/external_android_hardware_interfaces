@@ -36,6 +36,4 @@ package android.hardware.radio;
 parcelable CarrierRestrictions {
   android.hardware.radio.Carrier[] allowedCarriers;
   android.hardware.radio.Carrier[] excludedCarriers;
-  boolean priority;
-  boolean allowedCarriersPrioritized;
 }

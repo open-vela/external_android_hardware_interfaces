@@ -34,14 +34,9 @@
 package android.hardware.radio;
 @VintfStability
 parcelable HardwareConfig {
-  int type;
+  android.hardware.radio.HardwareConfigType type;
   String uuid;
-  int state;
+  android.hardware.radio.HardwareConfigState state;
   android.hardware.radio.HardwareConfigModem[] modem;
   android.hardware.radio.HardwareConfigSim[] sim;
-  const int STATE_ENABLED = 0;
-  const int STATE_STANDBY = 1;
-  const int STATE_DISABLED = 2;
-  const int TYPE_MODEM = 0;
-  const int TYPE_SIM = 1;
 }

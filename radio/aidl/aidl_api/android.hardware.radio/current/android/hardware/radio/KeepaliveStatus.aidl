@@ -35,8 +35,5 @@ package android.hardware.radio;
 @VintfStability
 parcelable KeepaliveStatus {
   int sessionHandle;
-  int code;
-  const int CODE_ACTIVE = 0;
-  const int CODE_INACTIVE = 1;
-  const int CODE_PENDING = 2;
+  android.hardware.radio.KeepaliveStatusCode code;
 }

@@ -37,9 +37,5 @@ parcelable OperatorInfo {
   String alphaLong;
   String alphaShort;
   String operatorNumeric;
-  int status;
-  const int STATUS_UNKNOWN = 0;
-  const int STATUS_AVAILABLE = 1;
-  const int STATUS_CURRENT = 2;
-  const int STATUS_FORBIDDEN = 3;
+  android.hardware.radio.OperatorStatus status;
 }

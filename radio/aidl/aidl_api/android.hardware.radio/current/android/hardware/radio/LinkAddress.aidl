@@ -35,9 +35,7 @@ package android.hardware.radio;
 @VintfStability
 parcelable LinkAddress {
   String address;
-  int addressProperties;
+  android.hardware.radio.AddressProperty properties;
   long deprecationTime;
   long expirationTime;
-  const int ADDRESS_PROPERTY_NONE = 0;
-  const int ADDRESS_PROPERTY_DEPRECATED = 32;
 }

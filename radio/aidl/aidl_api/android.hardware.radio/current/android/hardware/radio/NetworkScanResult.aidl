@@ -34,9 +34,7 @@
 package android.hardware.radio;
 @VintfStability
 parcelable NetworkScanResult {
-  int status;
+  android.hardware.radio.ScanStatus status;
   android.hardware.radio.RadioError error;
   android.hardware.radio.CellInfo[] networkInfos;
-  const int SCAN_STATUS_PARTIAL = 1;
-  const int SCAN_STATUS_COMPLETE = 2;
 }
