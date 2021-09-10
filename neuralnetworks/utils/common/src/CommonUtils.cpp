@@ -20,14 +20,12 @@
 
 #include <android-base/logging.h>
 #include <android-base/unique_fd.h>
-#include <android/hardware_buffer.h>
 #include <hidl/HidlSupport.h>
 #include <nnapi/Result.h>
 #include <nnapi/SharedMemory.h>
 #include <nnapi/TypeUtils.h>
 #include <nnapi/Types.h>
 #include <nnapi/Validation.h>
-#include <vndk/hardware_buffer.h>
 
 #include <algorithm>
 #include <any>
@@ -35,6 +33,11 @@
 #include <optional>
 #include <variant>
 #include <vector>
+
+#ifdef __ANDROID__
+#include <android/hardware_buffer.h>
+#include <vndk/hardware_buffer.h>
+#endif  // __ANDROID__
 
 namespace android::hardware::neuralnetworks::utils {
 namespace {
@@ -89,21 +92,37 @@ void copyPointersToSharedMemory(nn::Model::Subgraph* subgraph,
                   });
 }
 
-nn::GeneralResult<hidl_handle> createNativeHandleFrom(base::unique_fd fd,
+nn::GeneralResult<hidl_handle> createNativeHandleFrom(std::vector<base::unique_fd> fds,
                                                       const std::vector<int32_t>& ints) {
     constexpr size_t kIntMax = std::numeric_limits<int>::max();
+    CHECK_LE(fds.size(), kIntMax);
     CHECK_LE(ints.size(), kIntMax);
-    native_handle_t* nativeHandle = native_handle_create(1, static_cast<int>(ints.size()));
+    native_handle_t* nativeHandle =
+            native_handle_create(static_cast<int>(fds.size()), static_cast<int>(ints.size()));
     if (nativeHandle == nullptr) {
         return NN_ERROR() << "Failed to create native_handle";
     }
 
-    nativeHandle->data[0] = fd.release();
-    std::copy(ints.begin(), ints.end(), nativeHandle->data + 1);
+    for (size_t i = 0; i < fds.size(); ++i) {
+        nativeHandle->data[i] = fds[i].release();
+    }
+    std::copy(ints.begin(), ints.end(), nativeHandle->data + nativeHandle->numFds);
 
     hidl_handle handle;
     handle.setTo(nativeHandle, /*shouldOwn=*/true);
     return handle;
+}
+
+nn::GeneralResult<hidl_handle> createNativeHandleFrom(base::unique_fd fd,
+                                                      const std::vector<int32_t>& ints) {
+    std::vector<base::unique_fd> fds;
+    fds.push_back(std::move(fd));
+    return createNativeHandleFrom(std::move(fds), ints);
+}
+
+nn::GeneralResult<hidl_handle> createNativeHandleFrom(const nn::Memory::Unknown::Handle& handle) {
+    std::vector<base::unique_fd> fds = NN_TRY(nn::dupFds(handle.fds.begin(), handle.fds.end()));
+    return createNativeHandleFrom(std::move(fds), handle.ints);
 }
 
 nn::GeneralResult<hidl_memory> createHidlMemoryFrom(const nn::Memory::Ashmem& memory) {
@@ -123,6 +142,7 @@ nn::GeneralResult<hidl_memory> createHidlMemoryFrom(const nn::Memory::Fd& memory
 }
 
 nn::GeneralResult<hidl_memory> createHidlMemoryFrom(const nn::Memory::HardwareBuffer& memory) {
+#ifdef __ANDROID__
     const auto* ahwb = memory.handle.get();
     AHardwareBuffer_Desc bufferDesc;
     AHardwareBuffer_describe(ahwb, &bufferDesc);
@@ -136,10 +156,31 @@ nn::GeneralResult<hidl_memory> createHidlMemoryFrom(const nn::Memory::HardwareBu
     hidl_handle copiedHandle(hidlHandle);
 
     return hidl_memory(name, std::move(copiedHandle), size);
+#else   // __ANDROID__
+    LOG(FATAL) << "nn::GeneralResult<hidl_memory> createHidlMemoryFrom(const "
+                  "nn::Memory::HardwareBuffer& memory): Not Available on Host Build";
+    (void)memory;
+    return (NN_ERROR() << "createHidlMemoryFrom failed").operator nn::GeneralResult<hidl_memory>();
+#endif  // __ANDROID__
 }
 
 nn::GeneralResult<hidl_memory> createHidlMemoryFrom(const nn::Memory::Unknown& memory) {
-    return hidl_memory(memory.name, NN_TRY(hidlHandleFromSharedHandle(memory.handle)), memory.size);
+    return hidl_memory(memory.name, NN_TRY(createNativeHandleFrom(memory.handle)), memory.size);
+}
+
+nn::GeneralResult<nn::Memory::Unknown::Handle> unknownHandleFromNativeHandle(
+        const native_handle_t* handle) {
+    if (handle == nullptr) {
+        return NN_ERROR() << "unknownHandleFromNativeHandle failed because handle is nullptr";
+    }
+
+    std::vector<base::unique_fd> fds =
+            NN_TRY(nn::dupFds(handle->data + 0, handle->data + handle->numFds));
+
+    std::vector<int> ints(handle->data + handle->numFds,
+                          handle->data + handle->numFds + handle->numInts);
+
+    return nn::Memory::Unknown::Handle{.fds = std::move(fds), .ints = std::move(ints)};
 }
 
 }  // anonymous namespace
@@ -302,9 +343,11 @@ nn::GeneralResult<hidl_memory> createHidlMemoryFromSharedMemory(const nn::Shared
     return std::visit([](const auto& x) { return createHidlMemoryFrom(x); }, memory->handle);
 }
 
+#ifdef __ANDROID__
 static uint32_t roundUpToMultiple(uint32_t value, uint32_t multiple) {
     return (value + multiple - 1) / multiple * multiple;
 }
+#endif  // __ANDROID__
 
 nn::GeneralResult<nn::SharedMemory> createSharedMemoryFromHidlMemory(const hidl_memory& memory) {
     CHECK_LE(memory.size(), std::numeric_limits<size_t>::max());
@@ -349,13 +392,14 @@ nn::GeneralResult<nn::SharedMemory> createSharedMemoryFromHidlMemory(const hidl_
 
     if (memory.name() != "hardware_buffer_blob") {
         auto handle = nn::Memory::Unknown{
-                .handle = NN_TRY(sharedHandleFromNativeHandle(memory.handle())),
+                .handle = NN_TRY(unknownHandleFromNativeHandle(memory.handle())),
                 .size = static_cast<size_t>(memory.size()),
                 .name = memory.name(),
         };
         return std::make_shared<const nn::Memory>(nn::Memory{.handle = std::move(handle)});
     }
 
+#ifdef __ANDROID__
     const auto size = memory.size();
     const auto format = AHARDWAREBUFFER_FORMAT_BLOB;
     const auto usage = AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN;
@@ -392,56 +436,29 @@ nn::GeneralResult<nn::SharedMemory> createSharedMemoryFromHidlMemory(const hidl_
     }
 
     return nn::createSharedMemoryFromAHWB(hardwareBuffer, /*takeOwnership=*/true);
+#else   // __ANDROID__
+    LOG(FATAL) << "nn::GeneralResult<nn::SharedMemory> createSharedMemoryFromHidlMemory(const "
+                  "hidl_memory& memory): Not Available on Host Build";
+    return (NN_ERROR() << "createSharedMemoryFromHidlMemory failed")
+            .
+            operator nn::GeneralResult<nn::SharedMemory>();
+#endif  // __ANDROID__
 }
 
 nn::GeneralResult<hidl_handle> hidlHandleFromSharedHandle(const nn::Handle& handle) {
-    std::vector<base::unique_fd> fds;
-    fds.reserve(handle.fds.size());
-    for (const auto& fd : handle.fds) {
-        const int dupFd = dup(fd);
-        if (dupFd == -1) {
-            return NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE) << "Failed to dup the fd";
-        }
-        fds.emplace_back(dupFd);
-    }
-
-    constexpr size_t kIntMax = std::numeric_limits<int>::max();
-    CHECK_LE(handle.fds.size(), kIntMax);
-    CHECK_LE(handle.ints.size(), kIntMax);
-    native_handle_t* nativeHandle = native_handle_create(static_cast<int>(handle.fds.size()),
-                                                         static_cast<int>(handle.ints.size()));
-    if (nativeHandle == nullptr) {
-        return NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE) << "Failed to create native_handle";
-    }
-    for (size_t i = 0; i < fds.size(); ++i) {
-        nativeHandle->data[i] = fds[i].release();
-    }
-    std::copy(handle.ints.begin(), handle.ints.end(), &nativeHandle->data[nativeHandle->numFds]);
-
-    hidl_handle hidlHandle;
-    hidlHandle.setTo(nativeHandle, /*shouldOwn=*/true);
-    return hidlHandle;
+    base::unique_fd fd = NN_TRY(nn::dupFd(handle.get()));
+    return createNativeHandleFrom(std::move(fd), {});
 }
 
 nn::GeneralResult<nn::Handle> sharedHandleFromNativeHandle(const native_handle_t* handle) {
     if (handle == nullptr) {
         return NN_ERROR() << "sharedHandleFromNativeHandle failed because handle is nullptr";
     }
-
-    std::vector<base::unique_fd> fds;
-    fds.reserve(handle->numFds);
-    for (int i = 0; i < handle->numFds; ++i) {
-        const int dupFd = dup(handle->data[i]);
-        if (dupFd == -1) {
-            return NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE) << "Failed to dup the fd";
-        }
-        fds.emplace_back(dupFd);
+    if (handle->numFds != 1 || handle->numInts != 0) {
+        return NN_ERROR() << "sharedHandleFromNativeHandle failed because handle does not only "
+                             "hold a single fd";
     }
-
-    std::vector<int> ints(&handle->data[handle->numFds],
-                          &handle->data[handle->numFds + handle->numInts]);
-
-    return nn::Handle{.fds = std::move(fds), .ints = std::move(ints)};
+    return nn::dupFd(handle->data[0]);
 }
 
 nn::GeneralResult<hidl_vec<hidl_handle>> convertSyncFences(
