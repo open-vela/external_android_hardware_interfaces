@@ -3837,6 +3837,8 @@ TEST_P(CameraHidlTest, configureStreamsZSLInputOutputs) {
                       getAvailableOutputStreams(staticMeta, outputStreams,
                               &outputThreshold));
             for (auto& outputIter : outputStreams) {
+                V3_2::DataspaceFlags outputDataSpace =
+                        getDataspace(static_cast<PixelFormat>(outputIter.format));
                 V3_2::Stream zslStream = {streamId++,
                                     StreamType::OUTPUT,
                                     static_cast<uint32_t>(input.width),
@@ -3859,7 +3861,7 @@ TEST_P(CameraHidlTest, configureStreamsZSLInputOutputs) {
                                        static_cast<uint32_t>(outputIter.height),
                                        static_cast<PixelFormat>(outputIter.format),
                                        GRALLOC1_CONSUMER_USAGE_HWCOMPOSER,
-                                       0,
+                                       outputDataSpace,
                                        StreamRotation::ROTATION_0};
 
                 ::android::hardware::hidl_vec<V3_2::Stream> streams = {inputStream, zslStream,
@@ -8157,6 +8159,20 @@ void CameraHidlTest::verifyCameraCharacteristics(Status status, const CameraMeta
         uint8_t poseReference = entry.data.u8[0];
         ASSERT_TRUE(poseReference <= ANDROID_LENS_POSE_REFERENCE_UNDEFINED &&
                 poseReference >= ANDROID_LENS_POSE_REFERENCE_PRIMARY_CAMERA);
+    }
+
+    retcode = find_camera_metadata_ro_entry(metadata,
+            ANDROID_INFO_DEVICE_STATE_ORIENTATIONS, &entry);
+    if (0 == retcode && entry.count > 0) {
+        ASSERT_TRUE((entry.count % 2) == 0);
+        uint64_t maxPublicState = ((uint64_t) provider::V2_5::DeviceState::FOLDED) << 1;
+        uint64_t vendorStateStart = 1UL << 31; // Reserved for vendor specific states
+        uint64_t stateMask = (1 << vendorStateStart) - 1;
+        stateMask &= ~((1 << maxPublicState) - 1);
+        for (int i = 0; i < entry.count; i += 2){
+            ASSERT_TRUE((entry.data.i64[i] & stateMask) == 0);
+            ASSERT_TRUE((entry.data.i64[i+1] % 90) == 0);
+        }
     }
 
     verifyExtendedSceneModeCharacteristics(metadata);
