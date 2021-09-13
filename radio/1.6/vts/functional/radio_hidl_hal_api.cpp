@@ -275,7 +275,7 @@ TEST_P(RadioHidlTest_v1_6, sendSms_1_6) {
     msg.smscPdu = "";
     msg.pdu = "01000b916105770203f3000006d4f29c3e9b01";
 
-    radio_v1_6->sendSms_1_6(serial, msg);
+    radio_v1_6->sendSms(serial, msg);
 
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
@@ -303,7 +303,7 @@ TEST_P(RadioHidlTest_v1_6, sendSmsExpectMore_1_6) {
     msg.smscPdu = "";
     msg.pdu = "01000b916105770203f3000006d4f29c3e9b01";
 
-    radio_v1_6->sendSmsExpectMore_1_6(serial, msg);
+    radio_v1_6->sendSMSExpectMore(serial, msg);
 
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
@@ -351,7 +351,7 @@ TEST_P(RadioHidlTest_v1_6, sendCdmaSms_1_6) {
     cdmaSmsMessage.bearerData =
         (std::vector<uint8_t>){15, 0, 3, 32, 3, 16, 1, 8, 16, 53, 76, 68, 6, 51, 106, 0};
 
-    radio_v1_6->sendCdmaSms_1_6(serial, cdmaSmsMessage);
+    radio_v1_6->sendCdmaSms(serial, cdmaSmsMessage);
 
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
@@ -398,7 +398,7 @@ TEST_P(RadioHidlTest_v1_6, sendCdmaSmsExpectMore_1_6) {
     cdmaSmsMessage.bearerData =
             (std::vector<uint8_t>){15, 0, 3, 32, 3, 16, 1, 8, 16, 53, 76, 68, 6, 51, 106, 0};
 
-    radio_v1_6->sendCdmaSmsExpectMore_1_6(serial, cdmaSmsMessage);
+    radio_v1_6->sendCdmaSmsExpectMore(serial, cdmaSmsMessage);
 
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
@@ -602,11 +602,11 @@ TEST_P(RadioHidlTest_v1_6, setSimCardPower_1_6) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
-                                 {::android::hardware::radio::V1_6::RadioError::NONE,
-                                  ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
-                                  ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
-                                  ::android::hardware::radio::V1_6::RadioError::SIM_ERR}));
+    ASSERT_TRUE(
+            CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
+                             {::android::hardware::radio::V1_6::RadioError::NONE,
+                              ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
+                              ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE}));
 
     // setSimCardPower_1_6 does not return  until the request is handled, and should not trigger
     // CardState::ABSENT when turning off power
@@ -624,11 +624,11 @@ TEST_P(RadioHidlTest_v1_6, setSimCardPower_1_6) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
-                                 {::android::hardware::radio::V1_6::RadioError::NONE,
-                                  ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
-                                  ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
-                                  ::android::hardware::radio::V1_6::RadioError::SIM_ERR}));
+    ASSERT_TRUE(
+            CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
+                             {::android::hardware::radio::V1_6::RadioError::NONE,
+                              ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
+                              ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE}));
 
     // setSimCardPower_1_6 does not return  until the request is handled. Just verify that we still
     // have CardState::PRESENT after turning the power back on
