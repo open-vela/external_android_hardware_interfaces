@@ -196,13 +196,13 @@ GnssData Utils::getMockMeasurement(const bool enableCorrVecOutputs) {
     GnssClock clock = {.gnssClockFlags = GnssClock::HAS_FULL_BIAS | GnssClock::HAS_BIAS |
                                          GnssClock::HAS_BIAS_UNCERTAINTY | GnssClock::HAS_DRIFT |
                                          GnssClock::HAS_DRIFT_UNCERTAINTY,
-                       .timeNs = 35854545000000,
-                       .fullBiasNs = -234621900521857520,
-                       .biasNs = 0.2352389998626708984,
-                       .biasUncertaintyNs = 274.989972114563,
-                       .driftNsps = -124.3742360,
-                       .driftUncertaintyNsps = 239.6234285828,
-                       .hwClockDiscontinuityCount = 999};
+                       .timeNs = 2713545000000,
+                       .fullBiasNs = -1226701900521857520,
+                       .biasNs = 0.59689998626708984,
+                       .biasUncertaintyNs = 47514.989972114563,
+                       .driftNsps = -51.757811607455452,
+                       .driftUncertaintyNsps = 310.64968328491528,
+                       .hwClockDiscontinuityCount = 1};
 
     ElapsedRealtime timestamp = {
             .flags = ElapsedRealtime::HAS_TIMESTAMP_NS | ElapsedRealtime::HAS_TIME_UNCERTAINTY_NS,
@@ -221,7 +221,7 @@ GnssData Utils::getMockMeasurement(const bool enableCorrVecOutputs) {
         aidl::android::hardware::gnss::CorrelationVector correlationVector2 = {
                 .frequencyOffsetMps = 20,
                 .samplingWidthM = 30,
-                .samplingStartM = 0,
+                .samplingStartM = -10,
                 .magnitude = {0, 3000, 5000, 3000, 0, 0, 1000, 0}};
         measurement.correlationVectors = {correlationVector1, correlationVector2};
         measurement.flags |= GnssMeasurement::HAS_CORRELATION_VECTOR;
