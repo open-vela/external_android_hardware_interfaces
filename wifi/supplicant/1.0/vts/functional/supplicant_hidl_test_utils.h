@@ -17,8 +17,6 @@
 #ifndef SUPPLICANT_HIDL_TEST_UTILS_H
 #define SUPPLICANT_HIDL_TEST_UTILS_H
 
-#include <VtsCoreUtil.h>
-#include <android-base/logging.h>
 #include <android/hardware/wifi/supplicant/1.0/ISupplicant.h>
 #include <android/hardware/wifi/supplicant/1.0/ISupplicantP2pIface.h>
 #include <android/hardware/wifi/supplicant/1.0/ISupplicantStaIface.h>
@@ -29,11 +27,9 @@
 
 #include "wifi_hidl_test_utils.h"
 
-// Used to start the android wifi framework after every test.
-bool startWifiFramework();
-
 // Used to stop the android wifi framework before every test.
-bool stopWifiFramework();
+void stopWifiFramework(const std::string& wifi_instance_name);
+void startWifiFramework(const std::string& wifi_instance_name);
 
 void stopSupplicant(const std::string& wifi_instance_name);
 // Used to configure the chip, driver and start wpa_supplicant before every
@@ -66,51 +62,4 @@ bool turnOnExcessiveLogging(
 
 bool turnOnExcessiveLogging();
 
-bool waitForFrameworkReady();
-
-class SupplicantHidlTestBase
-    : public ::testing::TestWithParam<std::tuple<std::string, std::string>> {
-   public:
-    virtual void SetUp() override {
-        // Stop Wi-Fi
-        ASSERT_TRUE(stopWifiFramework());  // stop & wait for wifi to shutdown.
-
-        // should always be v1.0 wifi
-        wifi_v1_0_instance_name_ = std::get<0>(GetParam());
-        supplicant_instance_name_ = std::get<1>(GetParam());
-        std::system("/system/bin/start");
-        ASSERT_TRUE(waitForFrameworkReady());
-        isP2pOn_ =
-            testing::deviceSupportsFeature("android.hardware.wifi.direct");
-        stopSupplicant(wifi_v1_0_instance_name_);
-        startSupplicantAndWaitForHidlService(wifi_v1_0_instance_name_,
-                                             supplicant_instance_name_);
-        LOG(INFO) << "SupplicantHidlTestBase isP2pOn_: " << isP2pOn_;
-    }
-
-    virtual void TearDown() override {
-        stopSupplicant(wifi_v1_0_instance_name_);
-        // Start Wi-Fi
-        startWifiFramework();
-    }
-
-   protected:
-    bool isP2pOn_ = false;
-    std::string wifi_v1_0_instance_name_;
-    std::string supplicant_instance_name_;
-};
-
-class SupplicantHidlTestBaseV1_0 : public SupplicantHidlTestBase {
-   public:
-    virtual void SetUp() override {
-        SupplicantHidlTestBase::SetUp();
-        supplicant_ = getSupplicant(supplicant_instance_name_, isP2pOn_);
-        ASSERT_NE(supplicant_.get(), nullptr);
-        EXPECT_TRUE(turnOnExcessiveLogging(supplicant_));
-    }
-
-   protected:
-    android::sp<android::hardware::wifi::supplicant::V1_0::ISupplicant>
-        supplicant_;
-};
 #endif /* SUPPLICANT_HIDL_TEST_UTILS_H */
