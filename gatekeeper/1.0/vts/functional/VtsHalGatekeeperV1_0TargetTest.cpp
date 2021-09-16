@@ -236,6 +236,10 @@ TEST_P(GatekeeperHidlTest, VerifySuccess) {
   generatePassword(password, 0);
   enrollNewPassword(password, enrollRsp, true);
   verifyPassword(password, enrollRsp.data, 1, verifyRsp, true);
+
+  ALOGI("Testing unenrolled password doesn't verify");
+  generatePassword(password, 1);
+  verifyPassword(password, enrollRsp.data, 1, verifyRsp, false);
   ALOGI("Testing Enroll+Verify done");
 }
 
@@ -306,8 +310,6 @@ TEST_P(GatekeeperHidlTest, UntrustedReenroll) {
   if (first != nullptr && second != nullptr) {
     EXPECT_NE(first->user_id, second->user_id);
   }
-  // the old enrollment should be invalid now
-  verifyPassword(password, enrollRsp.data, 0, verifyRsp, false);
   ALOGI("Testing Untrusted Reenroll done");
 }
 
