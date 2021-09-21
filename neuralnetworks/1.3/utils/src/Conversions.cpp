@@ -131,8 +131,9 @@ GeneralResult<Capabilities> unvalidatedConvert(const hal::V1_3::Capabilities& ca
     }
 
     auto operandPerformance = NN_TRY(unvalidatedConvert(capabilities.operandPerformance));
-    auto table =
-            NN_TRY(Capabilities::OperandPerformanceTable::create(std::move(operandPerformance)));
+    auto table = NN_TRY(hal::utils::makeGeneralFailure(
+            Capabilities::OperandPerformanceTable::create(std::move(operandPerformance)),
+            nn::ErrorStatus::GENERAL_FAILURE));
 
     return Capabilities{
             .relaxedFloat32toFloat16PerformanceScalar = NN_TRY(
