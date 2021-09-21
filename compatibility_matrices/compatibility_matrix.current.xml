@@ -432,16 +432,6 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.radio</name>
-        <version>1</version>
-        <interface>
-            <name>IRadio</name>
-            <instance>slot1</instance>
-            <instance>slot2</instance>
-            <instance>slot3</instance>
-        </interface>
-    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.radio</name>
         <version>1.6</version>
@@ -466,14 +456,6 @@
         See compatibility_matrix.4.xml on versioning of radio config HAL.
         -->
         <version>1.1</version>
-        <interface>
-            <name>IRadioConfig</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.radio.config</name>
-        <version>1</version>
         <interface>
             <name>IRadioConfig</name>
             <instance>default</instance>
@@ -653,14 +635,6 @@
     <hal format="hidl" optional="true">
         <name>android.hardware.wifi.hostapd</name>
         <version>1.0-3</version>
-        <interface>
-            <name>IHostapd</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.wifi.hostapd</name>
-        <version>1</version>
         <interface>
             <name>IHostapd</name>
             <instance>default</instance>
