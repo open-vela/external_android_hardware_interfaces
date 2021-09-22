@@ -85,19 +85,12 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.automotive.vehicle</name>
-        <interface>
-            <name>IVehicle</name>
-            <regex-instance>.*</regex-instance>
-        </interface>
-    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.automotive.vehicle</name>
         <version>2.0</version>
         <interface>
             <name>IVehicle</name>
-            <regex-instance>.*</regex-instance>
+            <instance>default</instance>
         </interface>
     </hal>
     <hal format="hidl" optional="true">
@@ -191,13 +184,6 @@
         <version>1.0</version>
         <interface>
             <name>IConfirmationUI</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.contexthub</name>
-        <interface>
-            <name>IContextHub</name>
             <instance>default</instance>
         </interface>
     </hal>
@@ -447,10 +433,60 @@
         </interface>
     </hal>
     <hal format="aidl" optional="true">
-        <name>android.hardware.radio</name>
+        <name>android.hardware.radio.data</name>
         <version>1</version>
         <interface>
-            <name>IRadio</name>
+            <name>IRadioData</name>
+            <instance>slot1</instance>
+            <instance>slot2</instance>
+            <instance>slot3</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.radio.messaging</name>
+        <version>1</version>
+        <interface>
+            <name>IRadioMessaging</name>
+            <instance>slot1</instance>
+            <instance>slot2</instance>
+            <instance>slot3</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.radio.modem</name>
+        <version>1</version>
+        <interface>
+            <name>IRadioModem</name>
+            <instance>slot1</instance>
+            <instance>slot2</instance>
+            <instance>slot3</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.radio.network</name>
+        <version>1</version>
+        <interface>
+            <name>IRadioNetwork</name>
+            <instance>slot1</instance>
+            <instance>slot2</instance>
+            <instance>slot3</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.radio.sim</name>
+        <version>1</version>
+        <interface>
+            <name>IRadioSim</name>
+            <instance>slot1</instance>
+            <instance>slot2</instance>
+            <instance>slot3</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.radio.voice</name>
+        <version>1</version>
+        <interface>
+            <name>IRadioVoice</name>
             <instance>slot1</instance>
             <instance>slot2</instance>
             <instance>slot3</instance>
@@ -560,14 +596,6 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-         <name>android.hardware.soundtrigger3</name>
-         <version>1</version>
-         <interface>
-             <name>ISoundTriggerHw</name>
-             <instance>default</instance>
-         </interface>
-    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.tetheroffload.config</name>
         <version>1.0</version>
@@ -611,14 +639,6 @@
     <hal format="hidl" optional="true">
         <name>android.hardware.tv.tuner</name>
         <version>1.0-1</version>
-        <interface>
-            <name>ITuner</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.tv.tuner</name>
-        <version>1</version>
         <interface>
             <name>ITuner</name>
             <instance>default</instance>
@@ -677,14 +697,6 @@
         <version>1.3-5</version>
         <interface>
             <name>IWifi</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.uwb</name>
-        <version>1</version>
-        <interface>
-            <name>IUwb</name>
             <instance>default</instance>
         </interface>
     </hal>
