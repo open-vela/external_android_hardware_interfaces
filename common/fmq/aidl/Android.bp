@@ -19,13 +19,12 @@ aidl_interface {
         "android/hardware/common/fmq/*.aidl",
     ],
     imports: [
-        "android.hardware.common-V2",
+        "android.hardware.common",
     ],
     stability: "vintf",
     backend: {
         java: {
-            sdk_version: "module_current",
-            srcs_available: true,
+            enabled: false,
         },
         cpp: {
             enabled: false,
