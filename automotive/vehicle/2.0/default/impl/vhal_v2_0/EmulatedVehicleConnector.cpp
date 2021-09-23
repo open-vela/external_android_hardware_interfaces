@@ -21,6 +21,7 @@
 #include <android-base/logging.h>
 #include <utils/SystemClock.h>
 
+#include "DefaultConfig.h"
 #include "EmulatedVehicleConnector.h"
 #include "JsonFakeValueGenerator.h"
 #include "LinearFakeValueGenerator.h"
@@ -36,10 +37,6 @@ namespace impl {
 
 EmulatedUserHal* EmulatedVehicleConnector::getEmulatedUserHal() {
     return &mEmulatedUserHal;
-}
-
-void EmulatedVehicleConnector::triggerSendAllValues() {
-    sendAllValuesToClient();
 }
 
 StatusCode EmulatedVehicleConnector::onSetProperty(const VehiclePropValue& value,
