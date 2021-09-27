@@ -595,11 +595,14 @@ TEST_P(RadioHidlTest_v1_6, setSimCardPower_1_6) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
-                                 {::android::hardware::radio::V1_6::RadioError::NONE,
-                                  ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
-                                  ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
-                                  ::android::hardware::radio::V1_6::RadioError::SIM_ERR}));
+    ASSERT_TRUE(
+            CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
+                             {::android::hardware::radio::V1_6::RadioError::NONE,
+                              ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
+                              ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE}));
+
+    // Give some time for modem to fully power down the SIM card
+    sleep(MODEM_SET_SIM_POWER_DELAY_IN_SECONDS);
 
     // setSimCardPower_1_6 does not return  until the request is handled, and should not trigger
     // CardState::ABSENT when turning off power
@@ -612,20 +615,17 @@ TEST_P(RadioHidlTest_v1_6, setSimCardPower_1_6) {
         EXPECT_EQ(0, cardStatus.applications.size());
     }
 
-    // Give some time for modem to fully power down the SIM card
-    sleep(MODEM_SET_SIM_POWER_DELAY_IN_SECONDS);
-
     /* Test setSimCardPower power up */
     serial = GetRandomSerialNumber();
     radio_v1_6->setSimCardPower_1_6(serial, CardPowerState::POWER_UP);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
-                                 {::android::hardware::radio::V1_6::RadioError::NONE,
-                                  ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
-                                  ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
-                                  ::android::hardware::radio::V1_6::RadioError::SIM_ERR}));
+    ASSERT_TRUE(
+            CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
+                             {::android::hardware::radio::V1_6::RadioError::NONE,
+                              ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
+                              ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE}));
 
     // Give some time for modem to fully power up the SIM card
     sleep(MODEM_SET_SIM_POWER_DELAY_IN_SECONDS);
@@ -644,10 +644,6 @@ TEST_P(RadioHidlTest_v1_6, setSimCardPower_1_6) {
 TEST_P(RadioHidlTest_v1_6, emergencyDial_1_6) {
     if (!deviceSupportsFeature(FEATURE_VOICE_CALL)) {
         ALOGI("Skipping emergencyDial because voice call is not supported in device");
-        return;
-    } else if (!deviceSupportsFeature(FEATURE_TELEPHONY_GSM) &&
-               !deviceSupportsFeature(FEATURE_TELEPHONY_CDMA)) {
-        ALOGI("Skipping emergencyDial because gsm/cdma radio is not supported in device");
         return;
     } else {
         ALOGI("Running emergencyDial because voice call is supported in device");
@@ -703,10 +699,6 @@ TEST_P(RadioHidlTest_v1_6, emergencyDial_1_6_withServices) {
     if (!deviceSupportsFeature(FEATURE_VOICE_CALL)) {
         ALOGI("Skipping emergencyDial because voice call is not supported in device");
         return;
-    } else if (!deviceSupportsFeature(FEATURE_TELEPHONY_GSM) &&
-               !deviceSupportsFeature(FEATURE_TELEPHONY_CDMA)) {
-        ALOGI("Skipping emergencyDial because gsm/cdma radio is not supported in device");
-        return;
     } else {
         ALOGI("Running emergencyDial because voice call is supported in device");
     }
@@ -759,10 +751,6 @@ TEST_P(RadioHidlTest_v1_6, emergencyDial_1_6_withServices) {
 TEST_P(RadioHidlTest_v1_6, emergencyDial_1_6_withEmergencyRouting) {
     if (!deviceSupportsFeature(FEATURE_VOICE_CALL)) {
         ALOGI("Skipping emergencyDial because voice call is not supported in device");
-        return;
-    } else if (!deviceSupportsFeature(FEATURE_TELEPHONY_GSM) &&
-               !deviceSupportsFeature(FEATURE_TELEPHONY_CDMA)) {
-        ALOGI("Skipping emergencyDial because gsm/cdma radio is not supported in device");
         return;
     } else {
         ALOGI("Running emergencyDial because voice call is supported in device");
