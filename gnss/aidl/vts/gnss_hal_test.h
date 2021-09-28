@@ -23,7 +23,6 @@
 #include <binder/IServiceManager.h>
 
 #include <android/hardware/gnss/2.1/IGnss.h>
-#include "GnssBatchingCallback.h"
 #include "GnssCallbackAidl.h"
 #include "v2_1/gnss_hal_test_template.h"
 
