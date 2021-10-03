@@ -95,16 +95,11 @@ static AudioOffloadInfo generateOffloadInfo(const AudioConfigBase& base) {
 std::vector<DeviceConfigParameter> generateOutputDeviceConfigParameters(bool oneProfilePerDevice) {
     std::vector<DeviceConfigParameter> result;
     for (const auto& device : getDeviceParameters()) {
-        const std::string moduleName = std::get<PARAM_DEVICE_NAME>(device);
-        auto module = getCachedPolicyConfig().getModuleFromName(moduleName);
+        auto module =
+                getCachedPolicyConfig().getModuleFromName(std::get<PARAM_DEVICE_NAME>(device));
         if (!module || !module->getFirstMixPorts()) break;
         for (const auto& mixPort : module->getFirstMixPorts()->getMixPort()) {
             if (mixPort.getRole() != xsd::Role::source) continue;  // not an output profile
-            if (getCachedPolicyConfig()
-                        .getAttachedSinkDeviceForMixPort(moduleName, mixPort.getName())
-                        .empty()) {
-                continue;  // no attached device
-            }
             auto [flags, isOffload] = generateOutFlags(mixPort);
             for (const auto& profile : mixPort.getProfile()) {
                 if (!profile.hasFormat() || !profile.hasSamplingRates() ||
@@ -228,16 +223,11 @@ const std::vector<DeviceConfigParameter>& getOutputDeviceInvalidConfigParameters
 std::vector<DeviceConfigParameter> generateInputDeviceConfigParameters(bool oneProfilePerDevice) {
     std::vector<DeviceConfigParameter> result;
     for (const auto& device : getDeviceParameters()) {
-        const std::string moduleName = std::get<PARAM_DEVICE_NAME>(device);
-        auto module = getCachedPolicyConfig().getModuleFromName(moduleName);
+        auto module =
+                getCachedPolicyConfig().getModuleFromName(std::get<PARAM_DEVICE_NAME>(device));
         if (!module || !module->getFirstMixPorts()) break;
         for (const auto& mixPort : module->getFirstMixPorts()->getMixPort()) {
             if (mixPort.getRole() != xsd::Role::sink) continue;  // not an input profile
-            if (getCachedPolicyConfig()
-                        .getAttachedSourceDeviceForMixPort(moduleName, mixPort.getName())
-                        .empty()) {
-                continue;  // no attached device
-            }
             std::vector<AudioInOutFlag> flags;
             if (mixPort.hasFlags()) {
                 std::transform(mixPort.getFlags().begin(), mixPort.getFlags().end(),
