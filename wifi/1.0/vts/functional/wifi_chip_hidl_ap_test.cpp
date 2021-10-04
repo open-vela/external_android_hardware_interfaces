@@ -15,6 +15,7 @@
  */
 
 #include <android-base/logging.h>
+
 #include <android/hardware/wifi/1.0/IWifi.h>
 #include <android/hardware/wifi/1.0/IWifiChip.h>
 #include <android/hardware/wifi/hostapd/1.0/IHostapd.h>
