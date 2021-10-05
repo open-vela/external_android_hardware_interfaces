@@ -25,8 +25,6 @@
 #include <mapper-vts/2.1/MapperVts.h>
 #include <renderengine/RenderEngine.h>
 
-#include <memory>
-
 namespace android {
 namespace hardware {
 namespace graphics {
@@ -51,8 +49,6 @@ static const IComposerClient::Color RED = {0xff, 0, 0, 0xff};
 static const IComposerClient::Color TRANSLUCENT_RED = {0xff, 0, 0, 0x33};
 static const IComposerClient::Color GREEN = {0, 0xff, 0, 0xff};
 static const IComposerClient::Color BLUE = {0, 0, 0xff, 0xff};
-
-class TestRenderEngine;
 
 class TestLayer {
   public:
@@ -114,9 +110,10 @@ class TestBufferLayer : public TestLayer {
   public:
     TestBufferLayer(
             const std::shared_ptr<ComposerClient>& client, const std::shared_ptr<Gralloc>& gralloc,
-            TestRenderEngine& renderEngine, Display display, int32_t width, int32_t height,
-            PixelFormat format,
+            Display display, int32_t width, int32_t height, PixelFormat format,
             IComposerClient::Composition composition = IComposerClient::Composition::DEVICE);
+
+    ~TestBufferLayer();
 
     void write(const std::shared_ptr<CommandWriterBase>& writer) override;
 
@@ -141,9 +138,8 @@ class TestBufferLayer : public TestLayer {
   protected:
     IComposerClient::Composition mComposition;
     std::shared_ptr<Gralloc> mGralloc;
-    TestRenderEngine& mRenderEngine;
     int32_t mFillFence;
-    std::unique_ptr<Gralloc::NativeHandleWrapper> mBufferHandle;
+    const native_handle_t* mBufferHandle = nullptr;
 };
 
 class ReadbackHelper {
@@ -182,6 +178,7 @@ class ReadbackBuffer {
     ReadbackBuffer(Display display, const std::shared_ptr<ComposerClient>& client,
                    const std::shared_ptr<Gralloc>& gralloc, uint32_t width, uint32_t height,
                    PixelFormat pixelFormat, Dataspace dataspace);
+    ~ReadbackBuffer();
 
     void setReadbackBuffer();
 
@@ -195,7 +192,7 @@ class ReadbackBuffer {
     uint64_t mUsage;
     AccessRegion mAccessRegion;
     uint32_t mStride;
-    std::unique_ptr<Gralloc::NativeHandleWrapper> mBufferHandle = nullptr;
+    const native_handle_t* mBufferHandle = nullptr;
     PixelFormat mPixelFormat;
     Dataspace mDataspace;
     Display mDisplay;
