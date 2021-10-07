@@ -36,9 +36,7 @@ package android.hardware.radio.config;
 parcelable SimSlotStatus {
   boolean cardActive;
   int cardState;
-  int slotState;
   String atr;
-  int logicalSlotId;
-  String iccid;
   String eid;
+  android.hardware.radio.config.SimPortInfo[] portInfo;
 }
