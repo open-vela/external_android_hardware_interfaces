@@ -16,12 +16,7 @@ aidl_interface {
     stability: "vintf",
     backend: {
         java: {
-            sdk_version: "module_current",
-            min_sdk_version: "31",
-            apex_available: [
-                "//apex_available:platform",
-                "com.android.car.framework",
-            ],
+            platform_apis: true,
         },
         ndk: {
             vndk: {
