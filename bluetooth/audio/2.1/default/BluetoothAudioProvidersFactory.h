@@ -23,7 +23,6 @@
 #include "BluetoothAudioProvider.h"
 #include "HearingAidAudioProvider.h"
 #include "LeAudioAudioProvider.h"
-#include "LeAudioOffloadAudioProvider.h"
 
 namespace android {
 namespace hardware {
@@ -56,8 +55,6 @@ class BluetoothAudioProvidersFactory : public IBluetoothAudioProvidersFactory {
   static HearingAidAudioProvider hearing_aid_provider_instance_;
   static LeAudioOutputAudioProvider leaudio_output_provider_instance_;
   static LeAudioInputAudioProvider leaudio_input_provider_instance_;
-  static LeAudioOffloadOutputAudioProvider leaudio_offload_output_provider_instance_;
-  static LeAudioOffloadInputAudioProvider leaudio_offload_input_provider_instance_;
 };
 
 extern "C" IBluetoothAudioProvidersFactory*
