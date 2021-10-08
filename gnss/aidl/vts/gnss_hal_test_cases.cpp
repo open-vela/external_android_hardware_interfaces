@@ -53,16 +53,17 @@ TEST_P(GnssHalTest, SetupTeardownCreateCleanup) {}
 
 /*
  * TestPsdsExtension:
- * 1. Gets the PsdsExtension
+ * 1. Gets the PsdsExtension and verifies that it returns a non-null extension.
  * 2. Injects empty PSDS data and verifies that it returns an error.
  */
 TEST_P(GnssHalTest, TestPsdsExtension) {
     sp<IGnssPsds> iGnssPsds;
     auto status = aidl_gnss_hal_->getExtensionPsds(&iGnssPsds);
-    if (status.isOk() && iGnssPsds != nullptr) {
-        status = iGnssPsds->injectPsdsData(PsdsType::LONG_TERM, std::vector<uint8_t>());
-        ASSERT_FALSE(status.isOk());
-    }
+    ASSERT_TRUE(status.isOk());
+    ASSERT_TRUE(iGnssPsds != nullptr);
+
+    status = iGnssPsds->injectPsdsData(PsdsType::LONG_TERM, std::vector<uint8_t>());
+    ASSERT_FALSE(status.isOk());
 }
 
 void CheckSatellitePvt(const SatellitePvt& satellitePvt) {
@@ -251,7 +252,6 @@ TEST_P(GnssHalTest, TestCorrelationVector) {
                 for (const auto& correlationVector : measurement.correlationVectors) {
                     ASSERT_GE(correlationVector.frequencyOffsetMps, 0);
                     ASSERT_GT(correlationVector.samplingWidthM, 0);
-                    ASSERT_GE(correlationVector.samplingStartM, 0);
                     ASSERT_TRUE(correlationVector.magnitude.size() > 0);
                     for (const auto& magnitude : correlationVector.magnitude) {
                         ASSERT_TRUE(magnitude >= -32768 && magnitude <= 32767);
