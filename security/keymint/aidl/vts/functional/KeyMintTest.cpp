@@ -69,7 +69,11 @@ namespace aidl::android::hardware::security::keymint::test {
 
 namespace {
 
-bool check_patchLevels = false;
+// The maximum number of times we'll attempt to verify that corruption
+// of an ecrypted blob results in an error. Retries are necessary as there
+// is a small (roughly 1/256) chance that corrupting ciphertext still results
+// in valid PKCS7 padding.
+constexpr size_t kMaxPaddingCorruptionRetries = 8;
 
 template <TagType tag_type, Tag tag, typename ValueT>
 bool contains(const vector<KeyParameter>& set, TypedTag<tag_type, tag> ttag,
@@ -523,14 +527,12 @@ class NewKeyGenerationTest : public KeyMintAidlTestBase {
         EXPECT_TRUE(os_pl);
         EXPECT_EQ(*os_pl, os_patch_level());
 
-        if (check_patchLevels) {
-            // Should include vendor and boot patchlevels.
-            auto vendor_pl = auths.GetTagValue(TAG_VENDOR_PATCHLEVEL);
-            EXPECT_TRUE(vendor_pl);
-            EXPECT_EQ(*vendor_pl, vendor_patch_level());
-            auto boot_pl = auths.GetTagValue(TAG_BOOT_PATCHLEVEL);
-            EXPECT_TRUE(boot_pl);
-        }
+        // Should include vendor and boot patchlevels.
+        auto vendor_pl = auths.GetTagValue(TAG_VENDOR_PATCHLEVEL);
+        EXPECT_TRUE(vendor_pl);
+        EXPECT_EQ(*vendor_pl, vendor_patch_level());
+        auto boot_pl = auths.GetTagValue(TAG_BOOT_PATCHLEVEL);
+        EXPECT_TRUE(boot_pl);
 
         return auths;
     }
@@ -3270,10 +3272,10 @@ TEST_P(ImportKeyTest, AesFailure) {
     for (uint32_t key_size : {bitlen - 1, bitlen + 1, bitlen - 8, bitlen + 8}) {
         // Explicit key size doesn't match that of the provided key.
         auto result = ImportKey(AuthorizationSetBuilder()
-                                    .Authorization(TAG_NO_AUTH_REQUIRED)
-                                    .AesEncryptionKey(key_size)
-                                    .EcbMode()
-                                    .Padding(PaddingMode::PKCS7),
+                                        .Authorization(TAG_NO_AUTH_REQUIRED)
+                                        .AesEncryptionKey(key_size)
+                                        .EcbMode()
+                                        .Padding(PaddingMode::PKCS7),
                                 KeyFormat::RAW, key);
         ASSERT_TRUE(result == ErrorCode::IMPORT_PARAMETER_MISMATCH ||
                     result == ErrorCode::UNSUPPORTED_KEY_SIZE)
@@ -3337,10 +3339,10 @@ TEST_P(ImportKeyTest, TripleDesFailure) {
     for (uint32_t key_size : {bitlen - 1, bitlen + 1, bitlen - 8, bitlen + 8}) {
         // Explicit key size doesn't match that of the provided key.
         auto result = ImportKey(AuthorizationSetBuilder()
-                                    .Authorization(TAG_NO_AUTH_REQUIRED)
-                                    .TripleDesEncryptionKey(key_size)
-                                    .EcbMode()
-                                    .Padding(PaddingMode::PKCS7),
+                                        .Authorization(TAG_NO_AUTH_REQUIRED)
+                                        .TripleDesEncryptionKey(key_size)
+                                        .EcbMode()
+                                        .Padding(PaddingMode::PKCS7),
                                 KeyFormat::RAW, key);
         ASSERT_TRUE(result == ErrorCode::IMPORT_PARAMETER_MISMATCH ||
                     result == ErrorCode::UNSUPPORTED_KEY_SIZE)
@@ -4379,11 +4381,22 @@ TEST_P(EncryptionOperationsTest, AesEcbPkcs7PaddingCorrupted) {
     string ciphertext = EncryptMessage(message, params);
     EXPECT_EQ(16U, ciphertext.size());
     EXPECT_NE(ciphertext, message);
-    ++ciphertext[ciphertext.size() / 2];
 
-    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, params));
-    string plaintext;
-    EXPECT_EQ(ErrorCode::INVALID_INPUT_LENGTH, Finish(message, &plaintext));
+    for (size_t i = 0; i < kMaxPaddingCorruptionRetries; ++i) {
+        ++ciphertext[ciphertext.size() / 2];
+
+        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, params));
+        string plaintext;
+        ErrorCode error = Finish(message, &plaintext);
+        if (error == ErrorCode::INVALID_INPUT_LENGTH) {
+            // This is the expected error, we can exit the test now.
+            return;
+        } else {
+            // Very small chance we got valid decryption, so try again.
+            ASSERT_EQ(error, ErrorCode::OK);
+        }
+    }
+    FAIL() << "Corrupt ciphertext should have failed to decrypt by now.";
 }
 
 vector<uint8_t> CopyIv(const AuthorizationSet& set) {
@@ -4662,6 +4675,49 @@ TEST_P(EncryptionOperationsTest, AesCbcRoundTripSuccess) {
     params.push_back(TAG_NONCE, iv1);
     string plaintext = DecryptMessage(ciphertext1, params);
     EXPECT_EQ(message, plaintext);
+}
+
+/*
+ * EncryptionOperationsTest.AesCbcZeroInputSuccessb
+ *
+ * Verifies that keymaster generates correct output on zero-input with
+ * NonePadding mode
+ */
+TEST_P(EncryptionOperationsTest, AesCbcZeroInputSuccess) {
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .AesEncryptionKey(128)
+                                                 .BlockMode(BlockMode::CBC)
+                                                 .Padding(PaddingMode::NONE, PaddingMode::PKCS7)));
+
+    // Zero input message
+    string message = "";
+    for (auto padding : {PaddingMode::NONE, PaddingMode::PKCS7}) {
+        auto params = AuthorizationSetBuilder().BlockMode(BlockMode::CBC).Padding(padding);
+        AuthorizationSet out_params;
+        string ciphertext1 = EncryptMessage(message, params, &out_params);
+        vector<uint8_t> iv1 = CopyIv(out_params);
+        if (padding == PaddingMode::NONE)
+            EXPECT_EQ(message.size(), ciphertext1.size()) << "PaddingMode: " << padding;
+        else
+            EXPECT_EQ(message.size(), ciphertext1.size() - 16) << "PaddingMode: " << padding;
+
+        out_params.Clear();
+
+        string ciphertext2 = EncryptMessage(message, params, &out_params);
+        vector<uint8_t> iv2 = CopyIv(out_params);
+        if (padding == PaddingMode::NONE)
+            EXPECT_EQ(message.size(), ciphertext2.size()) << "PaddingMode: " << padding;
+        else
+            EXPECT_EQ(message.size(), ciphertext2.size() - 16) << "PaddingMode: " << padding;
+
+        // IVs should be random
+        EXPECT_NE(iv1, iv2) << "PaddingMode: " << padding;
+
+        params.push_back(TAG_NONCE, iv1);
+        string plaintext = DecryptMessage(ciphertext1, params);
+        EXPECT_EQ(message, plaintext) << "PaddingMode: " << padding;
+    }
 }
 
 /*
@@ -5346,15 +5402,27 @@ TEST_P(EncryptionOperationsTest, TripleDesEcbPkcs7PaddingCorrupted) {
     string ciphertext = EncryptMessage(message, BlockMode::ECB, PaddingMode::PKCS7);
     EXPECT_EQ(8U, ciphertext.size());
     EXPECT_NE(ciphertext, message);
-    ++ciphertext[ciphertext.size() / 2];
 
     AuthorizationSetBuilder begin_params;
     begin_params.push_back(TAG_BLOCK_MODE, BlockMode::ECB);
     begin_params.push_back(TAG_PADDING, PaddingMode::PKCS7);
-    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
-    string plaintext;
-    EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext));
-    EXPECT_EQ(ErrorCode::INVALID_ARGUMENT, Finish(&plaintext));
+
+    for (size_t i = 0; i < kMaxPaddingCorruptionRetries; ++i) {
+        ++ciphertext[ciphertext.size() / 2];
+
+        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
+        string plaintext;
+        EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext));
+        ErrorCode error = Finish(&plaintext);
+        if (error == ErrorCode::INVALID_ARGUMENT) {
+            // This is the expected error, we can exit the test now.
+            return;
+        } else {
+            // Very small chance we got valid decryption, so try again.
+            ASSERT_EQ(error, ErrorCode::OK);
+        }
+    }
+    FAIL() << "Corrupt ciphertext should have failed to decrypt by now.";
 }
 
 struct TripleDesTestVector {
@@ -5682,16 +5750,27 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcPkcs7PaddingCorrupted) {
     string ciphertext = EncryptMessage(message, BlockMode::CBC, PaddingMode::PKCS7, &iv);
     EXPECT_EQ(8U, ciphertext.size());
     EXPECT_NE(ciphertext, message);
-    ++ciphertext[ciphertext.size() / 2];
 
     auto begin_params = AuthorizationSetBuilder()
                                 .BlockMode(BlockMode::CBC)
                                 .Padding(PaddingMode::PKCS7)
                                 .Authorization(TAG_NONCE, iv);
-    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
-    string plaintext;
-    EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext));
-    EXPECT_EQ(ErrorCode::INVALID_ARGUMENT, Finish(&plaintext));
+
+    for (size_t i = 0; i < kMaxPaddingCorruptionRetries; ++i) {
+        ++ciphertext[ciphertext.size() / 2];
+        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
+        string plaintext;
+        EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext));
+        ErrorCode error = Finish(&plaintext);
+        if (error == ErrorCode::INVALID_ARGUMENT) {
+            // This is the expected error, we can exit the test now.
+            return;
+        } else {
+            // Very small chance we got valid decryption, so try again.
+            ASSERT_EQ(error, ErrorCode::OK);
+        }
+    }
+    FAIL() << "Corrupt ciphertext should have failed to decrypt by now.";
 }
 
 /*
@@ -6168,7 +6247,8 @@ TEST_P(KeyDeletionTest, DeleteAllKeys) {
                                      .Digest(Digest::NONE)
                                      .Padding(PaddingMode::NONE)
                                      .Authorization(TAG_NO_AUTH_REQUIRED)
-                                     .Authorization(TAG_ROLLBACK_RESISTANCE));
+                                     .Authorization(TAG_ROLLBACK_RESISTANCE)
+                                     .SetDefaultValidity());
     ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
 
     // Delete must work if rollback protection is implemented
@@ -6635,10 +6715,6 @@ int main(int argc, char** argv) {
                         dump_Attestations = true;
             } else {
                 std::cout << "NOT dumping attestations" << std::endl;
-            }
-            // TODO(drysdale): Remove this flag when available KeyMint devices comply with spec
-            if (std::string(argv[i]) == "--check_patchLevels") {
-                aidl::android::hardware::security::keymint::test::check_patchLevels = true;
             }
         }
     }
