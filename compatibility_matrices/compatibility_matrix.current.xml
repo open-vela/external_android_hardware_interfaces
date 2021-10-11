@@ -85,12 +85,19 @@
             <instance>default</instance>
         </interface>
     </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.automotive.vehicle</name>
+        <interface>
+            <name>IVehicle</name>
+            <regex-instance>.*</regex-instance>
+        </interface>
+    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.automotive.vehicle</name>
         <version>2.0</version>
         <interface>
             <name>IVehicle</name>
-            <instance>default</instance>
+            <regex-instance>.*</regex-instance>
         </interface>
     </hal>
     <hal format="hidl" optional="true">
@@ -187,6 +194,13 @@
             <instance>default</instance>
         </interface>
     </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.contexthub</name>
+        <interface>
+            <name>IContextHub</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.contexthub</name>
         <version>1.2</version>
@@ -252,6 +266,14 @@
     <hal format="hidl" optional="false">
         <name>android.hardware.graphics.composer</name>
         <version>2.1-4</version>
+        <interface>
+            <name>IComposer</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.graphics.composer3</name>
+        <version>1</version>
         <interface>
             <name>IComposer</name>
             <instance>default</instance>
@@ -432,6 +454,66 @@
             <instance>default</instance>
         </interface>
     </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.radio.data</name>
+        <version>1</version>
+        <interface>
+            <name>IRadioData</name>
+            <instance>slot1</instance>
+            <instance>slot2</instance>
+            <instance>slot3</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.radio.messaging</name>
+        <version>1</version>
+        <interface>
+            <name>IRadioMessaging</name>
+            <instance>slot1</instance>
+            <instance>slot2</instance>
+            <instance>slot3</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.radio.modem</name>
+        <version>1</version>
+        <interface>
+            <name>IRadioModem</name>
+            <instance>slot1</instance>
+            <instance>slot2</instance>
+            <instance>slot3</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.radio.network</name>
+        <version>1</version>
+        <interface>
+            <name>IRadioNetwork</name>
+            <instance>slot1</instance>
+            <instance>slot2</instance>
+            <instance>slot3</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.radio.sim</name>
+        <version>1</version>
+        <interface>
+            <name>IRadioSim</name>
+            <instance>slot1</instance>
+            <instance>slot2</instance>
+            <instance>slot3</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.radio.voice</name>
+        <version>1</version>
+        <interface>
+            <name>IRadioVoice</name>
+            <instance>slot1</instance>
+            <instance>slot2</instance>
+            <instance>slot3</instance>
+        </interface>
+    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.radio</name>
         <version>1.6</version>
@@ -456,6 +538,14 @@
         See compatibility_matrix.4.xml on versioning of radio config HAL.
         -->
         <version>1.1</version>
+        <interface>
+            <name>IRadioConfig</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.radio.config</name>
+        <version>1</version>
         <interface>
             <name>IRadioConfig</name>
             <instance>default</instance>
@@ -528,6 +618,14 @@
             <instance>default</instance>
         </interface>
     </hal>
+    <hal format="aidl" optional="true">
+         <name>android.hardware.soundtrigger3</name>
+         <version>1</version>
+         <interface>
+             <name>ISoundTriggerHw</name>
+             <instance>default</instance>
+         </interface>
+    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.tetheroffload.config</name>
         <version>1.0</version>
@@ -571,6 +669,14 @@
     <hal format="hidl" optional="true">
         <name>android.hardware.tv.tuner</name>
         <version>1.0-1</version>
+        <interface>
+            <name>ITuner</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.tv.tuner</name>
+        <version>1</version>
         <interface>
             <name>ITuner</name>
             <instance>default</instance>
@@ -632,9 +738,25 @@
             <instance>default</instance>
         </interface>
     </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.uwb</name>
+        <version>1</version>
+        <interface>
+            <name>IUwb</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.wifi.hostapd</name>
         <version>1.0-3</version>
+        <interface>
+            <name>IHostapd</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.wifi.hostapd</name>
+        <version>1</version>
         <interface>
             <name>IHostapd</name>
             <instance>default</instance>
