@@ -16,8 +16,7 @@
 
 #include "PreparedModel.h"
 
-#include "Burst.h"
-
+#include <ExecutionBurstServer.h>
 #include <android-base/logging.h>
 #include <android/hardware/neuralnetworks/1.0/IExecutionCallback.h>
 #include <android/hardware/neuralnetworks/1.0/types.h>
@@ -37,6 +36,7 @@
 #include <nnapi/hal/1.2/Utils.h>
 #include <nnapi/hal/1.3/Conversions.h>
 #include <nnapi/hal/1.3/Utils.h>
+#include <nnapi/hal/HandleError.h>
 #include <sys/types.h>
 
 #include <memory>
@@ -273,15 +273,6 @@ nn::GeneralResult<std::vector<nn::SyncFence>> convertSyncFences(
     return syncFences;
 }
 
-nn::GeneralResult<sp<V1_2::IBurstContext>> configureExecutionBurst(
-        const nn::SharedPreparedModel& preparedModel, const sp<V1_2::IBurstCallback>& callback,
-        const MQDescriptorSync<V1_2::FmqRequestDatum>& requestChannel,
-        const MQDescriptorSync<V1_2::FmqResultDatum>& resultChannel) {
-    auto burstExecutor = NN_TRY(preparedModel->configureExecutionBurst());
-    return Burst::create(callback, requestChannel, resultChannel, std::move(burstExecutor),
-                         V1_2::utils::getBurstServerPollingTimeWindow());
-}
-
 nn::GeneralResult<std::pair<hidl_handle, sp<V1_3::IFencedExecutionCallback>>> executeFenced(
         const nn::SharedPreparedModel& preparedModel, const V1_3::Request& request,
         const hidl_vec<hidl_handle>& waitFor, V1_2::MeasureTiming measure,
@@ -398,17 +389,14 @@ Return<void> PreparedModel::configureExecutionBurst(
         const MQDescriptorSync<V1_2::FmqRequestDatum>& requestChannel,
         const MQDescriptorSync<V1_2::FmqResultDatum>& resultChannel,
         configureExecutionBurst_cb cb) {
-    auto result = adapter::configureExecutionBurst(kPreparedModel, callback, requestChannel,
-                                                   resultChannel);
-    if (!result.has_value()) {
-        auto [message, code] = std::move(result).error();
-        LOG(ERROR) << "adapter::PreparedModel::configureExecutionBurst failed with " << code << ": "
-                   << message;
-        cb(V1_2::utils::convert(code).value(), nullptr);
-        return Void();
+    const sp<V1_2::IBurstContext> burst = nn::ExecutionBurstServer::create(
+            callback, requestChannel, resultChannel, this, std::chrono::microseconds{0});
+
+    if (burst == nullptr) {
+        cb(V1_0::ErrorStatus::GENERAL_FAILURE, {});
+    } else {
+        cb(V1_0::ErrorStatus::NONE, burst);
     }
-    auto burstContext = std::move(result).value();
-    cb(V1_0::ErrorStatus::NONE, std::move(burstContext));
     return Void();
 }
 

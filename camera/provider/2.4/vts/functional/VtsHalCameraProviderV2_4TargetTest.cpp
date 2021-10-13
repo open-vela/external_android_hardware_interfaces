@@ -3837,6 +3837,8 @@ TEST_P(CameraHidlTest, configureStreamsZSLInputOutputs) {
                       getAvailableOutputStreams(staticMeta, outputStreams,
                               &outputThreshold));
             for (auto& outputIter : outputStreams) {
+                V3_2::DataspaceFlags outputDataSpace =
+                        getDataspace(static_cast<PixelFormat>(outputIter.format));
                 V3_2::Stream zslStream = {streamId++,
                                     StreamType::OUTPUT,
                                     static_cast<uint32_t>(input.width),
@@ -3859,7 +3861,7 @@ TEST_P(CameraHidlTest, configureStreamsZSLInputOutputs) {
                                        static_cast<uint32_t>(outputIter.height),
                                        static_cast<PixelFormat>(outputIter.format),
                                        GRALLOC1_CONSUMER_USAGE_HWCOMPOSER,
-                                       0,
+                                       outputDataSpace,
                                        StreamRotation::ROTATION_0};
 
                 ::android::hardware::hidl_vec<V3_2::Stream> streams = {inputStream, zslStream,
@@ -6197,13 +6199,14 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
         return;
     }
 
-    // Test that if more than one rear-facing color camera is
-    // supported, there must be at least one rear-facing logical camera.
+    // Test that if more than one color cameras facing the same direction are
+    // supported, there must be at least one logical camera facing that
+    // direction.
     hidl_vec<hidl_string> cameraDeviceNames = getCameraDeviceNames(mProvider);
-    // Back facing non-logical color cameras
-    std::set<std::string> rearColorCameras;
-    // Back facing logical cameras' physical camera Id sets
-    std::set<std::set<std::string>> rearPhysicalIds;
+    // Front and back facing non-logical color cameras
+    std::set<std::string> frontColorCameras, rearColorCameras;
+    // Front and back facing logical cameras' physical camera Id sets
+    std::set<std::set<std::string>> frontPhysicalIds, rearPhysicalIds;
     for (const auto& name : cameraDeviceNames) {
         std::string cameraId;
         int deviceVersion = getCameraDeviceVersionAndId(name, mProviderType, &cameraId);
@@ -6235,8 +6238,8 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
                         return;
                     }
 
-                    // Check camera facing. Skip if facing is not BACK.
-                    // If this is not a logical camera, only note down
+                    // Check camera facing. Skip if facing is neither FRONT
+                    // nor BACK. If this is not a logical camera, only note down
                     // the camera ID, and skip.
                     camera_metadata_ro_entry entry;
                     int retcode = find_camera_metadata_ro_entry(
@@ -6245,12 +6248,18 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
                     ASSERT_GT(entry.count, 0);
                     uint8_t facing = entry.data.u8[0];
                     bool isLogicalCamera = (isLogicalMultiCamera(metadata) == Status::OK);
-                    if (facing != ANDROID_LENS_FACING_BACK) {
-                        // Not BACK facing. Skip.
-                        return;
-                    }
-                    if (!isLogicalCamera) {
-                        rearColorCameras.insert(cameraId);
+                    if (facing == ANDROID_LENS_FACING_FRONT) {
+                        if (!isLogicalCamera) {
+                            frontColorCameras.insert(cameraId);
+                            return;
+                        }
+                    } else if (facing == ANDROID_LENS_FACING_BACK) {
+                        if (!isLogicalCamera) {
+                            rearColorCameras.insert(cameraId);
+                            return;
+                        }
+                    } else {
+                        // Not FRONT or BACK facing. Skip.
                         return;
                     }
 
@@ -6259,7 +6268,11 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
                     std::unordered_set<std::string> physicalCameraIds;
                     Status s = getPhysicalCameraIds(metadata, &physicalCameraIds);
                     ASSERT_EQ(Status::OK, s);
-                    rearPhysicalIds.emplace(physicalCameraIds.begin(), physicalCameraIds.end());
+                    if (facing == ANDROID_LENS_FACING_FRONT) {
+                        frontPhysicalIds.emplace(physicalCameraIds.begin(), physicalCameraIds.end());
+                    } else {
+                        rearPhysicalIds.emplace(physicalCameraIds.begin(), physicalCameraIds.end());
+                    }
                     for (const auto& physicalId : physicalCameraIds) {
                         // Skip if the physicalId is publicly available
                         for (auto& deviceName : cameraDeviceNames) {
@@ -6286,7 +6299,11 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
                                     (camera_metadata_t*)chars.data();
 
                             if (CameraHidlTest::isColorCamera(physicalMetadata)) {
-                                rearColorCameras.insert(physicalId);
+                                if (facing == ANDROID_LENS_FACING_FRONT) {
+                                    frontColorCameras.insert(physicalId);
+                                } else if (facing == ANDROID_LENS_FACING_BACK) {
+                                    rearColorCameras.insert(physicalId);
+                                }
                             }
                         });
                         ASSERT_TRUE(ret.isOk());
@@ -6304,9 +6321,20 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
         }
     }
 
-    // If there are more than one rear-facing color camera, a logical
-    // multi-camera must be defined consisting of all rear-facing color
-    // cameras.
+    // If there are more than one color cameras facing one direction, a logical
+    // multi-camera must be defined consisting of all color cameras facing that
+    // direction.
+    if (frontColorCameras.size() > 1) {
+        bool hasFrontLogical = false;
+        for (const auto& physicalIds : frontPhysicalIds) {
+            if (std::includes(physicalIds.begin(), physicalIds.end(),
+                    frontColorCameras.begin(), frontColorCameras.end())) {
+                hasFrontLogical = true;
+                break;
+            }
+        }
+        ASSERT_TRUE(hasFrontLogical);
+    }
     if (rearColorCameras.size() > 1) {
         bool hasRearLogical = false;
         for (const auto& physicalIds : rearPhysicalIds) {
@@ -8131,6 +8159,20 @@ void CameraHidlTest::verifyCameraCharacteristics(Status status, const CameraMeta
         uint8_t poseReference = entry.data.u8[0];
         ASSERT_TRUE(poseReference <= ANDROID_LENS_POSE_REFERENCE_UNDEFINED &&
                 poseReference >= ANDROID_LENS_POSE_REFERENCE_PRIMARY_CAMERA);
+    }
+
+    retcode = find_camera_metadata_ro_entry(metadata,
+            ANDROID_INFO_DEVICE_STATE_ORIENTATIONS, &entry);
+    if (0 == retcode && entry.count > 0) {
+        ASSERT_TRUE((entry.count % 2) == 0);
+        uint64_t maxPublicState = ((uint64_t) provider::V2_5::DeviceState::FOLDED) << 1;
+        uint64_t vendorStateStart = 1UL << 31; // Reserved for vendor specific states
+        uint64_t stateMask = (1 << vendorStateStart) - 1;
+        stateMask &= ~((1 << maxPublicState) - 1);
+        for (int i = 0; i < entry.count; i += 2){
+            ASSERT_TRUE((entry.data.i64[i] & stateMask) == 0);
+            ASSERT_TRUE((entry.data.i64[i+1] % 90) == 0);
+        }
     }
 
     verifyExtendedSceneModeCharacteristics(metadata);

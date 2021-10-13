@@ -26,6 +26,7 @@
 #include <nnapi/Result.h>
 #include <nnapi/TypeUtils.h>
 #include <nnapi/Types.h>
+#include <nnapi/hal/HandleError.h>
 
 #include <memory>
 #include <mutex>
