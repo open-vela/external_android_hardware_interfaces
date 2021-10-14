@@ -49,5 +49,4 @@ interface IFilter {
   long getId64Bit();
   void releaseAvHandle(in android.hardware.common.NativeHandle avMemory, in long avDataId);
   void setDataSource(in android.hardware.tv.tuner.IFilter filter);
-  void setDelayHint(in android.hardware.tv.tuner.FilterDelayHint hint);
 }

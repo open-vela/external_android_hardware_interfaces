@@ -82,28 +82,10 @@ TEST_P(ContextHubAidl, TestGetHubs) {
     }
 }
 
-class EmptyContextHubCallback : public android::hardware::contexthub::BnContextHubCallback {
-  public:
-    Status handleNanoappInfo(const std::vector<NanoappInfo>& /* appInfo */) override {
-        return Status::ok();
-    }
-
-    Status handleContextHubMessage(const ContextHubMessage& /* msg */,
-                                   const std::vector<String16>& /* msgContentPerms */) override {
-        return Status::ok();
-    }
-
-    Status handleContextHubAsyncEvent(AsyncEventType /* evt */) override { return Status::ok(); }
-
-    Status handleTransactionResult(int32_t /* transactionId */, bool /* success */) override {
-        return Status::ok();
-    }
-};
-
 TEST_P(ContextHubAidl, TestRegisterCallback) {
     bool success;
-    sp<EmptyContextHubCallback> cb = sp<EmptyContextHubCallback>::make();
-    ASSERT_TRUE(contextHub->registerCallback(getHubId(), cb, &success).isOk());
+    ASSERT_TRUE(contextHub->registerCallback(getHubId(), new IContextHubCallbackDefault(), &success)
+                        .isOk());
     ASSERT_TRUE(success);
 }
 
@@ -281,8 +263,8 @@ void ContextHubAidl::testSettingChanged(Setting setting) {
     // In VTS, we only test that sending the values doesn't cause things to blow up - GTS tests
     // verify the expected E2E behavior in CHRE
     bool success;
-    sp<EmptyContextHubCallback> cb = sp<EmptyContextHubCallback>::make();
-    ASSERT_TRUE(contextHub->registerCallback(getHubId(), cb, &success).isOk());
+    ASSERT_TRUE(contextHub->registerCallback(getHubId(), new IContextHubCallbackDefault(), &success)
+                        .isOk());
     ASSERT_TRUE(success);
 
     ASSERT_TRUE(contextHub->onSettingChanged(setting, true /* enabled */).isOk());
