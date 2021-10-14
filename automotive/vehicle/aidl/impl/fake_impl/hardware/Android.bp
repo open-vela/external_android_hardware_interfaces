@@ -22,6 +22,7 @@ cc_library {
     name: "FakeVehicleHardware",
     vendor: true,
     srcs: ["src/*.cpp"],
+    cflags: ["-DENABLE_VENDOR_CLUSTER_PROPERTY_FOR_TESTING"],
     local_include_dirs: ["include"],
     export_include_dirs: ["include"],
     defaults: ["VehicleHalDefaults"],
@@ -33,6 +34,8 @@ cc_library {
     static_libs: [
         "VehicleHalUtils",
         "FakeVehicleHalValueGenerators",
+        "FakeObd2Frame",
+        "FakeUserHal",
     ],
     shared_libs: [
         "libjsoncpp",
