@@ -1840,7 +1840,9 @@ TEST_P(NewKeyGenerationTest, EcdsaInvalidSize) {
  * INVALID_ARGUMENT.
  */
 TEST_P(NewKeyGenerationTest, EcdsaMismatchKeySize) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
 
     auto result = GenerateKey(AuthorizationSetBuilder()
                                       .Authorization(TAG_ALGORITHM, Algorithm::EC)
@@ -2067,7 +2069,9 @@ TEST_P(NewKeyGenerationTest, HmacCheckMinMacLengths) {
  * Verifies that keymint rejects HMAC key generation with multiple specified digest algorithms.
  */
 TEST_P(NewKeyGenerationTest, HmacMultipleDigests) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
 
     ASSERT_EQ(ErrorCode::UNSUPPORTED_DIGEST,
               GenerateKey(AuthorizationSetBuilder()
@@ -2291,7 +2295,9 @@ TEST_P(SigningOperationsTest, RsaPaddingNoneDoesNotAllowOther) {
  * presented.
  */
 TEST_P(SigningOperationsTest, NoUserConfirmation) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .RsaSigningKey(1024, 65537)
                                                  .Digest(Digest::NONE)
@@ -2381,7 +2387,9 @@ TEST_P(SigningOperationsTest, RsaPkcs1NoDigestTooLong) {
  * for a 1024-bit key.
  */
 TEST_P(SigningOperationsTest, RsaPssSha512TooSmallKey) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .RsaSigningKey(1024, 65537)
                                                  .Digest(Digest::SHA_2_512)
@@ -3200,7 +3208,9 @@ TEST_P(ImportKeyTest, EcdsaP256SEC1Success) {
  * Verifies that importing and using an ECDSA P-521 key pair works correctly.
  */
 TEST_P(ImportKeyTest, Ecdsa521Success) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
     ASSERT_EQ(ErrorCode::OK, ImportKey(AuthorizationSetBuilder()
                                                .Authorization(TAG_NO_AUTH_REQUIRED)
                                                .EcdsaSigningKey(EcCurve::P_521)
@@ -3909,7 +3919,9 @@ TEST_P(EncryptionOperationsTest, RsaOaepInvalidPadding) {
  * with a different digest than was used to encrypt.
  */
 TEST_P(EncryptionOperationsTest, RsaOaepDecryptWithWrongDigest) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -4675,49 +4687,6 @@ TEST_P(EncryptionOperationsTest, AesCbcRoundTripSuccess) {
     params.push_back(TAG_NONCE, iv1);
     string plaintext = DecryptMessage(ciphertext1, params);
     EXPECT_EQ(message, plaintext);
-}
-
-/*
- * EncryptionOperationsTest.AesCbcZeroInputSuccessb
- *
- * Verifies that keymaster generates correct output on zero-input with
- * NonePadding mode
- */
-TEST_P(EncryptionOperationsTest, AesCbcZeroInputSuccess) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                 .AesEncryptionKey(128)
-                                                 .BlockMode(BlockMode::CBC)
-                                                 .Padding(PaddingMode::NONE, PaddingMode::PKCS7)));
-
-    // Zero input message
-    string message = "";
-    for (auto padding : {PaddingMode::NONE, PaddingMode::PKCS7}) {
-        auto params = AuthorizationSetBuilder().BlockMode(BlockMode::CBC).Padding(padding);
-        AuthorizationSet out_params;
-        string ciphertext1 = EncryptMessage(message, params, &out_params);
-        vector<uint8_t> iv1 = CopyIv(out_params);
-        if (padding == PaddingMode::NONE)
-            EXPECT_EQ(message.size(), ciphertext1.size()) << "PaddingMode: " << padding;
-        else
-            EXPECT_EQ(message.size(), ciphertext1.size() - 16) << "PaddingMode: " << padding;
-
-        out_params.Clear();
-
-        string ciphertext2 = EncryptMessage(message, params, &out_params);
-        vector<uint8_t> iv2 = CopyIv(out_params);
-        if (padding == PaddingMode::NONE)
-            EXPECT_EQ(message.size(), ciphertext2.size()) << "PaddingMode: " << padding;
-        else
-            EXPECT_EQ(message.size(), ciphertext2.size() - 16) << "PaddingMode: " << padding;
-
-        // IVs should be random
-        EXPECT_NE(iv1, iv2) << "PaddingMode: " << padding;
-
-        params.push_back(TAG_NONCE, iv1);
-        string plaintext = DecryptMessage(ciphertext1, params);
-        EXPECT_EQ(message, plaintext) << "PaddingMode: " << padding;
-    }
 }
 
 /*
@@ -5823,7 +5792,9 @@ typedef KeyMintAidlTestBase MaxOperationsTest;
  * Verifies that the max uses per boot tag works correctly with AES keys.
  */
 TEST_P(MaxOperationsTest, TestLimitAes) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -5850,7 +5821,9 @@ TEST_P(MaxOperationsTest, TestLimitAes) {
  * Verifies that the max uses per boot tag works correctly with RSA keys.
  */
 TEST_P(MaxOperationsTest, TestLimitRsa) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -5881,7 +5854,9 @@ typedef KeyMintAidlTestBase UsageCountLimitTest;
  * Verifies that the usage count limit tag = 1 works correctly with AES keys.
  */
 TEST_P(UsageCountLimitTest, TestSingleUseAes) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -5925,7 +5900,9 @@ TEST_P(UsageCountLimitTest, TestSingleUseAes) {
  * Verifies that the usage count limit tag > 1 works correctly with AES keys.
  */
 TEST_P(UsageCountLimitTest, TestLimitedUseAes) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -5970,7 +5947,9 @@ TEST_P(UsageCountLimitTest, TestLimitedUseAes) {
  * Verifies that the usage count limit tag = 1 works correctly with RSA keys.
  */
 TEST_P(UsageCountLimitTest, TestSingleUseRsa) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -6014,7 +5993,9 @@ TEST_P(UsageCountLimitTest, TestSingleUseRsa) {
  * Verifies that the usage count limit tag > 1 works correctly with RSA keys.
  */
 TEST_P(UsageCountLimitTest, TestLimitUseRsa) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -6061,7 +6042,9 @@ TEST_P(UsageCountLimitTest, TestLimitUseRsa) {
  * in hardware.
  */
 TEST_P(UsageCountLimitTest, TestSingleUseKeyAndRollbackResistance) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
 
     auto error = GenerateKey(AuthorizationSetBuilder()
                                      .RsaSigningKey(2048, 65537)
@@ -6070,38 +6053,39 @@ TEST_P(UsageCountLimitTest, TestSingleUseKeyAndRollbackResistance) {
                                      .Authorization(TAG_NO_AUTH_REQUIRED)
                                      .Authorization(TAG_ROLLBACK_RESISTANCE)
                                      .SetDefaultValidity());
-    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
-
-    if (error == ErrorCode::OK) {
-        // Rollback resistance is supported by KeyMint, verify it is enforced in hardware.
-        AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
-        ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
-        ASSERT_EQ(ErrorCode::OK, DeleteKey());
-
-        // The KeyMint should also enforce single use key in hardware when it supports rollback
-        // resistance.
-        ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                     .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                     .RsaSigningKey(1024, 65537)
-                                                     .NoDigestOrPadding()
-                                                     .Authorization(TAG_USAGE_COUNT_LIMIT, 1)
-                                                     .SetDefaultValidity()));
-
-        // Check the usage count limit tag appears in the hardware authorizations.
-        AuthorizationSet hardware_auths = HwEnforcedAuthorizations(key_characteristics_);
-        EXPECT_TRUE(hardware_auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U))
-                << "key usage count limit " << 1U << " missing";
-
-        string message = "1234567890123456";
-        auto params = AuthorizationSetBuilder().NoDigestOrPadding();
-
-        // First usage of RSA key should work.
-        SignMessage(message, params);
-
-        // Usage count limit tag is enforced by hardware. After using the key, the key blob
-        // must be invalidated from secure storage (such as RPMB partition).
-        EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB, Begin(KeyPurpose::SIGN, params));
+    if (error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE) {
+        GTEST_SKIP() << "Rollback resistance not supported";
     }
+
+    // Rollback resistance is supported by KeyMint, verify it is enforced in hardware.
+    ASSERT_EQ(ErrorCode::OK, error);
+    AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
+    ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
+    ASSERT_EQ(ErrorCode::OK, DeleteKey());
+
+    // The KeyMint should also enforce single use key in hardware when it supports rollback
+    // resistance.
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .RsaSigningKey(1024, 65537)
+                                                 .NoDigestOrPadding()
+                                                 .Authorization(TAG_USAGE_COUNT_LIMIT, 1)
+                                                 .SetDefaultValidity()));
+
+    // Check the usage count limit tag appears in the hardware authorizations.
+    AuthorizationSet hardware_auths = HwEnforcedAuthorizations(key_characteristics_);
+    EXPECT_TRUE(hardware_auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U))
+            << "key usage count limit " << 1U << " missing";
+
+    string message = "1234567890123456";
+    auto params = AuthorizationSetBuilder().NoDigestOrPadding();
+
+    // First usage of RSA key should work.
+    SignMessage(message, params);
+
+    // Usage count limit tag is enforced by hardware. After using the key, the key blob
+    // must be invalidated from secure storage (such as RPMB partition).
+    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB, Begin(KeyPurpose::SIGN, params));
 }
 
 INSTANTIATE_KEYMINT_AIDL_TEST(UsageCountLimitTest);
@@ -6178,24 +6162,25 @@ TEST_P(KeyDeletionTest, DeleteKey) {
                                      .Authorization(TAG_NO_AUTH_REQUIRED)
                                      .Authorization(TAG_ROLLBACK_RESISTANCE)
                                      .SetDefaultValidity());
-    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
+    if (error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE) {
+        GTEST_SKIP() << "Rollback resistance not supported";
+    }
 
     // Delete must work if rollback protection is implemented
-    if (error == ErrorCode::OK) {
-        AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
-        ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
+    ASSERT_EQ(ErrorCode::OK, error);
+    AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
+    ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
 
-        ASSERT_EQ(ErrorCode::OK, DeleteKey(true /* keep key blob */));
+    ASSERT_EQ(ErrorCode::OK, DeleteKey(true /* keep key blob */));
 
-        string message = "12345678901234567890123456789012";
-        AuthorizationSet begin_out_params;
-        EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
-                  Begin(KeyPurpose::SIGN, key_blob_,
-                        AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
-                        &begin_out_params));
-        AbortIfNeeded();
-        key_blob_ = AidlBuf();
-    }
+    string message = "12345678901234567890123456789012";
+    AuthorizationSet begin_out_params;
+    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
+              Begin(KeyPurpose::SIGN, key_blob_,
+                    AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
+                    &begin_out_params));
+    AbortIfNeeded();
+    key_blob_ = AidlBuf();
 }
 
 /**
@@ -6212,21 +6197,22 @@ TEST_P(KeyDeletionTest, DeleteInvalidKey) {
                                      .Authorization(TAG_NO_AUTH_REQUIRED)
                                      .Authorization(TAG_ROLLBACK_RESISTANCE)
                                      .SetDefaultValidity());
-    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
+    if (error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE) {
+        GTEST_SKIP() << "Rollback resistance not supported";
+    }
 
     // Delete must work if rollback protection is implemented
-    if (error == ErrorCode::OK) {
-        AuthorizationSet enforced(SecLevelAuthorizations());
-        ASSERT_TRUE(enforced.Contains(TAG_ROLLBACK_RESISTANCE));
+    ASSERT_EQ(ErrorCode::OK, error);
+    AuthorizationSet enforced(SecLevelAuthorizations());
+    ASSERT_TRUE(enforced.Contains(TAG_ROLLBACK_RESISTANCE));
 
-        // Delete the key we don't care about the result at this point.
-        DeleteKey();
+    // Delete the key we don't care about the result at this point.
+    DeleteKey();
 
-        // Now create an invalid key blob and delete it.
-        key_blob_ = AidlBuf("just some garbage data which is not a valid key blob");
+    // Now create an invalid key blob and delete it.
+    key_blob_ = AidlBuf("just some garbage data which is not a valid key blob");
 
-        ASSERT_EQ(ErrorCode::OK, DeleteKey());
-    }
+    ASSERT_EQ(ErrorCode::OK, DeleteKey());
 }
 
 /**
@@ -6241,7 +6227,10 @@ TEST_P(KeyDeletionTest, DeleteInvalidKey) {
  * credentials stored in Keystore/Keymint.
  */
 TEST_P(KeyDeletionTest, DeleteAllKeys) {
-    if (!arm_deleteAllKeys) return;
+    if (!arm_deleteAllKeys) {
+        GTEST_SKIP() << "Option --arm_deleteAllKeys not set";
+        return;
+    }
     auto error = GenerateKey(AuthorizationSetBuilder()
                                      .RsaSigningKey(2048, 65537)
                                      .Digest(Digest::NONE)
@@ -6249,25 +6238,26 @@ TEST_P(KeyDeletionTest, DeleteAllKeys) {
                                      .Authorization(TAG_NO_AUTH_REQUIRED)
                                      .Authorization(TAG_ROLLBACK_RESISTANCE)
                                      .SetDefaultValidity());
-    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
+    if (error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE) {
+        GTEST_SKIP() << "Rollback resistance not supported";
+    }
 
     // Delete must work if rollback protection is implemented
-    if (error == ErrorCode::OK) {
-        AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
-        ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
+    ASSERT_EQ(ErrorCode::OK, error);
+    AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
+    ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
 
-        ASSERT_EQ(ErrorCode::OK, DeleteAllKeys());
+    ASSERT_EQ(ErrorCode::OK, DeleteAllKeys());
 
-        string message = "12345678901234567890123456789012";
-        AuthorizationSet begin_out_params;
+    string message = "12345678901234567890123456789012";
+    AuthorizationSet begin_out_params;
 
-        EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
-                  Begin(KeyPurpose::SIGN, key_blob_,
-                        AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
-                        &begin_out_params));
-        AbortIfNeeded();
-        key_blob_ = AidlBuf();
-    }
+    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
+              Begin(KeyPurpose::SIGN, key_blob_,
+                    AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
+                    &begin_out_params));
+    AbortIfNeeded();
+    key_blob_ = AidlBuf();
 }
 
 INSTANTIATE_KEYMINT_AIDL_TEST(KeyDeletionTest);
@@ -6340,7 +6330,7 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
     size_t i;
 
     for (i = 0; i < max_operations; i++) {
-        result = Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params, op_handles[i]);
+        result = Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, op_handles[i]);
         if (ErrorCode::OK != result) {
             break;
         }
@@ -6348,12 +6338,12 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
     EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS, result);
     // Try again just in case there's a weird overflow bug
     EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
-              Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params));
+              Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params));
     for (size_t j = 0; j < i; j++) {
         EXPECT_EQ(ErrorCode::OK, Abort(op_handles[j]))
                 << "Aboort failed for i = " << j << std::endl;
     }
-    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params));
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params));
     AbortIfNeeded();
 }
 
