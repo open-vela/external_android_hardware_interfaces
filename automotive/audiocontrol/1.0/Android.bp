@@ -20,8 +20,4 @@ hidl_interface {
         "android.hidl.base@1.0",
     ],
     gen_java: true,
-    apex_available: [
-        "//apex_available:platform",
-        "com.android.car.framework",
-    ],
 }
