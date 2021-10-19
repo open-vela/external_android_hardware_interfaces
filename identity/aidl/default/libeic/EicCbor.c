@@ -91,7 +91,7 @@ size_t eicCborAdditionalLengthBytesFor(size_t size) {
     return 8;
 }
 
-void eicCborBegin(EicCbor* cbor, int majorType, uint64_t size) {
+void eicCborBegin(EicCbor* cbor, int majorType, size_t size) {
     uint8_t data[9];
 
     if (size < 24) {
@@ -132,13 +132,10 @@ void eicCborAppendByteString(EicCbor* cbor, const uint8_t* data, size_t dataSize
     eicCborAppend(cbor, data, dataSize);
 }
 
-void eicCborAppendString(EicCbor* cbor, const char* str, size_t strLength) {
-    eicCborBegin(cbor, EIC_CBOR_MAJOR_TYPE_STRING, strLength);
-    eicCborAppend(cbor, (const uint8_t*)str, strLength);
-}
-
-void eicCborAppendStringZ(EicCbor* cbor, const char* str) {
-    eicCborAppendString(cbor, str, eicStrLen(str));
+void eicCborAppendString(EicCbor* cbor, const char* str) {
+    size_t length = eicStrLen(str);
+    eicCborBegin(cbor, EIC_CBOR_MAJOR_TYPE_STRING, length);
+    eicCborAppend(cbor, (const uint8_t*)str, length);
 }
 
 void eicCborAppendSimple(EicCbor* cbor, uint8_t simpleValue) {
@@ -156,13 +153,13 @@ void eicCborAppendSemantic(EicCbor* cbor, uint64_t value) {
 }
 
 void eicCborAppendUnsigned(EicCbor* cbor, uint64_t value) {
-    uint64_t encoded = value;
+    size_t encoded = value;
     eicCborBegin(cbor, EIC_CBOR_MAJOR_TYPE_UNSIGNED, encoded);
 }
 
 void eicCborAppendNumber(EicCbor* cbor, int64_t value) {
     if (value < 0) {
-        uint64_t encoded = -1 - value;
+        size_t encoded = -1 - value;
         eicCborBegin(cbor, EIC_CBOR_MAJOR_TYPE_NEGATIVE, encoded);
     } else {
         eicCborAppendUnsigned(cbor, value);
@@ -191,19 +188,19 @@ bool eicCborCalcAccessControl(EicCbor* cborBuilder, int id, const uint8_t* reade
         }
     }
     eicCborAppendMap(cborBuilder, numPairs);
-    eicCborAppendStringZ(cborBuilder, "id");
+    eicCborAppendString(cborBuilder, "id");
     eicCborAppendUnsigned(cborBuilder, id);
     if (readerCertificateSize > 0) {
-        eicCborAppendStringZ(cborBuilder, "readerCertificate");
+        eicCborAppendString(cborBuilder, "readerCertificate");
         eicCborAppendByteString(cborBuilder, readerCertificate, readerCertificateSize);
     }
     if (userAuthenticationRequired) {
-        eicCborAppendStringZ(cborBuilder, "userAuthenticationRequired");
+        eicCborAppendString(cborBuilder, "userAuthenticationRequired");
         eicCborAppendBool(cborBuilder, userAuthenticationRequired);
-        eicCborAppendStringZ(cborBuilder, "timeoutMillis");
+        eicCborAppendString(cborBuilder, "timeoutMillis");
         eicCborAppendUnsigned(cborBuilder, timeoutMillis);
         if (secureUserId > 0) {
-            eicCborAppendStringZ(cborBuilder, "secureUserId");
+            eicCborAppendString(cborBuilder, "secureUserId");
             eicCborAppendUnsigned(cborBuilder, secureUserId);
         }
     }
@@ -217,21 +214,20 @@ bool eicCborCalcAccessControl(EicCbor* cborBuilder, int id, const uint8_t* reade
     return true;
 }
 
-bool eicCborCalcEntryAdditionalData(const uint8_t* accessControlProfileIds,
+bool eicCborCalcEntryAdditionalData(const int* accessControlProfileIds,
                                     size_t numAccessControlProfileIds, const char* nameSpace,
-                                    size_t nameSpaceLength, const char* name,
-                                    size_t nameLength, uint8_t* cborBuffer,
-                                    size_t cborBufferSize, size_t* outAdditionalDataCborSize,
+                                    const char* name, uint8_t* cborBuffer, size_t cborBufferSize,
+                                    size_t* outAdditionalDataCborSize,
                                     uint8_t additionalDataSha256[EIC_SHA256_DIGEST_SIZE]) {
     EicCbor cborBuilder;
 
     eicCborInit(&cborBuilder, cborBuffer, cborBufferSize);
     eicCborAppendMap(&cborBuilder, 3);
-    eicCborAppendStringZ(&cborBuilder, "Namespace");
-    eicCborAppendString(&cborBuilder, nameSpace, nameSpaceLength);
-    eicCborAppendStringZ(&cborBuilder, "Name");
-    eicCborAppendString(&cborBuilder, name, nameLength);
-    eicCborAppendStringZ(&cborBuilder, "AccessControlProfileIds");
+    eicCborAppendString(&cborBuilder, "Namespace");
+    eicCborAppendString(&cborBuilder, nameSpace);
+    eicCborAppendString(&cborBuilder, "Name");
+    eicCborAppendString(&cborBuilder, name);
+    eicCborAppendString(&cborBuilder, "AccessControlProfileIds");
     eicCborAppendArray(&cborBuilder, numAccessControlProfileIds);
     for (size_t n = 0; n < numAccessControlProfileIds; n++) {
         eicCborAppendNumber(&cborBuilder, accessControlProfileIds[n]);
