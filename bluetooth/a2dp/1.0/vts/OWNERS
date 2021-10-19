@@ -1,4 +1,8 @@
-# Bug component: 27441
-include platform/system/bt:/OWNERS
+zachoverflow@google.com
+siyuanh@google.com
+mylesgw@google.com
+jpawlowski@google.com
+apanicke@google.com
+stng@google.com
+hsz@google.com
 
-cheneyni@google.com
