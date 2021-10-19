@@ -998,7 +998,6 @@ struct TunerTestingConfigAidlReader1_0 {
         if (!feConfig.hasConnectToCicamId()) {
             canConnectToCiCam = false;
             ciCamId = -1;
-            return;
         }
         canConnectToCiCam = true;
         ciCamId = static_cast<int32_t>(feConfig.getConnectToCicamId());
