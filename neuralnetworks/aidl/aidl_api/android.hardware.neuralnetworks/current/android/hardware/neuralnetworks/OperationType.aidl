@@ -137,5 +137,4 @@ enum OperationType {
   FILL = 100,
   RANK = 101,
   BATCH_MATMUL = 102,
-  PACK = 103,
 }
