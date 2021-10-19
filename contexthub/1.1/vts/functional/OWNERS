@@ -1,2 +1,7 @@
-# Bug component: 156070
-include ../../../1.0/vts/functional/OWNERS
+#Context Hub team
+arthuri@google.com
+bduddie@google.com
+stange@google.com
+
+#VTS team
+dshi@google.com
