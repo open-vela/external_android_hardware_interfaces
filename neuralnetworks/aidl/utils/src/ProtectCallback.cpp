@@ -22,6 +22,7 @@
 #include <android/binder_auto_utils.h>
 #include <android/binder_interface_utils.h>
 #include <nnapi/Result.h>
+#include <nnapi/hal/ProtectCallback.h>
 
 #include <algorithm>
 #include <functional>
@@ -36,7 +37,7 @@ namespace aidl::android::hardware::neuralnetworks::utils {
 void DeathMonitor::serviceDied() {
     std::lock_guard guard(mMutex);
     std::for_each(mObjects.begin(), mObjects.end(),
-                  [](IProtectedCallback* killable) { killable->notifyAsDeadObject(); });
+                  [](hal::utils::IProtectedCallback* killable) { killable->notifyAsDeadObject(); });
 }
 
 void DeathMonitor::serviceDied(void* cookie) {
@@ -44,13 +45,13 @@ void DeathMonitor::serviceDied(void* cookie) {
     deathMonitor->serviceDied();
 }
 
-void DeathMonitor::add(IProtectedCallback* killable) const {
+void DeathMonitor::add(hal::utils::IProtectedCallback* killable) const {
     CHECK(killable != nullptr);
     std::lock_guard guard(mMutex);
     mObjects.push_back(killable);
 }
 
-void DeathMonitor::remove(IProtectedCallback* killable) const {
+void DeathMonitor::remove(hal::utils::IProtectedCallback* killable) const {
     CHECK(killable != nullptr);
     std::lock_guard guard(mMutex);
     const auto removedIter = std::remove(mObjects.begin(), mObjects.end(), killable);
@@ -101,7 +102,7 @@ DeathHandler::~DeathHandler() {
 }
 
 [[nodiscard]] ::android::base::ScopeGuard<DeathHandler::Cleanup> DeathHandler::protectCallback(
-        IProtectedCallback* killable) const {
+        hal::utils::IProtectedCallback* killable) const {
     CHECK(killable != nullptr);
     kDeathMonitor->add(killable);
     return ::android::base::make_scope_guard(
