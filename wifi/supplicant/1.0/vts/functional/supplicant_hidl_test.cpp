@@ -38,15 +38,12 @@ class SupplicantHidlTest
     : public ::testing::TestWithParam<std::tuple<std::string, std::string>> {
    public:
     virtual void SetUp() override {
-        // Stop Wi-Fi
-        ASSERT_TRUE(stopWifiFramework());  // stop & wait for wifi to shutdown.
-
         wifi_instance_name_ = std::get<0>(GetParam());
         supplicant_instance_name_ = std::get<1>(GetParam());
-        std::system("/system/bin/start");
-        ASSERT_TRUE(waitForFrameworkReady());
         isP2pOn_ =
             testing::deviceSupportsFeature("android.hardware.wifi.direct");
+        // Stop Framework
+        std::system("/system/bin/stop");
         stopSupplicant(wifi_instance_name_);
         startSupplicantAndWaitForHidlService(wifi_instance_name_,
                                              supplicant_instance_name_);
@@ -56,8 +53,8 @@ class SupplicantHidlTest
 
     virtual void TearDown() override {
         stopSupplicant(wifi_instance_name_);
-        // Start Wi-Fi
-        startWifiFramework();
+        // Start Framework
+        std::system("/system/bin/start");
     }
 
    protected:
