@@ -50,8 +50,9 @@ bool valid(const Type& halObject) {
 }
 
 template <typename Type>
-nn::Result<void> compliantVersion(const Type& canonical) {
-    const auto version = NN_TRY(nn::validate(canonical));
+nn::GeneralResult<void> compliantVersion(const Type& canonical) {
+    const auto version = NN_TRY(::android::hardware::neuralnetworks::utils::makeGeneralFailure(
+            nn::validate(canonical)));
     if (version > kVersion) {
         return NN_ERROR() << "Insufficient version: " << version << " vs required " << kVersion;
     }
