@@ -626,7 +626,7 @@ class CommandWriterBase {
             return;
         }
 
-        mDataHandles.push_back(::android::dupToAidl(handle));
+        mDataHandles.push_back(::android::makeToAidl(handle));
         writeSigned(mDataHandles.size() - 1);
     }
 
