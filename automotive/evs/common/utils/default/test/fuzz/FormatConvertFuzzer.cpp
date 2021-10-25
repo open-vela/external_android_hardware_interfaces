@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <fuzzer/FuzzedDataProvider.h>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -22,43 +21,36 @@
 #include "FormatConvert.h"
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, std::size_t size) {
-    // 1 random value (4bytes) + min imagesize = 16*2 times bytes per pixel (worse case 2)
-    if (size < (4 + 16 * 2 * 2)) {
+    if (size < 256) {
         return 0;
     }
-    FuzzedDataProvider fdp(data, size);
-    std::size_t image_pixel_size = size - 4;
-    image_pixel_size = (image_pixel_size & INT_MAX) / 2;
 
-    // API have a requirement that width must be divied by 16 except yuyvtorgb
-    int min_height = 2;
-    int max_height = (image_pixel_size / 16) & ~(1);  // must be even number
-    int height = fdp.ConsumeIntegralInRange<uint32_t>(min_height, max_height);
-    int width = (image_pixel_size / height) & ~(16);  // must be divisible by 16
+    std::srand(std::time(nullptr));  // use current time as seed for random generator
+    int random_variable = std::rand() % 10;
+    int width = (int)sqrt(size);
+    int height = width * ((float)random_variable / 10.0);
 
-    uint8_t* src = (uint8_t*)(data + 4);
-    uint32_t* tgt = (uint32_t*)malloc(sizeof(uint32_t) * image_pixel_size);
+    uint8_t* src = (uint8_t*)malloc(sizeof(uint8_t) * size);
+    memcpy(src, data, sizeof(uint8_t) * (size));
+    uint32_t* tgt = (uint32_t*)malloc(sizeof(uint32_t) * size);
 
 #ifdef COPY_NV21_TO_RGB32
-    android::hardware::automotive::evs::common::Utils::copyNV21toRGB32(width, height, src, tgt,
-                                                                       width);
+    android::hardware::automotive::evs::common::Utils::copyNV21toRGB32(width, height, src, tgt, 0);
 #elif COPY_NV21_TO_BGR32
-    android::hardware::automotive::evs::common::Utils::copyNV21toBGR32(width, height, src, tgt,
-                                                                       width);
+    android::hardware::automotive::evs::common::Utils::copyNV21toBGR32(width, height, src, tgt, 0);
 #elif COPY_YV12_TO_RGB32
-    android::hardware::automotive::evs::common::Utils::copyYV12toRGB32(width, height, src, tgt,
-                                                                       width);
+    android::hardware::automotive::evs::common::Utils::copyYV12toRGB32(width, height, src, tgt, 0);
 #elif COPY_YV12_TO_BGR32
-    android::hardware::automotive::evs::common::Utils::copyYV12toBGR32(width, height, src, tgt,
-                                                                       width);
+    android::hardware::automotive::evs::common::Utils::copyYV12toBGR32(width, height, src, tgt, 0);
 #elif COPY_YUYV_TO_RGB32
-    android::hardware::automotive::evs::common::Utils::copyYUYVtoRGB32(width, height, src, width,
-                                                                       tgt, width);
+    android::hardware::automotive::evs::common::Utils::copyYUYVtoRGB32(width, height, src, 0, tgt,
+                                                                       0);
 #elif COPY_YUYV_TO_BGR32
-    android::hardware::automotive::evs::common::Utils::copyYUYVtoBGR32(width, height, src, width,
-                                                                       tgt, width);
+    android::hardware::automotive::evs::common::Utils::copyYUYVtoBGR32(width, height, src, 0, tgt,
+                                                                       0);
 #endif
 
+    free(src);
     free(tgt);
 
     return 0;
