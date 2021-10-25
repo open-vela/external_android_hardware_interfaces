@@ -17,17 +17,11 @@
 #include "FakeVehicleHardware.h"
 
 #include <DefaultConfig.h>
-#include <JsonFakeValueGenerator.h>
 #include <VehicleHalTypes.h>
 #include <VehicleUtils.h>
-#include <android-base/properties.h>
 #include <utils/Log.h>
 #include <utils/SystemClock.h>
 
-#include <dirent.h>
-#include <sys/types.h>
-#include <fstream>
-#include <regex>
 #include <vector>
 
 namespace android {
@@ -35,8 +29,6 @@ namespace hardware {
 namespace automotive {
 namespace vehicle {
 namespace fake {
-
-namespace {
 
 using ::aidl::android::hardware::automotive::vehicle::GetValueRequest;
 using ::aidl::android::hardware::automotive::vehicle::GetValueResult;
@@ -47,11 +39,6 @@ using ::aidl::android::hardware::automotive::vehicle::StatusCode;
 using ::aidl::android::hardware::automotive::vehicle::VehiclePropConfig;
 using ::aidl::android::hardware::automotive::vehicle::VehiclePropertyStatus;
 using ::aidl::android::hardware::automotive::vehicle::VehiclePropValue;
-
-const char* VENDOR_OVERRIDE_DIR = "/vendor/etc/automotive/vhaloverride/";
-const char* OVERRIDE_PROPERTY = "persist.vendor.vhal_init_value_override";
-
-}  // namespace
 
 void FakeVehicleHardware::storePropInitialValue(const defaultconfig::ConfigDeclaration& config) {
     const VehiclePropConfig& vehiclePropConfig = config.config;
@@ -111,8 +98,6 @@ void FakeVehicleHardware::init(std::shared_ptr<VehiclePropValuePool> valuePool) 
         mServerSidePropStore->registerProperty(cfg);
         storePropInitialValue(it);
     }
-
-    maybeOverrideProperties(VENDOR_OVERRIDE_DIR);
 
     mServerSidePropStore->setOnValueChangeCallback(
             [this](const VehiclePropValue& value) { return onValueChangeCallback(value); });
@@ -213,39 +198,6 @@ void FakeVehicleHardware::onValueChangeCallback(const VehiclePropValue& value) {
         std::vector<VehiclePropValue> updatedValues;
         updatedValues.push_back(value);
         mOnPropertyChangeCallback(std::move(updatedValues));
-    }
-}
-
-void FakeVehicleHardware::maybeOverrideProperties(const char* overrideDir) {
-    if (android::base::GetBoolProperty(OVERRIDE_PROPERTY, false)) {
-        overrideProperties(overrideDir);
-    }
-}
-
-void FakeVehicleHardware::overrideProperties(const char* overrideDir) {
-    ALOGI("loading vendor override properties from %s", overrideDir);
-    if (auto dir = opendir(overrideDir); dir != NULL) {
-        std::regex regJson(".*[.]json", std::regex::icase);
-        while (auto f = readdir(dir)) {
-            if (!std::regex_match(f->d_name, regJson)) {
-                continue;
-            }
-            std::string file = overrideDir + std::string(f->d_name);
-            JsonFakeValueGenerator tmpGenerator(file);
-
-            std::vector<VehiclePropValue> propValues = tmpGenerator.getAllEvents();
-            for (const VehiclePropValue& prop : propValues) {
-                auto propToStore = mValuePool->obtain(prop);
-                propToStore->timestamp = elapsedRealtimeNano();
-                if (auto result = mServerSidePropStore->writeValue(std::move(propToStore),
-                                                                   /*updateStatus=*/true);
-                    !result.ok()) {
-                    ALOGW("failed to write vendor override properties: %d, error: %s", prop.prop,
-                          result.error().message().c_str());
-                }
-            }
-        }
-        closedir(dir);
     }
 }
 

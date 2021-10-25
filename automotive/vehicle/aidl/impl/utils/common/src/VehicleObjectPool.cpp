@@ -52,19 +52,17 @@ VehiclePropValuePool::RecyclableType VehiclePropValuePool::obtain(VehiclePropert
 }
 
 VehiclePropValuePool::RecyclableType VehiclePropValuePool::obtain(const VehiclePropValue& src) {
-    int propId = src.prop;
-    VehiclePropertyType type = getPropType(propId);
+    VehiclePropertyType type = getPropType(src.prop);
     size_t vectorSize = getVehicleRawValueVectorSize(src.value, type);
     if (vectorSize == 0 && !isComplexType(type)) {
         ALOGW("empty vehicle prop value, contains no content");
-        ALOGW("empty vehicle prop value, contains no content, prop: %d", propId);
         // Return any empty VehiclePropValue.
-        return RecyclableType{new VehiclePropValue{}, mDisposableDeleter};
+        return RecyclableType{new VehiclePropValue, mDisposableDeleter};
     }
 
     auto dest = obtain(type, vectorSize);
 
-    dest->prop = propId;
+    dest->prop = src.prop;
     dest->areaId = src.areaId;
     dest->status = src.status;
     dest->timestamp = src.timestamp;
