@@ -14,40 +14,42 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "automotive.vehicle@2.0-default-service"
+#define LOG_TAG "automotive.vehicle@2.0-service"
 #include <android/log.h>
 #include <hidl/HidlTransportSupport.h>
 
 #include <iostream>
 
-#include <vhal_v2_0/DefaultVehicleConnector.h>
-#include <vhal_v2_0/DefaultVehicleHal.h>
+#include <vhal_v2_0/EmulatedUserHal.h>
+#include <vhal_v2_0/EmulatedVehicleConnector.h>
+#include <vhal_v2_0/EmulatedVehicleHal.h>
 #include <vhal_v2_0/VehicleHalManager.h>
 
-using ::android::hardware::automotive::vehicle::V2_0::VehicleHalManager;
-using ::android::hardware::automotive::vehicle::V2_0::VehiclePropertyStore;
-using ::android::hardware::automotive::vehicle::V2_0::impl::DefaultVehicleConnector;
-using ::android::hardware::automotive::vehicle::V2_0::impl::DefaultVehicleHal;
+using namespace android;
+using namespace android::hardware;
+using namespace android::hardware::automotive::vehicle::V2_0;
 
 int main(int /* argc */, char* /* argv */ []) {
     auto store = std::make_unique<VehiclePropertyStore>();
-    auto connector = std::make_unique<DefaultVehicleConnector>();
-    auto hal = std::make_unique<DefaultVehicleHal>(store.get(), connector.get());
+    auto connector = std::make_unique<impl::EmulatedVehicleConnector>();
+    auto userHal = connector->getEmulatedUserHal();
+    auto hal = std::make_unique<impl::EmulatedVehicleHal>(store.get(), connector.get(), userHal);
+    auto emulator = std::make_unique<impl::VehicleEmulator>(hal.get());
     auto service = std::make_unique<VehicleHalManager>(hal.get());
     connector->setValuePool(hal->getValuePool());
 
-    android::hardware::configureRpcThreadpool(4, true /* callerWillJoin */);
+    configureRpcThreadpool(4, true /* callerWillJoin */);
 
     ALOGI("Registering as service...");
-    android::status_t status = service->registerAsService();
+    status_t status = service->registerAsService();
 
-    if (status != android::OK) {
+    if (status != OK) {
         ALOGE("Unable to register vehicle service (%d)", status);
         return 1;
     }
 
     ALOGI("Ready");
-    android::hardware::joinRpcThreadpool();
+    joinRpcThreadpool();
 
-    return 0;
+    return 1;
 }
