@@ -30,7 +30,6 @@
 #include <nnapi/TypeUtils.h>
 #include <nnapi/Types.h>
 #include <nnapi/hal/CommonUtils.h>
-#include <nnapi/hal/HandleError.h>
 
 #include <memory>
 #include <tuple>
@@ -51,7 +50,7 @@ nn::GeneralResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> convertEx
 nn::GeneralResult<std::pair<nn::Timing, nn::Timing>> convertFencedExecutionResults(
         ErrorStatus status, const aidl_hal::Timing& timingLaunched,
         const aidl_hal::Timing& timingFenced) {
-    HANDLE_HAL_STATUS(status) << "fenced execution callback info failed with " << toString(status);
+    HANDLE_STATUS_AIDL(status) << "fenced execution callback info failed with " << toString(status);
     return std::make_pair(NN_TRY(nn::convert(timingLaunched)), NN_TRY(nn::convert(timingFenced)));
 }
 
@@ -78,16 +77,14 @@ nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> Prepare
     // Ensure that request is ready for IPC.
     std::optional<nn::Request> maybeRequestInShared;
     hal::utils::RequestRelocation relocation;
-    const nn::Request& requestInShared =
-            NN_TRY(hal::utils::makeExecutionFailure(hal::utils::convertRequestFromPointerToShared(
-                    &request, nn::kDefaultRequestMemoryAlignment, nn::kDefaultRequestMemoryPadding,
-                    &maybeRequestInShared, &relocation)));
+    const nn::Request& requestInShared = NN_TRY(hal::utils::convertRequestFromPointerToShared(
+            &request, nn::kDefaultRequestMemoryAlignment, nn::kDefaultRequestMemoryPadding,
+            &maybeRequestInShared, &relocation));
 
-    const auto aidlRequest = NN_TRY(hal::utils::makeExecutionFailure(convert(requestInShared)));
-    const auto aidlMeasure = NN_TRY(hal::utils::makeExecutionFailure(convert(measure)));
-    const auto aidlDeadline = NN_TRY(hal::utils::makeExecutionFailure(convert(deadline)));
-    const auto aidlLoopTimeoutDuration =
-            NN_TRY(hal::utils::makeExecutionFailure(convert(loopTimeoutDuration)));
+    const auto aidlRequest = NN_TRY(convert(requestInShared));
+    const auto aidlMeasure = NN_TRY(convert(measure));
+    const auto aidlDeadline = NN_TRY(convert(deadline));
+    const auto aidlLoopTimeoutDuration = NN_TRY(convert(loopTimeoutDuration));
     return executeInternal(aidlRequest, aidlMeasure, aidlDeadline, aidlLoopTimeoutDuration,
                            relocation);
 }
@@ -110,8 +107,8 @@ PreparedModel::executeInternal(const Request& request, bool measure, int64_t dea
         return NN_ERROR(nn::ErrorStatus::OUTPUT_INSUFFICIENT_SIZE, std::move(canonicalOutputShapes))
                << "execution failed with " << nn::ErrorStatus::OUTPUT_INSUFFICIENT_SIZE;
     }
-    auto [outputShapes, timing] = NN_TRY(hal::utils::makeExecutionFailure(
-            convertExecutionResults(executionResult.outputShapes, executionResult.timing)));
+    auto [outputShapes, timing] =
+            NN_TRY(convertExecutionResults(executionResult.outputShapes, executionResult.timing));
 
     if (relocation.output) {
         relocation.output->flush();
