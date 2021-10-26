@@ -25,6 +25,7 @@
 #include <nnapi/Result.h>
 #include <nnapi/Types.h>
 #include <nnapi/hal/CommonUtils.h>
+#include <nnapi/hal/HandleError.h>
 
 #include <memory>
 #include <utility>

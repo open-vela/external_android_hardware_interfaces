@@ -25,6 +25,7 @@
 #include <nnapi/TypeUtils.h>
 #include <nnapi/Types.h>
 #include <nnapi/Validation.h>
+#include <nnapi/hal/HandleError.h>
 
 namespace android::hardware::neuralnetworks::V1_0::utils {
 
