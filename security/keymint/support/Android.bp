@@ -25,6 +25,7 @@ package {
 
 cc_library {
     name: "libkeymint_support",
+    vendor_available: true,
     cflags: [
         "-Wall",
         "-Wextra",
@@ -40,10 +41,11 @@ cc_library {
         "include",
     ],
     shared_libs: [
-        "android.hardware.security.keymint-V1-ndk_platform",
+        "android.hardware.security.keymint-V1-ndk",
         "libbase",
         "libcrypto",
         "libutils",
+        "libhardware",
     ],
 }
 
