@@ -27,8 +27,8 @@
 #include <nnapi/Types.h>
 #include <nnapi/Validation.h>
 #include <nnapi/hal/1.0/Conversions.h>
-#include <nnapi/hal/HandleError.h>
-#include <nnapi/hal/ProtectCallback.h>
+#include <nnapi/hal/1.0/HandleError.h>
+#include <nnapi/hal/1.0/ProtectCallback.h>
 #include <nnapi/hal/TransferValue.h>
 
 #include <algorithm>
@@ -45,14 +45,12 @@
 namespace android::hardware::neuralnetworks::V1_2::utils {
 namespace {
 
-using neuralnetworks::utils::makeExecutionFailure;
-
 constexpr V1_2::Timing kNoTiming = {std::numeric_limits<uint64_t>::max(),
                                     std::numeric_limits<uint64_t>::max()};
 
 nn::GeneralResult<std::vector<nn::SharedMemory>> getMemoriesCallback(
         V1_0::ErrorStatus status, const hidl_vec<hidl_memory>& memories) {
-    HANDLE_HAL_STATUS(status) << "getting burst memories failed with " << toString(status);
+    HANDLE_STATUS_HIDL(status) << "getting burst memories failed with " << toString(status);
     std::vector<nn::SharedMemory> canonicalMemories;
     canonicalMemories.reserve(memories.size());
     for (const auto& memory : memories) {
@@ -241,28 +239,25 @@ nn::ExecutionResult<std::pair<hidl_vec<OutputShape>, Timing>> ExecutionBurstServ
                  "ExecutionBurstServer getting memory, executing, and returning results");
 
     // ensure executor with cache has required memory
-    const auto cacheEntries =
-            NN_TRY(makeExecutionFailure(mMemoryCache.getCacheEntries(slotsOfPools)));
+    const auto cacheEntries = NN_TRY(mMemoryCache.getCacheEntries(slotsOfPools));
 
     // convert request, populating its pools
     // This code performs an unvalidated convert because the request object without its pools is
     // invalid because it is incomplete. Instead, the validation is performed after the memory pools
     // have been added to the request.
-    auto canonicalRequest =
-            NN_TRY(makeExecutionFailure(nn::unvalidatedConvert(requestWithoutPools)));
+    auto canonicalRequest = NN_TRY(nn::unvalidatedConvert(requestWithoutPools));
     CHECK(canonicalRequest.pools.empty());
     std::transform(cacheEntries.begin(), cacheEntries.end(),
                    std::back_inserter(canonicalRequest.pools),
                    [](const auto& cacheEntry) { return cacheEntry.first; });
-    NN_TRY(makeExecutionFailure(validate(canonicalRequest)));
+    NN_TRY(validate(canonicalRequest));
 
-    nn::MeasureTiming canonicalMeasure = NN_TRY(makeExecutionFailure(nn::convert(measure)));
+    nn::MeasureTiming canonicalMeasure = NN_TRY(nn::convert(measure));
 
     const auto [outputShapes, timing] =
             NN_TRY(mBurstExecutor->execute(canonicalRequest, canonicalMeasure, {}, {}));
 
-    return std::make_pair(NN_TRY(makeExecutionFailure(convert(outputShapes))),
-                          NN_TRY(makeExecutionFailure(convert(timing))));
+    return std::make_pair(NN_TRY(convert(outputShapes)), NN_TRY(convert(timing)));
 }
 
 }  // namespace android::hardware::neuralnetworks::V1_2::utils
