@@ -16,6 +16,7 @@
 
 #define LOG_TAG "audiohalservice"
 
+#include <signal.h>
 #include <string>
 #include <vector>
 
@@ -45,6 +46,8 @@ static bool registerPassthroughServiceImplementations(Iter first, Iter last) {
 }
 
 int main(int /* argc */, char* /* argv */ []) {
+    signal(SIGPIPE, SIG_IGN);
+
     ::android::ProcessState::initWithDriver("/dev/vndbinder");
     // start a threadpool for vndbinder interactions
     ::android::ProcessState::self()->startThreadPool();
@@ -63,17 +66,17 @@ int main(int /* argc */, char* /* argv */ []) {
     const std::vector<InterfacesList> mandatoryInterfaces = {
         {
             "Audio Core API",
+            "android.hardware.audio@7.0::IDevicesFactory",
             "android.hardware.audio@6.0::IDevicesFactory",
             "android.hardware.audio@5.0::IDevicesFactory",
             "android.hardware.audio@4.0::IDevicesFactory",
-            "android.hardware.audio@2.0::IDevicesFactory"
         },
         {
             "Audio Effect API",
+            "android.hardware.audio.effect@7.0::IEffectsFactory",
             "android.hardware.audio.effect@6.0::IEffectsFactory",
             "android.hardware.audio.effect@5.0::IEffectsFactory",
             "android.hardware.audio.effect@4.0::IEffectsFactory",
-            "android.hardware.audio.effect@2.0::IEffectsFactory",
         }
     };
 
@@ -87,7 +90,9 @@ int main(int /* argc */, char* /* argv */ []) {
         },
         {
             "Bluetooth Audio API",
-            "android.hardware.bluetooth.audio@2.0::IBluetoothAudioProvidersFactory"
+            "android.hardware.bluetooth.audio@2.2::IBluetoothAudioProvidersFactory",
+            "android.hardware.bluetooth.audio@2.1::IBluetoothAudioProvidersFactory",
+            "android.hardware.bluetooth.audio@2.0::IBluetoothAudioProvidersFactory",
         },
         // remove the old HIDL when Bluetooth Audio Hal V2 has offloading supported
         {
