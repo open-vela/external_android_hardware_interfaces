@@ -14,21 +14,21 @@
 // limitations under the License.
 //
 
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
 cc_defaults {
     name: "neuralnetworks_vts_functional_defaults",
-    defaults: ["VtsHalTargetTestDefaults"],
-    arch: {
-        x86: {
-            cflags: [ "-D_Float16=__fp16",
-                      "-Xclang", "-fnative-half-type",
-                      "-Xclang", "-fallow-half-arguments-and-returns" ],
-        },
-        x86_64: {
-            cflags: [ "-D_Float16=__fp16",
-                      "-Xclang", "-fnative-half-type",
-                      "-Xclang", "-fallow-half-arguments-and-returns" ],
-        },
-    },
+    defaults: [
+        "VtsHalTargetTestDefaults",
+        "neuralnetworks_float16",
+    ],
 }
 
 cc_library_static {
@@ -50,7 +50,7 @@ cc_library_static {
         "libgmock",
         "libhidlmemory",
         "libneuralnetworks_generated_test_harness",
-        "libneuralnetworks_utils",
+        "libneuralnetworks_common",
     ],
     header_libs: [
         "libneuralnetworks_headers",
@@ -74,14 +74,14 @@ cc_test {
         "libnativewindow",
     ],
     static_libs: [
+        "VtsHalNeuralNetworksV1_0_utils",
         "android.hardware.neuralnetworks@1.0",
         "android.hidl.allocator@1.0",
         "android.hidl.memory@1.0",
         "libgmock",
         "libhidlmemory",
         "libneuralnetworks_generated_test_harness",
-        "libneuralnetworks_utils",
-        "VtsHalNeuralNetworksV1_0_utils",
+        "libneuralnetworks_common",
     ],
     whole_static_libs: [
         "neuralnetworks_generated_V1_0_example",
@@ -89,5 +89,8 @@ cc_test {
     header_libs: [
         "libneuralnetworks_headers",
     ],
-    test_suites: ["general-tests", "vts"],
+    test_suites: [
+        "general-tests",
+        "vts",
+    ],
 }
