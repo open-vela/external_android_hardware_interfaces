@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,22 +31,12 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.tv.tuner;
-/* @hide */
-@VintfStability
-interface IFilter {
-  void getQueueDesc(out android.hardware.common.fmq.MQDescriptor<byte,android.hardware.common.fmq.SynchronizedReadWrite> queue);
-  void close();
-  void configure(in android.hardware.tv.tuner.DemuxFilterSettings settings);
-  void configureAvStreamType(in android.hardware.tv.tuner.AvStreamType avStreamType);
-  void configureIpCid(in int ipCid);
-  void configureMonitorEvent(in int monitorEventTypes);
-  void start();
-  void stop();
-  void flush();
-  long getAvSharedHandle(out android.hardware.common.NativeHandle avMemory);
-  int getId();
-  long getId64Bit();
-  void releaseAvHandle(in android.hardware.common.NativeHandle avMemory, in long avDataId);
-  void setDataSource(in android.hardware.tv.tuner.IFilter filter);
+package android.hardware.audio.common;
+@JavaDerive(equals=true, toString=true) @VintfStability
+parcelable RecordTrackMetadata {
+  android.media.audio.common.AudioSource source = android.media.audio.common.AudioSource.SYS_RESERVED_INVALID;
+  float gain;
+  @nullable android.media.audio.common.AudioDevice destinationDevice;
+  android.media.audio.common.AudioChannelLayout channelMask;
+  @utf8InCpp String[] tags;
 }

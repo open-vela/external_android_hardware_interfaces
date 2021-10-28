@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,15 @@
  * limitations under the License.
  */
 
-package android.hardware.tv.tuner;
+package android.hardware.audio.common;
 
-import android.hardware.tv.tuner.FilterDelayHintType;
+import android.hardware.audio.common.RecordTrackMetadata;
 
 /**
- * Filter Delay Hint
- * Gives information to the filter to assist in delaying / accumulating filter events.
- * See FilterDelayHintType for more information regarding the hintValue units.
- * @hide
+ * Metadata of record tracks for an input stream.
  */
+@JavaDerive(equals=true, toString=true)
 @VintfStability
-parcelable FilterDelayHint {
-    FilterDelayHintType hintType = FilterDelayHintType.INVALID;
-    int hintValue;
+parcelable SinkMetadata {
+    RecordTrackMetadata[] tracks;
 }
