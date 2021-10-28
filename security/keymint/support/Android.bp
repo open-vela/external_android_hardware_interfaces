@@ -25,7 +25,6 @@ package {
 
 cc_library {
     name: "libkeymint_support",
-    vendor_available: true,
     cflags: [
         "-Wall",
         "-Wextra",
@@ -45,7 +44,6 @@ cc_library {
         "libbase",
         "libcrypto",
         "libutils",
-        "libhardware",
     ],
 }
 
