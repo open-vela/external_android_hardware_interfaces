@@ -30,7 +30,6 @@
 #include <nnapi/hal/1.1/Utils.h>
 #include <nnapi/hal/1.2/Conversions.h>
 #include <nnapi/hal/1.2/Utils.h>
-#include <nnapi/hal/HandleError.h>
 
 namespace android::hardware::neuralnetworks::V1_3::utils {
 
@@ -61,8 +60,8 @@ bool valid(const Type& halObject) {
 }
 
 template <typename Type>
-nn::GeneralResult<void> compliantVersion(const Type& canonical) {
-    const auto version = NN_TRY(hal::utils::makeGeneralFailure(nn::validate(canonical)));
+nn::Result<void> compliantVersion(const Type& canonical) {
+    const auto version = NN_TRY(nn::validate(canonical));
     if (version > kVersion) {
         return NN_ERROR() << "Insufficient version: " << version << " vs required " << kVersion;
     }
