@@ -595,19 +595,18 @@ TEST_P(RadioHidlTest_v1_6, setSimCardPower_1_6) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
-                                 {::android::hardware::radio::V1_6::RadioError::NONE,
-                                  ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
-                                  ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
-                                  ::android::hardware::radio::V1_6::RadioError::SIM_ERR}));
+    ASSERT_TRUE(
+            CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
+                             {::android::hardware::radio::V1_6::RadioError::NONE,
+                              ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
+                              ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE}));
 
     // setSimCardPower_1_6 does not return  until the request is handled, and should not trigger
     // CardState::ABSENT when turning off power
     if (radioRsp_v1_6->rspInfo.error == ::android::hardware::radio::V1_6::RadioError::NONE) {
         /* Wait some time for setting sim power down and then verify it */
         updateSimCardStatus();
-        // We cannot assert the consistency of CardState here due to b/203031664
-        // EXPECT_EQ(CardState::PRESENT, cardStatus.base.base.base.cardState);
+        EXPECT_EQ(CardState::PRESENT, cardStatus.base.base.base.cardState);
         // applications should be an empty vector of AppStatus
         EXPECT_EQ(0, cardStatus.applications.size());
     }
@@ -618,11 +617,11 @@ TEST_P(RadioHidlTest_v1_6, setSimCardPower_1_6) {
     EXPECT_EQ(std::cv_status::no_timeout, wait());
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_v1_6->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_v1_6->rspInfo.serial);
-    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
-                                 {::android::hardware::radio::V1_6::RadioError::NONE,
-                                  ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
-                                  ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE,
-                                  ::android::hardware::radio::V1_6::RadioError::SIM_ERR}));
+    ASSERT_TRUE(
+            CheckAnyOfErrors(radioRsp_v1_6->rspInfo.error,
+                             {::android::hardware::radio::V1_6::RadioError::NONE,
+                              ::android::hardware::radio::V1_6::RadioError::INVALID_ARGUMENTS,
+                              ::android::hardware::radio::V1_6::RadioError::RADIO_NOT_AVAILABLE}));
 
     // setSimCardPower_1_6 does not return  until the request is handled. Just verify that we still
     // have CardState::PRESENT after turning the power back on
