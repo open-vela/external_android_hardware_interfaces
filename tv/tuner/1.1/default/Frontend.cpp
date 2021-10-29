@@ -128,7 +128,7 @@ Return<Result> Frontend::scan(const FrontendSettings& settings, FrontendScanType
     }
 
     if (type == FrontendScanType::SCAN_BLIND) {
-        frequency += 100 * 1000;
+        frequency += 100;
     }
 
     msg.frequencies({frequency});
