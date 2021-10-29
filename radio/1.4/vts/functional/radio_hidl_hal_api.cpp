@@ -232,8 +232,7 @@ TEST_P(RadioHidlTest_v1_4, setPreferredNetworkTypeBitmap) {
     EXPECT_EQ(serial, radioRsp_v1_4->rspInfo.serial);
     ALOGI("setPreferredNetworkTypeBitmap, rspInfo.error = %s\n",
           toString(radioRsp_v1_4->rspInfo.error).c_str());
-    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_v1_4->rspInfo.error,
-                                 {RadioError::NONE, RadioError::MODE_NOT_SUPPORTED}));
+    EXPECT_EQ(RadioError::NONE, radioRsp_v1_4->rspInfo.error);
     if (radioRsp_v1_4->rspInfo.error == RadioError::NONE) {
          // give some time for modem to set the value.
         sleep(3);
