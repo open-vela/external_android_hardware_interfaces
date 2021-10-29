@@ -1602,9 +1602,10 @@ Return<void> CameraHidlTest::DeviceCb::requestStreamBuffers(
                 w = stream.bufferSize;
                 h = 1;
             }
-            mParent->allocateGraphicBuffer(w, h,
-                    android_convertGralloc1To0Usage(
-                            halStream.producerUsage, halStream.consumerUsage),
+            mParent->allocateGraphicBuffer(
+                    w, h,
+                    (uint32_t)android_convertGralloc1To0Usage(halStream.producerUsage,
+                                                              halStream.consumerUsage),
                     halStream.overrideFormat, &buffer_handle);
 
             tmpRetBuffers[j] = {stream.v3_2.id, mNextBufferId, buffer_handle, BufferStatus::OK,
@@ -4675,7 +4676,7 @@ void CameraHidlTest::processCaptureRequestInternal(uint64_t bufferUsage,
                                   /* We don't look at halStreamConfig.streams[0].consumerUsage
                                    * since that is 0 for output streams
                                    */
-                                  android_convertGralloc1To0Usage(
+                                  (uint32_t)android_convertGralloc1To0Usage(
                                           halStreamConfig.streams[0].producerUsage, bufferUsage),
                                   halStreamConfig.streams[0].overrideFormat, &buffer_handle);
             outputBuffer = {halStreamConfig.streams[0].id,
@@ -4897,9 +4898,10 @@ TEST_P(CameraHidlTest, processMultiCaptureRequestPreview) {
                     BufferStatus::OK, nullptr, nullptr};
             } else {
                 allocateGraphicBuffer(previewStream.width, previewStream.height,
-                        android_convertGralloc1To0Usage(halStream.v3_3.v3_2.producerUsage,
-                            halStream.v3_3.v3_2.consumerUsage),
-                        halStream.v3_3.v3_2.overrideFormat, &buffer_handle);
+                                      (uint32_t)android_convertGralloc1To0Usage(
+                                              halStream.v3_3.v3_2.producerUsage,
+                                              halStream.v3_3.v3_2.consumerUsage),
+                                      halStream.v3_3.v3_2.overrideFormat, &buffer_handle);
                 graphicBuffers.push_back(buffer_handle);
                 outputBuffers[k] = {halStream.v3_3.v3_2.id, bufferId, buffer_handle,
                     BufferStatus::OK, nullptr, nullptr};
@@ -5288,9 +5290,10 @@ TEST_P(CameraHidlTest, processCaptureRequestBurstISO) {
                     nullptr, BufferStatus::OK, nullptr, nullptr};
             } else {
                 allocateGraphicBuffer(previewStream.width, previewStream.height,
-                        android_convertGralloc1To0Usage(halStreamConfig.streams[0].producerUsage,
-                            halStreamConfig.streams[0].consumerUsage),
-                        halStreamConfig.streams[0].overrideFormat, &buffers[i]);
+                                      (uint32_t)android_convertGralloc1To0Usage(
+                                              halStreamConfig.streams[0].producerUsage,
+                                              halStreamConfig.streams[0].consumerUsage),
+                                      halStreamConfig.streams[0].overrideFormat, &buffers[i]);
                 outputBuffers[i] = {halStreamConfig.streams[0].id, bufferId + i,
                     buffers[i], BufferStatus::OK, nullptr, nullptr};
             }
@@ -5394,9 +5397,10 @@ TEST_P(CameraHidlTest, processCaptureRequestInvalidSinglePreview) {
             bufferId = 0;
         } else {
             allocateGraphicBuffer(previewStream.width, previewStream.height,
-                    android_convertGralloc1To0Usage(halStreamConfig.streams[0].producerUsage,
-                        halStreamConfig.streams[0].consumerUsage),
-                    halStreamConfig.streams[0].overrideFormat, &buffer_handle);
+                                  (uint32_t)android_convertGralloc1To0Usage(
+                                          halStreamConfig.streams[0].producerUsage,
+                                          halStreamConfig.streams[0].consumerUsage),
+                                  halStreamConfig.streams[0].overrideFormat, &buffer_handle);
         }
 
         StreamBuffer outputBuffer = {halStreamConfig.streams[0].id,
@@ -5517,9 +5521,10 @@ TEST_P(CameraHidlTest, switchToOffline) {
                         buffers[i], BufferStatus::OK, nullptr, nullptr};
             } else {
                 // jpeg buffer (w,h) = (blobLen, 1)
-                allocateGraphicBuffer(jpegBufferSize, /*height*/1,
-                        android_convertGralloc1To0Usage(halStreamConfig3_2.producerUsage,
-                            halStreamConfig3_2.consumerUsage),
+                allocateGraphicBuffer(
+                        jpegBufferSize, /*height*/ 1,
+                        (uint32_t)android_convertGralloc1To0Usage(halStreamConfig3_2.producerUsage,
+                                                                  halStreamConfig3_2.consumerUsage),
                         halStreamConfig3_2.overrideFormat, &buffers[i]);
                 outputBuffers[i] = {halStreamConfig3_2.id, bufferId + i,
                     buffers[i], BufferStatus::OK, nullptr, nullptr};
@@ -5761,9 +5766,10 @@ TEST_P(CameraHidlTest, flushPreviewRequest) {
             bufferId = 0;
         } else {
             allocateGraphicBuffer(previewStream.width, previewStream.height,
-                    android_convertGralloc1To0Usage(halStreamConfig.streams[0].producerUsage,
-                        halStreamConfig.streams[0].consumerUsage),
-                    halStreamConfig.streams[0].overrideFormat, &buffer_handle);
+                                  (uint32_t)android_convertGralloc1To0Usage(
+                                          halStreamConfig.streams[0].producerUsage,
+                                          halStreamConfig.streams[0].consumerUsage),
+                                  halStreamConfig.streams[0].overrideFormat, &buffer_handle);
         }
 
         StreamBuffer outputBuffer = {halStreamConfig.streams[0].id,
@@ -6199,13 +6205,14 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
         return;
     }
 
-    // Test that if more than one rear-facing color camera is
-    // supported, there must be at least one rear-facing logical camera.
+    // Test that if more than one color cameras facing the same direction are
+    // supported, there must be at least one logical camera facing that
+    // direction.
     hidl_vec<hidl_string> cameraDeviceNames = getCameraDeviceNames(mProvider);
-    // Back facing non-logical color cameras
-    std::set<std::string> rearColorCameras;
-    // Back facing logical cameras' physical camera Id sets
-    std::set<std::set<std::string>> rearPhysicalIds;
+    // Front and back facing non-logical color cameras
+    std::set<std::string> frontColorCameras, rearColorCameras;
+    // Front and back facing logical cameras' physical camera Id sets
+    std::set<std::set<std::string>> frontPhysicalIds, rearPhysicalIds;
     for (const auto& name : cameraDeviceNames) {
         std::string cameraId;
         int deviceVersion = getCameraDeviceVersionAndId(name, mProviderType, &cameraId);
@@ -6237,8 +6244,8 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
                         return;
                     }
 
-                    // Check camera facing. Skip if facing is not BACK.
-                    // If this is not a logical camera, only note down
+                    // Check camera facing. Skip if facing is neither FRONT
+                    // nor BACK. If this is not a logical camera, only note down
                     // the camera ID, and skip.
                     camera_metadata_ro_entry entry;
                     int retcode = find_camera_metadata_ro_entry(
@@ -6247,12 +6254,18 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
                     ASSERT_GT(entry.count, 0);
                     uint8_t facing = entry.data.u8[0];
                     bool isLogicalCamera = (isLogicalMultiCamera(metadata) == Status::OK);
-                    if (facing != ANDROID_LENS_FACING_BACK) {
-                        // Not BACK facing. Skip.
-                        return;
-                    }
-                    if (!isLogicalCamera) {
-                        rearColorCameras.insert(cameraId);
+                    if (facing == ANDROID_LENS_FACING_FRONT) {
+                        if (!isLogicalCamera) {
+                            frontColorCameras.insert(cameraId);
+                            return;
+                        }
+                    } else if (facing == ANDROID_LENS_FACING_BACK) {
+                        if (!isLogicalCamera) {
+                            rearColorCameras.insert(cameraId);
+                            return;
+                        }
+                    } else {
+                        // Not FRONT or BACK facing. Skip.
                         return;
                     }
 
@@ -6261,7 +6274,11 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
                     std::unordered_set<std::string> physicalCameraIds;
                     Status s = getPhysicalCameraIds(metadata, &physicalCameraIds);
                     ASSERT_EQ(Status::OK, s);
-                    rearPhysicalIds.emplace(physicalCameraIds.begin(), physicalCameraIds.end());
+                    if (facing == ANDROID_LENS_FACING_FRONT) {
+                        frontPhysicalIds.emplace(physicalCameraIds.begin(), physicalCameraIds.end());
+                    } else {
+                        rearPhysicalIds.emplace(physicalCameraIds.begin(), physicalCameraIds.end());
+                    }
                     for (const auto& physicalId : physicalCameraIds) {
                         // Skip if the physicalId is publicly available
                         for (auto& deviceName : cameraDeviceNames) {
@@ -6288,7 +6305,11 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
                                     (camera_metadata_t*)chars.data();
 
                             if (CameraHidlTest::isColorCamera(physicalMetadata)) {
-                                rearColorCameras.insert(physicalId);
+                                if (facing == ANDROID_LENS_FACING_FRONT) {
+                                    frontColorCameras.insert(physicalId);
+                                } else if (facing == ANDROID_LENS_FACING_BACK) {
+                                    rearColorCameras.insert(physicalId);
+                                }
                             }
                         });
                         ASSERT_TRUE(ret.isOk());
@@ -6306,9 +6327,20 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
         }
     }
 
-    // If there are more than one rear-facing color camera, a logical
-    // multi-camera must be defined consisting of all rear-facing color
-    // cameras.
+    // If there are more than one color cameras facing one direction, a logical
+    // multi-camera must be defined consisting of all color cameras facing that
+    // direction.
+    if (frontColorCameras.size() > 1) {
+        bool hasFrontLogical = false;
+        for (const auto& physicalIds : frontPhysicalIds) {
+            if (std::includes(physicalIds.begin(), physicalIds.end(),
+                    frontColorCameras.begin(), frontColorCameras.end())) {
+                hasFrontLogical = true;
+                break;
+            }
+        }
+        ASSERT_TRUE(hasFrontLogical);
+    }
     if (rearColorCameras.size() > 1) {
         bool hasRearLogical = false;
         for (const auto& physicalIds : rearPhysicalIds) {
@@ -8133,20 +8165,6 @@ void CameraHidlTest::verifyCameraCharacteristics(Status status, const CameraMeta
         uint8_t poseReference = entry.data.u8[0];
         ASSERT_TRUE(poseReference <= ANDROID_LENS_POSE_REFERENCE_UNDEFINED &&
                 poseReference >= ANDROID_LENS_POSE_REFERENCE_PRIMARY_CAMERA);
-    }
-
-    retcode = find_camera_metadata_ro_entry(metadata,
-            ANDROID_INFO_DEVICE_STATE_ORIENTATIONS, &entry);
-    if (0 == retcode && entry.count > 0) {
-        ASSERT_TRUE((entry.count % 2) == 0);
-        uint64_t maxPublicState = ((uint64_t) provider::V2_5::DeviceState::FOLDED) << 1;
-        uint64_t vendorStateStart = 1UL << 31; // Reserved for vendor specific states
-        uint64_t stateMask = (1 << vendorStateStart) - 1;
-        stateMask &= ~((1 << maxPublicState) - 1);
-        for (int i = 0; i < entry.count; i += 2){
-            ASSERT_TRUE((entry.data.i64[i] & stateMask) == 0);
-            ASSERT_TRUE((entry.data.i64[i+1] % 90) == 0);
-        }
     }
 
     verifyExtendedSceneModeCharacteristics(metadata);
