@@ -1621,6 +1621,94 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestationIdTags) {
 }
 
 /*
+ * NewKeyGenerationTest.EcdsaAttestationUniqueId
+ *
+ * Verifies that creation of an attested ECDSA key with a UNIQUE_ID included.
+ */
+TEST_P(NewKeyGenerationTest, EcdsaAttestationUniqueId) {
+    auto get_unique_id = [this](const std::string& app_id, uint64_t datetime,
+                                vector<uint8_t>* unique_id) {
+        auto challenge = "hello";
+        auto subject = "cert subj 2";
+        vector<uint8_t> subject_der(make_name_from_str(subject));
+        uint64_t serial_int = 0x1010;
+        vector<uint8_t> serial_blob(build_serial_blob(serial_int));
+        const AuthorizationSetBuilder builder =
+                AuthorizationSetBuilder()
+                        .Authorization(TAG_NO_AUTH_REQUIRED)
+                        .Authorization(TAG_INCLUDE_UNIQUE_ID)
+                        .EcdsaSigningKey(EcCurve::P_256)
+                        .Digest(Digest::NONE)
+                        .AttestationChallenge(challenge)
+                        .Authorization(TAG_CERTIFICATE_SERIAL, serial_blob)
+                        .Authorization(TAG_CERTIFICATE_SUBJECT, subject_der)
+                        .AttestationApplicationId(app_id)
+                        .Authorization(TAG_CREATION_DATETIME, datetime)
+                        .SetDefaultValidity();
+
+        ASSERT_EQ(ErrorCode::OK, GenerateKey(builder));
+        ASSERT_GT(key_blob_.size(), 0U);
+
+        EXPECT_TRUE(ChainSignaturesAreValid(cert_chain_));
+        ASSERT_GT(cert_chain_.size(), 0);
+        verify_subject_and_serial(cert_chain_[0], serial_int, subject, /* self_signed = */ false);
+
+        AuthorizationSet hw_enforced = HwEnforcedAuthorizations(key_characteristics_);
+        AuthorizationSet sw_enforced = SwEnforcedAuthorizations(key_characteristics_);
+
+        // Check that the unique ID field in the extension is non-empty.
+        EXPECT_TRUE(verify_attestation_record(challenge, app_id, sw_enforced, hw_enforced,
+                                              SecLevel(), cert_chain_[0].encodedCertificate,
+                                              unique_id));
+        EXPECT_GT(unique_id->size(), 0);
+        CheckedDeleteKey();
+    };
+
+    // Generate unique ID
+    auto app_id = "foo";
+    uint64_t cert_date = 1619621648000;  // Wed Apr 28 14:54:08 2021 in ms since epoch
+    vector<uint8_t> unique_id;
+    get_unique_id(app_id, cert_date, &unique_id);
+
+    // Generating a new key with the same parameters should give the same unique ID.
+    vector<uint8_t> unique_id2;
+    get_unique_id(app_id, cert_date, &unique_id2);
+    EXPECT_EQ(unique_id, unique_id2);
+
+    // Generating a new key with a slightly different date should give the same unique ID.
+    uint64_t rounded_date = cert_date / 2592000000LLU;
+    uint64_t min_date = rounded_date * 2592000000LLU;
+    uint64_t max_date = ((rounded_date + 1) * 2592000000LLU) - 1;
+
+    vector<uint8_t> unique_id3;
+    get_unique_id(app_id, min_date, &unique_id3);
+    EXPECT_EQ(unique_id, unique_id3);
+
+    vector<uint8_t> unique_id4;
+    get_unique_id(app_id, max_date, &unique_id4);
+    EXPECT_EQ(unique_id, unique_id4);
+
+    // A different attestation application ID should yield a different unique ID.
+    auto app_id2 = "different_foo";
+    vector<uint8_t> unique_id5;
+    get_unique_id(app_id2, cert_date, &unique_id5);
+    EXPECT_NE(unique_id, unique_id5);
+
+    // A radically different date should yield a different unique ID.
+    vector<uint8_t> unique_id6;
+    get_unique_id(app_id, 1611621648000, &unique_id6);
+    EXPECT_NE(unique_id, unique_id6);
+
+    vector<uint8_t> unique_id7;
+    get_unique_id(app_id, max_date + 1, &unique_id7);
+    EXPECT_NE(unique_id, unique_id7);
+
+    vector<uint8_t> unique_id8;
+    get_unique_id(app_id, min_date - 1, &unique_id8);
+    EXPECT_NE(unique_id, unique_id8);
+}
+
+/*
  * NewKeyGenerationTest.EcdsaAttestationTagNoApplicationId
  *
  * Verifies that creation of an attested ECDSA key does not include APPLICATION_ID.
@@ -4759,49 +4847,6 @@ TEST_P(EncryptionOperationsTest, AesCbcRoundTripSuccess) {
 }
 
 /*
- * EncryptionOperationsTest.AesCbcZeroInputSuccessb
- *
- * Verifies that keymaster generates correct output on zero-input with
- * NonePadding mode
- */
-TEST_P(EncryptionOperationsTest, AesCbcZeroInputSuccess) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                 .AesEncryptionKey(128)
-                                                 .BlockMode(BlockMode::CBC)
-                                                 .Padding(PaddingMode::NONE, PaddingMode::PKCS7)));
-
-    // Zero input message
-    string message = "";
-    for (auto padding : {PaddingMode::NONE, PaddingMode::PKCS7}) {
-        auto params = AuthorizationSetBuilder().BlockMode(BlockMode::CBC).Padding(padding);
-        AuthorizationSet out_params;
-        string ciphertext1 = EncryptMessage(message, params, &out_params);
-        vector<uint8_t> iv1 = CopyIv(out_params);
-        if (padding == PaddingMode::NONE)
-            EXPECT_EQ(message.size(), ciphertext1.size()) << "PaddingMode: " << padding;
-        else
-            EXPECT_EQ(message.size(), ciphertext1.size() - 16) << "PaddingMode: " << padding;
-
-        out_params.Clear();
-
-        string ciphertext2 = EncryptMessage(message, params, &out_params);
-        vector<uint8_t> iv2 = CopyIv(out_params);
-        if (padding == PaddingMode::NONE)
-            EXPECT_EQ(message.size(), ciphertext2.size()) << "PaddingMode: " << padding;
-        else
-            EXPECT_EQ(message.size(), ciphertext2.size() - 16) << "PaddingMode: " << padding;
-
-        // IVs should be random
-        EXPECT_NE(iv1, iv2) << "PaddingMode: " << padding;
-
-        params.push_back(TAG_NONCE, iv1);
-        string plaintext = DecryptMessage(ciphertext1, params);
-        EXPECT_EQ(message, plaintext) << "PaddingMode: " << padding;
-    }
-}
-
-/*
  * EncryptionOperationsTest.AesCallerNonce
  *
  * Verifies that AES caller-provided nonces work correctly.
@@ -6442,7 +6487,7 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
     size_t i;
 
     for (i = 0; i < max_operations; i++) {
-        result = Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params, op_handles[i]);
+        result = Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, op_handles[i]);
         if (ErrorCode::OK != result) {
             break;
         }
@@ -6450,12 +6495,12 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
     EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS, result);
     // Try again just in case there's a weird overflow bug
     EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
-              Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params));
+              Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params));
     for (size_t j = 0; j < i; j++) {
         EXPECT_EQ(ErrorCode::OK, Abort(op_handles[j]))
                 << "Aboort failed for i = " << j << std::endl;
     }
-    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params));
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params));
     AbortIfNeeded();
 }
 
