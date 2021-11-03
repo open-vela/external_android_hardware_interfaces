@@ -882,7 +882,6 @@ public:
             camera_metadata* oldSessionParams, camera_metadata* newSessionParams);
 
     void verifyRequestTemplate(const camera_metadata_t* metadata, RequestTemplate requestTemplate);
-    static void overrideRotateAndCrop(::android::hardware::hidl_vec<uint8_t> *settings /*in/out*/);
 
     static bool isDepthOnly(const camera_metadata_t* staticMeta);
 
@@ -1603,9 +1602,10 @@ Return<void> CameraHidlTest::DeviceCb::requestStreamBuffers(
                 w = stream.bufferSize;
                 h = 1;
             }
-            mParent->allocateGraphicBuffer(w, h,
-                    android_convertGralloc1To0Usage(
-                            halStream.producerUsage, halStream.consumerUsage),
+            mParent->allocateGraphicBuffer(
+                    w, h,
+                    (uint32_t)android_convertGralloc1To0Usage(halStream.producerUsage,
+                                                              halStream.consumerUsage),
                     halStream.overrideFormat, &buffer_handle);
 
             tmpRetBuffers[j] = {stream.v3_2.id, mNextBufferId, buffer_handle, BufferStatus::OK,
@@ -4661,7 +4661,6 @@ void CameraHidlTest::processCaptureRequestInternal(uint64_t bufferUsage,
                                                            settings = req;
                                                        });
         ASSERT_TRUE(ret.isOk());
-        overrideRotateAndCrop(&settings);
 
         hidl_handle buffer_handle;
         StreamBuffer outputBuffer;
@@ -4677,7 +4676,7 @@ void CameraHidlTest::processCaptureRequestInternal(uint64_t bufferUsage,
                                   /* We don't look at halStreamConfig.streams[0].consumerUsage
                                    * since that is 0 for output streams
                                    */
-                                  android_convertGralloc1To0Usage(
+                                  (uint32_t)android_convertGralloc1To0Usage(
                                           halStreamConfig.streams[0].producerUsage, bufferUsage),
                                   halStreamConfig.streams[0].overrideFormat, &buffer_handle);
             outputBuffer = {halStreamConfig.streams[0].id,
@@ -4838,7 +4837,6 @@ TEST_P(CameraHidlTest, processMultiCaptureRequestPreview) {
         settings.setToExternal(
                 reinterpret_cast<uint8_t *> (const_cast<camera_metadata_t *> (settingsBuffer)),
                 get_camera_metadata_size(settingsBuffer));
-        overrideRotateAndCrop(&settings);
 
         free_camera_metadata(staticMeta);
         ret = session->close();
@@ -4900,9 +4898,10 @@ TEST_P(CameraHidlTest, processMultiCaptureRequestPreview) {
                     BufferStatus::OK, nullptr, nullptr};
             } else {
                 allocateGraphicBuffer(previewStream.width, previewStream.height,
-                        android_convertGralloc1To0Usage(halStream.v3_3.v3_2.producerUsage,
-                            halStream.v3_3.v3_2.consumerUsage),
-                        halStream.v3_3.v3_2.overrideFormat, &buffer_handle);
+                                      (uint32_t)android_convertGralloc1To0Usage(
+                                              halStream.v3_3.v3_2.producerUsage,
+                                              halStream.v3_3.v3_2.consumerUsage),
+                                      halStream.v3_3.v3_2.overrideFormat, &buffer_handle);
                 graphicBuffers.push_back(buffer_handle);
                 outputBuffers[k] = {halStream.v3_3.v3_2.id, bufferId, buffer_handle,
                     BufferStatus::OK, nullptr, nullptr};
@@ -4916,7 +4915,6 @@ TEST_P(CameraHidlTest, processMultiCaptureRequestPreview) {
                 reinterpret_cast<uint8_t *> (const_cast<camera_metadata_t *> (
                         filteredSettingsBuffer)),
                 get_camera_metadata_size(filteredSettingsBuffer));
-        overrideRotateAndCrop(&camSettings[0].settings);
         camSettings[0].fmqSettingsSize = 0;
         camSettings[0].physicalCameraId = physicalDeviceId;
 
@@ -5074,7 +5072,6 @@ TEST_P(CameraHidlTest, processUltraHighResolutionRequest) {
         settings.setToExternal(
                 reinterpret_cast<uint8_t*>(const_cast<camera_metadata_t*>(settingsBuffer)),
                 get_camera_metadata_size(settingsBuffer));
-        overrideRotateAndCrop(&settings);
 
         free_camera_metadata(staticMeta);
         ret = session->close();
@@ -5293,9 +5290,10 @@ TEST_P(CameraHidlTest, processCaptureRequestBurstISO) {
                     nullptr, BufferStatus::OK, nullptr, nullptr};
             } else {
                 allocateGraphicBuffer(previewStream.width, previewStream.height,
-                        android_convertGralloc1To0Usage(halStreamConfig.streams[0].producerUsage,
-                            halStreamConfig.streams[0].consumerUsage),
-                        halStreamConfig.streams[0].overrideFormat, &buffers[i]);
+                                      (uint32_t)android_convertGralloc1To0Usage(
+                                              halStreamConfig.streams[0].producerUsage,
+                                              halStreamConfig.streams[0].consumerUsage),
+                                      halStreamConfig.streams[0].overrideFormat, &buffers[i]);
                 outputBuffers[i] = {halStreamConfig.streams[0].id, bufferId + i,
                     buffers[i], BufferStatus::OK, nullptr, nullptr};
             }
@@ -5310,7 +5308,6 @@ TEST_P(CameraHidlTest, processCaptureRequestBurstISO) {
             camera_metadata_t *metaBuffer = requestMeta.release();
             requestSettings[i].setToExternal(reinterpret_cast<uint8_t *> (metaBuffer),
                     get_camera_metadata_size(metaBuffer), true);
-            overrideRotateAndCrop(&requestSettings[i]);
 
             requests[i] = {frameNumber + i, 0 /* fmqSettingsSize */, requestSettings[i],
                 emptyInputBuffer, {outputBuffers[i]}};
@@ -5400,9 +5397,10 @@ TEST_P(CameraHidlTest, processCaptureRequestInvalidSinglePreview) {
             bufferId = 0;
         } else {
             allocateGraphicBuffer(previewStream.width, previewStream.height,
-                    android_convertGralloc1To0Usage(halStreamConfig.streams[0].producerUsage,
-                        halStreamConfig.streams[0].consumerUsage),
-                    halStreamConfig.streams[0].overrideFormat, &buffer_handle);
+                                  (uint32_t)android_convertGralloc1To0Usage(
+                                          halStreamConfig.streams[0].producerUsage,
+                                          halStreamConfig.streams[0].consumerUsage),
+                                  halStreamConfig.streams[0].overrideFormat, &buffer_handle);
         }
 
         StreamBuffer outputBuffer = {halStreamConfig.streams[0].id,
@@ -5523,9 +5521,10 @@ TEST_P(CameraHidlTest, switchToOffline) {
                         buffers[i], BufferStatus::OK, nullptr, nullptr};
             } else {
                 // jpeg buffer (w,h) = (blobLen, 1)
-                allocateGraphicBuffer(jpegBufferSize, /*height*/1,
-                        android_convertGralloc1To0Usage(halStreamConfig3_2.producerUsage,
-                            halStreamConfig3_2.consumerUsage),
+                allocateGraphicBuffer(
+                        jpegBufferSize, /*height*/ 1,
+                        (uint32_t)android_convertGralloc1To0Usage(halStreamConfig3_2.producerUsage,
+                                                                  halStreamConfig3_2.consumerUsage),
                         halStreamConfig3_2.overrideFormat, &buffers[i]);
                 outputBuffers[i] = {halStreamConfig3_2.id, bufferId + i,
                     buffers[i], BufferStatus::OK, nullptr, nullptr};
@@ -5537,7 +5536,6 @@ TEST_P(CameraHidlTest, switchToOffline) {
             camera_metadata_t *metaBuffer = requestMeta.release();
             requestSettings[i].setToExternal(reinterpret_cast<uint8_t *> (metaBuffer),
                     get_camera_metadata_size(metaBuffer), true);
-            overrideRotateAndCrop(&requestSettings[i]);
 
             requests[i] = {frameNumber + i, 0 /* fmqSettingsSize */, requestSettings[i],
                 emptyInputBuffer, {outputBuffers[i]}};
@@ -5678,7 +5676,6 @@ TEST_P(CameraHidlTest, processCaptureRequestInvalidBuffer) {
                                                            settings = req;
                                                        });
         ASSERT_TRUE(ret.isOk());
-        overrideRotateAndCrop(&settings);
 
         ::android::hardware::hidl_vec<StreamBuffer> emptyOutputBuffers;
         StreamBuffer emptyInputBuffer = {-1, 0, nullptr, BufferStatus::ERROR, nullptr,
@@ -5763,16 +5760,16 @@ TEST_P(CameraHidlTest, flushPreviewRequest) {
                                                            settings = req;
                                                        });
         ASSERT_TRUE(ret.isOk());
-        overrideRotateAndCrop(&settings);
 
         hidl_handle buffer_handle;
         if (useHalBufManager) {
             bufferId = 0;
         } else {
             allocateGraphicBuffer(previewStream.width, previewStream.height,
-                    android_convertGralloc1To0Usage(halStreamConfig.streams[0].producerUsage,
-                        halStreamConfig.streams[0].consumerUsage),
-                    halStreamConfig.streams[0].overrideFormat, &buffer_handle);
+                                  (uint32_t)android_convertGralloc1To0Usage(
+                                          halStreamConfig.streams[0].producerUsage,
+                                          halStreamConfig.streams[0].consumerUsage),
+                                  halStreamConfig.streams[0].overrideFormat, &buffer_handle);
         }
 
         StreamBuffer outputBuffer = {halStreamConfig.streams[0].id,
@@ -8144,20 +8141,6 @@ void CameraHidlTest::verifyCameraCharacteristics(Status status, const CameraMeta
                 poseReference >= ANDROID_LENS_POSE_REFERENCE_PRIMARY_CAMERA);
     }
 
-    retcode = find_camera_metadata_ro_entry(metadata,
-            ANDROID_INFO_DEVICE_STATE_ORIENTATIONS, &entry);
-    if (0 == retcode && entry.count > 0) {
-        ASSERT_TRUE((entry.count % 2) == 0);
-        uint64_t maxPublicState = ((uint64_t) provider::V2_5::DeviceState::FOLDED) << 1;
-        uint64_t vendorStateStart = 1UL << 31; // Reserved for vendor specific states
-        uint64_t stateMask = (1 << vendorStateStart) - 1;
-        stateMask &= ~((1 << maxPublicState) - 1);
-        for (int i = 0; i < entry.count; i += 2){
-            ASSERT_TRUE((entry.data.i64[i] & stateMask) == 0);
-            ASSERT_TRUE((entry.data.i64[i+1] % 90) == 0);
-        }
-    }
-
     verifyExtendedSceneModeCharacteristics(metadata);
     verifyZoomCharacteristics(metadata);
 }
@@ -8915,25 +8898,6 @@ void CameraHidlTest::verifyRequestTemplate(const camera_metadata_t* metadata,
     if (foundZoomRatio == 0) {
         ASSERT_EQ(zoomRatioEntry.count, 1);
         ASSERT_EQ(zoomRatioEntry.data.f[0], 1.0f);
-    }
-}
-
-void CameraHidlTest::overrideRotateAndCrop(
-        ::android::hardware::hidl_vec<uint8_t> *settings /*in/out*/) {
-    if (settings == nullptr) {
-        return;
-    }
-
-    ::android::hardware::camera::common::V1_0::helper::CameraMetadata requestMeta;
-    requestMeta.append(reinterpret_cast<camera_metadata_t *> (settings->data()));
-    auto entry = requestMeta.find(ANDROID_SCALER_ROTATE_AND_CROP);
-    if ((entry.count > 0) && (entry.data.u8[0] == ANDROID_SCALER_ROTATE_AND_CROP_AUTO)) {
-        uint8_t disableRotateAndCrop = ANDROID_SCALER_ROTATE_AND_CROP_NONE;
-        requestMeta.update(ANDROID_SCALER_ROTATE_AND_CROP, &disableRotateAndCrop, 1);
-        settings->releaseData();
-        camera_metadata_t *metaBuffer = requestMeta.release();
-        settings->setToExternal(reinterpret_cast<uint8_t *> (metaBuffer),
-                get_camera_metadata_size(metaBuffer), true);
     }
 }
 
