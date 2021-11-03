@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_AIDL_UTILS_VALIDATE_HAL_H
-#define ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_AIDL_UTILS_VALIDATE_HAL_H
-
-#include "nnapi/hal/aidl/HalInterfaces.h"
+#ifndef ANDROID_FRAMEWORKS_ML_NN_COMMON_AIDL_VALIDATE_HAL_H
+#define ANDROID_FRAMEWORKS_ML_NN_COMMON_AIDL_VALIDATE_HAL_H
 
 #include <memory>
 #include <set>
 #include <tuple>
 #include <vector>
 
-#include <nnapi/TypeUtils.h>
-#include <nnapi/Validation.h>
+#include "AidlHalInterfaces.h"
+#include "nnapi/TypeUtils.h"
+#include "nnapi/Validation.h"
 
 namespace android {
 namespace nn {
@@ -44,4 +43,4 @@ bool validateMemoryDesc(
 }  // namespace nn
 }  // namespace android
 
-#endif  // ANDROID_HARDWARE_INTERFACES_NEURALNETWORKS_AIDL_UTILS_VALIDATE_HAL_H
+#endif  // ANDROID_FRAMEWORKS_ML_NN_COMMON_AIDL_VALIDATE_HAL_H
