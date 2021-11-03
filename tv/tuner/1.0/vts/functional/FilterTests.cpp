@@ -16,7 +16,7 @@
 
 #include "FilterTests.h"
 
-void FilterCallback::startFilterEventThread(DemuxFilterEvent& event) {
+void FilterCallback::startFilterEventThread(DemuxFilterEvent event) {
     struct FilterThreadArgs* threadArgs =
             (struct FilterThreadArgs*)malloc(sizeof(struct FilterThreadArgs));
     threadArgs->user = this;
@@ -69,8 +69,9 @@ void FilterCallback::filterThreadLoop(DemuxFilterEvent& /* event */) {
     // end thread
 }
 
-bool FilterCallback::readFilterEventData(const DemuxFilterEvent& filterEvent) {
+bool FilterCallback::readFilterEventData() {
     bool result = false;
+    DemuxFilterEvent filterEvent = mFilterEvent;
     ALOGW("[vts] reading from filter FMQ or buffer %d", mFilterId);
     // todo separate filter handlers
     for (auto event : filterEvent.events) {
@@ -106,7 +107,7 @@ bool FilterCallback::readFilterEventData(const DemuxFilterEvent& filterEvent) {
     return result;
 }
 
-bool FilterCallback::dumpAvData(DemuxFilterMediaEvent& event) {
+bool FilterCallback::dumpAvData(DemuxFilterMediaEvent event) {
     uint32_t length = event.dataLength;
     uint64_t dataId = event.avDataId;
     // read data from buffer pointed by a handle
@@ -126,7 +127,7 @@ bool FilterCallback::dumpAvData(DemuxFilterMediaEvent& event) {
     return true;
 }
 
-bool FilterCallback::readRecordData(DemuxFilterTsRecordEvent& event) {
+bool FilterCallback::readRecordData(DemuxFilterTsRecordEvent event) {
     ALOGD("[vts] got DemuxFilterTsRecordEvent with pid=%d.", event.pid.tPid());
     return true;
 }
