@@ -338,8 +338,7 @@ bool verify_attestation_record(const string& challenge,                //
                                AuthorizationSet expected_sw_enforced,  //
                                AuthorizationSet expected_hw_enforced,  //
                                SecurityLevel security_level,
-                               const vector<uint8_t>& attestation_cert,
-                               vector<uint8_t>* unique_id = nullptr);
+                               const vector<uint8_t>& attestation_cert);
 
 string bin2hex(const vector<uint8_t>& data);
 X509_Ptr parse_cert_blob(const vector<uint8_t>& blob);
