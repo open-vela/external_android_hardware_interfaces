@@ -88,11 +88,7 @@ void FilterCallbackScheduler::start() {
 }
 
 void FilterCallbackScheduler::stop() {
-    {
-        std::unique_lock<std::mutex> lock(mLock);
-        mIsRunning = false;
-        mCv.notify_all();
-    }
+    mIsRunning = false;
     if (mCallbackThread.joinable()) {
         mCallbackThread.join();
     }
@@ -116,10 +112,6 @@ void FilterCallbackScheduler::threadLoopOnce() {
         // no reason to timeout, just wait until main thread determines it's
         // okay to send data.
         mCv.wait(lock);
-    }
-    if (!mIsRunning) {
-        lock.unlock();
-        return;
     }
 
     // condition_variable wait locks mutex on timeout / notify
