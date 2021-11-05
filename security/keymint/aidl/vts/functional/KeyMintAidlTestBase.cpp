@@ -1067,8 +1067,6 @@ vector<uint32_t> KeyMintAidlTestBase::InvalidKeySizes(Algorithm algorithm) {
         }
     } else {
         switch (algorithm) {
-            case Algorithm::AES:
-                return {64, 96, 131, 512};
             case Algorithm::TRIPLE_DES:
                 return {56};
             default:
