@@ -17,6 +17,7 @@
 #include "PreparedModel.h"
 
 #include "Burst.h"
+#include "Execution.h"
 
 #include <aidl/android/hardware/neuralnetworks/BnFencedExecutionCallback.h>
 #include <aidl/android/hardware/neuralnetworks/BnPreparedModel.h>
@@ -26,6 +27,7 @@
 #include <aidl/android/hardware/neuralnetworks/Request.h>
 #include <android-base/logging.h>
 #include <android/binder_auto_utils.h>
+#include <nnapi/IExecution.h>
 #include <nnapi/IPreparedModel.h>
 #include <nnapi/Result.h>
 #include <nnapi/SharedMemory.h>
@@ -116,17 +118,20 @@ nn::GeneralResult<nn::OptionalTimePoint> makeOptionalTimePoint(int64_t durationN
     return durationNs < 0 ? nn::OptionalTimePoint{} : nn::TimePoint(makeDuration(durationNs));
 }
 
-nn::ExecutionResult<ExecutionResult> executeSynchronously(const nn::IPreparedModel& preparedModel,
-                                                          const Request& request,
-                                                          bool measureTiming, int64_t deadlineNs,
-                                                          int64_t loopTimeoutDurationNs) {
+nn::ExecutionResult<ExecutionResult> executeSynchronously(
+        const nn::IPreparedModel& preparedModel, const Request& request, bool measureTiming,
+        int64_t deadlineNs, int64_t loopTimeoutDurationNs, const std::vector<TokenValuePair>& hints,
+        const std::vector<ExtensionNameAndPrefix>& extensionNameToPrefix) {
     const auto nnRequest = NN_TRY(convertInput(request));
     const auto nnMeasureTiming = measureTiming ? nn::MeasureTiming::YES : nn::MeasureTiming::NO;
     const auto nnDeadline = NN_TRY(makeOptionalTimePoint(deadlineNs));
     const auto nnLoopTimeoutDuration = NN_TRY(makeOptionalDuration(loopTimeoutDurationNs));
+    auto nnHints = NN_TRY(convertInput(hints));
+    auto nnExtensionNameToPrefix = NN_TRY(convertInput(extensionNameToPrefix));
 
     const auto result =
-            preparedModel.execute(nnRequest, nnMeasureTiming, nnDeadline, nnLoopTimeoutDuration);
+            preparedModel.execute(nnRequest, nnMeasureTiming, nnDeadline, nnLoopTimeoutDuration,
+                                  nnHints, nnExtensionNameToPrefix);
 
     if (!result.ok() && result.error().code == nn::ErrorStatus::OUTPUT_INSUFFICIENT_SIZE) {
         const auto& [message, code, outputShapes] = result.error();
@@ -145,16 +150,76 @@ nn::ExecutionResult<ExecutionResult> executeSynchronously(const nn::IPreparedMod
 nn::GeneralResult<FencedExecutionResult> executeFenced(
         const nn::IPreparedModel& preparedModel, const Request& request,
         const std::vector<ndk::ScopedFileDescriptor>& waitFor, bool measureTiming,
-        int64_t deadlineNs, int64_t loopTimeoutDurationNs, int64_t durationNs) {
+        int64_t deadlineNs, int64_t loopTimeoutDurationNs, int64_t durationNs,
+        const std::vector<TokenValuePair>& hints,
+        const std::vector<ExtensionNameAndPrefix>& extensionNameToPrefix) {
     const auto nnRequest = NN_TRY(convertInput(request));
     const auto nnWaitFor = NN_TRY(convertSyncFences(waitFor));
     const auto nnMeasureTiming = measureTiming ? nn::MeasureTiming::YES : nn::MeasureTiming::NO;
     const auto nnDeadline = NN_TRY(makeOptionalTimePoint(deadlineNs));
     const auto nnLoopTimeoutDuration = NN_TRY(makeOptionalDuration(loopTimeoutDurationNs));
     const auto nnDuration = NN_TRY(makeOptionalDuration(durationNs));
+    auto nnHints = NN_TRY(convertInput(hints));
+    auto nnExtensionNameToPrefix = NN_TRY(convertInput(extensionNameToPrefix));
 
     auto [syncFence, executeFencedInfoCallback] = NN_TRY(preparedModel.executeFenced(
-            nnRequest, nnWaitFor, nnMeasureTiming, nnDeadline, nnLoopTimeoutDuration, nnDuration));
+            nnRequest, nnWaitFor, nnMeasureTiming, nnDeadline, nnLoopTimeoutDuration, nnDuration,
+            nnHints, nnExtensionNameToPrefix));
+
+    ndk::ScopedFileDescriptor fileDescriptor;
+    if (syncFence.hasFd()) {
+        auto uniqueFd = NN_TRY(nn::dupFd(syncFence.getFd()));
+        fileDescriptor = ndk::ScopedFileDescriptor(uniqueFd.release());
+    }
+
+    return FencedExecutionResult{.callback = ndk::SharedRefBase::make<FencedExecutionCallback>(
+                                         std::move(executeFencedInfoCallback)),
+                                 .syncFence = std::move(fileDescriptor)};
+}
+
+nn::GeneralResult<nn::SharedExecution> createReusableExecution(
+        const nn::IPreparedModel& preparedModel, const Request& request, bool measureTiming,
+        int64_t loopTimeoutDurationNs, const std::vector<TokenValuePair>& hints,
+        const std::vector<ExtensionNameAndPrefix>& extensionNameToPrefix) {
+    const auto nnRequest = NN_TRY(convertInput(request));
+    const auto nnMeasureTiming = measureTiming ? nn::MeasureTiming::YES : nn::MeasureTiming::NO;
+    const auto nnLoopTimeoutDuration = NN_TRY(makeOptionalDuration(loopTimeoutDurationNs));
+    auto nnHints = NN_TRY(convertInput(hints));
+    auto nnExtensionNameToPrefix = NN_TRY(convertInput(extensionNameToPrefix));
+
+    return preparedModel.createReusableExecution(nnRequest, nnMeasureTiming, nnLoopTimeoutDuration,
+                                                 nnHints, nnExtensionNameToPrefix);
+}
+
+nn::ExecutionResult<ExecutionResult> executeSynchronously(const nn::IExecution& execution,
+                                                          int64_t deadlineNs) {
+    const auto nnDeadline = NN_TRY(makeOptionalTimePoint(deadlineNs));
+
+    const auto result = execution.compute(nnDeadline);
+
+    if (!result.ok() && result.error().code == nn::ErrorStatus::OUTPUT_INSUFFICIENT_SIZE) {
+        const auto& [message, code, outputShapes] = result.error();
+        LOG(ERROR) << "executeSynchronously failed with " << code << ": " << message;
+        return ExecutionResult{.outputSufficientSize = false,
+                               .outputShapes = utils::convert(outputShapes).value(),
+                               .timing = {.timeInDriverNs = -1, .timeOnDeviceNs = -1}};
+    }
+
+    const auto& [outputShapes, timing] = NN_TRY(result);
+    return ExecutionResult{.outputSufficientSize = true,
+                           .outputShapes = utils::convert(outputShapes).value(),
+                           .timing = utils::convert(timing).value()};
+}
+
+nn::GeneralResult<FencedExecutionResult> executeFenced(
+        const nn::IExecution& execution, const std::vector<ndk::ScopedFileDescriptor>& waitFor,
+        int64_t deadlineNs, int64_t durationNs) {
+    const auto nnWaitFor = NN_TRY(convertSyncFences(waitFor));
+    const auto nnDeadline = NN_TRY(makeOptionalTimePoint(deadlineNs));
+    const auto nnDuration = NN_TRY(makeOptionalDuration(durationNs));
+
+    auto [syncFence, executeFencedInfoCallback] =
+            NN_TRY(execution.computeFenced(nnWaitFor, nnDeadline, nnDuration));
 
     ndk::ScopedFileDescriptor fileDescriptor;
     if (syncFence.hasFd()) {
@@ -179,7 +244,7 @@ ndk::ScopedAStatus PreparedModel::executeSynchronously(const Request& request, b
                                                        int64_t loopTimeoutDurationNs,
                                                        ExecutionResult* executionResult) {
     auto result = adapter::executeSynchronously(*kPreparedModel, request, measureTiming, deadlineNs,
-                                                loopTimeoutDurationNs);
+                                                loopTimeoutDurationNs, {}, {});
     if (!result.has_value()) {
         const auto& [message, code, _] = result.error();
         const auto aidlCode = utils::convert(code).value_or(ErrorStatus::GENERAL_FAILURE);
@@ -195,7 +260,41 @@ ndk::ScopedAStatus PreparedModel::executeFenced(
         bool measureTiming, int64_t deadlineNs, int64_t loopTimeoutDurationNs, int64_t durationNs,
         FencedExecutionResult* executionResult) {
     auto result = adapter::executeFenced(*kPreparedModel, request, waitFor, measureTiming,
-                                         deadlineNs, loopTimeoutDurationNs, durationNs);
+                                         deadlineNs, loopTimeoutDurationNs, durationNs, {}, {});
+    if (!result.has_value()) {
+        const auto& [message, code] = result.error();
+        const auto aidlCode = utils::convert(code).value_or(ErrorStatus::GENERAL_FAILURE);
+        return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                static_cast<int32_t>(aidlCode), message.c_str());
+    }
+    *executionResult = std::move(result).value();
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus PreparedModel::executeSynchronouslyWithConfig(const Request& request,
+                                                                 const ExecutionConfig& config,
+                                                                 int64_t deadlineNs,
+                                                                 ExecutionResult* executionResult) {
+    auto result = adapter::executeSynchronously(
+            *kPreparedModel, request, config.measureTiming, deadlineNs,
+            config.loopTimeoutDurationNs, config.executionHints, config.extensionNameToPrefix);
+    if (!result.has_value()) {
+        const auto& [message, code, _] = result.error();
+        const auto aidlCode = utils::convert(code).value_or(ErrorStatus::GENERAL_FAILURE);
+        return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                static_cast<int32_t>(aidlCode), message.c_str());
+    }
+    *executionResult = std::move(result).value();
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus PreparedModel::executeFencedWithConfig(
+        const Request& request, const std::vector<ndk::ScopedFileDescriptor>& waitFor,
+        const ExecutionConfig& config, int64_t deadlineNs, int64_t durationNs,
+        FencedExecutionResult* executionResult) {
+    auto result = adapter::executeFenced(*kPreparedModel, request, waitFor, config.measureTiming,
+                                         deadlineNs, config.loopTimeoutDurationNs, durationNs,
+                                         config.executionHints, config.extensionNameToPrefix);
     if (!result.has_value()) {
         const auto& [message, code] = result.error();
         const auto aidlCode = utils::convert(code).value_or(ErrorStatus::GENERAL_FAILURE);
@@ -220,6 +319,53 @@ ndk::ScopedAStatus PreparedModel::configureExecutionBurst(std::shared_ptr<IBurst
 
 nn::SharedPreparedModel PreparedModel::getUnderlyingPreparedModel() const {
     return kPreparedModel;
+}
+
+ndk::ScopedAStatus PreparedModel::createReusableExecution(const Request& request,
+                                                          const ExecutionConfig& config,
+                                                          std::shared_ptr<IExecution>* execution) {
+    auto result = adapter::createReusableExecution(
+            *kPreparedModel, request, config.measureTiming, config.loopTimeoutDurationNs,
+            config.executionHints, config.extensionNameToPrefix);
+    if (!result.has_value()) {
+        const auto& [message, code] = result.error();
+        const auto aidlCode = utils::convert(code).value_or(ErrorStatus::GENERAL_FAILURE);
+        return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                static_cast<int32_t>(aidlCode), message.c_str());
+    }
+    *execution = ndk::SharedRefBase::make<Execution>(std::move(result).value());
+    return ndk::ScopedAStatus::ok();
+}
+
+Execution::Execution(nn::SharedExecution execution) : kExecution(std::move(execution)) {
+    CHECK(kExecution != nullptr);
+}
+
+ndk::ScopedAStatus Execution::executeSynchronously(int64_t deadlineNs,
+                                                   ExecutionResult* executionResult) {
+    auto result = adapter::executeSynchronously(*kExecution, deadlineNs);
+    if (!result.has_value()) {
+        const auto& [message, code, _] = result.error();
+        const auto aidlCode = utils::convert(code).value_or(ErrorStatus::GENERAL_FAILURE);
+        return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                static_cast<int32_t>(aidlCode), message.c_str());
+    }
+    *executionResult = std::move(result).value();
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Execution::executeFenced(const std::vector<ndk::ScopedFileDescriptor>& waitFor,
+                                            int64_t deadlineNs, int64_t durationNs,
+                                            FencedExecutionResult* executionResult) {
+    auto result = adapter::executeFenced(*kExecution, waitFor, deadlineNs, durationNs);
+    if (!result.has_value()) {
+        const auto& [message, code] = result.error();
+        const auto aidlCode = utils::convert(code).value_or(ErrorStatus::GENERAL_FAILURE);
+        return ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                static_cast<int32_t>(aidlCode), message.c_str());
+    }
+    *executionResult = std::move(result).value();
+    return ndk::ScopedAStatus::ok();
 }
 
 }  // namespace aidl::android::hardware::neuralnetworks::adapter

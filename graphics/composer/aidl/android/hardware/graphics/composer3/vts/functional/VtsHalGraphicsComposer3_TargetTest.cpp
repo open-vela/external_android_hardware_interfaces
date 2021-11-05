@@ -959,6 +959,33 @@ TEST_P(GraphicsComposerAidlTest, GetDisplayName) {
     EXPECT_TRUE(mComposerClient->getDisplayName(mPrimaryDisplay, &displayName).isOk());
 }
 
+TEST_P(GraphicsComposerAidlTest, GetDisplayPhysicalOrientationBadDisplay) {
+    Transform displayOrientation;
+    const auto error =
+            mComposerClient->getDisplayPhysicalOrientation(mInvalidDisplayId, &displayOrientation);
+
+    EXPECT_FALSE(error.isOk());
+    ASSERT_EQ(IComposerClient::EX_BAD_DISPLAY, error.getServiceSpecificError());
+}
+
+TEST_P(GraphicsComposerAidlTest, GetDisplayPhysicalOrientation) {
+    const auto allowedDisplayOrientations = std::array<Transform, 4>{
+            Transform::NONE,
+            Transform::ROT_90,
+            Transform::ROT_180,
+            Transform::ROT_270,
+    };
+
+    Transform displayOrientation;
+    const auto error =
+            mComposerClient->getDisplayPhysicalOrientation(mPrimaryDisplay, &displayOrientation);
+
+    EXPECT_TRUE(error.isOk());
+    EXPECT_NE(std::find(allowedDisplayOrientations.begin(), allowedDisplayOrientations.end(),
+                        displayOrientation),
+              allowedDisplayOrientations.end());
+}
+
 TEST_P(GraphicsComposerAidlTest, SetClientTargetSlotCount) {
     EXPECT_TRUE(
             mComposerClient->setClientTargetSlotCount(mPrimaryDisplay, kBufferSlotCount).isOk());
@@ -1995,6 +2022,27 @@ TEST_P(GraphicsComposerAidlCommandTest, SET_LAYER_PER_FRAME_METADATA) {
     }
 
     EXPECT_TRUE(mComposerClient->destroyLayer(mPrimaryDisplay, layer).isOk());
+}
+
+TEST_P(GraphicsComposerAidlCommandTest, setLayerWhitePointNits) {
+    int64_t layer;
+    EXPECT_TRUE(mComposerClient->createLayer(mPrimaryDisplay, kBufferSlotCount, &layer).isOk());
+
+    mWriter.setLayerWhitePointNits(mPrimaryDisplay, layer, 200.f);
+    execute();
+    ASSERT_TRUE(mReader.takeErrors().empty());
+
+    mWriter.setLayerWhitePointNits(mPrimaryDisplay, layer, 1000.f);
+    execute();
+    ASSERT_TRUE(mReader.takeErrors().empty());
+
+    mWriter.setLayerWhitePointNits(mPrimaryDisplay, layer, 0.f);
+    execute();
+    ASSERT_TRUE(mReader.takeErrors().empty());
+
+    mWriter.setLayerWhitePointNits(mPrimaryDisplay, layer, -1.f);
+    execute();
+    ASSERT_TRUE(mReader.takeErrors().empty());
 }
 
 TEST_P(GraphicsComposerAidlCommandTest, setActiveConfigWithConstraints) {

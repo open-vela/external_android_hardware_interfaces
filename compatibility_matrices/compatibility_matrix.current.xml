@@ -60,6 +60,14 @@
             <regex-instance>.*</regex-instance>
         </interface>
     </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.automotive.evs</name>
+        <interface>
+            <name>IEvsEnumerator</name>
+            <instance>default</instance>
+            <regex-instance>[a-z]+/[0-9]+</regex-instance>
+        </interface>
+    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.automotive.evs</name>
         <version>1.0-1</version>
@@ -74,14 +82,6 @@
         <version>1</version>
         <interface>
             <name>IOccupantAwareness</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="hidl" optional="true">
-        <name>android.hardware.automotive.sv</name>
-        <version>1.0</version>
-        <interface>
-            <name>ISurroundViewService</name>
             <instance>default</instance>
         </interface>
     </hal>
@@ -273,12 +273,28 @@
             <instance>default</instance>
         </interface>
     </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.gnss.measurement_corrections</name>
+        <version>1</version>
+        <interface>
+            <name>IMeasurementCorrectionsInterface</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.graphics.allocator</name>
         <!-- New, non-Go devices should use 4.0, tested in vts_treble_vintf_vendor_test -->
         <version>2.0</version>
         <version>3.0</version>
         <version>4.0</version>
+        <interface>
+            <name>IAllocator</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.graphics.allocator</name>
+        <version>1</version>
         <interface>
             <name>IAllocator</name>
             <instance>default</instance>
@@ -456,7 +472,7 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.neuralnetworks</name>
-        <version>1-3</version>
+        <version>1-4</version>
         <interface>
             <name>IDevice</name>
             <regex-instance>.*</regex-instance>
@@ -688,7 +704,7 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="hidl" optional="true">
+    <hal format="hidl" optional="false">
         <name>android.hardware.thermal</name>
         <version>2.0</version>
         <interface>

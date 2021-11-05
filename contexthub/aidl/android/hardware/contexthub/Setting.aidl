@@ -39,12 +39,4 @@ enum Setting {
      * by CHRE.
      */
     MICROPHONE,
-    /**
-     * The main BT toggle in the Android settings for BT connectivity.
-     */
-    BT_MAIN,
-    /**
-     * The "BT scanning" setting for location scans.
-     */
-    BT_SCANNING,
 }
