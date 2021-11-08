@@ -18,8 +18,8 @@
 #define ANDROID_SENSORS_HIDL_TEST_BASE_H
 
 #include "sensors-vts-utils/SensorEventsChecker.h"
+#include "sensors-vts-utils/SensorsHidlEnvironmentBase.h"
 #include "sensors-vts-utils/SensorsTestSharedMemory.h"
-#include "sensors-vts-utils/SensorsVtsEnvironmentBase.h"
 
 #include <android/hardware/sensors/1.0/ISensors.h>
 #include <android/hardware/sensors/1.0/types.h>
@@ -109,6 +109,7 @@ static SensorFlagBits expectedReportModeForType(SensorTypeT type) {
         case SensorTypeT::MAGNETIC_FIELD:
         case SensorTypeT::ORIENTATION:
         case SensorTypeT::PRESSURE:
+        case SensorTypeT::TEMPERATURE:
         case SensorTypeT::GRAVITY:
         case SensorTypeT::LINEAR_ACCELERATION:
         case SensorTypeT::ROTATION_VECTOR:
@@ -144,10 +145,6 @@ static SensorFlagBits expectedReportModeForType(SensorTypeT type) {
         case SensorTypeT::DYNAMIC_SENSOR_META:
             return SensorFlagBits::SPECIAL_REPORTING_MODE;
 
-        case SensorTypeT::TEMPERATURE:
-            ALOGW("Device temperature sensor is deprecated, ignoring for test");
-            return (SensorFlagBits)-1;
-
         default:
             ALOGW("Type %d is not implemented in expectedReportModeForType", (int)type);
             return (SensorFlagBits)-1;
@@ -163,7 +160,7 @@ class SensorsHidlTestBase : public testing::TestWithParam<std::string> {
         : mAccelNormChecker(Vec3NormChecker<EventType>::byNominal(GRAVITY_EARTH, 1.0f /*m/s^2*/)),
           mGyroNormChecker(Vec3NormChecker<EventType>::byNominal(0.f, 0.1f /*rad/s*/)) {}
 
-    virtual SensorsVtsEnvironmentBase<EventType>* getEnvironment() = 0;
+    virtual SensorsHidlEnvironmentBase<EventType>* getEnvironment() = 0;
 
     virtual void SetUp() override {}
 
@@ -198,6 +195,49 @@ class SensorsHidlTestBase : public testing::TestWithParam<std::string> {
                                             RateLevel rate,
                                             ISensors::configDirectReport_cb _hidl_cb) = 0;
 
+    std::vector<EventType> collectEvents(useconds_t timeLimitUs, size_t nEventLimit,
+                                         bool clearBeforeStart = true,
+                                         bool changeCollection = true) {
+        return collectEvents(timeLimitUs, nEventLimit, getEnvironment(), clearBeforeStart,
+                             changeCollection);
+    }
+
+    std::vector<EventType> collectEvents(useconds_t timeLimitUs, size_t nEventLimit,
+                                         SensorsHidlEnvironmentBase<EventType>* environment,
+                                         bool clearBeforeStart = true,
+                                         bool changeCollection = true) {
+        std::vector<EventType> events;
+        constexpr useconds_t SLEEP_GRANULARITY = 100 * 1000;  // granularity 100 ms
+
+        ALOGI("collect max of %zu events for %d us, clearBeforeStart %d", nEventLimit, timeLimitUs,
+              clearBeforeStart);
+
+        if (changeCollection) {
+            environment->setCollection(true);
+        }
+        if (clearBeforeStart) {
+            environment->catEvents(nullptr);
+        }
+
+        while (timeLimitUs > 0) {
+            useconds_t duration = std::min(SLEEP_GRANULARITY, timeLimitUs);
+            usleep(duration);
+            timeLimitUs -= duration;
+
+            environment->catEvents(&events);
+            if (events.size() >= nEventLimit) {
+                break;
+            }
+            ALOGV("time to go = %d, events to go = %d", (int)timeLimitUs,
+                  (int)(nEventLimit - events.size()));
+        }
+
+        if (changeCollection) {
+            environment->setCollection(false);
+        }
+        return events;
+    }
+
     void testStreamingOperation(SensorTypeVersion type, std::chrono::nanoseconds samplingPeriod,
                                 std::chrono::seconds duration,
                                 const SensorEventsChecker<EventType>& checker) {
@@ -225,7 +265,7 @@ class SensorsHidlTestBase : public testing::TestWithParam<std::string> {
 
         ASSERT_EQ(batch(handle, samplingPeriodInNs, batchingPeriodInNs), Result::OK);
         ASSERT_EQ(activate(handle, 1), Result::OK);
-        events = getEnvironment()->collectEvents(minTimeUs, minNEvent, true /*clearBeforeStart*/);
+        events = collectEvents(minTimeUs, minNEvent, getEnvironment(), true /*clearBeforeStart*/);
         ASSERT_EQ(activate(handle, 0), Result::OK);
 
         ALOGI("Collected %zu samples", events.size());
@@ -292,13 +332,13 @@ class SensorsHidlTestBase : public testing::TestWithParam<std::string> {
         ASSERT_EQ(activate(handle, 1), Result::OK);
 
         usleep(500000);  // sleep 0.5 sec to wait for change rate to happen
-        events1 = getEnvironment()->collectEvents(collectionTimeoutUs, minNEvent);
+        events1 = collectEvents(collectionTimeoutUs, minNEvent, getEnvironment());
 
-        // second collection, without stopping the sensor
+        // second collection, without stop sensor
         ASSERT_EQ(batch(handle, secondCollectionPeriod, batchingPeriodInNs), Result::OK);
 
         usleep(500000);  // sleep 0.5 sec to wait for change rate to happen
-        events2 = getEnvironment()->collectEvents(collectionTimeoutUs, minNEvent);
+        events2 = collectEvents(collectionTimeoutUs, minNEvent, getEnvironment());
 
         // end of collection, stop sensor
         ASSERT_EQ(activate(handle, 0), Result::OK);
@@ -382,10 +422,7 @@ class SensorsHidlTestBase : public testing::TestWithParam<std::string> {
             return;
         }
 
-        if (batchingPeriodInNs > maxBatchingTestTimeNs) {
-            batchingPeriodInNs = maxBatchingTestTimeNs;
-            minFifoCount = (uint32_t)(batchingPeriodInNs / minSamplingPeriodInNs);
-        }
+        batchingPeriodInNs = std::min(batchingPeriodInNs, maxBatchingTestTimeNs);
 
         ALOGI("Test batching for %d ms", (int)(batchingPeriodInNs / 1000 / 1000));
 
@@ -404,17 +441,16 @@ class SensorsHidlTestBase : public testing::TestWithParam<std::string> {
 
         getEnvironment()->setCollection(true);
         // clean existing collections
-        getEnvironment()->collectEvents(0 /*timeLimitUs*/, 0 /*nEventLimit*/,
-                                        true /*clearBeforeStart*/, false /*change collection*/);
+        collectEvents(0 /*timeLimitUs*/, 0 /*nEventLimit*/, true /*clearBeforeStart*/,
+                      false /*change collection*/);
 
         // 0.8 + 0.2 times the batching period
-        usleep(batchingPeriodInNs / 1000 * 2 / 10);
+        usleep(batchingPeriodInNs / 1000 * 8 / 10);
         ASSERT_EQ(flush(handle), Result::OK);
 
         // plus some time for the event to deliver
-        events = getEnvironment()->collectEvents(allowedBatchDeliverTimeNs / 1000, minFifoCount,
-                                                 false /*clearBeforeStart*/,
-                                                 false /*change collection*/);
+        events = collectEvents(allowedBatchDeliverTimeNs / 1000, minFifoCount,
+                               false /*clearBeforeStart*/, false /*change collection*/);
 
         getEnvironment()->setCollection(false);
         ASSERT_EQ(activate(handle, 0), Result::OK);
