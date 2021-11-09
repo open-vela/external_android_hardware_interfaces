@@ -26,7 +26,6 @@ import android.hardware.gnss.IGnssMeasurementInterface;
 import android.hardware.gnss.IGnssNavigationMessageInterface;
 import android.hardware.gnss.IGnssPowerIndication;
 import android.hardware.gnss.IGnssPsds;
-import android.hardware.gnss.visibility_control.IGnssVisibilityControl;
 
 /**
  * Represents the standard GNSS (Global Navigation Satellite System) interface.
@@ -145,11 +144,4 @@ interface IGnss {
      * @return Handle to the IGnssDebug interface.
      */
     IGnssDebug getExtensionGnssDebug();
-
-    /**
-     * This method returns the IGnssVisibilityControl.
-     *
-     * @return Handle to the IGnssVisibilityControl.
-     */
-    IGnssVisibilityControl getExtensionGnssVisibilityControl();
 }

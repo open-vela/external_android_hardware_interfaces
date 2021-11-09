@@ -79,9 +79,12 @@ enum Composition {
      * bottom of a display.
      *
      * Pixels in the buffer with an alpha of 0 (transparent) will show the
-     * content underneath, and pixels with a max alpha value will be rendered in
+     * content underneath, and pixels with an alpha of 255 will be rendered in
      * black. An alpha in between will show the underlying content blended with
      * black.
+     *
+     * Some devices may support this flag with a buffer containing an 8 bit
+     * alpha mask.
      *
      * Upon validateDisplay, the device may request a change from this type
      * to either DEVICE or CLIENT.
