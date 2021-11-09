@@ -26,7 +26,6 @@
 #include "GnssMeasurementInterface.h"
 #include "GnssNavigationMessageInterface.h"
 #include "GnssPsds.h"
-#include "GnssVisibilityControl.h"
 
 namespace aidl::android::hardware::gnss {
 
@@ -126,14 +125,6 @@ ndk::ScopedAStatus Gnss::getExtensionGnssDebug(std::shared_ptr<IGnssDebug>* iGns
     ALOGD("Gnss::getExtensionGnssDebug");
 
     *iGnssDebug = SharedRefBase::make<GnssDebug>();
-    return ndk::ScopedAStatus::ok();
-}
-
-ndk::ScopedAStatus Gnss::getExtensionGnssVisibilityControl(
-        std::shared_ptr<visibility_control::IGnssVisibilityControl>* iGnssVisibilityControl) {
-    ALOGD("Gnss::getExtensionGnssVisibilityControl");
-
-    *iGnssVisibilityControl = SharedRefBase::make<visibility_control::GnssVisibilityControl>();
     return ndk::ScopedAStatus::ok();
 }
 

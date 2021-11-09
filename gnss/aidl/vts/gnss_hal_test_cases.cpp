@@ -24,7 +24,6 @@
 #include <android/hardware/gnss/IGnssMeasurementInterface.h>
 #include <android/hardware/gnss/IGnssPowerIndication.h>
 #include <android/hardware/gnss/IGnssPsds.h>
-#include <android/hardware/gnss/visibility_control/IGnssVisibilityControl.h>
 #include <cutils/properties.h>
 #include "AGnssCallbackAidl.h"
 #include "GnssBatchingCallback.h"
@@ -32,7 +31,6 @@
 #include "GnssMeasurementCallbackAidl.h"
 #include "GnssNavigationMessageCallback.h"
 #include "GnssPowerIndicationCallback.h"
-#include "GnssVisibilityControlCallback.h"
 #include "gnss_hal_test.h"
 
 using android::sp;
@@ -57,7 +55,6 @@ using android::hardware::gnss::IGnssPowerIndication;
 using android::hardware::gnss::IGnssPsds;
 using android::hardware::gnss::PsdsType;
 using android::hardware::gnss::SatellitePvt;
-using android::hardware::gnss::visibility_control::IGnssVisibilityControl;
 
 using GnssConstellationTypeAidl = android::hardware::gnss::GnssConstellationType;
 
@@ -878,28 +875,4 @@ TEST_P(GnssHalTest, GnssDebugValuesSanityTest) {
         ASSERT_TRUE(data.time.frequencyUncertaintyNsPerSec > 0 &&
                     data.time.frequencyUncertaintyNsPerSec <= 2.0e5);  // 200 ppm
     }
-}
-
-/*
- * TestAGnssExtension:
- * TestGnssVisibilityControlExtension:
- * 1. Gets the IGnssVisibilityControl extension.
- * 2. Sets GnssVisibilityControlCallback
- * 3. Sets proxy apps
- */
-TEST_P(GnssHalTest, TestGnssVisibilityControlExtension) {
-    if (aidl_gnss_hal_->getInterfaceVersion() == 1) {
-        return;
-    }
-    sp<IGnssVisibilityControl> iGnssVisibilityControl;
-    auto status = aidl_gnss_hal_->getExtensionGnssVisibilityControl(&iGnssVisibilityControl);
-    ASSERT_TRUE(status.isOk());
-    ASSERT_TRUE(iGnssVisibilityControl != nullptr);
-    auto gnssVisibilityControlCallback = sp<GnssVisibilityControlCallback>::make();
-    status = iGnssVisibilityControl->setCallback(gnssVisibilityControlCallback);
-    ASSERT_TRUE(status.isOk());
-
-    std::vector<String16> proxyApps{String16("com.example.ims"), String16("com.example.mdt")};
-    status = iGnssVisibilityControl->enableNfwLocationAccess(proxyApps);
-    ASSERT_TRUE(status.isOk());
 }
