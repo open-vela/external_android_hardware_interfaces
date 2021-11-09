@@ -75,8 +75,4 @@ enum DisplayCapability {
      * PowerMode.ON_SUSPEND and PowerMode.DOZE_SUSPEND must be supported.
      */
     SUSPEND = 6,
-    /**
-     * Indicates that the display supports Composition.DISPLAY_DECORATION.
-     */
-    DISPLAY_DECORATION = 7,
 }

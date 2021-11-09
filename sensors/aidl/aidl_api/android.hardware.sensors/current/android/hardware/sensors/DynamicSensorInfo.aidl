@@ -31,44 +31,14 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.gnss.visibility_control;
-@VintfStability
-interface IGnssVisibilityControlCallback {
-  void nfwNotifyCb(in android.hardware.gnss.visibility_control.IGnssVisibilityControlCallback.NfwNotification notification);
-  boolean isInEmergencySession();
-  @Backing(type="int") @VintfStability
-  enum NfwProtocolStack {
-    CTRL_PLANE = 0,
-    SUPL = 1,
-    IMS = 10,
-    SIM = 11,
-    OTHER_PROTOCOL_STACK = 100,
-  }
-  @Backing(type="int") @VintfStability
-  enum NfwRequestor {
-    CARRIER = 0,
-    OEM = 10,
-    MODEM_CHIPSET_VENDOR = 11,
-    GNSS_CHIPSET_VENDOR = 12,
-    OTHER_CHIPSET_VENDOR = 13,
-    AUTOMOBILE_CLIENT = 20,
-    OTHER_REQUESTOR = 100,
-  }
-  @Backing(type="int") @VintfStability
-  enum NfwResponseType {
-    REJECTED = 0,
-    ACCEPTED_NO_LOCATION_PROVIDED = 1,
-    ACCEPTED_LOCATION_PROVIDED = 2,
-  }
-  @VintfStability
-  parcelable NfwNotification {
-    String proxyAppPackageName;
-    android.hardware.gnss.visibility_control.IGnssVisibilityControlCallback.NfwProtocolStack protocolStack;
-    String otherProtocolStackName;
-    android.hardware.gnss.visibility_control.IGnssVisibilityControlCallback.NfwRequestor requestor;
-    String requestorId;
-    android.hardware.gnss.visibility_control.IGnssVisibilityControlCallback.NfwResponseType responseType;
-    boolean inEmergencyMode;
-    boolean isCachedLocation;
+package android.hardware.sensors;
+@FixedSize @VintfStability
+parcelable DynamicSensorInfo {
+  boolean connected;
+  int sensorHandle;
+  android.hardware.sensors.DynamicSensorInfo.Uuid uuid;
+  @FixedSize @VintfStability
+  parcelable Uuid {
+    byte[16] values;
   }
 }

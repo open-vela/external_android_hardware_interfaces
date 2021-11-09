@@ -31,9 +31,12 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.gnss.visibility_control;
-@VintfStability
-interface IGnssVisibilityControl {
-  void enableNfwLocationAccess(in String[] proxyApps);
-  void setCallback(in android.hardware.gnss.visibility_control.IGnssVisibilityControlCallback callback);
+package android.hardware.sensors;
+@Backing(type="byte") @VintfStability
+enum SensorStatus {
+  NO_CONTACT = -1,
+  UNRELIABLE = 0,
+  ACCURACY_LOW = 1,
+  ACCURACY_MEDIUM = 2,
+  ACCURACY_HIGH = 3,
 }

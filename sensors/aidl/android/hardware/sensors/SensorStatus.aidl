@@ -14,17 +14,14 @@
  * limitations under the License.
  */
 
-#pragma once
+package android.hardware.sensors;
 
-#include <android/hardware/gnss/visibility_control/BnGnssVisibilityControlCallback.h>
-
-class GnssVisibilityControlCallback
-    : public android::hardware::gnss::visibility_control::BnGnssVisibilityControlCallback {
-  public:
-    GnssVisibilityControlCallback(){};
-    ~GnssVisibilityControlCallback(){};
-    android::binder::Status nfwNotifyCb(
-            const android::hardware::gnss::visibility_control::IGnssVisibilityControlCallback::
-                    NfwNotification& notification) override;
-    android::binder::Status isInEmergencySession(bool* _aidl_return) override;
-};
+@VintfStability
+@Backing(type="byte")
+enum SensorStatus {
+    NO_CONTACT = -1,
+    UNRELIABLE = 0,
+    ACCURACY_LOW = 1,
+    ACCURACY_MEDIUM = 2,
+    ACCURACY_HIGH = 3,
+}
