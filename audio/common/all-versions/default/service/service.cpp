@@ -90,7 +90,6 @@ int main(int /* argc */, char* /* argv */ []) {
         },
         {
             "Bluetooth Audio API",
-            "android.hardware.bluetooth.audio@2.2::IBluetoothAudioProvidersFactory",
             "android.hardware.bluetooth.audio@2.1::IBluetoothAudioProvidersFactory",
             "android.hardware.bluetooth.audio@2.0::IBluetoothAudioProvidersFactory",
         },
