@@ -170,12 +170,12 @@ class SensorsHidlTest : public SensorsHidlTestBaseV2_X {
   public:
     virtual void SetUp() override {
         mEnvironment = new SensorsHidlEnvironmentV2_X(GetParam());
-        mEnvironment->SetUp();
+        mEnvironment->HidlSetUp();
         // Ensure that we have a valid environment before performing tests
         ASSERT_NE(getSensors(), nullptr);
     }
 
-    virtual void TearDown() override { mEnvironment->TearDown(); }
+    virtual void TearDown() override { mEnvironment->HidlTearDown(); }
 
   protected:
     SensorInfoType defaultSensorByType(SensorTypeVersion type) override;
@@ -216,7 +216,7 @@ class SensorsHidlTest : public SensorsHidlTestBaseV2_X {
 
     inline sp<ISensorsWrapperBase>& getSensors() { return mEnvironment->mSensors; }
 
-    SensorsVtsEnvironmentBase<EventType>* getEnvironment() override { return mEnvironment; }
+    SensorsHidlEnvironmentBase<EventType>* getEnvironment() override { return mEnvironment; }
 
     // Test helpers
     void runSingleFlushTest(const std::vector<SensorInfoType>& sensors, bool activateSensor,
@@ -530,7 +530,7 @@ TEST_P(SensorsHidlTest, CallInitializeTwice) {
     // Create a new environment that calls initialize()
     std::unique_ptr<SensorsHidlEnvironmentTest> newEnv =
             std::make_unique<SensorsHidlEnvironmentTest>(GetParam());
-    newEnv->SetUp();
+    newEnv->HidlSetUp();
     if (HasFatalFailure()) {
         return;  // Exit early if setting up the new environment failed
     }
@@ -544,11 +544,11 @@ TEST_P(SensorsHidlTest, CallInitializeTwice) {
     activateAllSensors(false);
 
     // Cleanup the test environment
-    newEnv->TearDown();
+    newEnv->HidlTearDown();
 
     // Restore the test environment for future tests
-    getEnvironment()->TearDown();
-    getEnvironment()->SetUp();
+    getEnvironment()->HidlTearDown();
+    getEnvironment()->HidlSetUp();
     if (HasFatalFailure()) {
         return;  // Exit early if resetting the environment failed
     }
@@ -570,8 +570,8 @@ TEST_P(SensorsHidlTest, CleanupConnectionsOnInitialize) {
     // Clear the active sensor handles so they are not disabled during TearDown
     auto handles = mSensorHandles;
     mSensorHandles.clear();
-    getEnvironment()->TearDown();
-    getEnvironment()->SetUp();
+    getEnvironment()->HidlTearDown();
+    getEnvironment()->HidlSetUp();
     if (HasFatalFailure()) {
         return;  // Exit early if resetting the environment failed
     }
