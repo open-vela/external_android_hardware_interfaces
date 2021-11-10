@@ -307,18 +307,6 @@ const ConfigDeclaration kVehicleProperties[]{
                          .prop = toInt(VehicleProperty::CRITICALLY_LOW_TIRE_PRESSURE),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::STATIC,
-                         .areaConfigs = {VehicleAreaConfig{
-                                                 .areaId = WHEEL_FRONT_LEFT,
-                                         },
-                                         VehicleAreaConfig{
-                                                 .areaId = WHEEL_FRONT_RIGHT,
-                                         },
-                                         VehicleAreaConfig{
-                                                 .areaId = WHEEL_REAR_LEFT,
-                                         },
-                                         VehicleAreaConfig{
-                                                 .areaId = WHEEL_REAR_RIGHT,
-                                         }},
                  },
          .initialAreaValues = {{WHEEL_FRONT_LEFT, {.floatValues = {137.0f}}},
                                {WHEEL_FRONT_RIGHT, {.floatValues = {137.0f}}},
@@ -493,12 +481,8 @@ const ConfigDeclaration kVehicleProperties[]{
                     .changeMode = VehiclePropertyChangeMode::STATIC,
                     .areaConfigs = {VehicleAreaConfig{.areaId = HVAC_ALL}}},
          .initialValue = {.int32Values = {FAN_DIRECTION_FACE, FAN_DIRECTION_FLOOR,
-                                          FAN_DIRECTION_FACE | FAN_DIRECTION_FLOOR,
-                                          FAN_DIRECTION_DEFROST,
-                                          FAN_DIRECTION_FACE | FAN_DIRECTION_DEFROST,
-                                          FAN_DIRECTION_FLOOR | FAN_DIRECTION_DEFROST,
-                                          FAN_DIRECTION_FLOOR | FAN_DIRECTION_DEFROST |
-                                                  FAN_DIRECTION_FACE}}},
+                                          FAN_DIRECTION_FACE | FAN_DIRECTION_FLOOR}}},
+
         {.config = {.prop = toInt(VehicleProperty::HVAC_SEAT_VENTILATION),
                     .access = VehiclePropertyAccess::READ_WRITE,
                     .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
@@ -644,6 +628,46 @@ const ConfigDeclaration kVehicleProperties[]{
                          .maxSampleRate = 10,   // 10 Hz, every 100 ms
                  },
          .initialValue = {.floatValues = {101.0f}}},
+
+        {
+                .config =
+                        {
+                                .prop = kGenerateFakeDataControllingProperty,
+                                .access = VehiclePropertyAccess::WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                                .configArray = {1, 0, 0, 2, 0, 0, 0, 0, 0},
+                        },
+        },
+
+        {
+                .config =
+                        {
+                                .prop = kSetIntPropertyFromVehicleForTest,
+                                .access = VehiclePropertyAccess::WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                                .configArray = {0, 0, 0, 2, 1, 0, 0, 0, 0},
+                        },
+        },
+
+        {
+                .config =
+                        {
+                                .prop = kSetFloatPropertyFromVehicleForTest,
+                                .access = VehiclePropertyAccess::WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                                .configArray = {0, 0, 1, 0, 1, 0, 1, 0, 0},
+                        },
+        },
+
+        {
+                .config =
+                        {
+                                .prop = kSetBooleanPropertyFromVehicleForTest,
+                                .access = VehiclePropertyAccess::WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                                .configArray = {0, 1, 1, 0, 1, 0, 0, 0, 0},
+                        },
+        },
 
         {
                 .config = {.prop = kMixedTypePropertyForTest,
@@ -1001,7 +1025,15 @@ const ConfigDeclaration kVehicleProperties[]{
                 .config =
                         {
                                 .prop = toInt(VehicleProperty::EPOCH_TIME),
-                                .access = VehiclePropertyAccess::WRITE,
+                                .access = VehiclePropertyAccess::READ_WRITE,
+                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
+                        },
+        },
+        {
+                .config =
+                        {
+                                .prop = toInt(VehicleProperty::STORAGE_ENCRYPTION_BINDING_SEED),
+                                .access = VehiclePropertyAccess::READ_WRITE,
                                 .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                         },
         },
@@ -1036,7 +1068,7 @@ const ConfigDeclaration kVehicleProperties[]{
                                 .access = VehiclePropertyAccess::READ,
                                 .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                         },
-                .initialValue = {.int32Values = {0 /* ClusterHome */}},
+                .initialValue = {.int32Values = {0 /* ClusterHome */, -1 /* ClusterNone */}},
         },
         {
                 .config =
@@ -1072,42 +1104,6 @@ const ConfigDeclaration kVehicleProperties[]{
                                 .access = VehiclePropertyAccess::WRITE,
                                 .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
                         },
-        },
-        {
-                .config =
-                        {
-                                .prop = PLACEHOLDER_PROPERTY_INT,
-                                .access = VehiclePropertyAccess::READ_WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-                .initialValue = {.int32Values = {0}},
-        },
-        {
-                .config =
-                        {
-                                .prop = PLACEHOLDER_PROPERTY_FLOAT,
-                                .access = VehiclePropertyAccess::READ_WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-                .initialValue = {.floatValues = {0.0f}},
-        },
-        {
-                .config =
-                        {
-                                .prop = PLACEHOLDER_PROPERTY_BOOLEAN,
-                                .access = VehiclePropertyAccess::READ_WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-                .initialValue = {.int32Values = {0 /* false */}},
-        },
-        {
-                .config =
-                        {
-                                .prop = PLACEHOLDER_PROPERTY_STRING,
-                                .access = VehiclePropertyAccess::READ_WRITE,
-                                .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                        },
-                .initialValue = {.stringValue = {"Test"}},
         },
 #ifdef ENABLE_VENDOR_CLUSTER_PROPERTY_FOR_TESTING
         // Vendor propetry for E2E ClusterHomeService testing.
