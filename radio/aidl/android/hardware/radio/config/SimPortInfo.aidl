@@ -34,10 +34,18 @@ parcelable SimPortInfo {
      * Logical slot id is identifier of the active slot
      */
     int logicalSlotId;
-    /**
-     * Port active status in the slot.
-     * Inactive means logical modem is no longer associated to the port.
-     * Active means logical modem is associated to the port.
+    /*
+     * Port is Inactive
+     * Inactive means logical modem is no longer associated to the port
      */
-    boolean portActive;
+    const int PORT_STATE_INACTIVE = 0;
+    /*
+     * Port is Active
+     * Active means logical modem is associated to the port
+     */
+    const int PORT_STATE_ACTIVE = 1;
+    /**
+     * Port state in the slot. Values are portState.[PORT_STATE_INACTIVE, PORT_STATE_ACTIVE].
+     */
+    int portState;
 }
