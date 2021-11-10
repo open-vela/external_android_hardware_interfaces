@@ -14,19 +14,16 @@
  * limitations under the License.
  */
 
-package android.hardware.radio.voice;
+package android.hardware.radio.network;
 
-/**
- * Display Info Rec as defined in C.S0005 section 3.7.5.1. Extended Display Info Rec as defined in
- * C.S0005 section 3.7.5.16. Note that the Extended Display info rec contains multiple records of
- * the form: display_tag, display_len, and display_len occurrences of the char field if the
- * display_tag is not 10000000 or 10000001. To save space, the records are stored consecutively in
- * a byte buffer. The display_tag, display_len and chari fields are all 1 byte.
- */
 @VintfStability
-parcelable CdmaDisplayInfoRecord {
+parcelable CellIdentityOperatorNames {
     /**
-     * Max length = RadioConst:CDMA_ALPHA_INFO_BUFFER_LENGTH
+     * Long alpha operator name string or enhanced operator name string.
      */
-    String alphaBuf;
+    String alphaLong;
+    /**
+     * Short alpha operator name string or enhanced operator name string.
+     */
+    String alphaShort;
 }

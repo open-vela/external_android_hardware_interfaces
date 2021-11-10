@@ -31,22 +31,13 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.radio.data;
-@VintfStability
-parcelable SliceInfo {
-  byte sliceServiceType;
-  int sliceDifferentiator;
-  byte mappedHplmnSst;
-  int mappedHplmnSD;
-  byte status;
-  const byte SERVICE_TYPE_NONE = 0;
-  const byte SERVICE_TYPE_EMBB = 1;
-  const byte SERVICE_TYPE_URLLC = 2;
-  const byte SERVICE_TYPE_MIOT = 3;
-  const byte STATUS_UNKNOWN = 0;
-  const byte STATUS_CONFIGURED = 1;
-  const byte STATUS_ALLOWED = 2;
-  const byte STATUS_REJECTED_NOT_AVAILABLE_IN_PLMN = 3;
-  const byte STATUS_REJECTED_NOT_AVAILABLE_IN_REG_AREA = 4;
-  const byte STATUS_DEFAULT_CONFIGURED = 5;
+package android.hardware.radio;
+@Backing(type="int") @VintfStability
+enum SapStatus {
+  UNKNOWN_ERROR = 0,
+  CARD_RESET = 1,
+  CARD_NOT_ACCESSIBLE = 2,
+  CARD_REMOVED = 3,
+  CARD_INSERTED = 4,
+  RECOVERED = 5,
 }

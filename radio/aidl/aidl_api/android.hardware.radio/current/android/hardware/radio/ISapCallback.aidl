@@ -31,22 +31,18 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.radio.data;
+package android.hardware.radio;
 @VintfStability
-parcelable SliceInfo {
-  byte sliceServiceType;
-  int sliceDifferentiator;
-  byte mappedHplmnSst;
-  int mappedHplmnSD;
-  byte status;
-  const byte SERVICE_TYPE_NONE = 0;
-  const byte SERVICE_TYPE_EMBB = 1;
-  const byte SERVICE_TYPE_URLLC = 2;
-  const byte SERVICE_TYPE_MIOT = 3;
-  const byte STATUS_UNKNOWN = 0;
-  const byte STATUS_CONFIGURED = 1;
-  const byte STATUS_ALLOWED = 2;
-  const byte STATUS_REJECTED_NOT_AVAILABLE_IN_PLMN = 3;
-  const byte STATUS_REJECTED_NOT_AVAILABLE_IN_REG_AREA = 4;
-  const byte STATUS_DEFAULT_CONFIGURED = 5;
+interface ISapCallback {
+  oneway void apduResponse(in int token, in android.hardware.radio.SapResultCode resultCode, in byte[] apduRsp);
+  oneway void connectResponse(in int token, in android.hardware.radio.SapConnectRsp sapConnectRsp, in int maxMsgSize);
+  oneway void disconnectIndication(in int token, in android.hardware.radio.SapDisconnectType disconnectType);
+  oneway void disconnectResponse(in int token);
+  oneway void errorResponse(in int token);
+  oneway void powerResponse(in int token, in android.hardware.radio.SapResultCode resultCode);
+  oneway void resetSimResponse(in int token, in android.hardware.radio.SapResultCode resultCode);
+  oneway void statusIndication(in int token, in android.hardware.radio.SapStatus status);
+  oneway void transferAtrResponse(in int token, in android.hardware.radio.SapResultCode resultCode, in byte[] atr);
+  oneway void transferCardReaderStatusResponse(in int token, in android.hardware.radio.SapResultCode resultCode, in int cardReaderStatus);
+  oneway void transferProtocolResponse(in int token, in android.hardware.radio.SapResultCode resultCode);
 }

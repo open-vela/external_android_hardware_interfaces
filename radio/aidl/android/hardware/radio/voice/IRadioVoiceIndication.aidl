@@ -18,7 +18,7 @@ package android.hardware.radio.voice;
 
 import android.hardware.radio.RadioIndicationType;
 import android.hardware.radio.voice.CdmaCallWaiting;
-import android.hardware.radio.voice.CdmaInformationRecord;
+import android.hardware.radio.voice.CdmaInformationRecords;
 import android.hardware.radio.voice.CdmaOtaProvisionStatus;
 import android.hardware.radio.voice.CdmaSignalInfoRecord;
 import android.hardware.radio.voice.EmergencyNumber;
@@ -67,10 +67,9 @@ oneway interface IRadioVoiceIndication {
      * Indicates when CDMA radio receives one or more info recs.
      *
      * @param type Type of radio indication
-     * @param records New CDMA information records.
-     *        Max length is RadioConst:CDMA_MAX_NUMBER_OF_INFO_RECS
+     * @param records New Cdma Information
      */
-    void cdmaInfoRec(in RadioIndicationType type, in CdmaInformationRecord[] records);
+    void cdmaInfoRec(in RadioIndicationType type, in CdmaInformationRecords records);
 
     /**
      * Indicates when CDMA radio receives an update of the progress of an OTASP/OTAPA call.
