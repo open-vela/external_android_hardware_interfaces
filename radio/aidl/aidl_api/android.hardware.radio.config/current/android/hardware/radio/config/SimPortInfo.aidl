@@ -36,5 +36,7 @@ package android.hardware.radio.config;
 parcelable SimPortInfo {
   String iccId;
   int logicalSlotId;
-  boolean portActive;
+  int portState;
+  const int PORT_STATE_INACTIVE = 0;
+  const int PORT_STATE_ACTIVE = 1;
 }
