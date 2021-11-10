@@ -16,7 +16,7 @@
 
 package android.hardware.radio.network;
 
-import android.hardware.radio.network.OperatorInfo;
+import android.hardware.radio.network.CellIdentityOperatorNames;
 
 @VintfStability
 parcelable CellIdentityCdma {
@@ -44,8 +44,5 @@ parcelable CellIdentityCdma {
      * (corresponding to a range of -90 to +90 degrees). INT_MAX if unknown
      */
     int latitude;
-    /**
-     * OperatorInfo containing alphaLong and alphaShort
-     */
-    OperatorInfo operatorNames;
+    CellIdentityOperatorNames operatorNames;
 }
