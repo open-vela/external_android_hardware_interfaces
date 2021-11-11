@@ -85,19 +85,12 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.automotive.vehicle</name>
-        <interface>
-            <name>IVehicle</name>
-            <regex-instance>.*</regex-instance>
-        </interface>
-    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.automotive.vehicle</name>
         <version>2.0</version>
         <interface>
             <name>IVehicle</name>
-            <regex-instance>.*</regex-instance>
+            <instance>default</instance>
         </interface>
     </hal>
     <hal format="hidl" optional="true">
@@ -125,7 +118,6 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.biometrics.fingerprint</name>
-        <version>2</version>
         <interface>
             <name>IFingerprint</name>
             <instance>default</instance>
@@ -202,23 +194,12 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
+    <hal format="hidl" optional="true">
         <name>android.hardware.contexthub</name>
+        <version>1.2</version>
         <interface>
-            <name>IContextHub</name>
+            <name>IContexthub</name>
             <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.drm</name>
-        <version>1</version>
-        <interface>
-            <name>ICryptoFactory</name>
-            <regex-instance>.*</regex-instance>
-        </interface>
-        <interface>
-            <name>IDrmFactory</name>
-            <regex-instance>.*</regex-instance>
         </interface>
     </hal>
     <hal format="hidl" optional="true">
@@ -258,17 +239,8 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.gnss</name>
-        <version>2</version>
         <interface>
             <name>IGnss</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.gnss.visibility_control</name>
-        <version>1</version>
-        <interface>
-            <name>IGnssVisibilityControl</name>
             <instance>default</instance>
         </interface>
     </hal>
@@ -283,25 +255,9 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.graphics.allocator</name>
-        <version>1</version>
-        <interface>
-            <name>IAllocator</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.graphics.composer</name>
         <version>2.1-4</version>
-        <interface>
-            <name>IComposer</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.graphics.composer3</name>
-        <version>1</version>
         <interface>
             <name>IComposer</name>
             <instance>default</instance>
@@ -336,16 +292,9 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.identity</name>
-        <version>1-3</version>
+        <version>1-4</version>
         <interface>
             <name>IIdentityCredentialStore</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.net.nlinterceptor</name>
-        <interface>
-            <name>IInterceptor</name>
             <instance>default</instance>
         </interface>
     </hal>
@@ -413,7 +362,6 @@
         <interface>
             <name>IRemotelyProvisionedComponent</name>
             <instance>default</instance>
-            <instance>strongbox</instance>
         </interface>
     </hal>
     <hal format="aidl" optional="true">
@@ -463,7 +411,7 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.neuralnetworks</name>
-        <version>1-3</version>
+        <version>1-4</version>
         <interface>
             <name>IDevice</name>
             <regex-instance>.*</regex-instance>
@@ -487,7 +435,7 @@
     </hal>
     <hal format="aidl" optional="false">
         <name>android.hardware.power</name>
-        <version>1-3</version>
+        <version>1-2</version>
         <interface>
             <name>IPower</name>
             <instance>default</instance>
@@ -647,13 +595,6 @@
             <instance>strongbox</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.sensors</name>
-        <interface>
-            <name>ISensors</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.sensors</name>
         <version>1.0</version>
@@ -671,14 +612,6 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-         <name>android.hardware.soundtrigger3</name>
-         <version>1</version>
-         <interface>
-             <name>ISoundTriggerHw</name>
-             <instance>default</instance>
-         </interface>
-    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.tetheroffload.config</name>
         <version>1.0</version>
@@ -695,7 +628,7 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="hidl" optional="true">
+    <hal format="hidl" optional="false">
         <name>android.hardware.thermal</name>
         <version>2.0</version>
         <interface>
@@ -722,14 +655,6 @@
     <hal format="hidl" optional="true">
         <name>android.hardware.tv.tuner</name>
         <version>1.0-1</version>
-        <interface>
-            <name>ITuner</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.tv.tuner</name>
-        <version>1</version>
         <interface>
             <name>ITuner</name>
             <instance>default</instance>
@@ -788,14 +713,6 @@
         <version>1.3-5</version>
         <interface>
             <name>IWifi</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.uwb</name>
-        <version>1</version>
-        <interface>
-            <name>IUwb</name>
             <instance>default</instance>
         </interface>
     </hal>
