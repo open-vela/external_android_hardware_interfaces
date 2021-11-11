@@ -16,7 +16,7 @@
 
 package android.hardware.radio.network;
 
-import android.hardware.radio.network.OperatorInfo;
+import android.hardware.radio.network.CellIdentityOperatorNames;
 
 @VintfStability
 parcelable CellIdentityGsm {
@@ -44,10 +44,7 @@ parcelable CellIdentityGsm {
      * 6-bit Base Station Identity Code, 0xFF if unknown
      */
     byte bsic;
-    /**
-     * OperatorInfo containing alphaLong and alphaShort
-     */
-    OperatorInfo operatorNames;
+    CellIdentityOperatorNames operatorNames;
     /**
      * Additional PLMN-IDs beyond the primary PLMN broadcast for this cell
      */

@@ -40,7 +40,7 @@ parcelable CellIdentityWcdma {
   int cid;
   int psc;
   int uarfcn;
-  android.hardware.radio.network.OperatorInfo operatorNames;
+  android.hardware.radio.network.CellIdentityOperatorNames operatorNames;
   String[] additionalPlmns;
   @nullable android.hardware.radio.network.ClosedSubscriberGroupInfo csgInfo;
 }
