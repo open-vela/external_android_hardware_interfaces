@@ -64,7 +64,9 @@ class DeviceUniqueAttestationTest : public KeyMintAidlTestBase {
  * attestation.
  */
 TEST_P(DeviceUniqueAttestationTest, RsaNonStrongBoxUnimplemented) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
 
     vector<uint8_t> key_blob;
     vector<KeyCharacteristics> key_characteristics;
@@ -76,6 +78,7 @@ TEST_P(DeviceUniqueAttestationTest, RsaNonStrongBoxUnimplemented) {
                                       .Digest(Digest::SHA_2_256)
                                       .Padding(PaddingMode::RSA_PKCS1_1_5_SIGN)
                                       .Authorization(TAG_INCLUDE_UNIQUE_ID)
+                                      .Authorization(TAG_CREATION_DATETIME, 1619621648000)
                                       .AttestationChallenge("challenge")
                                       .AttestationApplicationId("foo")
                                       .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION),
@@ -91,7 +94,9 @@ TEST_P(DeviceUniqueAttestationTest, RsaNonStrongBoxUnimplemented) {
  * attestation.
  */
 TEST_P(DeviceUniqueAttestationTest, EcdsaNonStrongBoxUnimplemented) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) return;
+    if (SecLevel() == SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to StrongBox device";
+    }
 
     vector<uint8_t> key_blob;
     vector<KeyCharacteristics> key_characteristics;
@@ -102,6 +107,7 @@ TEST_P(DeviceUniqueAttestationTest, EcdsaNonStrongBoxUnimplemented) {
                                       .EcdsaSigningKey(EcCurve::P_256)
                                       .Digest(Digest::SHA_2_256)
                                       .Authorization(TAG_INCLUDE_UNIQUE_ID)
+                                      .Authorization(TAG_CREATION_DATETIME, 1619621648000)
                                       .AttestationChallenge("challenge")
                                       .AttestationApplicationId("foo")
                                       .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION),
@@ -117,7 +123,9 @@ TEST_P(DeviceUniqueAttestationTest, EcdsaNonStrongBoxUnimplemented) {
  * attestation correctly, if implemented.
  */
 TEST_P(DeviceUniqueAttestationTest, RsaDeviceUniqueAttestation) {
-    if (SecLevel() != SecurityLevel::STRONGBOX) return;
+    if (SecLevel() != SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to non-StrongBox device";
+    }
 
     vector<uint8_t> key_blob;
     vector<KeyCharacteristics> key_characteristics;
@@ -129,6 +137,7 @@ TEST_P(DeviceUniqueAttestationTest, RsaDeviceUniqueAttestation) {
                                       .Digest(Digest::SHA_2_256)
                                       .Padding(PaddingMode::RSA_PKCS1_1_5_SIGN)
                                       .Authorization(TAG_INCLUDE_UNIQUE_ID)
+                                      .Authorization(TAG_CREATION_DATETIME, 1619621648000)
                                       .AttestationChallenge("challenge")
                                       .AttestationApplicationId("foo")
                                       .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION),
@@ -174,7 +183,9 @@ TEST_P(DeviceUniqueAttestationTest, RsaDeviceUniqueAttestation) {
  * attestation correctly, if implemented.
  */
 TEST_P(DeviceUniqueAttestationTest, EcdsaDeviceUniqueAttestation) {
-    if (SecLevel() != SecurityLevel::STRONGBOX) return;
+    if (SecLevel() != SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to non-StrongBox device";
+    }
 
     vector<uint8_t> key_blob;
     vector<KeyCharacteristics> key_characteristics;
@@ -184,6 +195,7 @@ TEST_P(DeviceUniqueAttestationTest, EcdsaDeviceUniqueAttestation) {
                                       .EcdsaSigningKey(EcCurve::P_256)
                                       .Digest(Digest::SHA_2_256)
                                       .Authorization(TAG_INCLUDE_UNIQUE_ID)
+                                      .Authorization(TAG_CREATION_DATETIME, 1619621648000)
                                       .AttestationChallenge("challenge")
                                       .AttestationApplicationId("foo")
                                       .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION),
@@ -226,7 +238,9 @@ TEST_P(DeviceUniqueAttestationTest, EcdsaDeviceUniqueAttestation) {
  * local device.
  */
 TEST_P(DeviceUniqueAttestationTest, EcdsaDeviceUniqueAttestationID) {
-    if (SecLevel() != SecurityLevel::STRONGBOX) return;
+    if (SecLevel() != SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to non-StrongBox device";
+    }
 
     // Collection of valid attestation ID tags.
     auto attestation_id_tags = AuthorizationSetBuilder();
@@ -242,14 +256,16 @@ TEST_P(DeviceUniqueAttestationTest, EcdsaDeviceUniqueAttestationID) {
 
     for (const KeyParameter& tag : attestation_id_tags) {
         SCOPED_TRACE(testing::Message() << "+tag-" << tag);
-        AuthorizationSetBuilder builder = AuthorizationSetBuilder()
-                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                  .EcdsaSigningKey(EcCurve::P_256)
-                                                  .Digest(Digest::SHA_2_256)
-                                                  .Authorization(TAG_INCLUDE_UNIQUE_ID)
-                                                  .AttestationChallenge("challenge")
-                                                  .AttestationApplicationId("foo")
-                                                  .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION);
+        AuthorizationSetBuilder builder =
+                AuthorizationSetBuilder()
+                        .Authorization(TAG_NO_AUTH_REQUIRED)
+                        .EcdsaSigningKey(EcCurve::P_256)
+                        .Digest(Digest::SHA_2_256)
+                        .Authorization(TAG_INCLUDE_UNIQUE_ID)
+                        .Authorization(TAG_CREATION_DATETIME, 1619621648000)
+                        .AttestationChallenge("challenge")
+                        .AttestationApplicationId("foo")
+                        .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION);
         builder.push_back(tag);
         auto result = GenerateKey(builder, &key_blob, &key_characteristics);
 
@@ -292,7 +308,9 @@ TEST_P(DeviceUniqueAttestationTest, EcdsaDeviceUniqueAttestationID) {
  * don't match the local device.
  */
 TEST_P(DeviceUniqueAttestationTest, EcdsaDeviceUniqueAttestationMismatchID) {
-    if (SecLevel() != SecurityLevel::STRONGBOX) return;
+    if (SecLevel() != SecurityLevel::STRONGBOX) {
+        GTEST_SKIP() << "Test not applicable to non-StrongBox device";
+    }
 
     // Collection of invalid attestation ID tags.
     auto attestation_id_tags =
@@ -310,14 +328,16 @@ TEST_P(DeviceUniqueAttestationTest, EcdsaDeviceUniqueAttestationMismatchID) {
 
     for (const KeyParameter& invalid_tag : attestation_id_tags) {
         SCOPED_TRACE(testing::Message() << "+tag-" << invalid_tag);
-        AuthorizationSetBuilder builder = AuthorizationSetBuilder()
-                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                  .EcdsaSigningKey(EcCurve::P_256)
-                                                  .Digest(Digest::SHA_2_256)
-                                                  .Authorization(TAG_INCLUDE_UNIQUE_ID)
-                                                  .AttestationChallenge("challenge")
-                                                  .AttestationApplicationId("foo")
-                                                  .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION);
+        AuthorizationSetBuilder builder =
+                AuthorizationSetBuilder()
+                        .Authorization(TAG_NO_AUTH_REQUIRED)
+                        .EcdsaSigningKey(EcCurve::P_256)
+                        .Digest(Digest::SHA_2_256)
+                        .Authorization(TAG_INCLUDE_UNIQUE_ID)
+                        .Authorization(TAG_CREATION_DATETIME, 1619621648000)
+                        .AttestationChallenge("challenge")
+                        .AttestationApplicationId("foo")
+                        .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION);
         // Add the tag that doesn't match the local device's real ID.
         builder.push_back(invalid_tag);
         auto result = GenerateKey(builder, &key_blob, &key_characteristics);
