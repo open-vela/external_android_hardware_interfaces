@@ -23,9 +23,8 @@ package android.hardware.radio.voice;
  */
 @VintfStability
 parcelable CdmaNumberInfoRecord {
-    const int CDMA_NUMBER_INFO_BUFFER_LENGTH = 81;
     /**
-     * Max length = CDMA_NUMBER_INFO_BUFFER_LENGTH
+     * Max length = RadioConst::CDMA_NUMBER_INFO_BUFFER_LENGTH
      */
     String number;
     byte numberType;

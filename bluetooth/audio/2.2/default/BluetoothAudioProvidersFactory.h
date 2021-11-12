@@ -46,9 +46,6 @@ class BluetoothAudioProvidersFactory : public IBluetoothAudioProvidersFactory {
   Return<void> openProvider_2_1(const V2_1::SessionType sessionType,
                                 openProvider_2_1_cb _hidl_cb) override;
 
-  Return<void> openProvider_2_2(const V2_1::SessionType sessionType,
-                                openProvider_2_2_cb _hidl_cb) override;
-
   Return<void> getProviderCapabilities_2_1(
       const V2_1::SessionType sessionType,
       getProviderCapabilities_2_1_cb _hidl_cb) override;
