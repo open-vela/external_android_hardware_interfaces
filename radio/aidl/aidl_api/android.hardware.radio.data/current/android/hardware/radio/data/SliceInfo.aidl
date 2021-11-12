@@ -37,7 +37,7 @@ parcelable SliceInfo {
   byte sliceServiceType;
   int sliceDifferentiator;
   byte mappedHplmnSst;
-  int mappedHplmnSd;
+  int mappedHplmnSD;
   byte status;
   const byte SERVICE_TYPE_NONE = 0;
   const byte SERVICE_TYPE_EMBB = 1;

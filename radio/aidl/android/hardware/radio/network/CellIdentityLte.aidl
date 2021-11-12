@@ -16,9 +16,9 @@
 
 package android.hardware.radio.network;
 
+import android.hardware.radio.network.CellIdentityOperatorNames;
 import android.hardware.radio.network.ClosedSubscriberGroupInfo;
 import android.hardware.radio.network.EutranBands;
-import android.hardware.radio.network.OperatorInfo;
 
 @VintfStability
 parcelable CellIdentityLte {
@@ -46,10 +46,7 @@ parcelable CellIdentityLte {
      * 18-bit LTE Absolute RF Channel Number; this value must be valid
      */
     int earfcn;
-    /**
-     * OperatorInfo containing alphaLong and alphaShort
-     */
-    OperatorInfo operatorNames;
+    CellIdentityOperatorNames operatorNames;
     /**
      * Cell bandwidth, in kHz.
      */
