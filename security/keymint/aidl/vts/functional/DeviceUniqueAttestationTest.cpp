@@ -78,7 +78,6 @@ TEST_P(DeviceUniqueAttestationTest, RsaNonStrongBoxUnimplemented) {
                                       .Digest(Digest::SHA_2_256)
                                       .Padding(PaddingMode::RSA_PKCS1_1_5_SIGN)
                                       .Authorization(TAG_INCLUDE_UNIQUE_ID)
-                                      .Authorization(TAG_CREATION_DATETIME, 1619621648000)
                                       .AttestationChallenge("challenge")
                                       .AttestationApplicationId("foo")
                                       .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION),
@@ -107,7 +106,6 @@ TEST_P(DeviceUniqueAttestationTest, EcdsaNonStrongBoxUnimplemented) {
                                       .EcdsaSigningKey(EcCurve::P_256)
                                       .Digest(Digest::SHA_2_256)
                                       .Authorization(TAG_INCLUDE_UNIQUE_ID)
-                                      .Authorization(TAG_CREATION_DATETIME, 1619621648000)
                                       .AttestationChallenge("challenge")
                                       .AttestationApplicationId("foo")
                                       .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION),
@@ -137,7 +135,6 @@ TEST_P(DeviceUniqueAttestationTest, RsaDeviceUniqueAttestation) {
                                       .Digest(Digest::SHA_2_256)
                                       .Padding(PaddingMode::RSA_PKCS1_1_5_SIGN)
                                       .Authorization(TAG_INCLUDE_UNIQUE_ID)
-                                      .Authorization(TAG_CREATION_DATETIME, 1619621648000)
                                       .AttestationChallenge("challenge")
                                       .AttestationApplicationId("foo")
                                       .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION),
@@ -195,7 +192,6 @@ TEST_P(DeviceUniqueAttestationTest, EcdsaDeviceUniqueAttestation) {
                                       .EcdsaSigningKey(EcCurve::P_256)
                                       .Digest(Digest::SHA_2_256)
                                       .Authorization(TAG_INCLUDE_UNIQUE_ID)
-                                      .Authorization(TAG_CREATION_DATETIME, 1619621648000)
                                       .AttestationChallenge("challenge")
                                       .AttestationApplicationId("foo")
                                       .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION),
@@ -256,16 +252,14 @@ TEST_P(DeviceUniqueAttestationTest, EcdsaDeviceUniqueAttestationID) {
 
     for (const KeyParameter& tag : attestation_id_tags) {
         SCOPED_TRACE(testing::Message() << "+tag-" << tag);
-        AuthorizationSetBuilder builder =
-                AuthorizationSetBuilder()
-                        .Authorization(TAG_NO_AUTH_REQUIRED)
-                        .EcdsaSigningKey(EcCurve::P_256)
-                        .Digest(Digest::SHA_2_256)
-                        .Authorization(TAG_INCLUDE_UNIQUE_ID)
-                        .Authorization(TAG_CREATION_DATETIME, 1619621648000)
-                        .AttestationChallenge("challenge")
-                        .AttestationApplicationId("foo")
-                        .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION);
+        AuthorizationSetBuilder builder = AuthorizationSetBuilder()
+                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                  .EcdsaSigningKey(EcCurve::P_256)
+                                                  .Digest(Digest::SHA_2_256)
+                                                  .Authorization(TAG_INCLUDE_UNIQUE_ID)
+                                                  .AttestationChallenge("challenge")
+                                                  .AttestationApplicationId("foo")
+                                                  .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION);
         builder.push_back(tag);
         auto result = GenerateKey(builder, &key_blob, &key_characteristics);
 
@@ -328,16 +322,14 @@ TEST_P(DeviceUniqueAttestationTest, EcdsaDeviceUniqueAttestationMismatchID) {
 
     for (const KeyParameter& invalid_tag : attestation_id_tags) {
         SCOPED_TRACE(testing::Message() << "+tag-" << invalid_tag);
-        AuthorizationSetBuilder builder =
-                AuthorizationSetBuilder()
-                        .Authorization(TAG_NO_AUTH_REQUIRED)
-                        .EcdsaSigningKey(EcCurve::P_256)
-                        .Digest(Digest::SHA_2_256)
-                        .Authorization(TAG_INCLUDE_UNIQUE_ID)
-                        .Authorization(TAG_CREATION_DATETIME, 1619621648000)
-                        .AttestationChallenge("challenge")
-                        .AttestationApplicationId("foo")
-                        .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION);
+        AuthorizationSetBuilder builder = AuthorizationSetBuilder()
+                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                  .EcdsaSigningKey(EcCurve::P_256)
+                                                  .Digest(Digest::SHA_2_256)
+                                                  .Authorization(TAG_INCLUDE_UNIQUE_ID)
+                                                  .AttestationChallenge("challenge")
+                                                  .AttestationApplicationId("foo")
+                                                  .Authorization(TAG_DEVICE_UNIQUE_ATTESTATION);
         // Add the tag that doesn't match the local device's real ID.
         builder.push_back(invalid_tag);
         auto result = GenerateKey(builder, &key_blob, &key_characteristics);

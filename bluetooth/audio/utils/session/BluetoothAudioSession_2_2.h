@@ -22,7 +22,6 @@
 #include <unordered_map>
 
 #include "BluetoothAudioSession.h"
-#include "BluetoothAudioSession_2_1.h"
 
 namespace android {
 namespace bluetooth {
@@ -31,7 +30,6 @@ namespace audio {
 class BluetoothAudioSession_2_2 {
  private:
   std::shared_ptr<BluetoothAudioSession> audio_session;
-  std::shared_ptr<BluetoothAudioSession_2_1> audio_session_2_1;
 
   ::android::hardware::bluetooth::audio::V2_1::SessionType session_type_2_1_;
 
@@ -58,7 +56,6 @@ class BluetoothAudioSession_2_2 {
   bool IsSessionReady();
 
   std::shared_ptr<BluetoothAudioSession> GetAudioSession();
-  std::shared_ptr<BluetoothAudioSession_2_1> GetAudioSession_2_1();
 
   // The report function is used to report that the Bluetooth stack has started
   // this session without any failure, and will invoke session_changed_cb_ to
