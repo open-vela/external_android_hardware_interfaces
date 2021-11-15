@@ -19,7 +19,6 @@
 
 #include "nnapi/hal/aidl/Conversions.h"
 
-#include <aidl/android/hardware/neuralnetworks/IDevice.h>
 #include <android-base/logging.h>
 #include <nnapi/Result.h>
 #include <nnapi/TypeUtils.h>
@@ -29,19 +28,7 @@
 namespace aidl::android::hardware::neuralnetworks::utils {
 
 constexpr auto kDefaultPriority = Priority::MEDIUM;
-
-constexpr std::optional<nn::Version> aidlVersionToCanonicalVersion(int aidlVersion) {
-    switch (aidlVersion) {
-        case 1:
-            return nn::Version::ANDROID_S;
-        case 2:
-            return nn::Version::FEATURE_LEVEL_6;
-        default:
-            return std::nullopt;
-    }
-}
-
-constexpr auto kVersion = aidlVersionToCanonicalVersion(IDevice::version).value();
+constexpr auto kVersion = nn::Version::FEATURE_LEVEL_6;
 
 template <typename Type>
 nn::Result<void> validate(const Type& halObject) {
