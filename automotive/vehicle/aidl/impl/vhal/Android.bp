@@ -53,10 +53,7 @@ cc_library {
     ],
     local_include_dirs: ["include"],
     export_include_dirs: ["include"],
-    srcs: [
-        "src/ConnectedClient.cpp",
-        "src/DefaultVehicleHal.cpp",
-    ],
+    srcs: ["src/DefaultVehicleHal.cpp"],
     static_libs: [
         "VehicleHalUtils",
         "android-automotive-large-parcelable-vendor-lib",
