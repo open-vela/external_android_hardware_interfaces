@@ -180,8 +180,7 @@ wait:
     }
 
     EXPECT_TRUE(scanMsgLockedReceived) << "Scan message LOCKED not received before END";
-    if (type == FrontendScanType::SCAN_BLIND)
-        EXPECT_TRUE(targetFrequencyReceived) << "frequency not received before LOCKED on blindScan";
+    EXPECT_TRUE(targetFrequencyReceived) << "frequency not received before LOCKED on blindScan";
     mScanMessageReceived = false;
     mScanMsgProcessed = true;
 }
