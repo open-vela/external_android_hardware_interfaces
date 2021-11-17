@@ -33,9 +33,9 @@ constexpr auto kDefaultPriority = Priority::MEDIUM;
 constexpr std::optional<nn::Version> aidlVersionToCanonicalVersion(int aidlVersion) {
     switch (aidlVersion) {
         case 1:
-            return nn::kVersionFeatureLevel5;
+            return nn::Version::ANDROID_S;
         case 2:
-            return nn::kVersionFeatureLevel6;
+            return nn::Version::FEATURE_LEVEL_6;
         default:
             return std::nullopt;
     }
@@ -64,7 +64,7 @@ bool valid(const Type& halObject) {
 template <typename Type>
 nn::Result<void> compliantVersion(const Type& canonical) {
     const auto version = NN_TRY(nn::validate(canonical));
-    if (!nn::isCompliantVersion(version, kVersion)) {
+    if (version > kVersion) {
         return NN_ERROR() << "Insufficient version: " << version << " vs required " << kVersion;
     }
     return {};
