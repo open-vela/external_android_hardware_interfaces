@@ -717,33 +717,27 @@ TEST_P(VibratorAidl, GetSupportedBraking) {
 
 TEST_P(VibratorAidl, ComposeValidPwle) {
     if (capabilities & IVibrator::CAP_COMPOSE_PWLE_EFFECTS) {
-        ActivePwle firstActive = composeValidActivePwle(vibrator, capabilities);
+        ActivePwle active = composeValidActivePwle(vibrator, capabilities);
 
         std::vector<Braking> supported;
         ASSERT_TRUE(vibrator->getSupportedBraking(&supported).isOk());
         bool isClabSupported =
             std::find(supported.begin(), supported.end(), Braking::CLAB) != supported.end();
-        BrakingPwle firstBraking;
-        firstBraking.braking = isClabSupported ? Braking::CLAB : Braking::NONE;
-        firstBraking.duration = 100;
+        BrakingPwle braking;
+        braking.braking = isClabSupported ? Braking::CLAB : Braking::NONE;
+        braking.duration = 100;
 
-        ActivePwle secondActive = composeValidActivePwle(vibrator, capabilities);
-        if (capabilities & IVibrator::CAP_FREQUENCY_CONTROL) {
-            float minFrequencyHz = getFrequencyMinimumHz(vibrator, capabilities);
-            float maxFrequencyHz = getFrequencyMaximumHz(vibrator, capabilities);
-            float freqResolutionHz = getFrequencyResolutionHz(vibrator, capabilities);
-            secondActive.startFrequency = minFrequencyHz + (freqResolutionHz / 2.0f);
-            secondActive.endFrequency = maxFrequencyHz - (freqResolutionHz / 3.0f);
-        }
-        BrakingPwle secondBraking;
-        secondBraking.braking = Braking::NONE;
-        secondBraking.duration = 10;
-
-        auto pwleQueue =
-            std::vector<PrimitivePwle>{firstActive, firstBraking, secondActive, secondBraking};
+        std::vector<PrimitivePwle> pwleQueue;
+        PrimitivePwle pwle;
+        pwle = active;
+        pwleQueue.emplace_back(std::move(pwle));
+        pwle = braking;
+        pwleQueue.emplace_back(std::move(pwle));
+        pwle = active;
+        pwleQueue.emplace_back(std::move(pwle));
 
         EXPECT_EQ(Status::EX_NONE, vibrator->composePwle(pwleQueue, nullptr).exceptionCode());
-        EXPECT_TRUE(vibrator->off().isOk());
+        vibrator->off();
     }
 }
 
@@ -771,7 +765,14 @@ TEST_P(VibratorAidl, ComposeValidPwleWithCallback) {
     braking.braking = isClabSupported ? Braking::CLAB : Braking::NONE;
     braking.duration = 100;
 
-    auto pwleQueue = std::vector<PrimitivePwle>{active, braking, active};
+    std::vector<PrimitivePwle> pwleQueue;
+    PrimitivePwle pwle;
+    pwle = active;
+    pwleQueue.emplace_back(std::move(pwle));
+    pwle = braking;
+    pwleQueue.emplace_back(std::move(pwle));
+    pwle = active;
+    pwleQueue.emplace_back(std::move(pwle));
 
     EXPECT_TRUE(vibrator->composePwle(pwleQueue, callback).isOk());
     EXPECT_EQ(completionFuture.wait_for(timeout), std::future_status::ready);
@@ -784,7 +785,7 @@ TEST_P(VibratorAidl, ComposePwleSegmentBoundary) {
         // test empty queue
         EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
                   vibrator->composePwle(pwleQueue, nullptr).exceptionCode());
-        EXPECT_TRUE(vibrator->off().isOk());
+        vibrator->off();
 
         ActivePwle active = composeValidActivePwle(vibrator, capabilities);
 
@@ -800,7 +801,7 @@ TEST_P(VibratorAidl, ComposePwleSegmentBoundary) {
 
         EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
                   vibrator->composePwle(pwleQueue, nullptr).exceptionCode());
-        EXPECT_TRUE(vibrator->off().isOk());
+        vibrator->off();
     }
 }
 
@@ -810,20 +811,25 @@ TEST_P(VibratorAidl, ComposePwleAmplitudeParameterBoundary) {
         active.startAmplitude = getAmplitudeMax() + 1.0;  // Amplitude greater than allowed
         active.endAmplitude = getAmplitudeMax() + 1.0;    // Amplitude greater than allowed
 
-        auto pwleQueueGreater = std::vector<PrimitivePwle>{active};
+        std::vector<PrimitivePwle> pwleQueueGreater;
+        PrimitivePwle pwle;
+        pwle = active;
+        pwleQueueGreater.emplace_back(std::move(pwle));
 
         EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
                   vibrator->composePwle(pwleQueueGreater, nullptr).exceptionCode());
-        EXPECT_TRUE(vibrator->off().isOk());
+        vibrator->off();
 
         active.startAmplitude = getAmplitudeMin() - 1.0;  // Amplitude less than allowed
         active.endAmplitude = getAmplitudeMin() - 1.0;    // Amplitude less than allowed
 
-        auto pwleQueueLess = std::vector<PrimitivePwle>{active};
+        std::vector<PrimitivePwle> pwleQueueLess;
+        pwle = active;
+        pwleQueueLess.emplace_back(std::move(pwle));
 
         EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
                   vibrator->composePwle(pwleQueueLess, nullptr).exceptionCode());
-        EXPECT_TRUE(vibrator->off().isOk());
+        vibrator->off();
     }
 }
 
@@ -839,20 +845,25 @@ TEST_P(VibratorAidl, ComposePwleFrequencyParameterBoundary) {
             freqMaximumHz + freqResolutionHz;                    // Frequency greater than allowed
         active.endFrequency = freqMaximumHz + freqResolutionHz;  // Frequency greater than allowed
 
-        auto pwleQueueGreater = std::vector<PrimitivePwle>{active};
+        std::vector<PrimitivePwle> pwleQueueGreater;
+        PrimitivePwle pwle;
+        pwle = active;
+        pwleQueueGreater.emplace_back(std::move(pwle));
 
         EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
                   vibrator->composePwle(pwleQueueGreater, nullptr).exceptionCode());
-        EXPECT_TRUE(vibrator->off().isOk());
+        vibrator->off();
 
         active.startFrequency = freqMinimumHz - freqResolutionHz;  // Frequency less than allowed
         active.endFrequency = freqMinimumHz - freqResolutionHz;    // Frequency less than allowed
 
-        auto pwleQueueLess = std::vector<PrimitivePwle>{active};
+        std::vector<PrimitivePwle> pwleQueueLess;
+        pwle = active;
+        pwleQueueLess.emplace_back(std::move(pwle));
 
         EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
                   vibrator->composePwle(pwleQueueLess, nullptr).exceptionCode());
-        EXPECT_TRUE(vibrator->off().isOk());
+        vibrator->off();
     }
 }
 
@@ -864,11 +875,14 @@ TEST_P(VibratorAidl, ComposePwleSegmentDurationBoundary) {
         vibrator->getPwlePrimitiveDurationMax(&segmentDurationMaxMs);
         active.duration = segmentDurationMaxMs + 10;  // Segment duration greater than allowed
 
-        auto pwleQueue = std::vector<PrimitivePwle>{active};
+        std::vector<PrimitivePwle> pwleQueue;
+        PrimitivePwle pwle;
+        pwle = active;
+        pwleQueue.emplace_back(std::move(pwle));
 
         EXPECT_EQ(Status::EX_ILLEGAL_ARGUMENT,
                   vibrator->composePwle(pwleQueue, nullptr).exceptionCode());
-        EXPECT_TRUE(vibrator->off().isOk());
+        vibrator->off();
     }
 }
 
