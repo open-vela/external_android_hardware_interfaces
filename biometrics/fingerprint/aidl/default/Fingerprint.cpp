@@ -47,9 +47,8 @@ ndk::ScopedAStatus Fingerprint::getSensorProps(std::vector<SensorProps>* out) {
     common::CommonProps commonProps = {SENSOR_ID, SENSOR_STRENGTH, MAX_ENROLLMENTS_PER_USER,
                                        componentInfo};
 
-    SensorLocation sensorLocation = {0 /* displayId (not used) */, 0 /* sensorLocationX */,
-                                     0 /* sensorLocationY */, 0 /* sensorRadius */,
-                                     "" /* display */};
+    SensorLocation sensorLocation = {0 /* displayId */, 0 /* sensorLocationX */,
+                                     0 /* sensorLocationY */, 0 /* sensorRadius */};
 
     *out = {{commonProps,
              SENSOR_TYPE,
