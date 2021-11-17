@@ -17,13 +17,10 @@
 #define LOG_TAG "GnssHalTestCases"
 
 #include <android/hardware/gnss/IGnss.h>
-#include <android/hardware/gnss/IGnssBatching.h>
 #include <android/hardware/gnss/IGnssMeasurementCallback.h>
 #include <android/hardware/gnss/IGnssMeasurementInterface.h>
 #include <android/hardware/gnss/IGnssPowerIndication.h>
 #include <android/hardware/gnss/IGnssPsds.h>
-#include "GnssBatchingCallback.h"
-#include "GnssGeofenceCallback.h"
 #include "GnssMeasurementCallbackAidl.h"
 #include "GnssPowerIndicationCallback.h"
 #include "gnss_hal_test.h"
@@ -36,11 +33,7 @@ using android::hardware::gnss::GnssData;
 using android::hardware::gnss::GnssMeasurement;
 using android::hardware::gnss::GnssPowerStats;
 using android::hardware::gnss::IGnss;
-using android::hardware::gnss::IGnssBatching;
-using android::hardware::gnss::IGnssBatchingCallback;
 using android::hardware::gnss::IGnssConfiguration;
-using android::hardware::gnss::IGnssGeofence;
-using android::hardware::gnss::IGnssGeofenceCallback;
 using android::hardware::gnss::IGnssMeasurementCallback;
 using android::hardware::gnss::IGnssMeasurementInterface;
 using android::hardware::gnss::IGnssPowerIndication;
@@ -60,16 +53,17 @@ TEST_P(GnssHalTest, SetupTeardownCreateCleanup) {}
 
 /*
  * TestPsdsExtension:
- * 1. Gets the PsdsExtension
+ * 1. Gets the PsdsExtension and verifies that it returns a non-null extension.
  * 2. Injects empty PSDS data and verifies that it returns an error.
  */
 TEST_P(GnssHalTest, TestPsdsExtension) {
     sp<IGnssPsds> iGnssPsds;
     auto status = aidl_gnss_hal_->getExtensionPsds(&iGnssPsds);
-    if (status.isOk() && iGnssPsds != nullptr) {
-        status = iGnssPsds->injectPsdsData(PsdsType::LONG_TERM, std::vector<uint8_t>());
-        ASSERT_FALSE(status.isOk());
-    }
+    ASSERT_TRUE(status.isOk());
+    ASSERT_TRUE(iGnssPsds != nullptr);
+
+    status = iGnssPsds->injectPsdsData(PsdsType::LONG_TERM, std::vector<uint8_t>());
+    ASSERT_FALSE(status.isOk());
 }
 
 void CheckSatellitePvt(const SatellitePvt& satellitePvt) {
@@ -755,28 +749,4 @@ TEST_P(GnssHalTest, BlocklistConstellationLocationOn) {
     sources.resize(0);
     status = gnss_configuration_hal->setBlocklist(sources);
     ASSERT_TRUE(status.isOk());
-}
-
-/*
- * TestAllExtensions.
- */
-TEST_P(GnssHalTest, TestAllExtensions) {
-    sp<IGnssBatching> iGnssBatching;
-    auto status = aidl_gnss_hal_->getExtensionGnssBatching(&iGnssBatching);
-    if (status.isOk() && iGnssBatching != nullptr) {
-        auto gnssBatchingCallback = sp<GnssBatchingCallback>::make();
-        status = iGnssBatching->init(gnssBatchingCallback);
-        ASSERT_TRUE(status.isOk());
-
-        status = iGnssBatching->cleanup();
-        ASSERT_TRUE(status.isOk());
-    }
-
-    sp<IGnssGeofence> iGnssGeofence;
-    status = aidl_gnss_hal_->getExtensionGnssGeofence(&iGnssGeofence);
-    if (status.isOk() && iGnssGeofence != nullptr) {
-        auto gnssGeofenceCallback = sp<GnssGeofenceCallback>::make();
-        status = iGnssGeofence->setCallback(gnssGeofenceCallback);
-        ASSERT_TRUE(status.isOk());
-    }
 }
