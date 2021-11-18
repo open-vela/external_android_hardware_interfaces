@@ -96,8 +96,7 @@ import android.hardware.security.secureclock.TimeStampToken;
  *
  * o   AES
  *
- *      - TRUSTED_ENVIRONMENT IKeyMintDevices must support 128, 192 and 256-bit keys.
- *        STRONGBOX IKeyMintDevices must only support 128 and 256-bit keys.
+ *      - 128 and 256-bit keys
  *      - CBC, CTR, ECB and GCM modes.  The GCM mode must not allow the use of tags smaller than 96
  *        bits or nonce lengths other than 96 bits.
  *      - CBC and ECB modes must support unpadded and PKCS7 padding modes.  With no padding CBC and
@@ -233,6 +232,8 @@ interface IKeyMintDevice {
      * the attacker cannot predict (or control), then the output of the seeded CRNG is
      * indistinguishable from random.  Thus, if the entropy from any source is good, the output
      * must be good.
+     *
+     * TODO(seleneh) specify what mixing functions and cprng we allow.
      *
      * @param data Bytes to be mixed into the CRNG seed.  The caller must not provide more than 2
      *        KiB of data per invocation.
