@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,19 @@
  * limitations under the License.
  */
 
-package android.hardware.tv.tuner;
+package android.hardware.camera.device@3.8;
 
-import android.hardware.tv.tuner.DemuxFilterScIndexMask;
-import android.hardware.tv.tuner.DemuxRecordScIndexType;
+import @3.7::ICameraDevice;
 
 /**
- * Filter Settings for Record data.
- * @hide
+ * Camera device interface
+ *
+ * Supports the android.hardware.Camera API, and the android.hardware.camera2
+ * API at LIMITED or better hardware level.
+ *
+ * ICameraDevice.open() must return @3.2::ICameraDeviceSession,
+ * @3.5::ICameraDeviceSession, @3.6::ICameraDeviceSession, or
+ * @3.7::ICameraDeviceSession.
  */
-@VintfStability
-parcelable DemuxFilterRecordSettings {
-    /**
-     * Indexes defined by DemuxTsIndex.
-     */
-    int tsIndexMask;
-
-    DemuxRecordScIndexType scIndexType = DemuxRecordScIndexType.UNDEFINED;
-
-    DemuxFilterScIndexMask scIndexMask;
-}
+interface ICameraDevice extends @3.7::ICameraDevice {
+};

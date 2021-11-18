@@ -38,5 +38,5 @@ enum DemuxRecordScIndexType {
   NONE = 0,
   SC = 1,
   SC_HEVC = 2,
-  SC_AVC = 3,
+  UNDEFINED = 3,
 }
