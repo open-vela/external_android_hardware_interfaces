@@ -30,18 +30,18 @@ namespace aidl::android::hardware::neuralnetworks::utils {
 
 constexpr auto kDefaultPriority = Priority::MEDIUM;
 
-constexpr std::optional<nn::Version> aidlVersionToCanonicalVersion(int aidlVersion) {
+inline std::optional<nn::Version> aidlVersionToCanonicalVersion(int aidlVersion) {
     switch (aidlVersion) {
         case 1:
-            return nn::kVersionFeatureLevel5;
+            return nn::Version::ANDROID_S;
         case 2:
-            return nn::kVersionFeatureLevel6;
+            return nn::Version::FEATURE_LEVEL_6;
         default:
             return std::nullopt;
     }
 }
 
-constexpr auto kVersion = aidlVersionToCanonicalVersion(IDevice::version).value();
+const auto kVersion = aidlVersionToCanonicalVersion(IDevice::version).value();
 
 template <typename Type>
 nn::Result<void> validate(const Type& halObject) {
