@@ -30,7 +30,7 @@ namespace aidl::android::hardware::neuralnetworks::utils {
 
 constexpr auto kDefaultPriority = Priority::MEDIUM;
 
-inline std::optional<nn::Version> aidlVersionToCanonicalVersion(int aidlVersion) {
+constexpr std::optional<nn::Version> aidlVersionToCanonicalVersion(int aidlVersion) {
     switch (aidlVersion) {
         case 1:
             return nn::Version::ANDROID_S;
@@ -41,7 +41,7 @@ inline std::optional<nn::Version> aidlVersionToCanonicalVersion(int aidlVersion)
     }
 }
 
-const auto kVersion = aidlVersionToCanonicalVersion(IDevice::version).value();
+constexpr auto kVersion = aidlVersionToCanonicalVersion(IDevice::version).value();
 
 template <typename Type>
 nn::Result<void> validate(const Type& halObject) {
@@ -64,7 +64,7 @@ bool valid(const Type& halObject) {
 template <typename Type>
 nn::Result<void> compliantVersion(const Type& canonical) {
     const auto version = NN_TRY(nn::validate(canonical));
-    if (!nn::isCompliantVersion(version, kVersion)) {
+    if (version > kVersion) {
         return NN_ERROR() << "Insufficient version: " << version << " vs required " << kVersion;
     }
     return {};
