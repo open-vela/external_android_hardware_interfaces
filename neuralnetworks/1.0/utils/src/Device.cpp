@@ -99,7 +99,7 @@ const std::string& Device::getVersionString() const {
 }
 
 nn::Version Device::getFeatureLevel() const {
-    return kVersion;
+    return nn::Version::ANDROID_OC_MR1;
 }
 
 nn::DeviceType Device::getType() const {
