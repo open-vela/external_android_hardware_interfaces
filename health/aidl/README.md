@@ -80,7 +80,9 @@ If you [determined](#determine) that the example health AIDL HAL service works
 for your device, install it with
 
 ```mk
-PRODUCT_PACKAGES += android.hardware.health-service.example
+PRODUCT_PACKAGES += \
+    android.hardware.health-service.example \
+    android.hardware.health-service.example_recovery \
 ```
 
 Then, delete any existing `service` with `class charger` in your device-specific
@@ -156,15 +158,42 @@ If your device does not support off-line charging mode, or does not have a UI
 for charger (`ro.charger.no_ui=true`), skip the invocation of
 `ChargerModeMain()` in `main()`.
 
+### Build system changes
+
+Install both the platform and recovery variant of the service. For example:
+
+```mk
+PRODUCT_PACKAGES += \
+    android.hardware.health-service.cuttlefish \
+    android.hardware.health-service.cuttlefish_recovery \
+```
+
 ### SELinux rules
 
 Add device specific permissions to the domain where the health HAL
 process is executed, especially if a device-specific `libhealthd` is used
 and/or device-specific storage related APIs are implemented.
 
+Example (assuming that your health AIDL service runs in domain
+`hal_health_tuna`:
+
+```text
+type hal_health_tuna, domain;
+hal_server_domain(hal_health_tuna, hal_health)
+type hal_health_tuna_exec, exec_type, vendor_file_type, file_type;
+
+# allow hal_health_tuna ...;
+```
+
 If you did not define a separate domain, the domain is likely
 `hal_health_default`. The device-specific rules for it is likely at
 `device/<manufacturer>/<device>/sepolicy/vendor/hal_health_default.te`.
+In this case, the aforementioned SELinux rules and types has already been
+defined. You only need to add device-specific permissions.
+
+```text
+# allow hal_health_default ...;
+```
 
 ### Implementing charger {#charger}
 
@@ -289,5 +318,3 @@ permissions. Example (assuming that your health AIDL service runs in domain
 type hal_health_tuna, charger_type, domain;
 hal_server_domain(hal_health_default, hal_health)
 ```
-
-[comment: TODO(b/170338625): explain recovery]: #
