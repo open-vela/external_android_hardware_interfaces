@@ -468,20 +468,6 @@ oneway interface IRadioVoiceResponse {
 
     /**
      * @param info Response info struct containing response type, serial no. and error
-     * @param enable true for "vonr enabled" and false for "vonr disabled"
-     *
-     * Valid errors returned:
-     *   RadioError:NONE
-     *   RadioError:RADIO_NOT_AVAILABLE
-     *   RadioError:MODEM_ERR
-     *   RadioError:INTERNAL_ERR
-     *   RadioError:NO_MEMORY
-     *   RadioError:REQUEST_NOT_SUPPORTED
-     */
-    void isVoNrEnabledResponse(in RadioResponseInfo info, in boolean enable);
-
-    /**
-     * @param info Response info struct containing response type, serial no. and error
      *
      * Valid errors returned:
      *   RadioError:NONE
@@ -700,20 +686,6 @@ oneway interface IRadioVoiceResponse {
      *   RadioError:CANCELLED
      */
     void setTtyModeResponse(in RadioResponseInfo info);
-
-    /**
-     * @param info Response info struct containing response type, serial no. and error
-     *
-     * Valid errors returned:
-     *   RadioError:NONE
-     *   RadioError:RADIO_NOT_AVAILABLE
-     *   RadioError:INVALID_ARGUMENTS
-     *   RadioError:MODEM_ERR
-     *   RadioError:INTERNAL_ERR
-     *   RadioError:NO_MEMORY
-     *   RadioError:REQUEST_NOT_SUPPORTED
-     */
-    void setVoNrEnabledResponse(in RadioResponseInfo info);
 
     /**
      * @param info Response info struct containing response type, serial no. and error
