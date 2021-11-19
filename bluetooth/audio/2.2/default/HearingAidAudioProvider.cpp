@@ -66,7 +66,7 @@ bool HearingAidAudioProvider::isValid(const V2_1::SessionType& sessionType) {
 }
 
 Return<void> HearingAidAudioProvider::startSession(
-    const sp<V2_0::IBluetoothAudioPort>& hostIf,
+    const sp<IBluetoothAudioPort>& hostIf,
     const AudioConfiguration& audioConfig, startSession_cb _hidl_cb) {
   /**
    * Initialize the audio platform if audioConfiguration is supported.
