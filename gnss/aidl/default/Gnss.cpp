@@ -18,7 +18,9 @@
 
 #include "Gnss.h"
 #include <log/log.h>
+#include "GnssBatching.h"
 #include "GnssConfiguration.h"
+#include "GnssGeofence.h"
 #include "GnssMeasurementInterface.h"
 #include "GnssPsds.h"
 
@@ -85,6 +87,20 @@ ndk::ScopedAStatus Gnss::getExtensionGnssMeasurement(
     ALOGD("Gnss::getExtensionGnssMeasurement");
 
     *iGnssMeasurement = SharedRefBase::make<GnssMeasurementInterface>();
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Gnss::getExtensionGnssBatching(std::shared_ptr<IGnssBatching>* iGnssBatching) {
+    ALOGD("Gnss::getExtensionGnssBatching");
+
+    *iGnssBatching = SharedRefBase::make<GnssBatching>();
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Gnss::getExtensionGnssGeofence(std::shared_ptr<IGnssGeofence>* iGnssGeofence) {
+    ALOGD("Gnss::getExtensionGnssGeofence");
+
+    *iGnssGeofence = SharedRefBase::make<GnssGeofence>();
     return ndk::ScopedAStatus::ok();
 }
 
