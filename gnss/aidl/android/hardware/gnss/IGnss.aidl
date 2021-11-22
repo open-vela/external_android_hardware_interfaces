@@ -16,10 +16,8 @@
 
 package android.hardware.gnss;
 
-import android.hardware.gnss.IGnssBatching;
 import android.hardware.gnss.IGnssCallback;
 import android.hardware.gnss.IGnssConfiguration;
-import android.hardware.gnss.IGnssGeofence;
 import android.hardware.gnss.IGnssMeasurementInterface;
 import android.hardware.gnss.IGnssPowerIndication;
 import android.hardware.gnss.IGnssPsds;
@@ -29,8 +27,9 @@ import android.hardware.gnss.IGnssPsds;
  */
 @VintfStability
 interface IGnss {
+
     /**
-     * All GNSS binder calls may return a ServiceSpecificException with the following error
+     * All GNSS Binder calls may return a ServiceSpecificException with the following error
      * codes.
      */
     const int ERROR_INVALID_ARGUMENT = 1;
@@ -74,9 +73,11 @@ interface IGnss {
     /**
      * This method returns the IGnssPsds interface.
      *
+     * This method must return non-null.
+     *
      * @return Handle to the IGnssPsds interface.
      */
-    @nullable IGnssPsds getExtensionPsds();
+    IGnssPsds getExtensionPsds();
 
     /**
      * This method returns the IGnssConfiguration interface.
@@ -88,7 +89,7 @@ interface IGnss {
     IGnssConfiguration getExtensionGnssConfiguration();
 
     /**
-     * This method returns the IGnssMeasurementInterface interface.
+     * This methods returns the IGnssMeasurementInterface interface.
      *
      * This method must return non-null.
      *
@@ -104,18 +105,4 @@ interface IGnss {
      * @return Handle to the IGnssPowerIndication interface.
      */
     IGnssPowerIndication getExtensionGnssPowerIndication();
-
-    /**
-     * This method returns the IGnssBatching interface.
-     *
-     * @return Handle to the IGnssBatching interface.
-     */
-    @nullable IGnssBatching getExtensionGnssBatching();
-
-    /**
-     * This method returns the IGnssGeofence interface.
-     *
-     * @return Handle to the IGnssGeofence interface.
-     */
-    @nullable IGnssGeofence getExtensionGnssGeofence();
 }
