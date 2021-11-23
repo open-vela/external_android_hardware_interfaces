@@ -1420,6 +1420,7 @@ TEST_P(VideoDecHidlTest, FlushTest) {
                                                     true));
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(VideoDecHidlTest);
 INSTANTIATE_TEST_SUITE_P(PerInstance, VideoDecHidlTest, testing::ValuesIn(kTestParameters),
                          android::hardware::PrintInstanceTupleNameToString<>);
 
