@@ -32,7 +32,7 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.automotive.vehicle;
-@JavaDerive(equals=true, toString=true) @VintfStability
+@VintfStability
 parcelable VehiclePropConfig {
   int prop;
   android.hardware.automotive.vehicle.VehiclePropertyAccess access = android.hardware.automotive.vehicle.VehiclePropertyAccess.NONE;
