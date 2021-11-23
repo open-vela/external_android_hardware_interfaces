@@ -20,7 +20,6 @@ package android.hardware.automotive.vehicle;
  * Encapsulates information about subscription to vehicle property events.
  */
 @VintfStability
-@JavaDerive(equals=true, toString=true)
 parcelable SubscribeOptions {
     /** Property to subscribe */
     int propId;

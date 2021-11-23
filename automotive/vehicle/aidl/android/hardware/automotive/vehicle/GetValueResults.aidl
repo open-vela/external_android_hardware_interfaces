@@ -20,7 +20,6 @@ import android.hardware.automotive.vehicle.GetValueResult;
 import android.os.ParcelFileDescriptor;
 
 @VintfStability
-@JavaDerive(equals=true, toString=true)
 parcelable GetValueResults {
     // The list of responses if they fit the binder memory limitation.
     GetValueResult[] payloads;

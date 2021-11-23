@@ -32,7 +32,7 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.automotive.vehicle;
-@JavaDerive(equals=true, toString=true) @VintfStability
+@VintfStability
 parcelable GetValueRequests {
   android.hardware.automotive.vehicle.GetValueRequest[] payloads;
   @nullable ParcelFileDescriptor sharedMemoryFd;

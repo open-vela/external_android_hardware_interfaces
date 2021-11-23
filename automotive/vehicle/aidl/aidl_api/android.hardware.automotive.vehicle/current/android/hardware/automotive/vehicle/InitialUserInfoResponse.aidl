@@ -32,7 +32,7 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.automotive.vehicle;
-@JavaDerive(equals=true, toString=true) @VintfStability
+@VintfStability
 parcelable InitialUserInfoResponse {
   int requestId;
   android.hardware.automotive.vehicle.InitialUserInfoResponseAction action = android.hardware.automotive.vehicle.InitialUserInfoResponseAction.DEFAULT;

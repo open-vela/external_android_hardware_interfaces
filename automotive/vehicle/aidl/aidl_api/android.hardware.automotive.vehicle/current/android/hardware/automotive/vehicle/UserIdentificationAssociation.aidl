@@ -32,7 +32,7 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.automotive.vehicle;
-@JavaDerive(equals=true, toString=true) @VintfStability
+@VintfStability
 parcelable UserIdentificationAssociation {
   android.hardware.automotive.vehicle.UserIdentificationAssociationType type = android.hardware.automotive.vehicle.UserIdentificationAssociationType.INVALID;
   android.hardware.automotive.vehicle.UserIdentificationAssociationValue value = android.hardware.automotive.vehicle.UserIdentificationAssociationValue.UNKNOWN;
