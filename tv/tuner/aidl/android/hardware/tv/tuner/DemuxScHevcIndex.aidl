@@ -23,8 +23,6 @@ package android.hardware.tv.tuner;
 @VintfStability
 @Backing(type="int")
 enum DemuxScHevcIndex {
-    UNDEFINED = 0,
-
     SPS = 1 << 0,
 
     AUD = 1 << 1,
