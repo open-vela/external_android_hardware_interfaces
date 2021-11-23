@@ -40,4 +40,9 @@ enum DemuxScIndex {
   P_FRAME = 2,
   B_FRAME = 4,
   SEQUENCE = 8,
+  I_SLICE = 16,
+  P_SLICE = 32,
+  B_SLICE = 64,
+  SI_SLICE = 128,
+  SP_SLICE = 256,
 }

@@ -28,8 +28,7 @@ parcelable DemuxFilterSectionSettingsConditionTableInfo {
     int tableId;
 
     /**
-     * Optional version number for Section Filter. It should be ignored if INVALID_TABINFO_VERSION
-     * is set.
+     * Version number for Section Filter
      */
     int version;
 }

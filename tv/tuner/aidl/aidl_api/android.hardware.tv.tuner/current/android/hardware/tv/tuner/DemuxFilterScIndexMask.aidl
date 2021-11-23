@@ -36,6 +36,5 @@ package android.hardware.tv.tuner;
 @VintfStability
 union DemuxFilterScIndexMask {
   int scIndex;
-  int scAvc;
   int scHevc;
 }
