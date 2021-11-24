@@ -13,16 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define LOG_TAG "GnssNavMsgCallback"
+#pragma once
 
-#include "GnssNavigationMessageCallback.h"
-#include <log/log.h>
+#include "RadioIndication.h"
+#include "RadioResponse.h"
 
-android::binder::Status GnssNavigationMessageCallback::gnssNavigationMessageCb(
-        const android::hardware::gnss::IGnssNavigationMessageCallback::GnssNavigationMessage& msg) {
-    ALOGD("gnssNavigationMessageCb. svid=%d, type=%d, status=%d, msgId=%d, subMsgId=%d, "
-          "data.size=%d",
-          msg.svid, (int)msg.type, (int)msg.status, msg.messageId, msg.submessageId,
-          (int)msg.data.size());
-    return android::binder::Status::ok();
-}
+#include <android/hardware/radio/1.6/IRadio.h>
+
+namespace android::hardware::radio::compat {
+
+class RadioCompatBase {
+  protected:
+    sp<V1_5::IRadio> mHal1_5;
+    sp<V1_6::IRadio> mHal1_6;
+
+    sp<RadioResponse> mRadioResponse;
+    sp<RadioIndication> mRadioIndication;
+
+    V1_6::IRadioResponse& respond();
+
+  public:
+    RadioCompatBase(sp<V1_5::IRadio> hidlHal, sp<RadioResponse> radioResponse,
+                    sp<RadioIndication> radioIndication);
+};
+
+}  // namespace android::hardware::radio::compat
