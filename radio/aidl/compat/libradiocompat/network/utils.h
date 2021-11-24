@@ -13,19 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #pragma once
 
-#include <android/hardware/gnss/BnGnssNavigationMessageCallback.h>
+#include <android/hardware/radio/1.4/types.h>
 
-/** Implementation for IGnssNavigationMessageCallback. */
-class GnssNavigationMessageCallback
-    : public android::hardware::gnss::BnGnssNavigationMessageCallback {
-  public:
-    GnssNavigationMessageCallback() {}
-    ~GnssNavigationMessageCallback() {}
+namespace android::hardware::radio::compat {
 
-    android::binder::Status gnssNavigationMessageCb(
-            const android::hardware::gnss::IGnssNavigationMessageCallback::GnssNavigationMessage&
-                    message) override;
-};
+V1_0::PreferredNetworkType getNetworkTypeFromRaf(hidl_bitfield<V1_4::RadioAccessFamily> raf);
+hidl_bitfield<V1_4::RadioAccessFamily> getRafFromNetworkType(V1_0::PreferredNetworkType type);
+
+}  // namespace android::hardware::radio::compat
