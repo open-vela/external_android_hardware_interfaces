@@ -31,23 +31,9 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.dumpstate;
+package android.hardware.gnss;
 @VintfStability
-interface IDumpstateDevice {
-  void dumpstateBoard(in ParcelFileDescriptor[] fd, in android.hardware.dumpstate.IDumpstateDevice.DumpstateMode mode, in long timeoutMillis);
-  boolean getVerboseLoggingEnabled();
-  void setVerboseLoggingEnabled(in boolean enable);
-  const int ERROR_UNSUPPORTED_MODE = 1;
-  const int ERROR_DEVICE_LOGGING_NOT_ENABLED = 2;
-  @Backing(type="int") @VintfStability
-  enum DumpstateMode {
-    FULL = 0,
-    INTERACTIVE = 1,
-    REMOTE = 2,
-    WEAR = 3,
-    CONNECTIVITY = 4,
-    WIFI = 5,
-    DEFAULT = 6,
-    PROTO = 7,
-  }
+interface IGnssNavigationMessageInterface {
+  void setCallback(in android.hardware.gnss.IGnssNavigationMessageCallback callback);
+  void close();
 }
