@@ -152,13 +152,17 @@ class DeviceTest : public ::testing::TestWithParam<nn::Version> {
 };
 
 std::string printDeviceTest(const testing::TestParamInfo<nn::Version>& info) {
-    switch (info.param) {
-        case nn::Version::ANDROID_S:
+    const nn::Version version = info.param;
+    CHECK(!version.runtimeOnlyFeatures);
+    switch (version.level) {
+        case nn::Version::Level::FEATURE_LEVEL_5:
             return "v1";
-        case nn::Version::FEATURE_LEVEL_6:
+        case nn::Version::Level::FEATURE_LEVEL_6:
             return "v2";
+        case nn::Version::Level::FEATURE_LEVEL_7:
+            return "v3";
         default:
-            LOG(FATAL) << "Invalid AIDL version: " << info.param;
+            LOG(FATAL) << "Invalid AIDL version: " << version;
             return "invalid";
     }
 }
@@ -891,7 +895,8 @@ TEST_P(DeviceTest, allocateDeadObject) {
 }
 
 INSTANTIATE_TEST_SUITE_P(TestDevice, DeviceTest,
-                         ::testing::Values(nn::Version::ANDROID_S, nn::Version::FEATURE_LEVEL_6),
+                         ::testing::Values(nn::kVersionFeatureLevel5, nn::kVersionFeatureLevel6,
+                                           nn::kVersionFeatureLevel7),
                          printDeviceTest);
 
 }  // namespace aidl::android::hardware::neuralnetworks::utils
