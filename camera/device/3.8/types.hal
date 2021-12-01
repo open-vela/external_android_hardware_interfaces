@@ -35,9 +35,8 @@ struct ShutterMsg {
 
     /**
      * Timestamp for the capture readout. This must be in the same time domain
-     * as v3_2.timestamp, and for a rolling shutter sensor, the value must be
-     * v3_2.timestamp + exposureTime + t_crop_top where t_crop_top is the exposure time
-     * skew of the cropped lines on the top.
+     * as v3_2.timestamp, and the value must be v3_2.timestamp + exposureTime
+     * for a rolling shutter sensor.
      */
     uint64_t readoutTimestamp;
 };
