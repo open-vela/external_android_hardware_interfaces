@@ -17,15 +17,11 @@
 #define LOG_TAG "GnssHalTestCases"
 
 #include <android/hardware/gnss/IGnss.h>
-#include <android/hardware/gnss/IGnssBatching.h>
 #include <android/hardware/gnss/IGnssMeasurementCallback.h>
 #include <android/hardware/gnss/IGnssMeasurementInterface.h>
 #include <android/hardware/gnss/IGnssPowerIndication.h>
 #include <android/hardware/gnss/IGnssPsds.h>
-#include "GnssBatchingCallback.h"
-#include "GnssGeofenceCallback.h"
 #include "GnssMeasurementCallbackAidl.h"
-#include "GnssNavigationMessageCallback.h"
 #include "GnssPowerIndicationCallback.h"
 #include "gnss_hal_test.h"
 
@@ -37,14 +33,9 @@ using android::hardware::gnss::GnssData;
 using android::hardware::gnss::GnssMeasurement;
 using android::hardware::gnss::GnssPowerStats;
 using android::hardware::gnss::IGnss;
-using android::hardware::gnss::IGnssBatching;
-using android::hardware::gnss::IGnssBatchingCallback;
 using android::hardware::gnss::IGnssConfiguration;
-using android::hardware::gnss::IGnssGeofence;
-using android::hardware::gnss::IGnssGeofenceCallback;
 using android::hardware::gnss::IGnssMeasurementCallback;
 using android::hardware::gnss::IGnssMeasurementInterface;
-using android::hardware::gnss::IGnssNavigationMessageInterface;
 using android::hardware::gnss::IGnssPowerIndication;
 using android::hardware::gnss::IGnssPsds;
 using android::hardware::gnss::PsdsType;
@@ -260,6 +251,7 @@ TEST_P(GnssHalTest, TestCorrelationVector) {
                 for (const auto& correlationVector : measurement.correlationVectors) {
                     ASSERT_GE(correlationVector.frequencyOffsetMps, 0);
                     ASSERT_GT(correlationVector.samplingWidthM, 0);
+                    ASSERT_GE(correlationVector.samplingStartM, 0);
                     ASSERT_TRUE(correlationVector.magnitude.size() > 0);
                     for (const auto& magnitude : correlationVector.magnitude) {
                         ASSERT_TRUE(magnitude >= -32768 && magnitude <= 32767);
@@ -757,39 +749,4 @@ TEST_P(GnssHalTest, BlocklistConstellationLocationOn) {
     sources.resize(0);
     status = gnss_configuration_hal->setBlocklist(sources);
     ASSERT_TRUE(status.isOk());
-}
-
-/*
- * TestAllExtensions.
- */
-TEST_P(GnssHalTest, TestAllExtensions) {
-    sp<IGnssBatching> iGnssBatching;
-    auto status = aidl_gnss_hal_->getExtensionGnssBatching(&iGnssBatching);
-    if (status.isOk() && iGnssBatching != nullptr) {
-        auto gnssBatchingCallback = sp<GnssBatchingCallback>::make();
-        status = iGnssBatching->init(gnssBatchingCallback);
-        ASSERT_TRUE(status.isOk());
-
-        status = iGnssBatching->cleanup();
-        ASSERT_TRUE(status.isOk());
-    }
-
-    sp<IGnssGeofence> iGnssGeofence;
-    status = aidl_gnss_hal_->getExtensionGnssGeofence(&iGnssGeofence);
-    if (status.isOk() && iGnssGeofence != nullptr) {
-        auto gnssGeofenceCallback = sp<GnssGeofenceCallback>::make();
-        status = iGnssGeofence->setCallback(gnssGeofenceCallback);
-        ASSERT_TRUE(status.isOk());
-    }
-
-    sp<IGnssNavigationMessageInterface> iGnssNavMsgIface;
-    status = aidl_gnss_hal_->getExtensionGnssNavigationMessage(&iGnssNavMsgIface);
-    if (status.isOk() && iGnssNavMsgIface != nullptr) {
-        auto gnssNavMsgCallback = sp<GnssNavigationMessageCallback>::make();
-        status = iGnssNavMsgIface->setCallback(gnssNavMsgCallback);
-        ASSERT_TRUE(status.isOk());
-
-        status = iGnssNavMsgIface->close();
-        ASSERT_TRUE(status.isOk());
-    }
 }
