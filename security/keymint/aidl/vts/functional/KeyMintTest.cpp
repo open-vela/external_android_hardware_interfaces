@@ -69,6 +69,9 @@ namespace aidl::android::hardware::security::keymint::test {
 
 namespace {
 
+// Whether to check that BOOT_PATCHLEVEL is populated.
+bool check_boot_pl = true;
+
 // The maximum number of times we'll attempt to verify that corruption
 // of an encrypted blob results in an error. Retries are necessary as there
 // is a small (roughly 1/256) chance that corrupting ciphertext still results
@@ -527,12 +530,17 @@ class NewKeyGenerationTest : public KeyMintAidlTestBase {
         EXPECT_TRUE(os_pl);
         EXPECT_EQ(*os_pl, os_patch_level());
 
-        // Should include vendor and boot patchlevels.
+        // Should include vendor patchlevel.
         auto vendor_pl = auths.GetTagValue(TAG_VENDOR_PATCHLEVEL);
         EXPECT_TRUE(vendor_pl);
         EXPECT_EQ(*vendor_pl, vendor_patch_level());
-        auto boot_pl = auths.GetTagValue(TAG_BOOT_PATCHLEVEL);
-        EXPECT_TRUE(boot_pl);
+
+        // Should include boot patchlevel (but there are some test scenarios where this is not
+        // possible).
+        if (check_boot_pl) {
+            auto boot_pl = auths.GetTagValue(TAG_BOOT_PATCHLEVEL);
+            EXPECT_TRUE(boot_pl);
+        }
 
         return auths;
     }
@@ -4855,49 +4863,6 @@ TEST_P(EncryptionOperationsTest, AesCbcRoundTripSuccess) {
 }
 
 /*
- * EncryptionOperationsTest.AesCbcZeroInputSuccessb
- *
- * Verifies that keymaster generates correct output on zero-input with
- * NonePadding mode
- */
-TEST_P(EncryptionOperationsTest, AesCbcZeroInputSuccess) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                 .AesEncryptionKey(128)
-                                                 .BlockMode(BlockMode::CBC)
-                                                 .Padding(PaddingMode::NONE, PaddingMode::PKCS7)));
-
-    // Zero input message
-    string message = "";
-    for (auto padding : {PaddingMode::NONE, PaddingMode::PKCS7}) {
-        auto params = AuthorizationSetBuilder().BlockMode(BlockMode::CBC).Padding(padding);
-        AuthorizationSet out_params;
-        string ciphertext1 = EncryptMessage(message, params, &out_params);
-        vector<uint8_t> iv1 = CopyIv(out_params);
-        if (padding == PaddingMode::NONE)
-            EXPECT_EQ(message.size(), ciphertext1.size()) << "PaddingMode: " << padding;
-        else
-            EXPECT_EQ(message.size(), ciphertext1.size() - 16) << "PaddingMode: " << padding;
-
-        out_params.Clear();
-
-        string ciphertext2 = EncryptMessage(message, params, &out_params);
-        vector<uint8_t> iv2 = CopyIv(out_params);
-        if (padding == PaddingMode::NONE)
-            EXPECT_EQ(message.size(), ciphertext2.size()) << "PaddingMode: " << padding;
-        else
-            EXPECT_EQ(message.size(), ciphertext2.size() - 16) << "PaddingMode: " << padding;
-
-        // IVs should be random
-        EXPECT_NE(iv1, iv2) << "PaddingMode: " << padding;
-
-        params.push_back(TAG_NONCE, iv1);
-        string plaintext = DecryptMessage(ciphertext1, params);
-        EXPECT_EQ(message, plaintext) << "PaddingMode: " << padding;
-    }
-}
-
-/*
  * EncryptionOperationsTest.AesCallerNonce
  *
  * Verifies that AES caller-provided nonces work correctly.
@@ -6538,7 +6503,7 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
     size_t i;
 
     for (i = 0; i < max_operations; i++) {
-        result = Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params, op_handles[i]);
+        result = Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, op_handles[i]);
         if (ErrorCode::OK != result) {
             break;
         }
@@ -6546,12 +6511,12 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
     EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS, result);
     // Try again just in case there's a weird overflow bug
     EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
-              Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params));
+              Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params));
     for (size_t j = 0; j < i; j++) {
         EXPECT_EQ(ErrorCode::OK, Abort(op_handles[j]))
                 << "Aboort failed for i = " << j << std::endl;
     }
-    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params));
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params));
     AbortIfNeeded();
 }
 
@@ -6913,6 +6878,12 @@ int main(int argc, char** argv) {
                         dump_Attestations = true;
             } else {
                 std::cout << "NOT dumping attestations" << std::endl;
+            }
+            if (std::string(argv[i]) == "--skip_boot_pl_check") {
+                // Allow checks of BOOT_PATCHLEVEL to be disabled, so that the tests can
+                // be run in emulated environments that don't have the normal bootloader
+                // interactions.
+                aidl::android::hardware::security::keymint::test::check_boot_pl = false;
             }
         }
     }
