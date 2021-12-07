@@ -106,10 +106,9 @@ class ThermalHidlTest : public testing::TestWithParam<std::string> {
 // Note: a real thermal throttling event from the Thermal HAL could be
 // inadvertently received here.
 TEST_P(ThermalHidlTest, NotifyThrottlingTest) {
-    sp<ThermalCallback> thermalCallback = new (std::nothrow) ThermalCallback();
-    auto ret = thermalCallback->notifyThrottling(kThrottleTemp);
+    auto ret = mThermalCallback->notifyThrottling(kThrottleTemp);
     ASSERT_TRUE(ret.isOk());
-    auto res = thermalCallback->WaitForCallback(kCallbackNameNotifyThrottling);
+    auto res = mThermalCallback->WaitForCallback(kCallbackNameNotifyThrottling);
     EXPECT_TRUE(res.no_timeout);
     ASSERT_TRUE(res.args);
     EXPECT_EQ(kThrottleTemp, res.args->temperature);
@@ -258,7 +257,6 @@ TEST_P(ThermalHidlTest, CoolingDeviceTest) {
     }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(ThermalHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, ThermalHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IThermal::descriptor)),
