@@ -21,6 +21,7 @@
 #pragma clang diagnostic ignored "-Wconversion"
 
 #include <GraphicsComposerCallback.h>
+#include <TestCommandReader.h>
 #include <aidl/android/hardware/graphics/composer3/IComposerClient.h>
 #include <android-base/unique_fd.h>
 #include <android/hardware/graphics/composer3/command-buffer.h>
@@ -53,7 +54,7 @@ class TestRenderEngine;
 class TestLayer {
   public:
     TestLayer(const std::shared_ptr<IComposerClient>& client, int64_t display)
-        : mDisplay(display), mComposerClient(client) {
+        : mComposerClient(client) {
         client->createLayer(display, kBufferSlotCount, &mLayer);
     }
 
@@ -61,7 +62,7 @@ class TestLayer {
     // call destroyLayers here
     virtual ~TestLayer(){};
 
-    virtual void write(CommandWriterBase& writer);
+    virtual void write(const std::shared_ptr<CommandWriterBase>& writer);
     virtual LayerSettings toRenderEngineLayerSettings();
 
     void setDisplayFrame(Rect frame) { mDisplayFrame = frame; }
@@ -82,10 +83,7 @@ class TestLayer {
 
     float getAlpha() const { return mAlpha; }
 
-    int64_t getLayer() const { return mLayer; }
-
   protected:
-    int64_t mDisplay;
     int64_t mLayer;
     Rect mDisplayFrame = {0, 0, 0, 0};
     std::vector<Rect> mSurfaceDamage;
@@ -105,7 +103,7 @@ class TestColorLayer : public TestLayer {
     TestColorLayer(const std::shared_ptr<IComposerClient>& client, int64_t display)
         : TestLayer{client, display} {}
 
-    void write(CommandWriterBase& writer) override;
+    void write(const std::shared_ptr<CommandWriterBase>& writer) override;
 
     LayerSettings toRenderEngineLayerSettings() override;
 
@@ -123,7 +121,7 @@ class TestBufferLayer : public TestLayer {
                     uint32_t height, common::PixelFormat format,
                     Composition composition = Composition::DEVICE);
 
-    void write(CommandWriterBase& writer) override;
+    void write(const std::shared_ptr<CommandWriterBase>& writer) override;
 
     LayerSettings toRenderEngineLayerSettings() override;
 
@@ -131,9 +129,9 @@ class TestBufferLayer : public TestLayer {
 
     void setBuffer(std::vector<Color> colors);
 
-    void setDataspace(Dataspace dataspace, CommandWriterBase& writer);
+    void setDataspace(Dataspace dataspace, const std::shared_ptr<CommandWriterBase>& writer);
 
-    void setToClientComposition(CommandWriterBase& writer);
+    void setToClientComposition(const std::shared_ptr<CommandWriterBase>& writer);
 
     uint32_t getWidth() const { return mWidth; }
 

@@ -14,14 +14,23 @@
  * limitations under the License.
  */
 
-package android.hardware.graphics.composer3.command;
+package android.hardware.graphics.composer3;
 
+/**
+ * Output parameters for IComposerClient.executeCommands
+ */
 @VintfStability
-parcelable ZOrder {
+parcelable ExecuteCommandsStatus {
     /**
-     * The desired Z order (height) of the given layer. A layer with a
-     * greater Z value occludes a layer with a lesser Z value.
-     * @see LayerCommand.z;
+     * Indicates whether the output command message queue has changed.
      */
-    int z;
+    boolean queueChanged;
+    /**
+     * Indicates whether the output command message queue has changed.
+     */
+    int length;
+    /**
+     * An array of handles referenced by the output commands.
+     */
+    android.hardware.common.NativeHandle[] handles;
 }

@@ -31,14 +31,12 @@ aidl_interface {
         enabled: true,
         support_system_process: true,
     },
-    srcs: [
-        "android/hardware/graphics/composer3/*.aidl",
-        "android/hardware/graphics/composer3/command/*.aidl",
-    ],
+    srcs: ["android/hardware/graphics/composer3/*.aidl"],
     stability: "vintf",
     imports: [
         "android.hardware.graphics.common-V3",
         "android.hardware.common-V2",
+        "android.hardware.common.fmq-V1",
     ],
     backend: {
         cpp: {
@@ -75,7 +73,6 @@ cc_library_headers {
     vendor_available: true,
     shared_libs: [
         "android.hardware.graphics.composer3-V1-ndk",
-        "android.hardware.common-V2-ndk",
         "libbase",
         "libfmq",
         "libsync",
