@@ -81,12 +81,6 @@ bool operator==(const KeyCharacteristics& a, const KeyCharacteristics& b) {
 namespace test {
 namespace {
 
-// The maximum number of times we'll attempt to verify that corruption
-// of an encrypted blob results in an error. Retries are necessary as there
-// is a small (roughly 1/256) chance that corrupting ciphertext still results
-// in valid PKCS7 padding.
-constexpr size_t kMaxPaddingCorruptionRetries = 8;
-
 template <TagType tag_type, Tag tag, typename ValueT>
 bool contains(hidl_vec<KeyParameter>& set, TypedTag<tag_type, tag> ttag, ValueT expected_value) {
     size_t count = std::count_if(set.begin(), set.end(), [&](const KeyParameter& param) {
@@ -946,7 +940,13 @@ TEST_P(NewKeyGenerationTest, HmacDigestNone) {
  * UNSUPPORTED_KEY_SIZE.
  */
 TEST_P(NewKeyGenerationTest, AesInvalidKeySize) {
+    int32_t firstApiLevel = property_get_int32("ro.board.first_api_level", 0);
     for (auto key_size : InvalidKeySizes(Algorithm::AES)) {
+        // The HAL specification was only clarified to exclude AES-192 for StrongBox in Android S,
+        // so allow devices that launched on earlier implementations to skip this check.
+        if (key_size == 192 && SecLevel() == SecurityLevel::STRONGBOX && firstApiLevel < 31) {
+            continue;
+        }
         ASSERT_EQ(ErrorCode::UNSUPPORTED_KEY_SIZE,
                   GenerateKey(AuthorizationSetBuilder()
                                       .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -2855,22 +2855,11 @@ TEST_P(EncryptionOperationsTest, AesEcbPkcs7PaddingCorrupted) {
     string ciphertext = EncryptMessage(message, params);
     EXPECT_EQ(16U, ciphertext.size());
     EXPECT_NE(ciphertext, message);
+    ++ciphertext[ciphertext.size() / 2];
 
-    for (size_t i = 0; i < kMaxPaddingCorruptionRetries; ++i) {
-        ++ciphertext[ciphertext.size() / 2];
-
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, params));
-        string plaintext;
-        ErrorCode error = Finish(message, &plaintext);
-        if (error == ErrorCode::INVALID_INPUT_LENGTH) {
-            // This is the expected error, we can exit the test now.
-            return;
-        } else {
-            // Very small chance we got valid decryption, so try again.
-            ASSERT_EQ(error, ErrorCode::OK);
-        }
-    }
-    FAIL() << "Corrupt ciphertext should have failed to decrypt by now.";
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, params));
+    string plaintext;
+    EXPECT_EQ(ErrorCode::INVALID_INPUT_LENGTH, Finish(message, &plaintext));
 }
 
 HidlBuf CopyIv(const AuthorizationSet& set) {
@@ -3893,30 +3882,17 @@ TEST_P(EncryptionOperationsTest, TripleDesEcbPkcs7PaddingCorrupted) {
     string ciphertext = EncryptMessage(message, BlockMode::ECB, PaddingMode::PKCS7);
     EXPECT_EQ(8U, ciphertext.size());
     EXPECT_NE(ciphertext, message);
+    ++ciphertext[ciphertext.size() / 2];
 
     AuthorizationSetBuilder begin_params;
     begin_params.push_back(TAG_BLOCK_MODE, BlockMode::ECB);
     begin_params.push_back(TAG_PADDING, PaddingMode::PKCS7);
-
-    for (size_t i = 0; i < kMaxPaddingCorruptionRetries; ++i) {
-        ++ciphertext[ciphertext.size() / 2];
-
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
-        string plaintext;
-
-        size_t input_consumed;
-        EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext, &input_consumed));
-        EXPECT_EQ(ciphertext.size(), input_consumed);
-        ErrorCode error = Finish(&plaintext);
-        if (error == ErrorCode::INVALID_ARGUMENT) {
-            // This is the expected error, we can exit the test now.
-            return;
-        } else {
-            // Very small chance we got valid decryption, so try again.
-            ASSERT_EQ(error, ErrorCode::OK);
-        }
-    }
-    FAIL() << "Corrupt ciphertext should have failed to decrypt by now.";
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
+    string plaintext;
+    size_t input_consumed;
+    EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext, &input_consumed));
+    EXPECT_EQ(ciphertext.size(), input_consumed);
+    EXPECT_EQ(ErrorCode::INVALID_ARGUMENT, Finish(&plaintext));
 }
 
 struct TripleDesTestVector {
@@ -4217,28 +4193,18 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcPkcs7PaddingCorrupted) {
     string ciphertext = EncryptMessage(message, BlockMode::CBC, PaddingMode::PKCS7, &iv);
     EXPECT_EQ(8U, ciphertext.size());
     EXPECT_NE(ciphertext, message);
+    ++ciphertext[ciphertext.size() / 2];
 
     auto begin_params = AuthorizationSetBuilder()
                             .BlockMode(BlockMode::CBC)
                             .Padding(PaddingMode::PKCS7)
                             .Authorization(TAG_NONCE, iv);
-    for (size_t i = 0; i < kMaxPaddingCorruptionRetries; ++i) {
-        ++ciphertext[ciphertext.size() / 2];
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
-        string plaintext;
-        size_t input_consumed;
-        EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext, &input_consumed));
-        EXPECT_EQ(ciphertext.size(), input_consumed);
-        ErrorCode error = Finish(&plaintext);
-        if (error == ErrorCode::INVALID_ARGUMENT) {
-            // This is the expected error, we can exit the test now.
-            return;
-        } else {
-            // Very small chance we got valid decryption, so try again.
-            ASSERT_EQ(error, ErrorCode::OK);
-        }
-    }
-    FAIL() << "Corrupt ciphertext should have failed to decrypt by now.";
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
+    string plaintext;
+    size_t input_consumed;
+    EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext, &input_consumed));
+    EXPECT_EQ(ciphertext.size(), input_consumed);
+    EXPECT_EQ(ErrorCode::INVALID_ARGUMENT, Finish(&plaintext));
 }
 
 /*
