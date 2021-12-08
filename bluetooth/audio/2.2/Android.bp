@@ -14,7 +14,6 @@ hidl_interface {
     root: "android.hardware",
     srcs: [
         "types.hal",
-        "IBluetoothAudioPort.hal",
         "IBluetoothAudioProvider.hal",
         "IBluetoothAudioProvidersFactory.hal",
     ],
