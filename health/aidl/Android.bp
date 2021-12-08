@@ -25,7 +25,6 @@ aidl_interface {
     name: "android.hardware.health",
     vendor_available: true,
     recovery_available: true,
-    host_supported: true,
     srcs: ["android/hardware/health/*.aidl"],
     stability: "vintf",
     backend: {
@@ -49,7 +48,6 @@ cc_library {
     name: "android.hardware.health-translate-ndk",
     vendor_available: true,
     recovery_available: true,
-    host_supported: true,
     srcs: ["android/hardware/health/translate-ndk.cpp"],
     shared_libs: [
         "libbinder_ndk",
@@ -62,9 +60,6 @@ cc_library {
     export_shared_lib_headers: [
         "android.hardware.health@2.0",
         "android.hardware.health@2.1",
-    ],
-    defaults: [
-        "libbinder_ndk_host_user",
     ],
 }
 
