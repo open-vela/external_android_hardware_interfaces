@@ -583,7 +583,6 @@ TEST_P(AttestKeyTest, AllEcCurves) {
                               attest_key, &attested_key_blob, &attested_key_characteristics,
                               &attested_key_cert_chain));
 
-        ASSERT_GT(attested_key_cert_chain.size(), 0);
         CheckedDeleteKey(&attested_key_blob);
 
         AuthorizationSet hw_enforced = HwEnforcedAuthorizations(attested_key_characteristics);
@@ -613,7 +612,6 @@ TEST_P(AttestKeyTest, AllEcCurves) {
                               attest_key, &attested_key_blob, &attested_key_characteristics,
                               &attested_key_cert_chain));
 
-        ASSERT_GT(attested_key_cert_chain.size(), 0);
         CheckedDeleteKey(&attested_key_blob);
         CheckedDeleteKey(&attest_key.keyBlob);
 
