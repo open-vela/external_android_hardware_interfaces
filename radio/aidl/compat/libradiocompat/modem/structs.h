@@ -16,7 +16,6 @@
 #pragma once
 
 #include <aidl/android/hardware/radio/modem/ActivityStatsInfo.h>
-#include <aidl/android/hardware/radio/modem/ActivityStatsTechSpecificInfo.h>
 #include <aidl/android/hardware/radio/modem/HardwareConfig.h>
 #include <aidl/android/hardware/radio/modem/HardwareConfigModem.h>
 #include <aidl/android/hardware/radio/modem/HardwareConfigSim.h>
