@@ -16,12 +16,18 @@
 
 #define LOG_TAG "GnssHalTestCases"
 
+#include <android/hardware/gnss/IAGnss.h>
 #include <android/hardware/gnss/IGnss.h>
+#include <android/hardware/gnss/IGnssBatching.h>
 #include <android/hardware/gnss/IGnssMeasurementCallback.h>
 #include <android/hardware/gnss/IGnssMeasurementInterface.h>
 #include <android/hardware/gnss/IGnssPowerIndication.h>
 #include <android/hardware/gnss/IGnssPsds.h>
+#include "AGnssCallbackAidl.h"
+#include "GnssBatchingCallback.h"
+#include "GnssGeofenceCallback.h"
 #include "GnssMeasurementCallbackAidl.h"
+#include "GnssNavigationMessageCallback.h"
 #include "GnssPowerIndicationCallback.h"
 #include "gnss_hal_test.h"
 
@@ -32,10 +38,16 @@ using android::hardware::gnss::GnssClock;
 using android::hardware::gnss::GnssData;
 using android::hardware::gnss::GnssMeasurement;
 using android::hardware::gnss::GnssPowerStats;
+using android::hardware::gnss::IAGnss;
 using android::hardware::gnss::IGnss;
+using android::hardware::gnss::IGnssBatching;
+using android::hardware::gnss::IGnssBatchingCallback;
 using android::hardware::gnss::IGnssConfiguration;
+using android::hardware::gnss::IGnssGeofence;
+using android::hardware::gnss::IGnssGeofenceCallback;
 using android::hardware::gnss::IGnssMeasurementCallback;
 using android::hardware::gnss::IGnssMeasurementInterface;
+using android::hardware::gnss::IGnssNavigationMessageInterface;
 using android::hardware::gnss::IGnssPowerIndication;
 using android::hardware::gnss::IGnssPsds;
 using android::hardware::gnss::PsdsType;
@@ -53,17 +65,16 @@ TEST_P(GnssHalTest, SetupTeardownCreateCleanup) {}
 
 /*
  * TestPsdsExtension:
- * 1. Gets the PsdsExtension and verifies that it returns a non-null extension.
+ * 1. Gets the PsdsExtension
  * 2. Injects empty PSDS data and verifies that it returns an error.
  */
 TEST_P(GnssHalTest, TestPsdsExtension) {
     sp<IGnssPsds> iGnssPsds;
     auto status = aidl_gnss_hal_->getExtensionPsds(&iGnssPsds);
-    ASSERT_TRUE(status.isOk());
-    ASSERT_TRUE(iGnssPsds != nullptr);
-
-    status = iGnssPsds->injectPsdsData(PsdsType::LONG_TERM, std::vector<uint8_t>());
-    ASSERT_FALSE(status.isOk());
+    if (status.isOk() && iGnssPsds != nullptr) {
+        status = iGnssPsds->injectPsdsData(PsdsType::LONG_TERM, std::vector<uint8_t>());
+        ASSERT_FALSE(status.isOk());
+    }
 }
 
 void CheckSatellitePvt(const SatellitePvt& satellitePvt) {
@@ -748,5 +759,64 @@ TEST_P(GnssHalTest, BlocklistConstellationLocationOn) {
     StopAndClearLocations();
     sources.resize(0);
     status = gnss_configuration_hal->setBlocklist(sources);
+    ASSERT_TRUE(status.isOk());
+}
+
+/*
+ * TestAllExtensions.
+ */
+TEST_P(GnssHalTest, TestAllExtensions) {
+    sp<IGnssBatching> iGnssBatching;
+    auto status = aidl_gnss_hal_->getExtensionGnssBatching(&iGnssBatching);
+    if (status.isOk() && iGnssBatching != nullptr) {
+        auto gnssBatchingCallback = sp<GnssBatchingCallback>::make();
+        status = iGnssBatching->init(gnssBatchingCallback);
+        ASSERT_TRUE(status.isOk());
+
+        status = iGnssBatching->cleanup();
+        ASSERT_TRUE(status.isOk());
+    }
+
+    sp<IGnssGeofence> iGnssGeofence;
+    status = aidl_gnss_hal_->getExtensionGnssGeofence(&iGnssGeofence);
+    if (status.isOk() && iGnssGeofence != nullptr) {
+        auto gnssGeofenceCallback = sp<GnssGeofenceCallback>::make();
+        status = iGnssGeofence->setCallback(gnssGeofenceCallback);
+        ASSERT_TRUE(status.isOk());
+    }
+
+    sp<IGnssNavigationMessageInterface> iGnssNavMsgIface;
+    status = aidl_gnss_hal_->getExtensionGnssNavigationMessage(&iGnssNavMsgIface);
+    if (status.isOk() && iGnssNavMsgIface != nullptr) {
+        auto gnssNavMsgCallback = sp<GnssNavigationMessageCallback>::make();
+        status = iGnssNavMsgIface->setCallback(gnssNavMsgCallback);
+        ASSERT_TRUE(status.isOk());
+
+        status = iGnssNavMsgIface->close();
+        ASSERT_TRUE(status.isOk());
+    }
+}
+
+/*
+ * TestAGnssExtension:
+ * 1. Gets the IAGnss extension.
+ * 2. Sets AGnssCallback.
+ * 3. Sets SUPL server host/port.
+ */
+TEST_P(GnssHalTest, TestAGnssExtension) {
+    if (aidl_gnss_hal_->getInterfaceVersion() == 1) {
+        return;
+    }
+    sp<IAGnss> iAGnss;
+    auto status = aidl_gnss_hal_->getExtensionAGnss(&iAGnss);
+    ASSERT_TRUE(status.isOk());
+    ASSERT_TRUE(iAGnss != nullptr);
+
+    auto agnssCallback = sp<AGnssCallbackAidl>::make();
+    status = iAGnss->setCallback(agnssCallback);
+    ASSERT_TRUE(status.isOk());
+
+    // Set SUPL server host/port
+    status = iAGnss->setServer(AGnssType::SUPL, String16("supl.google.com"), 7275);
     ASSERT_TRUE(status.isOk());
 }
