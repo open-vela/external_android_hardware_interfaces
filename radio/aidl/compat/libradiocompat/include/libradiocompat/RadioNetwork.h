@@ -23,8 +23,6 @@ namespace android::hardware::radio::compat {
 
 class RadioNetwork : public RadioCompatBase,
                      public aidl::android::hardware::radio::network::BnRadioNetwork {
-    std::shared_ptr<::aidl::android::hardware::radio::network::IRadioNetworkResponse> respond();
-
     ::ndk::ScopedAStatus getAllowedNetworkTypesBitmap(int32_t serial) override;
     ::ndk::ScopedAStatus getAvailableBandModes(int32_t serial) override;
     ::ndk::ScopedAStatus getAvailableNetworks(int32_t serial) override;
@@ -90,10 +88,6 @@ class RadioNetwork : public RadioCompatBase,
     ::ndk::ScopedAStatus stopNetworkScan(int32_t serial) override;
     ::ndk::ScopedAStatus supplyNetworkDepersonalization(int32_t serial,
                                                         const std::string& netPin) override;
-    ::ndk::ScopedAStatus setUsageSetting(
-            int32_t serial,
-            ::aidl::android::hardware::radio::network::UsageSetting usageSetting) override;
-    ::ndk::ScopedAStatus getUsageSetting(int32_t serial) override;
 
   public:
     using RadioCompatBase::RadioCompatBase;
