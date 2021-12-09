@@ -19,7 +19,6 @@
 #include <IVehicleHardware.h>
 #include <LargeParcelableBase.h>
 #include <aidl/android/hardware/automotive/vehicle/IVehicle.h>
-#include <android-base/thread_annotations.h>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -54,17 +53,16 @@ using ::testing::WhenSortedBy;
 class MockVehicleHardware final : public IVehicleHardware {
   public:
     std::vector<VehiclePropConfig> getAllPropertyConfigs() const override {
-        std::scoped_lock<std::mutex> lockGuard(mLock);
         return mPropertyConfigs;
     }
 
-    StatusCode setValues(std::shared_ptr<const SetValuesCallback>,
+    StatusCode setValues(std::function<void(const std::vector<SetValueResult>&)>&&,
                          const std::vector<SetValueRequest>&) override {
         // TODO(b/200737967): mock this.
         return StatusCode::OK;
     }
 
-    StatusCode getValues(std::shared_ptr<const GetValuesCallback>,
+    StatusCode getValues(std::function<void(const std::vector<GetValueResult>&)>&&,
                          const std::vector<GetValueRequest>&) const override {
         // TODO(b/200737967): mock this.
         return StatusCode::OK;
@@ -80,23 +78,23 @@ class MockVehicleHardware final : public IVehicleHardware {
         return StatusCode::OK;
     }
 
-    void registerOnPropertyChangeEvent(std::unique_ptr<const PropertyChangeCallback>) override {
+    void registerOnPropertyChangeEvent(
+            std::function<void(const std::vector<VehiclePropValue>&)>&&) override {
         // TODO(b/200737967): mock this.
     }
 
-    void registerOnPropertySetErrorEvent(std::unique_ptr<const PropertySetErrorCallback>) override {
+    void registerOnPropertySetErrorEvent(
+            std::function<void(const std::vector<SetValueErrorEvent>&)>&&) override {
         // TODO(b/200737967): mock this.
     }
 
     // Test functions.
     void setPropertyConfigs(const std::vector<VehiclePropConfig>& configs) {
-        std::scoped_lock<std::mutex> lockGuard(mLock);
         mPropertyConfigs = configs;
     }
 
   private:
-    mutable std::mutex mLock;
-    std::vector<VehiclePropConfig> mPropertyConfigs GUARDED_BY(mLock);
+    std::vector<VehiclePropConfig> mPropertyConfigs;
 };
 
 struct PropConfigCmp {

@@ -51,10 +51,6 @@ UwbChip::~UwbChip() {}
     return ndk::ScopedAStatus::ok();
 }
 
-::ndk::ScopedAStatus UwbChip::sessionInit(int /* sessionId */) {
-    return ndk::ScopedAStatus::ok();
-}
-
 ::ndk::ScopedAStatus UwbChip::getSupportedAndroidUciVersion(int32_t* version) {
     *version = kAndroidUciVersion;
     return ndk::ScopedAStatus::ok();

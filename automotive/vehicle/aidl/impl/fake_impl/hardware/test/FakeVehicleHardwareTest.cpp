@@ -76,25 +76,24 @@ class FakeVehicleHardwareTestHelper {
 class FakeVehicleHardwareTest : public ::testing::Test {
   protected:
     void SetUp() override {
-        auto callback = std::make_unique<IVehicleHardware::PropertyChangeCallback>(
+        getHardware()->registerOnPropertyChangeEvent(
                 [this](const std::vector<VehiclePropValue>& values) {
-                    onPropertyChangeEvent(values);
+                    return onPropertyChangeEvent(values);
                 });
-        getHardware()->registerOnPropertyChangeEvent(std::move(callback));
-        mSetValuesCallback = std::make_shared<IVehicleHardware::SetValuesCallback>(
-                [this](std::vector<SetValueResult> results) { onSetValues(results); });
-        mGetValuesCallback = std::make_shared<IVehicleHardware::GetValuesCallback>(
-                [this](std::vector<GetValueResult> results) { onGetValues(results); });
     }
 
     FakeVehicleHardware* getHardware() { return &mHardware; }
 
     StatusCode setValues(const std::vector<SetValueRequest>& requests) {
-        return getHardware()->setValues(mSetValuesCallback, requests);
+        return getHardware()->setValues(
+                [this](const std::vector<SetValueResult> results) { return onSetValues(results); },
+                requests);
     }
 
     StatusCode getValues(const std::vector<GetValueRequest>& requests) {
-        return getHardware()->getValues(mGetValuesCallback, requests);
+        return getHardware()->getValues(
+                [this](const std::vector<GetValueResult> results) { return onGetValues(results); },
+                requests);
     }
 
     StatusCode setValue(const VehiclePropValue& value) {
@@ -246,8 +245,6 @@ class FakeVehicleHardwareTest : public ::testing::Test {
     std::vector<SetValueResult> mSetValueResults;
     std::vector<GetValueResult> mGetValueResults;
     std::vector<VehiclePropValue> mChangedProperties;
-    std::shared_ptr<IVehicleHardware::SetValuesCallback> mSetValuesCallback;
-    std::shared_ptr<IVehicleHardware::GetValuesCallback> mGetValuesCallback;
 };
 
 TEST_F(FakeVehicleHardwareTest, testGetAllPropertyConfigs) {
@@ -370,9 +367,9 @@ TEST_F(FakeVehicleHardwareTest, testSetValuesError) {
 
 TEST_F(FakeVehicleHardwareTest, testRegisterOnPropertyChangeEvent) {
     // We have already registered this callback in Setup, here we are registering again.
-    auto callback = std::make_unique<IVehicleHardware::PropertyChangeCallback>(
-            [this](const std::vector<VehiclePropValue>& values) { onPropertyChangeEvent(values); });
-    getHardware()->registerOnPropertyChangeEvent(std::move(callback));
+    getHardware()->registerOnPropertyChangeEvent(std::bind(
+            &FakeVehicleHardwareTest_testRegisterOnPropertyChangeEvent_Test::onPropertyChangeEvent,
+            this, std::placeholders::_1));
 
     auto testValues = getTestPropValues();
     std::vector<SetValueRequest> requests;

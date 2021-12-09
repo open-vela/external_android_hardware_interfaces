@@ -40,7 +40,6 @@ interface IUwbChip {
   void open(in android.hardware.uwb.IUwbClientCallback clientCallback);
   void close();
   void coreInit();
-  void sessionInit(int sessionId);
   int getSupportedAndroidUciVersion();
   long getSupportedAndroidCapabilities();
   int sendUciMessage(in byte[] data);
