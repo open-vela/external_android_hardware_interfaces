@@ -19,7 +19,6 @@
 
 #include <VehicleHalTypes.h>
 
-#include <memory>
 #include <vector>
 
 namespace android {
@@ -50,14 +49,6 @@ struct SetValueErrorEvent {
 // with a VehicleHardware through this interface.
 class IVehicleHardware {
   public:
-    using SetValuesCallback = std::function<void(
-            std::vector<::aidl::android::hardware::automotive::vehicle::SetValueResult>)>;
-    using GetValuesCallback = std::function<void(
-            std::vector<::aidl::android::hardware::automotive::vehicle::GetValueResult>)>;
-    using PropertyChangeCallback = std::function<void(
-            std::vector<::aidl::android::hardware::automotive::vehicle::VehiclePropValue>)>;
-    using PropertySetErrorCallback = std::function<void(std::vector<SetValueErrorEvent>)>;
-
     virtual ~IVehicleHardware() = default;
 
     // Get all the property configs.
@@ -68,7 +59,9 @@ class IVehicleHardware {
     // are sent to vehicle bus or before property set confirmation is received. The callback is
     // safe to be called after the function returns and is safe to be called in a different thread.
     virtual ::aidl::android::hardware::automotive::vehicle::StatusCode setValues(
-            std::shared_ptr<const SetValuesCallback> callback,
+            std::function<void(const std::vector<
+                               ::aidl::android::hardware::automotive::vehicle::SetValueResult>&)>&&
+                    callback,
             const std::vector<::aidl::android::hardware::automotive::vehicle::SetValueRequest>&
                     requests) = 0;
 
@@ -76,7 +69,9 @@ class IVehicleHardware {
     // The callback is safe to be called after the function returns and is safe to be called in a
     // different thread.
     virtual ::aidl::android::hardware::automotive::vehicle::StatusCode getValues(
-            std::shared_ptr<const GetValuesCallback> callback,
+            std::function<void(const std::vector<
+                               ::aidl::android::hardware::automotive::vehicle::GetValueResult>&)>&&
+                    callback,
             const std::vector<::aidl::android::hardware::automotive::vehicle::GetValueRequest>&
                     requests) const = 0;
 
@@ -88,12 +83,13 @@ class IVehicleHardware {
 
     // Register a callback that would be called when there is a property change event from vehicle.
     virtual void registerOnPropertyChangeEvent(
-            std::unique_ptr<const PropertyChangeCallback> callback) = 0;
+            std::function<void(const std::vector<::aidl::android::hardware::automotive::vehicle::
+                                                         VehiclePropValue>&)>&& callback) = 0;
 
     // Register a callback that would be called when there is a property set error event from
     // vehicle.
     virtual void registerOnPropertySetErrorEvent(
-            std::unique_ptr<const PropertySetErrorCallback> callback) = 0;
+            std::function<void(const std::vector<SetValueErrorEvent>&)>&& callback) = 0;
 };
 
 }  // namespace vehicle

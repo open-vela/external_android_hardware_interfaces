@@ -39,6 +39,14 @@ namespace fake {
 
 class FakeVehicleHardware final : public IVehicleHardware {
   public:
+    using SetValuesCallback = std::function<void(
+            const std::vector<::aidl::android::hardware::automotive::vehicle::SetValueResult>&)>;
+    using GetValuesCallback = std::function<void(
+            const std::vector<::aidl::android::hardware::automotive::vehicle::GetValueResult>&)>;
+    using OnPropertyChangeCallback = std::function<void(
+            const std::vector<::aidl::android::hardware::automotive::vehicle::VehiclePropValue>&)>;
+    using OnPropertySetErrorCallback = std::function<void(const std::vector<SetValueErrorEvent>&)>;
+
     FakeVehicleHardware();
 
     explicit FakeVehicleHardware(std::unique_ptr<VehiclePropValuePool> valuePool);
@@ -51,7 +59,7 @@ class FakeVehicleHardware final : public IVehicleHardware {
     // are sent to vehicle bus or before property set confirmation is received. The callback is
     // safe to be called after the function returns and is safe to be called in a different thread.
     ::aidl::android::hardware::automotive::vehicle::StatusCode setValues(
-            std::shared_ptr<const SetValuesCallback> callback,
+            SetValuesCallback&& callback,
             const std::vector<::aidl::android::hardware::automotive::vehicle::SetValueRequest>&
                     requests) override;
 
@@ -59,7 +67,7 @@ class FakeVehicleHardware final : public IVehicleHardware {
     // The callback is safe to be called after the function returns and is safe to be called in a
     // different thread.
     ::aidl::android::hardware::automotive::vehicle::StatusCode getValues(
-            std::shared_ptr<const GetValuesCallback> callback,
+            GetValuesCallback&& callback,
             const std::vector<::aidl::android::hardware::automotive::vehicle::GetValueRequest>&
                     requests) const override;
 
@@ -70,13 +78,11 @@ class FakeVehicleHardware final : public IVehicleHardware {
     ::aidl::android::hardware::automotive::vehicle::StatusCode checkHealth() override;
 
     // Register a callback that would be called when there is a property change event from vehicle.
-    void registerOnPropertyChangeEvent(
-            std::unique_ptr<const PropertyChangeCallback> callback) override;
+    void registerOnPropertyChangeEvent(OnPropertyChangeCallback&& callback) override;
 
     // Register a callback that would be called when there is a property set error event from
     // vehicle.
-    void registerOnPropertySetErrorEvent(
-            std::unique_ptr<const PropertySetErrorCallback> callback) override;
+    void registerOnPropertySetErrorEvent(OnPropertySetErrorCallback&& callback) override;
 
   private:
     // Expose private methods to unit test.
@@ -88,10 +94,8 @@ class FakeVehicleHardware final : public IVehicleHardware {
     const std::unique_ptr<obd2frame::FakeObd2Frame> mFakeObd2Frame;
     const std::unique_ptr<FakeUserHal> mFakeUserHal;
     std::mutex mCallbackLock;
-    std::unique_ptr<const PropertyChangeCallback> mOnPropertyChangeCallback
-            GUARDED_BY(mCallbackLock);
-    std::unique_ptr<const PropertySetErrorCallback> mOnPropertySetErrorCallback
-            GUARDED_BY(mCallbackLock);
+    OnPropertyChangeCallback mOnPropertyChangeCallback GUARDED_BY(mCallbackLock);
+    OnPropertySetErrorCallback mOnPropertySetErrorCallback GUARDED_BY(mCallbackLock);
 
     void init();
     // Stores the initial value to property store.
