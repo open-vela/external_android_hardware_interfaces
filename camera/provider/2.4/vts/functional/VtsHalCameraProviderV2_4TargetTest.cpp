@@ -43,7 +43,6 @@
 #include <android/hardware/camera/device/3.7/ICameraDevice.h>
 #include <android/hardware/camera/device/3.7/ICameraDeviceSession.h>
 #include <android/hardware/camera/device/3.7/ICameraInjectionSession.h>
-#include <android/hardware/camera/device/3.8/ICameraDeviceCallback.h>
 #include <android/hardware/camera/metadata/3.4/types.h>
 #include <android/hardware/camera/provider/2.4/ICameraProvider.h>
 #include <android/hardware/camera/provider/2.5/ICameraProvider.h>
@@ -195,7 +194,6 @@ enum SystemCameraKind {
 namespace {
     // "device@<version>/legacy/<id>"
     const char *kDeviceNameRE = "device@([0-9]+\\.[0-9]+)/%s/(.+)";
-    const int CAMERA_DEVICE_API_VERSION_3_8 = 0x308;
     const int CAMERA_DEVICE_API_VERSION_3_7 = 0x307;
     const int CAMERA_DEVICE_API_VERSION_3_6 = 0x306;
     const int CAMERA_DEVICE_API_VERSION_3_5 = 0x305;
@@ -203,7 +201,6 @@ namespace {
     const int CAMERA_DEVICE_API_VERSION_3_3 = 0x303;
     const int CAMERA_DEVICE_API_VERSION_3_2 = 0x302;
     const int CAMERA_DEVICE_API_VERSION_1_0 = 0x100;
-    const char *kHAL3_8 = "3.8";
     const char *kHAL3_7 = "3.7";
     const char *kHAL3_6 = "3.6";
     const char *kHAL3_5 = "3.5";
@@ -241,9 +238,7 @@ namespace {
             return -1;
         }
 
-        if (version.compare(kHAL3_8) == 0) {
-            return CAMERA_DEVICE_API_VERSION_3_8;
-        } else if (version.compare(kHAL3_7) == 0) {
+        if (version.compare(kHAL3_7) == 0) {
             return CAMERA_DEVICE_API_VERSION_3_7;
         } else if (version.compare(kHAL3_6) == 0) {
             return CAMERA_DEVICE_API_VERSION_3_6;
@@ -643,7 +638,7 @@ public:
      }
  };
 
-    struct DeviceCb : public V3_8::ICameraDeviceCallback {
+    struct DeviceCb : public V3_5::ICameraDeviceCallback {
         DeviceCb(CameraHidlTest *parent, int deviceVersion, const camera_metadata_t *staticMeta) :
                 mParent(parent), mDeviceVersion(deviceVersion) {
             mStaticMetadata = staticMeta;
@@ -653,7 +648,6 @@ public:
                 const hidl_vec<V3_4::CaptureResult>& results) override;
         Return<void> processCaptureResult(const hidl_vec<CaptureResult>& results) override;
         Return<void> notify(const hidl_vec<NotifyMsg>& msgs) override;
-        Return<void> notify_3_8(const hidl_vec<V3_8::NotifyMsg>& msgs) override;
 
         Return<void> requestStreamBuffers(
                 const hidl_vec<V3_5::BufferRequest>& bufReqs,
@@ -669,8 +663,6 @@ public:
      private:
         bool processCaptureResultLocked(const CaptureResult& results,
                 hidl_vec<PhysicalCameraMetadata> physicalCameraMetadata);
-        Return<void> notifyHelper(const hidl_vec<NotifyMsg>& msgs,
-                const std::vector<std::pair<bool, nsecs_t>>& readoutTimestamps);
 
         CameraHidlTest *mParent; // Parent object
         int mDeviceVersion;
@@ -964,9 +956,6 @@ protected:
         // Set by notify() SHUTTER call.
         nsecs_t shutterTimestamp;
 
-        bool shutterReadoutTimestampValid;
-        nsecs_t shutterReadoutTimestamp;
-
         bool errorCodeValid;
         ErrorCode errorCode;
 
@@ -1012,8 +1001,6 @@ protected:
 
         InFlightRequest() :
                 shutterTimestamp(0),
-                shutterReadoutTimestampValid(false),
-                shutterReadoutTimestamp(0),
                 errorCodeValid(false),
                 errorCode(ErrorCode::ERROR_BUFFER),
                 usePartialResult(false),
@@ -1031,8 +1018,6 @@ protected:
                 bool partialResults, uint32_t partialCount,
                 std::shared_ptr<ResultMetadataQueue> queue = nullptr) :
                 shutterTimestamp(0),
-                shutterReadoutTimestampValid(false),
-                shutterReadoutTimestamp(0),
                 errorCodeValid(false),
                 errorCode(ErrorCode::ERROR_BUFFER),
                 usePartialResult(partialResults),
@@ -1051,8 +1036,6 @@ protected:
                 const std::unordered_set<std::string>& extraPhysicalResult,
                 std::shared_ptr<ResultMetadataQueue> queue = nullptr) :
                 shutterTimestamp(0),
-                shutterReadoutTimestampValid(false),
-                shutterReadoutTimestamp(0),
                 errorCodeValid(false),
                 errorCode(ErrorCode::ERROR_BUFFER),
                 usePartialResult(partialResults),
@@ -1479,46 +1462,8 @@ void CameraHidlTest::DeviceCb::waitForBuffersReturned() {
     }
 }
 
-Return<void> CameraHidlTest::DeviceCb::notify_3_8(
-        const hidl_vec<V3_8::NotifyMsg>& msgs) {
-    hidl_vec<NotifyMsg> msgs3_2;
-    std::vector<std::pair<bool, nsecs_t>> readoutTimestamps;
-
-    nsecs_t count = msgs.size();
-    msgs3_2.resize(count);
-    readoutTimestamps.resize(count);
-
-    for (size_t i = 0; i < count; i++) {
-        msgs3_2[i].type = msgs[i].type;
-        switch (msgs[i].type) {
-            case MsgType::ERROR:
-                msgs3_2[i].msg.error = msgs[i].msg.error;
-                readoutTimestamps[i] = {false, 0};
-                break;
-            case MsgType::SHUTTER:
-                msgs3_2[i].msg.shutter = msgs[i].msg.shutter.v3_2;
-                readoutTimestamps[i] = {true, msgs[i].msg.shutter.readoutTimestamp};
-                break;
-        }
-    }
-
-    return notifyHelper(msgs3_2, readoutTimestamps);
-}
-
 Return<void> CameraHidlTest::DeviceCb::notify(
         const hidl_vec<NotifyMsg>& messages) {
-    std::vector<std::pair<bool, nsecs_t>> readoutTimestamps;
-    readoutTimestamps.resize(messages.size());
-    for (size_t i = 0; i < messages.size(); i++) {
-        readoutTimestamps[i] = {false, 0};
-    }
-
-    return notifyHelper(messages, readoutTimestamps);
-}
-
-Return<void> CameraHidlTest::DeviceCb::notifyHelper(
-        const hidl_vec<NotifyMsg>& messages,
-        const std::vector<std::pair<bool, nsecs_t>>& readoutTimestamps) {
     std::lock_guard<std::mutex> l(mParent->mLock);
 
     for (size_t i = 0; i < messages.size(); i++) {
@@ -1581,8 +1526,6 @@ Return<void> CameraHidlTest::DeviceCb::notifyHelper(
                 }
                 InFlightRequest *r = mParent->mInflightMap.editValueAt(idx);
                 r->shutterTimestamp = messages[i].msg.shutter.timestamp;
-                r->shutterReadoutTimestampValid = readoutTimestamps[i].first;
-                r->shutterReadoutTimestamp = readoutTimestamps[i].second;
             }
                 break;
             default:
@@ -1997,7 +1940,6 @@ TEST_P(CameraHidlTest, getCameraDeviceInterface) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -2042,7 +1984,6 @@ TEST_P(CameraHidlTest, getResourceCost) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -2784,7 +2725,6 @@ TEST_P(CameraHidlTest, systemCameraTest) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -2872,7 +2812,6 @@ TEST_P(CameraHidlTest, getCameraCharacteristics) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -2954,7 +2893,6 @@ TEST_P(CameraHidlTest, setTorchMode) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -3083,7 +3021,6 @@ TEST_P(CameraHidlTest, dumpState) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -3151,7 +3088,6 @@ TEST_P(CameraHidlTest, openClose) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -3188,7 +3124,7 @@ TEST_P(CameraHidlTest, openClose) {
                 castSession(session, deviceVersion, &sessionV3_3,
                         &sessionV3_4, &sessionV3_5, &sessionV3_6,
                         &sessionV3_7);
-                if (deviceVersion >= CAMERA_DEVICE_API_VERSION_3_7) {
+                if (deviceVersion == CAMERA_DEVICE_API_VERSION_3_7) {
                     ASSERT_TRUE(sessionV3_7.get() != nullptr);
                 } else if (deviceVersion == CAMERA_DEVICE_API_VERSION_3_6) {
                     ASSERT_TRUE(sessionV3_6.get() != nullptr);
@@ -3254,7 +3190,6 @@ TEST_P(CameraHidlTest, constructDefaultRequestSettings) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -4795,28 +4730,6 @@ void CameraHidlTest::processCaptureRequestInternal(uint64_t bufferUsage,
             ASSERT_NE(inflightReq.resultOutputBuffers.size(), 0u);
             ASSERT_EQ(testStream.id, inflightReq.resultOutputBuffers[0].streamId);
 
-            // For camera device 3.8 or newer, shutterReadoutTimestamp must be
-            // available, and it must be >= shutterTimestamp + exposureTime, and
-            // < shutterTimestamp + exposureTime + rollingShutterSkew / 2.
-            if (deviceVersion >= CAMERA_DEVICE_API_VERSION_3_8) {
-                ASSERT_TRUE(inflightReq.shutterReadoutTimestampValid);
-                ASSERT_FALSE(inflightReq.collectedResult.isEmpty());
-                if (inflightReq.collectedResult.exists(ANDROID_SENSOR_EXPOSURE_TIME)) {
-                    camera_metadata_entry_t exposureTimeResult = inflightReq.collectedResult.find(
-                            ANDROID_SENSOR_EXPOSURE_TIME);
-                    nsecs_t exposureToReadout =
-                            inflightReq.shutterReadoutTimestamp - inflightReq.shutterTimestamp;
-                    ASSERT_GE(exposureToReadout, exposureTimeResult.data.i64[0]);
-                    if (inflightReq.collectedResult.exists(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW)) {
-                        camera_metadata_entry_t rollingShutterSkew =
-                                inflightReq.collectedResult.find(
-                                        ANDROID_SENSOR_ROLLING_SHUTTER_SKEW);
-                        ASSERT_LT(exposureToReadout, exposureTimeResult.data.i64[0] +
-                                                             rollingShutterSkew.data.i64[0] / 2);
-                    }
-                }
-            }
-
             request.frameNumber++;
             // Empty settings should be supported after the first call
             // for repeating requests.
@@ -6309,7 +6222,6 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
         std::string cameraId;
         int deviceVersion = getCameraDeviceVersionAndId(name, mProviderType, &cameraId);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -7739,7 +7651,6 @@ void CameraHidlTest::castDevice(const sp<device::V3_2::ICameraDevice>& device,
     ASSERT_NE(nullptr, device3_7);
 
     switch (deviceVersion) {
-        case CAMERA_DEVICE_API_VERSION_3_8:
         case CAMERA_DEVICE_API_VERSION_3_7: {
             auto castResult = device::V3_7::ICameraDevice::castFrom(device);
             ASSERT_TRUE(castResult.isOk());
@@ -7796,7 +7707,6 @@ void CameraHidlTest::castSession(const sp<ICameraDeviceSession> &session, int32_
     ASSERT_NE(nullptr, session3_7);
 
     switch (deviceVersion) {
-        case CAMERA_DEVICE_API_VERSION_3_8:
         case CAMERA_DEVICE_API_VERSION_3_7: {
             auto castResult = device::V3_7::ICameraDeviceSession::castFrom(session);
             ASSERT_TRUE(castResult.isOk());
