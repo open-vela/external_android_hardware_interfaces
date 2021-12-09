@@ -24,11 +24,14 @@ namespace android::hardware::radio::compat {
 
 namespace aidl = ::aidl::android::hardware::radio::config;
 
-uint32_t toHidl(const aidl::SlotPortMapping& slotPortMapping) {
-    if (slotPortMapping.portId != 0) {
-        LOG(ERROR) << "Port ID " << slotPortMapping.portId << " != 0 not supported by HIDL HAL";
+hidl_vec<uint32_t> toHidl(const std::vector<aidl::SlotPortMapping>& slotMap) {
+    hidl_vec<uint32_t> out(slotMap.size());
+    for (const auto& el : slotMap) {
+        CHECK_GE(el.portId, 0);
+        CHECK_LT(static_cast<size_t>(el.portId), out.size());
+        out[el.portId] = el.physicalSlotId;
     }
-    return slotPortMapping.physicalSlotId;
+    return out;
 }
 
 aidl::SimSlotStatus toAidl(const config::V1_0::SimSlotStatus& sst) {
