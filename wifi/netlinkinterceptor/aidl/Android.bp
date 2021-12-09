@@ -1,3 +1,4 @@
+//
 // Copyright (C) 2021 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
 
 package {
     // See: http://go/android-license-faq
@@ -22,27 +24,13 @@ package {
 }
 
 aidl_interface {
-    name: "android.hardware.bluetooth.audio",
+    name: "android.hardware.net.nlinterceptor",
     vendor_available: true,
-    srcs: ["android/hardware/bluetooth/audio/*.aidl"],
+    srcs: ["android/hardware/net/nlinterceptor/*.aidl"],
     stability: "vintf",
-    imports: [
-        "android.hardware.common-V2",
-        "android.hardware.common.fmq-V1",
-        "android.hardware.audio.common",
-    ],
     backend: {
-        cpp: {
-            enabled: false,
-        },
         java: {
-            sdk_version: "module_current",
             enabled: false,
-        },
-        ndk: {
-            vndk: {
-                enabled: true,
-            },
         },
     },
 }

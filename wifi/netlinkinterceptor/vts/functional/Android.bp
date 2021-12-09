@@ -1,3 +1,4 @@
+//
 // Copyright (C) 2021 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,6 +12,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+//
 
 package {
     // See: http://go/android-license-faq
@@ -21,28 +23,29 @@ package {
     default_applicable_licenses: ["hardware_interfaces_license"],
 }
 
-aidl_interface {
-    name: "android.hardware.bluetooth.audio",
-    vendor_available: true,
-    srcs: ["android/hardware/bluetooth/audio/*.aidl"],
-    stability: "vintf",
-    imports: [
-        "android.hardware.common-V2",
-        "android.hardware.common.fmq-V1",
-        "android.hardware.audio.common",
+cc_test {
+    name: "VtsHalNetlinkInterceptorV1_0Test",
+    defaults: [
+        "VtsHalTargetTestDefaults",
+        "use_libaidlvintf_gtest_helper_static",
     ],
-    backend: {
-        cpp: {
-            enabled: false,
-        },
-        java: {
-            sdk_version: "module_current",
-            enabled: false,
-        },
-        ndk: {
-            vndk: {
-                enabled: true,
-            },
-        },
-    },
+    cpp_std: "experimental",
+    srcs: [
+        "interceptor_aidl_test.cpp",
+    ],
+    shared_libs: [
+        "android.hardware.net.nlinterceptor-V1-ndk",
+        "libbase",
+        "libbinder_ndk",
+    ],
+    static_libs: [
+        "libgmock",
+        "android.hardware.automotive.can@libnetdevice",
+        "libnl++",
+    ],
+    test_suites: [
+        "general-tests",
+        "vts",
+    ],
+    disable_framework: true,
 }
