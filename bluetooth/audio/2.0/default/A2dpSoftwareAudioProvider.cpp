@@ -32,14 +32,10 @@ namespace implementation {
 using ::android::bluetooth::audio::BluetoothAudioSessionReport;
 using ::android::hardware::Void;
 
-// Here the buffer size is based on SBC
 static constexpr uint32_t kPcmFrameSize = 4;  // 16 bits per sample / stereo
-// SBC is 128, and here choose the LCM of 16, 24, and 32
-static constexpr uint32_t kPcmFrameCount = 96;
+static constexpr uint32_t kPcmFrameCount = 128;
 static constexpr uint32_t kRtpFrameSize = kPcmFrameSize * kPcmFrameCount;
-// The max counts by 1 tick (20ms) for SBC is about 7. Since using 96 for the
-// PCM counts, here we just choose a greater number
-static constexpr uint32_t kRtpFrameCount = 10;
+static constexpr uint32_t kRtpFrameCount = 7;  // max counts by 1 tick (20ms)
 static constexpr uint32_t kBufferSize = kRtpFrameSize * kRtpFrameCount;
 static constexpr uint32_t kBufferCount = 2;  // double buffer
 static constexpr uint32_t kDataMqSize = kBufferSize * kBufferCount;
