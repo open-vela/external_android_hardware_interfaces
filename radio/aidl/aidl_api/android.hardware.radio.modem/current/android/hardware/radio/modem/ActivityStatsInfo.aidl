@@ -36,6 +36,5 @@ package android.hardware.radio.modem;
 parcelable ActivityStatsInfo {
   int sleepModeTimeMs;
   int idleModeTimeMs;
-  int[] txmModetimeMs;
-  int rxModeTimeMs;
+  android.hardware.radio.modem.ActivityStatsTechSpecificInfo[] techSpecificInfo;
 }
