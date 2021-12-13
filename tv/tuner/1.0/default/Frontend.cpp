@@ -42,6 +42,7 @@ Return<Result> Frontend::close() {
     // Reset callback
     mCallback = nullptr;
     mIsLocked = false;
+    mTunerService->removeFrontend(mId);
 
     return Result::SUCCESS;
 }
@@ -103,7 +104,7 @@ Return<Result> Frontend::scan(const FrontendSettings& settings, FrontendScanType
 
     uint32_t frequency = settings.dvbt().frequency;
     if (type == FrontendScanType::SCAN_BLIND) {
-        frequency += 100;
+        frequency += 100 * 1000;
     }
     msg.frequencies({frequency});
     mCallback->onScanMessage(FrontendScanMessageType::FREQUENCY, msg);
