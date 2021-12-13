@@ -15,6 +15,7 @@
  */
 
 #include <android-base/logging.h>
+
 #include <android/hardware/wifi/1.0/IWifi.h>
 #include <android/hardware/wifi/1.0/IWifiChip.h>
 #include <android/hardware/wifi/hostapd/1.0/IHostapd.h>
@@ -181,7 +182,6 @@ TEST_P(WifiChipHidlApTest, RemoveApIface) {
     EXPECT_EQ(WifiStatusCode::ERROR_INVALID_ARGS, removeApIface(iface_name));
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(WifiChipHidlApTest);
 INSTANTIATE_TEST_SUITE_P(
     PerInstance, WifiChipHidlApTest,
     testing::ValuesIn(
