@@ -37,8 +37,8 @@
 #include <aidl/android/hardware/graphics/composer3/PerFrameMetadata.h>
 #include <aidl/android/hardware/graphics/composer3/PerFrameMetadataBlob.h>
 
-#include <aidl/android/hardware/graphics/composer3/CommandResultPayload.h>
-#include <aidl/android/hardware/graphics/composer3/DisplayCommand.h>
+#include <aidl/android/hardware/graphics/composer3/command/CommandPayload.h>
+#include <aidl/android/hardware/graphics/composer3/command/CommandResultPayload.h>
 
 #include <aidl/android/hardware/graphics/common/ColorTransform.h>
 #include <aidl/android/hardware/graphics/common/FRect.h>
@@ -79,14 +79,14 @@ class CommandWriterBase {
     }
 
     void setError(int32_t index, int32_t errorCode) {
-        CommandError error;
+        command::Error error;
         error.commandIndex = index;
         error.errorCode = errorCode;
         mCommandsResults.emplace_back(std::move(error));
     }
 
-    void setPresentOrValidateResult(int64_t display, PresentOrValidate::Result result) {
-        PresentOrValidate presentOrValidate;
+    void setPresentOrValidateResult(int64_t display, command::PresentOrValidate::Result result) {
+        command::PresentOrValidate presentOrValidate;
         presentOrValidate.display = display;
         presentOrValidate.result = result;
         mCommandsResults.emplace_back(std::move(presentOrValidate));
@@ -94,11 +94,12 @@ class CommandWriterBase {
 
     void setChangedCompositionTypes(int64_t display, const std::vector<int64_t>& layers,
                                     const std::vector<Composition>& types) {
-        ChangedCompositionTypes changedCompositionTypes;
+        command::ChangedCompositionTypes changedCompositionTypes;
         changedCompositionTypes.display = display;
         changedCompositionTypes.layers.reserve(layers.size());
         for (int i = 0; i < layers.size(); i++) {
-            auto layer = ChangedCompositionLayer{.layer = layers[i], .composition = types[i]};
+            auto layer = command::ChangedCompositionTypes::Layer{.layer = layers[i],
+                                                                 .composition = types[i]};
             changedCompositionTypes.layers.emplace_back(std::move(layer));
         }
         mCommandsResults.emplace_back(std::move(changedCompositionTypes));
@@ -107,13 +108,13 @@ class CommandWriterBase {
     void setDisplayRequests(int64_t display, int32_t displayRequestMask,
                             const std::vector<int64_t>& layers,
                             const std::vector<int32_t>& layerRequestMasks) {
-        DisplayRequest displayRequest;
+        command::DisplayRequest displayRequest;
         displayRequest.display = display;
         displayRequest.mask = displayRequestMask;
         displayRequest.layerRequests.reserve(layers.size());
         for (int i = 0; i < layers.size(); i++) {
-            auto layerRequest =
-                    DisplayRequest::LayerRequest{.layer = layers[i], .mask = layerRequestMasks[i]};
+            auto layerRequest = command::DisplayRequest::LayerRequest{.layer = layers[i],
+                                                                      .mask = layerRequestMasks[i]};
             displayRequest.layerRequests.emplace_back(std::move(layerRequest));
         }
         mCommandsResults.emplace_back(std::move(displayRequest));
@@ -121,7 +122,7 @@ class CommandWriterBase {
 
     void setPresentFence(int64_t display, ::ndk::ScopedFileDescriptor presentFence) {
         if (presentFence.get() >= 0) {
-            PresentFence presentFenceCommand;
+            command::PresentFence presentFenceCommand;
             presentFenceCommand.fence = std::move(presentFence);
             presentFenceCommand.display = display;
             mCommandsResults.emplace_back(std::move(presentFenceCommand));
@@ -132,11 +133,11 @@ class CommandWriterBase {
 
     void setReleaseFences(int64_t display, const std::vector<int64_t>& layers,
                           std::vector<::ndk::ScopedFileDescriptor> releaseFences) {
-        ReleaseFences releaseFencesCommand;
+        command::ReleaseFences releaseFencesCommand;
         releaseFencesCommand.display = display;
         for (int i = 0; i < layers.size(); i++) {
             if (releaseFences[i].get() >= 0) {
-                ReleaseFences::Layer layer;
+                command::ReleaseFences::Layer layer;
                 layer.layer = layers[i];
                 layer.fence = std::move(releaseFences[i]);
                 releaseFencesCommand.layers.emplace_back(std::move(layer));
@@ -149,7 +150,7 @@ class CommandWriterBase {
 
     void setClientTargetProperty(int64_t display, const ClientTargetProperty& clientTargetProperty,
                                  float whitePointNits) {
-        ClientTargetPropertyWithNits clientTargetPropertyWithNits;
+        command::ClientTargetPropertyWithNits clientTargetPropertyWithNits;
         clientTargetPropertyWithNits.display = display;
         clientTargetPropertyWithNits.clientTargetProperty = clientTargetProperty;
         clientTargetPropertyWithNits.whitePointNits = whitePointNits;
@@ -157,7 +158,7 @@ class CommandWriterBase {
     }
 
     void setColorTransform(int64_t display, const float* matrix, ColorTransform hint) {
-        ColorTransformPayload colorTransformPayload;
+        command::ColorTransformPayload colorTransformPayload;
         colorTransformPayload.matrix.assign(matrix, matrix + 16);
         colorTransformPayload.hint = hint;
         getDisplayCommand(display).colorTransform.emplace(std::move(colorTransformPayload));
@@ -165,7 +166,7 @@ class CommandWriterBase {
 
     void setClientTarget(int64_t display, uint32_t slot, const native_handle_t* target,
                          int acquireFence, Dataspace dataspace, const std::vector<Rect>& damage) {
-        ClientTarget clientTargetCommand;
+        command::ClientTarget clientTargetCommand;
         clientTargetCommand.buffer = getBuffer(slot, target, acquireFence);
         clientTargetCommand.dataspace = dataspace;
         clientTargetCommand.damage.assign(damage.begin(), damage.end());
@@ -207,7 +208,7 @@ class CommandWriterBase {
     }
 
     void setLayerBlendMode(int64_t display, int64_t layer, BlendMode mode) {
-        ParcelableBlendMode parcelableBlendMode;
+        command::ParcelableBlendMode parcelableBlendMode;
         parcelableBlendMode.blendMode = mode;
         getLayerCommand(display, layer).blendMode.emplace(std::move(parcelableBlendMode));
     }
@@ -217,13 +218,13 @@ class CommandWriterBase {
     }
 
     void setLayerCompositionType(int64_t display, int64_t layer, Composition type) {
-        ParcelableComposition compositionPayload;
+        command::ParcelableComposition compositionPayload;
         compositionPayload.composition = type;
         getLayerCommand(display, layer).composition.emplace(std::move(compositionPayload));
     }
 
     void setLayerDataspace(int64_t display, int64_t layer, Dataspace dataspace) {
-        ParcelableDataspace dataspacePayload;
+        command::ParcelableDataspace dataspacePayload;
         dataspacePayload.dataspace = dataspace;
         getLayerCommand(display, layer).dataspace.emplace(std::move(dataspacePayload));
     }
@@ -233,7 +234,7 @@ class CommandWriterBase {
     }
 
     void setLayerPlaneAlpha(int64_t display, int64_t layer, float alpha) {
-        PlaneAlpha planeAlpha;
+        command::PlaneAlpha planeAlpha;
         planeAlpha.alpha = alpha;
         getLayerCommand(display, layer).planeAlpha.emplace(std::move(planeAlpha));
     }
@@ -249,7 +250,7 @@ class CommandWriterBase {
     }
 
     void setLayerTransform(int64_t display, int64_t layer, Transform transform) {
-        ParcelableTransform transformPayload;
+        command::ParcelableTransform transformPayload;
         transformPayload.transform = transform;
         getLayerCommand(display, layer).transform.emplace(std::move(transformPayload));
     }
@@ -259,7 +260,7 @@ class CommandWriterBase {
     }
 
     void setLayerZOrder(int64_t display, int64_t layer, uint32_t z) {
-        ZOrder zorder;
+        command::ZOrder zorder;
         zorder.z = z;
         getLayerCommand(display, layer).z.emplace(std::move(zorder));
     }
@@ -286,7 +287,7 @@ class CommandWriterBase {
 
     void setLayerGenericMetadata(int64_t display, int64_t layer, const std::string& key,
                                  const bool mandatory, const std::vector<uint8_t>& value) {
-        GenericMetadata metadata;
+        command::GenericMetadata metadata;
         metadata.key.name = key;
         metadata.key.mandatory = mandatory;
         metadata.value.assign(value.begin(), value.end());
@@ -295,64 +296,60 @@ class CommandWriterBase {
 
     void setLayerWhitePointNits(int64_t display, int64_t layer, float whitePointNits) {
         getLayerCommand(display, layer)
-                .whitePointNits.emplace(WhitePointNits{.nits = whitePointNits});
+                .whitePointNits.emplace(command::WhitePointNits{.nits = whitePointNits});
     }
 
-    const std::vector<DisplayCommand>& getPendingCommands() {
-        flushLayerCommand();
-        flushDisplayCommand();
+    const std::vector<command::CommandPayload>& getPendingCommands() {
+        if (mLayerCommand.has_value()) {
+            mCommands.emplace_back(std::move(*mLayerCommand));
+            mLayerCommand.reset();
+        }
+        if (mDisplayCommand.has_value()) {
+            mCommands.emplace_back(std::move(*mDisplayCommand));
+            mDisplayCommand.reset();
+        }
         return mCommands;
     }
 
-    std::vector<CommandResultPayload> getPendingCommandResults() {
+    std::vector<command::CommandResultPayload> getPendingCommandResults() {
         return std::move(mCommandsResults);
     }
 
   protected:
-    Buffer getBuffer(int slot, const native_handle_t* bufferHandle, int fence) {
-        Buffer bufferCommand;
+    command::Buffer getBuffer(int slot, const native_handle_t* bufferHandle, int fence) {
+        command::Buffer bufferCommand;
         bufferCommand.slot = slot;
         if (bufferHandle) bufferCommand.handle.emplace(::android::dupToAidl(bufferHandle));
         if (fence > 0) bufferCommand.fence = ::ndk::ScopedFileDescriptor(fence);
         return bufferCommand;
     }
 
-    std::optional<DisplayCommand> mDisplayCommand;
-    std::optional<LayerCommand> mLayerCommand;
-    std::vector<DisplayCommand> mCommands;
-    std::vector<CommandResultPayload> mCommandsResults;
+    std::optional<command::DisplayCommand> mDisplayCommand;
+    std::optional<command::LayerCommand> mLayerCommand;
+    std::vector<command::CommandPayload> mCommands;
+    std::vector<command::CommandResultPayload> mCommandsResults;
 
   private:
-    void flushLayerCommand() {
-        if (mLayerCommand.has_value()) {
-            mDisplayCommand->layers.emplace_back(std::move(*mLayerCommand));
-            mLayerCommand.reset();
-        }
-    }
+    // std::vector<native_handle_t*> mTemporaryHandles;
 
-    void flushDisplayCommand() {
-        if (mDisplayCommand.has_value()) {
-            mCommands.emplace_back(std::move(*mDisplayCommand));
-            mDisplayCommand.reset();
-        }
-    }
-
-    DisplayCommand& getDisplayCommand(int64_t display) {
+    command::DisplayCommand& getDisplayCommand(int64_t display) {
         if (!mDisplayCommand.has_value() || mDisplayCommand->display != display) {
-            flushLayerCommand();
-            flushDisplayCommand();
+            if (mDisplayCommand.has_value()) mCommands.emplace_back(std::move(*mDisplayCommand));
             mDisplayCommand.emplace();
             mDisplayCommand->display = display;
+            return *mDisplayCommand;
         }
         return *mDisplayCommand;
     }
 
-    LayerCommand& getLayerCommand(int64_t display, int64_t layer) {
-        getDisplayCommand(display);
-        if (!mLayerCommand.has_value() || mLayerCommand->layer != layer) {
-            flushLayerCommand();
+    command::LayerCommand& getLayerCommand(int64_t display, int64_t layer) {
+        if (!mLayerCommand.has_value() || mLayerCommand->display != display ||
+            mLayerCommand->layer != layer) {
+            if (mLayerCommand.has_value()) mCommands.emplace_back(std::move(*mLayerCommand));
             mLayerCommand.emplace();
+            mLayerCommand->display = display;
             mLayerCommand->layer = layer;
+            return *mLayerCommand;
         }
         return *mLayerCommand;
     }
@@ -364,41 +361,45 @@ class CommandReaderBase {
 
     // Parse and execute commands from the command queue.  The commands are
     // actually return values from the server and will be saved in ReturnData.
-    void parse(const std::vector<CommandResultPayload>& results) {
+    void parse(const std::vector<command::CommandResultPayload>& results) {
         resetData();
 
         for (const auto& result : results) {
             switch (result.getTag()) {
-                case CommandResultPayload::Tag::error:
-                    parseSetError(result.get<CommandResultPayload::Tag::error>());
+                case command::CommandResultPayload::Tag::error:
+                    parseSetError(result.get<command::CommandResultPayload::Tag::error>());
                     break;
-                case CommandResultPayload::Tag::changedCompositionTypes:
+                case command::CommandResultPayload::Tag::changedCompositionType:
                     parseSetChangedCompositionTypes(
-                            result.get<CommandResultPayload::Tag::changedCompositionTypes>());
+                            result.get<
+                                    command::CommandResultPayload::Tag::changedCompositionType>());
                     break;
-                case CommandResultPayload::Tag::displayRequest:
+                case command::CommandResultPayload::Tag::displayRequest:
                     parseSetDisplayRequests(
-                            result.get<CommandResultPayload::Tag::displayRequest>());
+                            result.get<command::CommandResultPayload::Tag::displayRequest>());
                     break;
-                case CommandResultPayload::Tag::presentFence:
-                    parseSetPresentFence(result.get<CommandResultPayload::Tag::presentFence>());
+                case command::CommandResultPayload::Tag::presentFence:
+                    parseSetPresentFence(
+                            result.get<command::CommandResultPayload::Tag::presentFence>());
                     break;
-                case CommandResultPayload::Tag::releaseFences:
-                    parseSetReleaseFences(result.get<CommandResultPayload::Tag::releaseFences>());
+                case command::CommandResultPayload::Tag::releaseFences:
+                    parseSetReleaseFences(
+                            result.get<command::CommandResultPayload::Tag::releaseFences>());
                     break;
-                case CommandResultPayload::Tag::presentOrValidateResult:
+                case command::CommandResultPayload::Tag::presentOrValidateResult:
                     parseSetPresentOrValidateDisplayResult(
-                            result.get<CommandResultPayload::Tag::presentOrValidateResult>());
+                            result.get<
+                                    command::CommandResultPayload::Tag::presentOrValidateResult>());
                     break;
-                case CommandResultPayload::Tag::clientTargetProperty:
+                case command::CommandResultPayload::Tag::clientTargetProperty:
                     parseSetClientTargetProperty(
-                            result.get<CommandResultPayload::Tag::clientTargetProperty>());
+                            result.get<command::CommandResultPayload::Tag::clientTargetProperty>());
                     break;
             }
         }
     }
 
-    std::vector<CommandError> takeErrors() { return std::move(mErrors); }
+    std::vector<command::Error> takeErrors() { return std::move(mErrors); }
 
     bool hasChanges(int64_t display, uint32_t* outNumChangedCompositionTypes,
                     uint32_t* outNumLayerRequestMasks) const {
@@ -529,9 +530,10 @@ class CommandReaderBase {
         mReturnData.clear();
     }
 
-    void parseSetError(const CommandError& error) { mErrors.emplace_back(error); }
+    void parseSetError(const command::Error& error) { mErrors.emplace_back(error); }
 
-    void parseSetChangedCompositionTypes(const ChangedCompositionTypes& changedCompositionTypes) {
+    void parseSetChangedCompositionTypes(
+            const command::ChangedCompositionTypes& changedCompositionTypes) {
         auto& data = mReturnData[changedCompositionTypes.display];
 
         data.changedLayers.reserve(changedCompositionTypes.layers.size());
@@ -542,7 +544,7 @@ class CommandReaderBase {
         }
     }
 
-    void parseSetDisplayRequests(const DisplayRequest& displayRequest) {
+    void parseSetDisplayRequests(const command::DisplayRequest& displayRequest) {
         auto& data = mReturnData[displayRequest.display];
 
         data.displayRequests = displayRequest.mask;
@@ -554,7 +556,7 @@ class CommandReaderBase {
         }
     }
 
-    void parseSetPresentFence(const PresentFence& presentFence) {
+    void parseSetPresentFence(const command::PresentFence& presentFence) {
         auto& data = mReturnData[presentFence.display];
         if (data.presentFence >= 0) {
             close(data.presentFence);
@@ -562,7 +564,7 @@ class CommandReaderBase {
         data.presentFence = dup(presentFence.fence.get());
     }
 
-    void parseSetReleaseFences(const ReleaseFences& releaseFences) {
+    void parseSetReleaseFences(const command::ReleaseFences& releaseFences) {
         auto& data = mReturnData[releaseFences.display];
         data.releasedLayers.reserve(releaseFences.layers.size());
         data.releaseFences.reserve(releaseFences.layers.size());
@@ -572,13 +574,15 @@ class CommandReaderBase {
         }
     }
 
-    void parseSetPresentOrValidateDisplayResult(const PresentOrValidate& presentOrValidate) {
+    void parseSetPresentOrValidateDisplayResult(
+            const command::PresentOrValidate& presentOrValidate) {
         auto& data = mReturnData[presentOrValidate.display];
         data.presentOrValidateState =
-                presentOrValidate.result == PresentOrValidate::Result::Presented ? 1 : 0;
+                presentOrValidate.result == command::PresentOrValidate::Result::Presented ? 1 : 0;
     }
 
-    void parseSetClientTargetProperty(const ClientTargetPropertyWithNits& clientTargetProperty) {
+    void parseSetClientTargetProperty(
+            const command::ClientTargetPropertyWithNits& clientTargetProperty) {
         auto& data = mReturnData[clientTargetProperty.display];
         data.clientTargetProperty.pixelFormat =
                 clientTargetProperty.clientTargetProperty.pixelFormat;
@@ -607,7 +611,7 @@ class CommandReaderBase {
         float clientTargetWhitePointNits = -1.f;
     };
 
-    std::vector<CommandError> mErrors;
+    std::vector<command::Error> mErrors;
     std::unordered_map<int64_t, ReturnData> mReturnData;
 };
 
