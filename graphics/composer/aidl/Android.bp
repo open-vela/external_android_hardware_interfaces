@@ -33,6 +33,7 @@ aidl_interface {
     },
     srcs: [
         "android/hardware/graphics/composer3/*.aidl",
+        "android/hardware/graphics/composer3/command/*.aidl",
     ],
     stability: "vintf",
     imports: [
