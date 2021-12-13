@@ -49,6 +49,8 @@ using ::android::hardware::radio::V1_0::RadioResponseInfo;
 using ::android::hardware::radio::V1_0::RadioResponseType;
 
 #define TIMEOUT_PERIOD 75
+#define SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL_VERSION_AT_LEAST(__ver__) \
+    SKIP_TEST_IF_REQUEST_NOT_SUPPORTED_WITH_HAL(__ver__, radio_v1_2, radioRsp_v1_2)
 
 // HAL instance name for SIM slot 1 or single SIM device
 #define RADIO_SERVICE_SLOT1_NAME "slot1"
