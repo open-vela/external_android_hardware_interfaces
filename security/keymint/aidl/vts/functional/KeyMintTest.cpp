@@ -3151,6 +3151,58 @@ TEST_P(VerificationOperationsTest, HmacSigningKeyCannotVerify) {
     CheckedDeleteKey(&verification_key);
 }
 
+/*
+ * VerificationOperationsTest.HmacVerificationFailsForCorruptSignature
+ *
+ * Verifies HMAC signature verification should fails if message or signature is corrupted.
+ */
+TEST_P(VerificationOperationsTest, HmacVerificationFailsForCorruptSignature) {
+    string key_material = "HelloThisIsAKey";
+
+    vector<uint8_t> signing_key, verification_key;
+    vector<KeyCharacteristics> signing_key_chars, verification_key_chars;
+    EXPECT_EQ(ErrorCode::OK,
+              ImportKey(AuthorizationSetBuilder()
+                                .Authorization(TAG_NO_AUTH_REQUIRED)
+                                .Authorization(TAG_ALGORITHM, Algorithm::HMAC)
+                                .Authorization(TAG_PURPOSE, KeyPurpose::SIGN)
+                                .Digest(Digest::SHA_2_256)
+                                .Authorization(TAG_MIN_MAC_LENGTH, 160),
+                        KeyFormat::RAW, key_material, &signing_key, &signing_key_chars));
+    EXPECT_EQ(ErrorCode::OK,
+              ImportKey(AuthorizationSetBuilder()
+                                .Authorization(TAG_NO_AUTH_REQUIRED)
+                                .Authorization(TAG_ALGORITHM, Algorithm::HMAC)
+                                .Authorization(TAG_PURPOSE, KeyPurpose::VERIFY)
+                                .Digest(Digest::SHA_2_256)
+                                .Authorization(TAG_MIN_MAC_LENGTH, 160),
+                        KeyFormat::RAW, key_material, &verification_key, &verification_key_chars));
+
+    string message = "This is a message.";
+    string signature = SignMessage(
+            signing_key, message,
+            AuthorizationSetBuilder().Digest(Digest::SHA_2_256).Authorization(TAG_MAC_LENGTH, 160));
+
+    AuthorizationSet begin_out_params;
+    ASSERT_EQ(ErrorCode::OK,
+              Begin(KeyPurpose::VERIFY, verification_key,
+                    AuthorizationSetBuilder().Digest(Digest::SHA_2_256), &begin_out_params));
+
+    string corruptMessage = "This is b message.";  // Corrupted message
+    string output;
+    EXPECT_EQ(ErrorCode::VERIFICATION_FAILED, Finish(corruptMessage, signature, &output));
+
+    ASSERT_EQ(ErrorCode::OK,
+              Begin(KeyPurpose::VERIFY, verification_key,
+                    AuthorizationSetBuilder().Digest(Digest::SHA_2_256), &begin_out_params));
+
+    signature[0] += 1;  // Corrupt a signature
+    EXPECT_EQ(ErrorCode::VERIFICATION_FAILED, Finish(message, signature, &output));
+
+    CheckedDeleteKey(&signing_key);
+    CheckedDeleteKey(&verification_key);
+}
+
 INSTANTIATE_KEYMINT_AIDL_TEST(VerificationOperationsTest);
 
 typedef KeyMintAidlTestBase ExportKeyTest;
@@ -4863,49 +4915,6 @@ TEST_P(EncryptionOperationsTest, AesCbcRoundTripSuccess) {
 }
 
 /*
- * EncryptionOperationsTest.AesCbcZeroInputSuccessb
- *
- * Verifies that keymaster generates correct output on zero-input with
- * NonePadding mode
- */
-TEST_P(EncryptionOperationsTest, AesCbcZeroInputSuccess) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                 .AesEncryptionKey(128)
-                                                 .BlockMode(BlockMode::CBC)
-                                                 .Padding(PaddingMode::NONE, PaddingMode::PKCS7)));
-
-    // Zero input message
-    string message = "";
-    for (auto padding : {PaddingMode::NONE, PaddingMode::PKCS7}) {
-        auto params = AuthorizationSetBuilder().BlockMode(BlockMode::CBC).Padding(padding);
-        AuthorizationSet out_params;
-        string ciphertext1 = EncryptMessage(message, params, &out_params);
-        vector<uint8_t> iv1 = CopyIv(out_params);
-        if (padding == PaddingMode::NONE)
-            EXPECT_EQ(message.size(), ciphertext1.size()) << "PaddingMode: " << padding;
-        else
-            EXPECT_EQ(message.size(), ciphertext1.size() - 16) << "PaddingMode: " << padding;
-
-        out_params.Clear();
-
-        string ciphertext2 = EncryptMessage(message, params, &out_params);
-        vector<uint8_t> iv2 = CopyIv(out_params);
-        if (padding == PaddingMode::NONE)
-            EXPECT_EQ(message.size(), ciphertext2.size()) << "PaddingMode: " << padding;
-        else
-            EXPECT_EQ(message.size(), ciphertext2.size() - 16) << "PaddingMode: " << padding;
-
-        // IVs should be random
-        EXPECT_NE(iv1, iv2) << "PaddingMode: " << padding;
-
-        params.push_back(TAG_NONCE, iv1);
-        string plaintext = DecryptMessage(ciphertext1, params);
-        EXPECT_EQ(message, plaintext) << "PaddingMode: " << padding;
-    }
-}
-
-/*
  * EncryptionOperationsTest.AesCallerNonce
  *
  * Verifies that AES caller-provided nonces work correctly.
@@ -6546,7 +6555,7 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
     size_t i;
 
     for (i = 0; i < max_operations; i++) {
-        result = Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params, op_handles[i]);
+        result = Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, op_handles[i]);
         if (ErrorCode::OK != result) {
             break;
         }
@@ -6554,12 +6563,12 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
     EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS, result);
     // Try again just in case there's a weird overflow bug
     EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
-              Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params));
+              Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params));
     for (size_t j = 0; j < i; j++) {
         EXPECT_EQ(ErrorCode::OK, Abort(op_handles[j]))
                 << "Aboort failed for i = " << j << std::endl;
     }
-    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params));
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params));
     AbortIfNeeded();
 }
 
@@ -6609,7 +6618,7 @@ INSTANTIATE_KEYMINT_AIDL_TEST(TransportLimitTest);
 
 typedef KeyMintAidlTestBase KeyAgreementTest;
 
-static int EcdhCurveToOpenSslCurveName(EcCurve curve) {
+int CurveToOpenSslCurveName(EcCurve curve) {
     switch (curve) {
         case EcCurve::P_224:
             return NID_secp224r1;
@@ -6619,8 +6628,6 @@ static int EcdhCurveToOpenSslCurveName(EcCurve curve) {
             return NID_secp384r1;
         case EcCurve::P_521:
             return NID_secp521r1;
-        case EcCurve::CURVE_25519:
-            return NID_X25519;
     }
 }
 
@@ -6642,7 +6649,7 @@ TEST_P(KeyAgreementTest, Ecdh) {
         for (auto localCurve : ValidCurves()) {
             // Generate EC key locally (with access to private key material)
             auto ecKey = EC_KEY_Ptr(EC_KEY_new());
-            int curveName = EcdhCurveToOpenSslCurveName(localCurve);
+            int curveName = CurveToOpenSslCurveName(localCurve);
             auto group = EC_GROUP_Ptr(EC_GROUP_new_by_curve_name(curveName));
             ASSERT_NE(group, nullptr);
             ASSERT_EQ(EC_KEY_set_group(ecKey.get(), group.get()), 1);
