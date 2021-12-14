@@ -32,7 +32,7 @@ namespace aidlCommon = ::aidl::android::hardware::radio;
 constexpr auto ok = &ScopedAStatus::ok;
 
 std::shared_ptr<aidl::IRadioDataResponse> RadioData::respond() {
-    return mCallbackManager->response().dataCb();
+    return mRadioResponse->dataCb();
 }
 
 ScopedAStatus RadioData::allocatePduSessionId(int32_t serial) {
@@ -64,11 +64,7 @@ ScopedAStatus RadioData::deactivateDataCall(int32_t serial, int32_t cid,
 
 ScopedAStatus RadioData::getDataCallList(int32_t serial) {
     LOG_CALL << serial;
-    if (mHal1_6) {
-        mHal1_6->getDataCallList_1_6(serial);
-    } else {
-        mHal1_5->getDataCallList(serial);
-    }
+    mHal1_5->getDataCallList(serial);
     return ok();
 }
 
@@ -129,10 +125,16 @@ ScopedAStatus RadioData::setInitialAttachApn(int32_t serial, const aidl::DataPro
 }
 
 ScopedAStatus RadioData::setResponseFunctions(
-        const std::shared_ptr<aidl::IRadioDataResponse>& response,
-        const std::shared_ptr<aidl::IRadioDataIndication>& indication) {
-    LOG_CALL << response << ' ' << indication;
-    mCallbackManager->setResponseFunctions(response, indication);
+        const std::shared_ptr<aidl::IRadioDataResponse>& dataResponse,
+        const std::shared_ptr<aidl::IRadioDataIndication>& dataIndication) {
+    LOG_CALL << dataResponse << ' ' << dataIndication;
+
+    CHECK(dataResponse);
+    CHECK(dataIndication);
+
+    mRadioResponse->setResponseFunction(dataResponse);
+    mRadioIndication->setResponseFunction(dataIndication);
+
     return ok();
 }
 

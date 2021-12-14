@@ -31,7 +31,7 @@ namespace aidl = ::aidl::android::hardware::radio::voice;
 constexpr auto ok = &ScopedAStatus::ok;
 
 std::shared_ptr<aidl::IRadioVoiceResponse> RadioVoice::respond() {
-    return mCallbackManager->response().voiceCb();
+    return mRadioResponse->voiceCb();
 }
 
 ScopedAStatus RadioVoice::acceptCall(int32_t serial) {
@@ -53,19 +53,13 @@ ScopedAStatus RadioVoice::dial(int32_t serial, const aidl::Dial& dialInfo) {
 }
 
 ScopedAStatus RadioVoice::emergencyDial(  //
-        int32_t serial, const aidl::Dial& info, int32_t categories,
+        int32_t serial, const aidl::Dial& dialInfo, aidl::EmergencyServiceCategory categories,
         const std::vector<std::string>& urns, aidl::EmergencyCallRouting routing,
-        bool knownUserIntentEmerg, bool isTesting) {
+        bool hasKnownUserIntentEmerg, bool isTesting) {
     LOG_CALL << serial;
-    if (mHal1_6) {
-        mHal1_6->emergencyDial_1_6(  //
-                serial, toHidl(info), toHidlBitfield<V1_4::EmergencyServiceCategory>(categories),
-                toHidl(urns), V1_4::EmergencyCallRouting(routing), knownUserIntentEmerg, isTesting);
-    } else {
-        mHal1_5->emergencyDial(  //
-                serial, toHidl(info), toHidlBitfield<V1_4::EmergencyServiceCategory>(categories),
-                toHidl(urns), V1_4::EmergencyCallRouting(routing), knownUserIntentEmerg, isTesting);
-    }
+    mHal1_5->emergencyDial(serial, toHidl(dialInfo),
+                           toHidlBitfield<V1_4::EmergencyServiceCategory>(categories), toHidl(urns),
+                           V1_4::EmergencyCallRouting(routing), hasKnownUserIntentEmerg, isTesting);
     return ok();
 }
 
@@ -108,11 +102,7 @@ ScopedAStatus RadioVoice::getClir(int32_t serial) {
 
 ScopedAStatus RadioVoice::getCurrentCalls(int32_t serial) {
     LOG_CALL << serial;
-    if (mHal1_6) {
-        mHal1_6->getCurrentCalls_1_6(serial);
-    } else {
-        mHal1_5->getCurrentCalls(serial);
-    }
+    mHal1_5->getCurrentCalls(serial);
     return ok();
 }
 
@@ -238,10 +228,16 @@ ScopedAStatus RadioVoice::setPreferredVoicePrivacy(int32_t serial, bool enable) 
 }
 
 ScopedAStatus RadioVoice::setResponseFunctions(
-        const std::shared_ptr<aidl::IRadioVoiceResponse>& response,
-        const std::shared_ptr<aidl::IRadioVoiceIndication>& indication) {
-    LOG_CALL << response << ' ' << indication;
-    mCallbackManager->setResponseFunctions(response, indication);
+        const std::shared_ptr<aidl::IRadioVoiceResponse>& voiceResponse,
+        const std::shared_ptr<aidl::IRadioVoiceIndication>& voiceIndication) {
+    LOG_CALL << voiceResponse << ' ' << voiceIndication;
+
+    CHECK(voiceResponse);
+    CHECK(voiceIndication);
+
+    mRadioResponse->setResponseFunction(voiceResponse);
+    mRadioIndication->setResponseFunction(voiceIndication);
+
     return ok();
 }
 
