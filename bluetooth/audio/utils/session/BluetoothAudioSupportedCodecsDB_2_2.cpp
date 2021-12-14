@@ -77,13 +77,9 @@ static AudioLocation monoAudio = AudioLocation::UNKNOWN;
 // Stores the supported setting of audio location, connected device, and the
 // channel count for each device
 std::vector<std::tuple<AudioLocation, uint8_t, uint8_t>>
-    supportedDeviceSetting = {
-        // Stereo, two connected device, one for L one for R
-        std::make_tuple(stereoAudio, 2, 1),
-        // Stereo, one connected device for both L and R
-        std::make_tuple(stereoAudio, 1, 2),
-        // Mono
-        std::make_tuple(monoAudio, 1, 1)};
+    supportedDeviceSetting = {std::make_tuple(stereoAudio, 2, 1),
+                              std::make_tuple(monoAudio, 1, 2),
+                              std::make_tuple(monoAudio, 1, 1)};
 
 bool IsOffloadLeAudioConfigurationValid(
     const ::android::hardware::bluetooth::audio::V2_1::SessionType&

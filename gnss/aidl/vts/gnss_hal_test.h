@@ -23,7 +23,6 @@
 #include <binder/IServiceManager.h>
 
 #include <android/hardware/gnss/2.1/IGnss.h>
-#include "GnssBatchingCallback.h"
 #include "GnssCallbackAidl.h"
 #include "v2_1/gnss_hal_test_template.h"
 
@@ -41,49 +40,8 @@ class GnssHalTest : public android::hardware::gnss::common::GnssHalTestTemplate<
   public:
     GnssHalTest(){};
     ~GnssHalTest(){};
-
-    struct ComparableBlocklistedSource {
-        android::hardware::gnss::BlocklistedSource id;
-
-        ComparableBlocklistedSource() {
-            id.constellation = android::hardware::gnss::GnssConstellationType::UNKNOWN;
-            id.svid = 0;
-        }
-
-        bool operator<(const ComparableBlocklistedSource& compare) const {
-            return ((id.svid < compare.id.svid) || ((id.svid == compare.id.svid) &&
-                                                    (id.constellation < compare.id.constellation)));
-        }
-    };
-
-    struct SignalCounts {
-        int observations;
-        float max_cn0_dbhz;
-    };
-
     virtual void SetUp() override;
     virtual void SetUpGnssCallback() override;
-
-    void CheckLocation(const android::hardware::gnss::GnssLocation& location,
-                       const bool check_speed);
-    void SetPositionMode(const int min_interval_msec, const bool low_power_mode);
-    bool StartAndCheckFirstLocation(const int min_interval_msec, const bool low_power_mode);
-    void StopAndClearLocations();
-    void StartAndCheckLocations(int count);
-
-    android::hardware::gnss::GnssConstellationType startLocationAndGetNonGpsConstellation(
-            const int locations_to_await, const int gnss_sv_info_list_timeout);
-    std::list<std::vector<android::hardware::gnss::IGnssCallback::GnssSvInfo>> convertToAidl(
-            const std::list<hidl_vec<android::hardware::gnss::V2_1::IGnssCallback::GnssSvInfo>>&
-                    sv_info_list);
-    android::hardware::gnss::BlocklistedSource FindStrongFrequentNonGpsSource(
-            const std::list<hidl_vec<android::hardware::gnss::V2_1::IGnssCallback::GnssSvInfo>>
-                    sv_info_list,
-            const int min_observations);
-    android::hardware::gnss::BlocklistedSource FindStrongFrequentNonGpsSource(
-            const std::list<std::vector<android::hardware::gnss::IGnssCallback::GnssSvInfo>>
-                    sv_info_list,
-            const int min_observations);
 
     sp<IGnssAidl> aidl_gnss_hal_;
     sp<GnssCallbackAidl> aidl_gnss_cb_;  // Primary callback interface
