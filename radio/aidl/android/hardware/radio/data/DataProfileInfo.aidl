@@ -20,6 +20,7 @@ import android.hardware.radio.RadioAccessFamily;
 import android.hardware.radio.data.ApnAuthType;
 import android.hardware.radio.data.ApnTypes;
 import android.hardware.radio.data.PdpProtocolType;
+import android.hardware.radio.data.TrafficDescriptor;
 
 @VintfStability
 parcelable DataProfileInfo {
@@ -92,11 +93,11 @@ parcelable DataProfileInfo {
     /**
      * Supported APN types bitmap. See ApnTypes for the value of each bit.
      */
-    ApnTypes supportedApnTypesBitmap;
+    int supportedApnTypesBitmap;
     /**
      * The bearer bitmap. See RadioAccessFamily for the value of each bit.
      */
-    RadioAccessFamily bearerBitmap;
+    int bearerBitmap;
     /**
      * Maximum transmission unit (MTU) size in bytes for IPv4.
      */
@@ -115,4 +116,19 @@ parcelable DataProfileInfo {
      * If the same data profile exists, this data profile must overwrite it.
      */
     boolean persistent;
+    /**
+     * Indicates the PDU session brought up by this data profile should be always-on.
+     * An always-on PDU Session is a PDU Session for which User Plane resources have to be
+     * activated during every transition from CM-IDLE mode to CM-CONNECTED state.
+     * See 3GPP TS 23.501 section 5.6.13 for the details.
+     */
+    boolean alwaysOn;
+    /**
+     * TrafficDescriptor for which data connection needs to be established.
+     * It is used for URSP traffic matching as described in TS 24.526 Section 4.2.2.
+     * It includes an optional DNN which, if present, must be used for traffic matching --
+     * it does not specify the end point to be used for the data call. The end point is specified by
+     * apn; apn must be used as the end point if one is not specified through URSP rules.
+     */
+    @nullable TrafficDescriptor trafficDescriptor;
 }
