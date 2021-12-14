@@ -23,14 +23,15 @@ namespace android::hardware::radio::compat {
 
 class RadioVoice : public RadioCompatBase,
                    public aidl::android::hardware::radio::voice::BnRadioVoice {
+    std::shared_ptr<::aidl::android::hardware::radio::voice::IRadioVoiceResponse> respond();
+
     ::ndk::ScopedAStatus acceptCall(int32_t serial) override;
     ::ndk::ScopedAStatus conference(int32_t serial) override;
     ::ndk::ScopedAStatus dial(
             int32_t serial, const ::aidl::android::hardware::radio::voice::Dial& dialInfo) override;
     ::ndk::ScopedAStatus emergencyDial(
             int32_t serial, const ::aidl::android::hardware::radio::voice::Dial& dialInfo,
-            ::aidl::android::hardware::radio::voice::EmergencyServiceCategory categories,
-            const std::vector<std::string>& urns,
+            int32_t categories, const std::vector<std::string>& urns,
             ::aidl::android::hardware::radio::voice::EmergencyCallRouting routing,
             bool hasKnownUserIntentEmergency, bool isTesting) override;
     ::ndk::ScopedAStatus exitEmergencyCallbackMode(int32_t serial) override;
