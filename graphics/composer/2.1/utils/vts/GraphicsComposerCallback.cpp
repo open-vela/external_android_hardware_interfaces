@@ -30,7 +30,7 @@ void GraphicsComposerCallback::setVsyncAllowed(bool allowed) {
 
 std::vector<Display> GraphicsComposerCallback::getDisplays() const {
     std::lock_guard<std::mutex> lock(mMutex);
-    return mDisplays;
+    return std::vector<Display>(mDisplays.begin(), mDisplays.end());
 }
 
 int GraphicsComposerCallback::getInvalidHotplugCount() const {
@@ -51,17 +51,12 @@ int GraphicsComposerCallback::getInvalidVsyncCount() const {
 Return<void> GraphicsComposerCallback::onHotplug(Display display, Connection connection) {
     std::lock_guard<std::mutex> lock(mMutex);
 
-    auto it = std::find(mDisplays.begin(), mDisplays.end(), display);
     if (connection == Connection::CONNECTED) {
-        if (it == mDisplays.end()) {
-            mDisplays.push_back(display);
-        } else {
+        if (!mDisplays.insert(display).second) {
             mInvalidHotplugCount++;
         }
     } else if (connection == Connection::DISCONNECTED) {
-        if (it != mDisplays.end()) {
-            mDisplays.erase(it);
-        } else {
+        if (!mDisplays.erase(display)) {
             mInvalidHotplugCount++;
         }
     }
@@ -72,8 +67,7 @@ Return<void> GraphicsComposerCallback::onHotplug(Display display, Connection con
 Return<void> GraphicsComposerCallback::onRefresh(Display display) {
     std::lock_guard<std::mutex> lock(mMutex);
 
-    auto it = std::find(mDisplays.begin(), mDisplays.end(), display);
-    if (it == mDisplays.end()) {
+    if (mDisplays.count(display) == 0) {
         mInvalidRefreshCount++;
     }
 
@@ -83,8 +77,7 @@ Return<void> GraphicsComposerCallback::onRefresh(Display display) {
 Return<void> GraphicsComposerCallback::onVsync(Display display, int64_t) {
     std::lock_guard<std::mutex> lock(mMutex);
 
-    auto it = std::find(mDisplays.begin(), mDisplays.end(), display);
-    if (!mVsyncAllowed || it == mDisplays.end()) {
+    if (!mVsyncAllowed || mDisplays.count(display) == 0) {
         mInvalidVsyncCount++;
     }
 

@@ -16,7 +16,9 @@
 
 #pragma once
 
+#include <aidl/android/hardware/gnss/BnAGnss.h>
 #include <aidl/android/hardware/gnss/BnGnss.h>
+#include <aidl/android/hardware/gnss/BnGnssBatching.h>
 #include <aidl/android/hardware/gnss/BnGnssConfiguration.h>
 #include <aidl/android/hardware/gnss/BnGnssMeasurementInterface.h>
 #include <aidl/android/hardware/gnss/BnGnssPowerIndication.h>
@@ -37,6 +39,13 @@ class Gnss : public BnGnss {
             std::shared_ptr<IGnssPowerIndication>* iGnssPowerIndication) override;
     ndk::ScopedAStatus getExtensionGnssMeasurement(
             std::shared_ptr<IGnssMeasurementInterface>* iGnssMeasurement) override;
+    ndk::ScopedAStatus getExtensionGnssBatching(
+            std::shared_ptr<IGnssBatching>* iGnssBatching) override;
+    ndk::ScopedAStatus getExtensionGnssGeofence(
+            std::shared_ptr<IGnssGeofence>* iGnssGeofence) override;
+    ndk::ScopedAStatus getExtensionGnssNavigationMessage(
+            std::shared_ptr<IGnssNavigationMessageInterface>* iGnssNavigationMessage) override;
+    ndk::ScopedAStatus getExtensionAGnss(std::shared_ptr<IAGnss>* iAGnss) override;
 
     std::shared_ptr<GnssConfiguration> mGnssConfiguration;
     std::shared_ptr<GnssPowerIndication> mGnssPowerIndication;
