@@ -103,7 +103,7 @@ class FrontendTests {
 
     void setService(sp<ITuner> tuner) {
         mService = tuner;
-        getDvrTests()->setService(tuner);
+        mDvrTests.setService(tuner);
         getDefaultSoftwareFrontendPlaybackConfig(mDvrConfig);
     }
 
@@ -124,8 +124,8 @@ class FrontendTests {
     void tuneTest(FrontendConfig frontendConf);
     void scanTest(FrontendConfig frontend, FrontendScanType type);
 
-    void setDvrTests(DvrTests* dvrTests) { mExternalDvrTests = dvrTests; }
-    void setDemux(sp<IDemux> demux) { getDvrTests()->setDemux(demux); }
+    void setDvrTests(DvrTests dvrTests) { mDvrTests = dvrTests; }
+    void setDemux(sp<IDemux> demux) { mDvrTests.setDemux(demux); }
     void setSoftwareFrontendDvrConfig(DvrConfig conf) { mDvrConfig = conf; }
 
   protected:
@@ -147,16 +147,11 @@ class FrontendTests {
         dvrConfig.settings.playback(playbackSettings);
     }
 
-    DvrTests* getDvrTests() {
-        return (mExternalDvrTests != nullptr ? mExternalDvrTests : &mDvrTests);
-    }
-
     sp<IFrontend> mFrontend;
     FrontendInfo mFrontendInfo;
     sp<FrontendCallback> mFrontendCallback;
     hidl_vec<FrontendId> mFeIds;
 
-    DvrTests* mExternalDvrTests = nullptr;
     DvrTests mDvrTests;
     bool mIsSoftwareFe = false;
     DvrConfig mDvrConfig;
