@@ -31,6 +31,7 @@ cc_library_static {
     export_include_dirs: ["include"],
     cflags: ["-Wthread-safety"],
     static_libs: [
+        "libarect",
         "neuralnetworks_types",
         "neuralnetworks_utils_hal_common",
     ],
@@ -40,10 +41,16 @@ cc_library_static {
     export_static_lib_headers: [
         "neuralnetworks_utils_hal_common",
     ],
+    target: {
+        android: {
+            shared_libs: ["libnativewindow"],
+        },
+    },
 }
 
 cc_test {
     name: "neuralnetworks_utils_hal_1_0_test",
+    host_supported: true,
     srcs: ["test/*.cpp"],
     static_libs: [
         "android.hardware.neuralnetworks@1.0",
@@ -62,8 +69,12 @@ cc_test {
         "libhidlbase",
         "libhidlmemory",
         "liblog",
-        "libnativewindow",
         "libutils",
     ],
+    target: {
+        android: {
+            shared_libs: ["libnativewindow"],
+        },
+    },
     test_suites: ["general-tests"],
 }
