@@ -18,8 +18,13 @@
 
 #include "Gnss.h"
 #include <log/log.h>
+#include "AGnss.h"
+#include "GnssBatching.h"
 #include "GnssConfiguration.h"
+#include "GnssDebug.h"
+#include "GnssGeofence.h"
 #include "GnssMeasurementInterface.h"
+#include "GnssNavigationMessageInterface.h"
 #include "GnssPsds.h"
 
 namespace aidl::android::hardware::gnss {
@@ -50,6 +55,12 @@ ndk::ScopedAStatus Gnss::setCallback(const std::shared_ptr<IGnssCallback>& callb
 ndk::ScopedAStatus Gnss::close() {
     ALOGD("Gnss::close");
     sGnssCallback = nullptr;
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Gnss::getExtensionAGnss(std::shared_ptr<IAGnss>* iAGnss) {
+    ALOGD("Gnss::getExtensionAGnss");
+    *iAGnss = SharedRefBase::make<AGnss>();
     return ndk::ScopedAStatus::ok();
 }
 
@@ -85,6 +96,35 @@ ndk::ScopedAStatus Gnss::getExtensionGnssMeasurement(
     ALOGD("Gnss::getExtensionGnssMeasurement");
 
     *iGnssMeasurement = SharedRefBase::make<GnssMeasurementInterface>();
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Gnss::getExtensionGnssBatching(std::shared_ptr<IGnssBatching>* iGnssBatching) {
+    ALOGD("Gnss::getExtensionGnssBatching");
+
+    *iGnssBatching = SharedRefBase::make<GnssBatching>();
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Gnss::getExtensionGnssGeofence(std::shared_ptr<IGnssGeofence>* iGnssGeofence) {
+    ALOGD("Gnss::getExtensionGnssGeofence");
+
+    *iGnssGeofence = SharedRefBase::make<GnssGeofence>();
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Gnss::getExtensionGnssNavigationMessage(
+        std::shared_ptr<IGnssNavigationMessageInterface>* iGnssNavigationMessage) {
+    ALOGD("Gnss::getExtensionGnssNavigationMessage");
+
+    *iGnssNavigationMessage = SharedRefBase::make<GnssNavigationMessageInterface>();
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Gnss::getExtensionGnssDebug(std::shared_ptr<IGnssDebug>* iGnssDebug) {
+    ALOGD("Gnss::getExtensionGnssDebug");
+
+    *iGnssDebug = SharedRefBase::make<GnssDebug>();
     return ndk::ScopedAStatus::ok();
 }
 
