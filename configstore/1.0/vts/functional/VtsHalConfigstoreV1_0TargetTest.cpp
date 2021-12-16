@@ -140,7 +140,6 @@ TEST_P(ConfigstoreHidlTest, TestColorConstrainsBasic) {
     }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(ConfigstoreHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, ConfigstoreHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(ISurfaceFlingerConfigs::descriptor)),

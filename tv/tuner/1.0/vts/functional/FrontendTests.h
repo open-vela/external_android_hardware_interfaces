@@ -103,8 +103,7 @@ class FrontendTests {
 
     void setService(sp<ITuner> tuner) {
         mService = tuner;
-        getDvrTests()->setService(tuner);
-        getDefaultSoftwareFrontendPlaybackConfig(mDvrConfig);
+        mDvrTests.setService(tuner);
     }
 
     AssertionResult getFrontendIds();
@@ -124,16 +123,14 @@ class FrontendTests {
     void tuneTest(FrontendConfig frontendConf);
     void scanTest(FrontendConfig frontend, FrontendScanType type);
 
-    void setDvrTests(DvrTests* dvrTests) { mExternalDvrTests = dvrTests; }
-    void setDemux(sp<IDemux> demux) { getDvrTests()->setDemux(demux); }
-    void setSoftwareFrontendDvrConfig(DvrConfig conf) { mDvrConfig = conf; }
+    void setDvrTests(DvrTests dvrTests) { mDvrTests = dvrTests; }
+    void setDemux(sp<IDemux> demux) { mDvrTests.setDemux(demux); }
 
   protected:
     static AssertionResult failure() { return ::testing::AssertionFailure(); }
     static AssertionResult success() { return ::testing::AssertionSuccess(); }
 
-    // TODO: replace with customized dvr input
-    void getDefaultSoftwareFrontendPlaybackConfig(DvrConfig& dvrConfig) {
+    void getSoftwareFrontendPlaybackConfig(DvrConfig& dvrConfig) {
         PlaybackSettings playbackSettings{
                 .statusMask = 0xf,
                 .lowThreshold = 0x1000,
@@ -147,17 +144,11 @@ class FrontendTests {
         dvrConfig.settings.playback(playbackSettings);
     }
 
-    DvrTests* getDvrTests() {
-        return (mExternalDvrTests != nullptr ? mExternalDvrTests : &mDvrTests);
-    }
-
     sp<IFrontend> mFrontend;
     FrontendInfo mFrontendInfo;
     sp<FrontendCallback> mFrontendCallback;
     hidl_vec<FrontendId> mFeIds;
 
-    DvrTests* mExternalDvrTests = nullptr;
     DvrTests mDvrTests;
     bool mIsSoftwareFe = false;
-    DvrConfig mDvrConfig;
 };
