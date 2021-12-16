@@ -18,8 +18,7 @@
 
 #include "ContexthubCallbackBase.h"
 #include "ContexthubHidlTestBase.h"
-#include "VtsHalContexthubUtilsCommon.h"
-#include "VtsHalContexthubUtilsHidl.h"
+#include "VtsHalContexthubUtils.h"
 
 #include <android-base/logging.h>
 #include <android/hardware/contexthub/1.0/IContexthub.h>
