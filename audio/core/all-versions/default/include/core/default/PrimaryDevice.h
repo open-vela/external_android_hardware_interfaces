@@ -54,29 +54,21 @@ struct PrimaryDevice : public IPrimaryDevice {
                                     getInputBufferSize_cb _hidl_cb) override;
 
     Return<void> openOutputStream(int32_t ioHandle, const DeviceAddress& device,
-                                  const AudioConfig& config,
-#if MAJOR_VERSION <= 6
-                                  AudioOutputFlags flags,
-#else
-                                  const AudioOutputFlags& flags,
-#endif
+                                  const AudioConfig& config, AudioOutputFlagBitfield flags,
 #if MAJOR_VERSION >= 4
                                   const SourceMetadata& sourceMetadata,
 #endif
                                   openOutputStream_cb _hidl_cb) override;
+
     Return<void> openInputStream(int32_t ioHandle, const DeviceAddress& device,
-                                 const AudioConfig& config,
-#if MAJOR_VERSION <= 6
-                                 AudioInputFlags flags,
-#else
-                                 const AudioInputFlags& flags,
-#endif
-#if MAJOR_VERSION == 2
-                                 AudioSource source,
-#elif MAJOR_VERSION >= 4
+                                 const AudioConfig& config, AudioInputFlagBitfield flags,
+                                 AudioSource source, openInputStream_cb _hidl_cb);
+#if MAJOR_VERSION >= 4
+    Return<void> openInputStream(int32_t ioHandle, const DeviceAddress& device,
+                                 const AudioConfig& config, AudioInputFlagBitfield flags,
                                  const SinkMetadata& sinkMetadata,
-#endif
                                  openInputStream_cb _hidl_cb) override;
+#endif
 
     Return<bool> supportsAudioPatches() override;
     Return<void> createAudioPatch(const hidl_vec<AudioPortConfig>& sources,
