@@ -139,15 +139,14 @@ ScopedAStatus RadioData::setupDataCall(  //
         const aidl::DataProfileInfo& dataProfileInfo, bool roamingAllowed,
         aidl::DataRequestReason reason, const std::vector<aidl::LinkAddress>& addresses,
         const std::vector<std::string>& dnses, int32_t pduSessId,
-        const std::optional<aidl::SliceInfo>& sliceInfo, bool matchAllRuleAllowed) {
+        const std::optional<aidl::SliceInfo>& sliceInfo,
+        const std::optional<aidl::TrafficDescriptor>& trDesc, bool matchAllRuleAllowed) {
     if (mHal1_6) {
         mHal1_6->setupDataCall_1_6(  //
                 serial, V1_5::AccessNetwork(accessNetwork), toHidl(dataProfileInfo), roamingAllowed,
                 V1_2::DataRequestReason(reason), toHidl(addresses), toHidl(dnses), pduSessId,
                 toHidl<V1_6::OptionalSliceInfo>(sliceInfo),
-                toHidl<V1_6::OptionalTrafficDescriptor>(dataProfileInfo.trafficDescriptor),
-                matchAllRuleAllowed);
-        mContext->addDataProfile(dataProfileInfo);
+                toHidl<V1_6::OptionalTrafficDescriptor>(trDesc), matchAllRuleAllowed);
     } else {
         mHal1_5->setupDataCall_1_5(  //
                 serial, V1_5::AccessNetwork(accessNetwork), toHidl(dataProfileInfo), roamingAllowed,
