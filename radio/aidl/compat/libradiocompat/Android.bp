@@ -56,9 +56,7 @@ cc_library {
         "libutils",
     ],
     srcs: [
-        "DriverContext.cpp",
         "RadioCompatBase.cpp",
-        "RadioIndication.cpp",
         "RadioResponse.cpp",
         "commonStructs.cpp",
         "config/RadioConfig.cpp",
