@@ -15,8 +15,6 @@
  */
 #pragma once
 
-#include "DriverContext.h"
-
 #include <aidl/android/hardware/radio/data/IRadioDataResponse.h>
 #include <aidl/android/hardware/radio/messaging/IRadioMessagingResponse.h>
 #include <aidl/android/hardware/radio/modem/IRadioModemResponse.h>
@@ -28,8 +26,6 @@
 namespace android::hardware::radio::compat {
 
 class RadioResponse : public V1_6::IRadioResponse {
-    std::shared_ptr<DriverContext> mContext;
-
     std::shared_ptr<::aidl::android::hardware::radio::data::IRadioDataResponse> mDataCb;
     std::shared_ptr<::aidl::android::hardware::radio::messaging::IRadioMessagingResponse>
             mMessagingCb;
@@ -413,8 +409,6 @@ class RadioResponse : public V1_6::IRadioResponse {
                                                    int32_t updatedRecordIndex) override;
 
   public:
-    RadioResponse(std::shared_ptr<DriverContext> context);
-
     void setResponseFunction(
             std::shared_ptr<::aidl::android::hardware::radio::data::IRadioDataResponse> dataCb);
     void setResponseFunction(
