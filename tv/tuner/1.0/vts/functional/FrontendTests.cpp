@@ -85,7 +85,7 @@ void FrontendCallback::scanTest(sp<IFrontend>& frontend, FrontendConfig config,
         // passed in means the real input config on the transponder connected to the DUT.
         // We want the blind the test to start from lower frequency than this to check the blind
         // scan implementation.
-        resetBlindScanStartingFrequency(config, targetFrequency - 100);
+        resetBlindScanStartingFrequency(config, targetFrequency - 100 * 1000);
     }
 
     Result result = frontend->scan(config.settings, type);
@@ -371,12 +371,12 @@ AssertionResult FrontendTests::tuneFrontend(FrontendConfig config, bool testWith
     mIsSoftwareFe = config.isSoftwareFe;
     bool result = true;
     if (mIsSoftwareFe && testWithDemux) {
-        result &= mDvrTests.openDvrInDemux(mDvrConfig.type, mDvrConfig.bufferSize) == success();
-        result &= mDvrTests.configDvrPlayback(mDvrConfig.settings) == success();
-        result &= mDvrTests.getDvrPlaybackMQDescriptor() == success();
-        mDvrTests.startPlaybackInputThread(mDvrConfig.playbackInputFile,
-                                           mDvrConfig.settings.playback());
-        mDvrTests.startDvrPlayback();
+        result &=
+                getDvrTests()->openDvrInDemux(mDvrConfig.type, mDvrConfig.bufferSize) == success();
+        result &= getDvrTests()->configDvrPlayback(mDvrConfig.settings) == success();
+        result &= getDvrTests()->getDvrPlaybackMQDescriptor() == success();
+        getDvrTests()->startPlaybackInputThread(mDvrConfig.playbackInputFile,
+                                                mDvrConfig.settings.playback());
         if (!result) {
             ALOGW("[vts] Software frontend dvr configure failed.");
             return failure();
@@ -399,9 +399,8 @@ AssertionResult FrontendTests::stopTuneFrontend(bool testWithDemux) {
     Result status;
     status = mFrontend->stopTune();
     if (mIsSoftwareFe && testWithDemux) {
-        mDvrTests.stopPlaybackThread();
-        mDvrTests.stopDvrPlayback();
-        mDvrTests.closeDvrPlayback();
+        getDvrTests()->stopPlaybackThread();
+        getDvrTests()->closeDvrPlayback();
     }
     return AssertionResult(status == Result::SUCCESS);
 }
@@ -417,7 +416,6 @@ AssertionResult FrontendTests::closeFrontend() {
 
 void FrontendTests::getFrontendIdByType(FrontendType feType, uint32_t& feId) {
     ASSERT_TRUE(getFrontendIds());
-    ASSERT_TRUE(mFeIds.size() > 0);
     for (size_t i = 0; i < mFeIds.size(); i++) {
         ASSERT_TRUE(getFrontendInfo(mFeIds[i]));
         if (mFrontendInfo.type != feType) {
