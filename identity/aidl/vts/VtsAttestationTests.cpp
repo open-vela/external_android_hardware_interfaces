@@ -29,7 +29,7 @@
 #include <future>
 #include <map>
 
-#include "VtsIdentityTestUtils.h"
+#include "Util.h"
 
 namespace android::hardware::identity {
 
@@ -105,6 +105,7 @@ TEST_P(VtsAttestationTests, verifyAttestationWithVeryShortChallengeAndId) {
                                    attestationApplicationId, false);
 }
 
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(VtsAttestationTests);
 INSTANTIATE_TEST_SUITE_P(
         Identity, VtsAttestationTests,
         testing::ValuesIn(android::getAidlHalInstanceNames(IIdentityCredentialStore::descriptor)),

@@ -14,6 +14,15 @@
 // limitations under the License.
 //
 
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
 cc_test {
     name: "VtsHalHealthV2_0TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
@@ -23,5 +32,11 @@ cc_test {
         "android.hardware.health@1.0",
         "android.hardware.health@2.0",
     ],
-    test_suites: ["general-tests", "vts"],
+    header_libs: [
+        "libhealthtest_headers",
+    ],
+    test_suites: [
+        "general-tests",
+        "vts",
+    ],
 }

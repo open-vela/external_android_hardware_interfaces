@@ -27,6 +27,9 @@ using android::hardware::hidl_vec;
 
 using android::hardware::gnss::common::Utils;
 
+using android::hardware::gnss::V2_1::IGnssAntennaInfo;
+using android::hardware::gnss::V2_1::IGnssAntennaInfoCallback;
+
 using IGnssMeasurement_2_1 = android::hardware::gnss::V2_1::IGnssMeasurement;
 using IGnssMeasurement_2_0 = android::hardware::gnss::V2_0::IGnssMeasurement;
 using IGnssMeasurement_1_1 = android::hardware::gnss::V1_1::IGnssMeasurement;
@@ -87,6 +90,10 @@ TEST_P(GnssHalTest, TestGnssMeasurementExtension) {
  * Gets the GnssConfigurationExtension and verifies that it returns an actual extension.
  */
 TEST_P(GnssHalTest, TestGnssConfigurationExtension) {
+    if (!IsGnssHalVersion_2_1()) {
+        ALOGI("Test TestGnssConfigurationExtension skipped. GNSS HAL version is greater than 2.1.");
+        return;
+    }
     auto gnssConfiguration_2_1 = gnss_hal_->getExtensionGnssConfiguration_2_1();
     auto gnssConfiguration_2_0 = gnss_hal_->getExtensionGnssConfiguration_2_0();
     auto gnssConfiguration_1_1 = gnss_hal_->getExtensionGnssConfiguration_1_1();
@@ -247,7 +254,7 @@ TEST_P(GnssHalTest, TestGnssAntennaInfo) {
 TEST_P(GnssHalTest, TestGnssSvInfoFields) {
     gnss_cb_->location_cbq_.reset();
     gnss_cb_->sv_info_list_cbq_.reset();
-    StartAndCheckFirstLocation();
+    StartAndCheckFirstLocation(/* min_interval_msec= */ 1000, /* low_power_mode= */ false);
     int location_called_count = gnss_cb_->location_cbq_.calledCount();
     ALOGD("Observed %d GnssSvStatus, while awaiting one location (%d received)",
           gnss_cb_->sv_info_list_cbq_.size(), location_called_count);
@@ -363,20 +370,24 @@ IGnssConfiguration::BlacklistedSource FindStrongFrequentNonGpsSource(
 }
 
 /*
- * BlacklistIndividualSatellites:
+ * BlocklistIndividualSatellites:
  *
  * 1) Turns on location, waits for 3 locations, ensuring they are valid, and checks corresponding
  * GnssStatus for common satellites (strongest and one other.)
- * 2a & b) Turns off location, and blacklists common satellites.
+ * 2a & b) Turns off location, and blocklists common satellites.
  * 3) Restart location, wait for 3 locations, ensuring they are valid, and checks corresponding
  * GnssStatus does not use those satellites.
- * 4a & b) Turns off location, and send in empty blacklist.
+ * 4a & b) Turns off location, and send in empty blocklist.
  * 5a) Restart location, wait for 3 locations, ensuring they are valid, and checks corresponding
  * GnssStatus does re-use at least the previously strongest satellite
  * 5b) Retry a few times, in case GNSS search strategy takes a while to reacquire even the
  * formerly strongest satellite
  */
-TEST_P(GnssHalTest, BlacklistIndividualSatellites) {
+TEST_P(GnssHalTest, BlocklistIndividualSatellites) {
+    if (!IsGnssHalVersion_2_1()) {
+        ALOGI("Test BlocklistIndividualSatellites skipped. GNSS HAL version is greater than 2.1.");
+        return;
+    }
     if (!(gnss_cb_->last_capabilities_ & IGnssCallback_2_1::Capabilities::SATELLITE_BLACKLIST)) {
         ALOGI("Test BlacklistIndividualSatellites skipped. SATELLITE_BLACKLIST capability not "
               "supported.");
@@ -514,16 +525,21 @@ TEST_P(GnssHalTest, BlacklistIndividualSatellites) {
 }
 
 /*
- * BlacklistConstellationLocationOff:
+ * BlocklistConstellationLocationOff:
  *
  * 1) Turns on location, waits for 3 locations, ensuring they are valid, and checks corresponding
  * GnssStatus for any non-GPS constellations.
- * 2a & b) Turns off location, and blacklist first non-GPS constellations.
+ * 2a & b) Turns off location, and blocklist first non-GPS constellations.
  * 3) Restart location, wait for 3 locations, ensuring they are valid, and checks corresponding
  * GnssStatus does not use any constellation but GPS.
- * 4a & b) Clean up by turning off location, and send in empty blacklist.
+ * 4a & b) Clean up by turning off location, and send in empty blocklist.
  */
-TEST_P(GnssHalTest, BlacklistConstellationLocationOff) {
+TEST_P(GnssHalTest, BlocklistConstellationLocationOff) {
+    if (!IsGnssHalVersion_2_1()) {
+        ALOGI("Test BlocklistConstellationLocationOff skipped. GNSS HAL version is greater than "
+              "2.1.");
+        return;
+    }
     if (!(gnss_cb_->last_capabilities_ & IGnssCallback_2_1::Capabilities::SATELLITE_BLACKLIST)) {
         ALOGI("Test BlacklistConstellationLocationOff skipped. SATELLITE_BLACKLIST capability not "
               "supported.");
@@ -596,16 +612,21 @@ TEST_P(GnssHalTest, BlacklistConstellationLocationOff) {
 }
 
 /*
- * BlacklistConstellationLocationOn:
+ * BlocklistConstellationLocationOn:
  *
  * 1) Turns on location, waits for 3 locations, ensuring they are valid, and checks corresponding
  * GnssStatus for any non-GPS constellations.
- * 2a & b) Blacklist first non-GPS constellation, and turn off location.
+ * 2a & b) Blocklist first non-GPS constellation, and turn off location.
  * 3) Restart location, wait for 3 locations, ensuring they are valid, and checks corresponding
  * GnssStatus does not use any constellation but GPS.
- * 4a & b) Clean up by turning off location, and send in empty blacklist.
+ * 4a & b) Clean up by turning off location, and send in empty blocklist.
  */
-TEST_P(GnssHalTest, BlacklistConstellationLocationOn) {
+TEST_P(GnssHalTest, BlocklistConstellationLocationOn) {
+    if (!IsGnssHalVersion_2_1()) {
+        ALOGI("Test BlocklistConstellationLocationOn skipped. GNSS HAL version is greater than "
+              "2.1.");
+        return;
+    }
     if (!(gnss_cb_->last_capabilities_ & IGnssCallback_2_1::Capabilities::SATELLITE_BLACKLIST)) {
         ALOGI("Test BlacklistConstellationLocationOn skipped. SATELLITE_BLACKLIST capability not "
               "supported.");

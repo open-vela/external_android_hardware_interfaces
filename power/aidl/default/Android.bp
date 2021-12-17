@@ -12,19 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+package {
+    // See: http://go/android-license-faq
+    // A large-scale-change added 'default_applicable_licenses' to import
+    // all of the 'license_kinds' from "hardware_interfaces_license"
+    // to get the below license kinds:
+    //   SPDX-license-identifier-Apache-2.0
+    default_applicable_licenses: ["hardware_interfaces_license"],
+}
+
 cc_binary {
     name: "android.hardware.power-service.example",
     relative_install_path: "hw",
-    init_rc: ["power-default.rc"],
-    vintf_fragments: ["power-default.xml"],
+    init_rc: [":android.hardware.power.rc"],
+    vintf_fragments: [":android.hardware.power.xml"],
     vendor: true,
     shared_libs: [
         "libbase",
         "libbinder_ndk",
-        "android.hardware.power-ndk_platform",
+        "android.hardware.power-V2-ndk",
     ],
     srcs: [
         "main.cpp",
         "Power.cpp",
     ],
+}
+
+filegroup {
+    name: "android.hardware.power.xml",
+    srcs: ["power-default.xml"],
+}
+
+filegroup {
+    name: "android.hardware.power.rc",
+    srcs: ["power-default.rc"],
 }
