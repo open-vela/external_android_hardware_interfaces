@@ -56,7 +56,6 @@ struct Parameters {
     }
 };
 
-#if MAJOR_VERSION <= 6
 struct GetSupported {
     static auto getFormat(IStream* stream) {
         auto ret = stream->getFormat();
@@ -81,7 +80,7 @@ struct GetSupported {
         EXPECT_OK(stream->getSupportedFormats(returnIn(capabilities)));
         return Result::OK;
     }
-#else  // MAJOR_VERSION == 6
+#elif MAJOR_VERSION >= 6
     static Result formats(IStream* stream, hidl_vec<AudioFormat>& capabilities) {
         Result res;
         EXPECT_OK(stream->getSupportedFormats(returnIn(res, capabilities)));
@@ -89,7 +88,6 @@ struct GetSupported {
     }
 #endif
 };
-#endif  // MAJOR_VERSION <= 6
 
 template <class T>
 auto dump(T t, hidl_handle handle) {

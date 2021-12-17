@@ -112,8 +112,7 @@ struct Libxml2Global {
         return ::testing::AssertionFailure() << "Failed to parse xml\n" << context();
     }
 
-    // Process 'include' directives w/o modifying elements loaded from included files.
-    if (xmlXIncludeProcessFlags(doc.get(), XML_PARSE_NOBASEFIX) == -1) {
+    if (xmlXIncludeProcess(doc.get()) == -1) {
         return ::testing::AssertionFailure() << "Failed to resolve xincludes in xml\n" << context();
     }
 

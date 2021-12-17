@@ -34,7 +34,6 @@ void RenderscriptHidlTest::TearDown() {
     }
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(RenderscriptHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, RenderscriptHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IDevice::descriptor)),

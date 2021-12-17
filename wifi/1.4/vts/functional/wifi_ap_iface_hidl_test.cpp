@@ -83,7 +83,6 @@ TEST_P(WifiApIfaceHidlTest, GetFactoryMacAddress) {
     EXPECT_NE(all_zero, status_and_mac.second);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(WifiApIfaceHidlTest);
 INSTANTIATE_TEST_SUITE_P(
     PerInstance, WifiApIfaceHidlTest,
     testing::ValuesIn(

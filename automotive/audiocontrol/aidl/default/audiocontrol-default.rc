@@ -1,4 +1,0 @@
-service vendor.audiocontrol-default /vendor/bin/hw/android.hardware.automotive.audiocontrol-service.example
-    class hal
-    user audioserver
-    group system

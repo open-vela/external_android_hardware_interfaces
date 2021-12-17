@@ -140,7 +140,6 @@ TEST_P(SupplicantHidlTest, RemoveP2pInterface) {
  */
 TEST_P(SupplicantHidlTest, Terminate) { supplicant_->terminate(); }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantHidlTest);
 INSTANTIATE_TEST_CASE_P(
     PerInstance, SupplicantHidlTest,
     testing::Combine(

@@ -29,7 +29,7 @@ parcelable HardwareBufferDescription {
     int width;
     int height;
     int layers;
-    PixelFormat format = PixelFormat.UNSPECIFIED;
-    BufferUsage usage = BufferUsage.CPU_READ_NEVER;
+    PixelFormat format;
+    BufferUsage usage;
     int stride;
 }

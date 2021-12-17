@@ -403,9 +403,7 @@ TEST_P(GnssHalTest, TestGnssDataElapsedRealtimeFlags) {
 }
 
 TEST_P(GnssHalTest, TestGnssLocationElapsedRealtime) {
-    StartAndCheckFirstLocation(/* strict= */ true,
-                               /* min_interval_msec= */ 1000,
-                               /* low_power_mode= */ false);
+    StartAndCheckFirstLocation(/* strict= */ true);
 
     ASSERT_TRUE((int)gnss_cb_->last_location_.elapsedRealtime.flags <=
                 (int)(ElapsedRealtimeFlags::HAS_TIMESTAMP_NS |
@@ -421,9 +419,7 @@ TEST_P(GnssHalTest, TestGnssLocationElapsedRealtime) {
 
 // This test only verify that injectBestLocation_2_0 does not crash.
 TEST_P(GnssHalTest, TestInjectBestLocation_2_0) {
-    StartAndCheckFirstLocation(/* strict= */ true,
-                               /* min_interval_msec= */ 1000,
-                               /* low_power_mode= */ false);
+    StartAndCheckFirstLocation(/* strict= */ true);
     gnss_hal_->injectBestLocation_2_0(gnss_cb_->last_location_);
     StopAndClearLocations();
 }
@@ -464,10 +460,10 @@ TEST_P(GnssHalTest, GetLocationLowPower) {
     gnss_cb_->location_cbq_.reset();
 
     // Start of Low Power Mode test
+    SetPositionMode(kMinIntervalMsec, kLowPowerMode);
+
     // Don't expect true - as without AGPS access
-    if (!StartAndCheckFirstLocation(/* strict= */ false,
-                                    /* min_interval_msec= */ kMinIntervalMsec,
-                                    /* low_power_mode= */ kLowPowerMode)) {
+    if (!StartAndCheckFirstLocation(/* strict= */ false)) {
         ALOGW("GetLocationLowPower test - no first low power location received.");
     }
 

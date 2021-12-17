@@ -26,12 +26,10 @@
 #include <log/log.h>
 #include <utils/SystemClock.h>
 
-#include <algorithm>
 #include <cinttypes>
 #include <condition_variable>
 #include <cstring>
 #include <map>
-#include <unordered_map>
 #include <vector>
 
 /**
@@ -170,12 +168,12 @@ class SensorsHidlTest : public SensorsHidlTestBaseV2_X {
   public:
     virtual void SetUp() override {
         mEnvironment = new SensorsHidlEnvironmentV2_X(GetParam());
-        mEnvironment->SetUp();
+        mEnvironment->HidlSetUp();
         // Ensure that we have a valid environment before performing tests
         ASSERT_NE(getSensors(), nullptr);
     }
 
-    virtual void TearDown() override { mEnvironment->TearDown(); }
+    virtual void TearDown() override { mEnvironment->HidlTearDown(); }
 
   protected:
     SensorInfoType defaultSensorByType(SensorTypeVersion type) override;
@@ -216,7 +214,7 @@ class SensorsHidlTest : public SensorsHidlTestBaseV2_X {
 
     inline sp<ISensorsWrapperBase>& getSensors() { return mEnvironment->mSensors; }
 
-    SensorsVtsEnvironmentBase<EventType>* getEnvironment() override { return mEnvironment; }
+    SensorsHidlEnvironmentBase<EventType>* getEnvironment() override { return mEnvironment; }
 
     // Test helpers
     void runSingleFlushTest(const std::vector<SensorInfoType>& sensors, bool activateSensor,
@@ -375,7 +373,6 @@ int32_t SensorsHidlTest::getInvalidSensorHandle() {
 TEST_P(SensorsHidlTest, SensorListValid) {
     getSensors()->getSensorsList([&](const auto& list) {
         const size_t count = list.size();
-        std::unordered_map<int32_t, std::vector<std::string>> sensorTypeNameMap;
         for (size_t i = 0; i < count; ++i) {
             const auto& s = list[i];
             SCOPED_TRACE(::testing::Message()
@@ -395,14 +392,6 @@ TEST_P(SensorsHidlTest, SensorListValid) {
             // Test if all sensor has name and vendor
             EXPECT_FALSE(s.name.empty());
             EXPECT_FALSE(s.vendor.empty());
-
-            // Make sure that sensors of the same type have a unique name.
-            std::vector<std::string>& v = sensorTypeNameMap[static_cast<int32_t>(s.type)];
-            bool isUniqueName = std::find(v.begin(), v.end(), s.name) == v.end();
-            EXPECT_TRUE(isUniqueName) << "Duplicate sensor Name: " << s.name;
-            if (isUniqueName) {
-                v.push_back(s.name);
-            }
 
             // Test power > 0, maxRange > 0
             EXPECT_LE(0, s.power);
@@ -530,31 +519,32 @@ TEST_P(SensorsHidlTest, CallInitializeTwice) {
     // Create a new environment that calls initialize()
     std::unique_ptr<SensorsHidlEnvironmentTest> newEnv =
             std::make_unique<SensorsHidlEnvironmentTest>(GetParam());
-    newEnv->SetUp();
+    newEnv->HidlSetUp();
     if (HasFatalFailure()) {
         return;  // Exit early if setting up the new environment failed
     }
 
     activateAllSensors(true);
     // Verify that the old environment does not receive any events
-    EXPECT_EQ(getEnvironment()->collectEvents(kCollectionTimeoutUs, kNumEvents).size(), 0);
+    EXPECT_EQ(collectEvents(kCollectionTimeoutUs, kNumEvents, getEnvironment()).size(), 0);
     // Verify that the new event queue receives sensor events
-    EXPECT_GE(newEnv.get()->collectEvents(kCollectionTimeoutUs, kNumEvents).size(), kNumEvents);
+    EXPECT_GE(collectEvents(kCollectionTimeoutUs, kNumEvents, newEnv.get(), newEnv.get()).size(),
+              kNumEvents);
     activateAllSensors(false);
 
     // Cleanup the test environment
-    newEnv->TearDown();
+    newEnv->HidlTearDown();
 
     // Restore the test environment for future tests
-    getEnvironment()->TearDown();
-    getEnvironment()->SetUp();
+    getEnvironment()->HidlTearDown();
+    getEnvironment()->HidlSetUp();
     if (HasFatalFailure()) {
         return;  // Exit early if resetting the environment failed
     }
 
     // Ensure that the original environment is receiving events
     activateAllSensors(true);
-    EXPECT_GE(getEnvironment()->collectEvents(kCollectionTimeoutUs, kNumEvents).size(), kNumEvents);
+    EXPECT_GE(collectEvents(kCollectionTimeoutUs, kNumEvents).size(), kNumEvents);
     activateAllSensors(false);
 }
 
@@ -564,21 +554,21 @@ TEST_P(SensorsHidlTest, CleanupConnectionsOnInitialize) {
     // Verify that events are received
     constexpr useconds_t kCollectionTimeoutUs = 1000 * 1000;  // 1s
     constexpr int32_t kNumEvents = 1;
-    ASSERT_GE(getEnvironment()->collectEvents(kCollectionTimeoutUs, kNumEvents).size(), kNumEvents);
+    ASSERT_GE(collectEvents(kCollectionTimeoutUs, kNumEvents, getEnvironment()).size(), kNumEvents);
 
     // Clear the active sensor handles so they are not disabled during TearDown
     auto handles = mSensorHandles;
     mSensorHandles.clear();
-    getEnvironment()->TearDown();
-    getEnvironment()->SetUp();
+    getEnvironment()->HidlTearDown();
+    getEnvironment()->HidlSetUp();
     if (HasFatalFailure()) {
         return;  // Exit early if resetting the environment failed
     }
 
     // Verify no events are received until sensors are re-activated
-    ASSERT_EQ(getEnvironment()->collectEvents(kCollectionTimeoutUs, kNumEvents).size(), 0);
+    ASSERT_EQ(collectEvents(kCollectionTimeoutUs, kNumEvents, getEnvironment()).size(), 0);
     activateAllSensors(true);
-    ASSERT_GE(getEnvironment()->collectEvents(kCollectionTimeoutUs, kNumEvents).size(), kNumEvents);
+    ASSERT_GE(collectEvents(kCollectionTimeoutUs, kNumEvents, getEnvironment()).size(), kNumEvents);
 
     // Disable sensors
     activateAllSensors(false);
@@ -855,11 +845,7 @@ void SensorsHidlTest::verifyRegisterDirectChannel(
         std::shared_ptr<SensorsTestSharedMemory<SensorTypeVersion, EventType>> mem,
         int32_t* directChannelHandle, bool supportsSharedMemType, bool supportsAnyDirectChannel) {
     char* buffer = mem->getBuffer();
-    size_t size = mem->getSize();
-
-    if (supportsSharedMemType) {
-        memset(buffer, 0xff, size);
-    }
+    memset(buffer, 0xff, mem->getSize());
 
     registerDirectChannel(mem->getSharedMemInfo(), [&](Result result, int32_t channelHandle) {
         if (supportsSharedMemType) {

@@ -18,13 +18,7 @@
 
 #include <vhal_v2_0/VehicleClient.h>
 
-namespace android {
-namespace hardware {
-namespace automotive {
-namespace vehicle {
-namespace V2_0 {
-
-namespace impl {
+namespace android::hardware::automotive::vehicle::V2_0::impl {
 
 // The common client operations that may be used by both native and
 // virtualized VHAL clients.
@@ -32,10 +26,6 @@ class VehicleHalClient : public IVehicleClient {
   public:
     // Type of callback function for handling the new property values
     using PropertyCallBackType = std::function<void(const VehiclePropValue&, bool updateStatus)>;
-
-    // The server will call sendAllValuesToClient, onPropertyValue will be called when values are
-    // received.
-    virtual void triggerSendAllValues() = 0;
 
     // Method from IVehicleClient
     void onPropertyValue(const VehiclePropValue& value, bool updateStatus) override;
@@ -46,10 +36,4 @@ class VehicleHalClient : public IVehicleClient {
     PropertyCallBackType mPropCallback;
 };
 
-}  // namespace impl
-
-}  // namespace V2_0
-}  // namespace vehicle
-}  // namespace automotive
-}  // namespace hardware
-}  // namespace android
+}  // namespace android::hardware::automotive::vehicle::V2_0::impl

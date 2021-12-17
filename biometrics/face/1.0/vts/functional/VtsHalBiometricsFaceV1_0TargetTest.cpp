@@ -348,7 +348,6 @@ TEST_P(FaceHidlTest, OnLockoutChangedTest) {
 
 }  // anonymous namespace
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(FaceHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, FaceHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IBiometricsFace::descriptor)),

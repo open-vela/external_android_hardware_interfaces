@@ -53,8 +53,6 @@ namespace implementation {
             uint32_t bufferId) {
         sp<IMemory> hidlMemory = mapMemory(base);
 
-        std::lock_guard<std::mutex> shared_buffer_lock(mSharedBufferLock);
-
         // allow mapMemory to return nullptr
         mSharedBufferMap[bufferId] = hidlMemory;
         return Void();
@@ -67,7 +65,7 @@ namespace implementation {
             const SharedBuffer& source, uint64_t offset,
             const DestinationBuffer& destination,
             decrypt_cb _hidl_cb) {
-        std::unique_lock<std::mutex> shared_buffer_lock(mSharedBufferLock);
+
         if (mSharedBufferMap.find(source.bufferId) == mSharedBufferMap.end()) {
             _hidl_cb(Status::ERROR_DRM_CANNOT_HANDLE, 0, "source decrypt buffer base not set");
             return Void();
@@ -81,7 +79,7 @@ namespace implementation {
             }
         }
 
-        android::CryptoPlugin::Mode legacyMode = android::CryptoPlugin::kMode_Unencrypted;
+        android::CryptoPlugin::Mode legacyMode;
         switch(mode) {
         case Mode::UNENCRYPTED:
             legacyMode = android::CryptoPlugin::kMode_Unencrypted;
@@ -126,11 +124,7 @@ namespace implementation {
             return Void();
         }
 
-        size_t totalSize = 0;
-        if (__builtin_add_overflow(source.offset, offset, &totalSize) ||
-            __builtin_add_overflow(totalSize, source.size, &totalSize) ||
-            totalSize > sourceBase->getSize()) {
-            android_errorWriteLog(0x534e4554, "176496160");
+        if (source.offset + offset + source.size > sourceBase->getSize()) {
             _hidl_cb(Status::ERROR_DRM_CANNOT_HANDLE, 0, "invalid buffer size");
             return Void();
         }
@@ -148,10 +142,7 @@ namespace implementation {
                 return Void();
             }
 
-            size_t totalSize = 0;
-            if (__builtin_add_overflow(destBuffer.offset, destBuffer.size, &totalSize) ||
-                totalSize > destBase->getSize()) {
-                android_errorWriteLog(0x534e4554, "176496353");
+            if (destBuffer.offset + destBuffer.size > destBase->getSize()) {
                 _hidl_cb(Status::ERROR_DRM_CANNOT_HANDLE, 0, "invalid buffer size");
                 return Void();
             }
@@ -162,7 +153,7 @@ namespace implementation {
             }
 
             base = static_cast<uint8_t *>(static_cast<void *>(destBase->getPointer()));
-            destPtr = static_cast<void*>(base + destination.nonsecureMemory.offset);
+            destPtr = static_cast<void *>(base + destination.nonsecureMemory.offset);
         } else if (destination.type == BufferType::NATIVE_HANDLE) {
             if (!secure) {
                 _hidl_cb(Status::BAD_VALUE, 0, "native handle destination must be secure");
@@ -175,10 +166,6 @@ namespace implementation {
             _hidl_cb(Status::BAD_VALUE, 0, "invalid destination type");
             return Void();
         }
-
-        // release mSharedBufferLock
-        shared_buffer_lock.unlock();
-
         ssize_t result = mLegacyPlugin->decrypt(secure, keyId.data(), iv.data(),
                 legacyMode, legacyPattern, srcPtr, legacySubSamples.get(),
                 subSamples.size(), destPtr, &detailMessage);

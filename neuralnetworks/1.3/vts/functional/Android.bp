@@ -14,15 +14,6 @@
 // limitations under the License.
 //
 
-package {
-    // See: http://go/android-license-faq
-    // A large-scale-change added 'default_applicable_licenses' to import
-    // all of the 'license_kinds' from "hardware_interfaces_license"
-    // to get the below license kinds:
-    //   SPDX-license-identifier-Apache-2.0
-    default_applicable_licenses: ["hardware_interfaces_license"],
-}
-
 cc_library_static {
     name: "VtsHalNeuralNetworksV1_3_utils",
     defaults: ["neuralnetworks_vts_functional_defaults"],
@@ -75,7 +66,7 @@ cc_test {
         "libgmock",
         "libhidlmemory",
         "libneuralnetworks_generated_test_harness",
-        "libneuralnetworks_common",
+        "libneuralnetworks_utils",
         "libsync",
     ],
     whole_static_libs: [

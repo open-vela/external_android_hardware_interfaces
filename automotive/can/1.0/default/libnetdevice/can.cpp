@@ -14,27 +14,26 @@
  * limitations under the License.
  */
 
-#include <libnetdevice/can.h>
+#include <libnetdevice/libnetdevice.h>
 
+#include "NetlinkRequest.h"
+#include "NetlinkSocket.h"
 #include "common.h"
 
 #include <android-base/logging.h>
 #include <android-base/unique_fd.h>
-#include <libnl++/MessageFactory.h>
-#include <libnl++/Socket.h>
 
 #include <linux/can.h>
 #include <linux/can/error.h>
 #include <linux/can/netlink.h>
 #include <linux/can/raw.h>
-#include <linux/rtnetlink.h>
 
 namespace android::netdevice::can {
 
 static constexpr can_err_mask_t kErrMask = CAN_ERR_MASK;
 
 base::unique_fd socket(const std::string& ifname) {
-    sockaddr_can addr = {};
+    struct sockaddr_can addr = {};
     addr.can_family = AF_CAN;
     addr.can_ifindex = nametoindex(ifname);
     if (addr.can_ifindex == 0) {
@@ -58,7 +57,7 @@ base::unique_fd socket(const std::string& ifname) {
         return {};
     }
 
-    if (0 != bind(sock.get(), reinterpret_cast<sockaddr*>(&addr), sizeof(addr))) {
+    if (0 != bind(sock.get(), reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr))) {
         LOG(ERROR) << "Can't bind to CAN interface " << ifname;
         return {};
     }
@@ -67,30 +66,31 @@ base::unique_fd socket(const std::string& ifname) {
 }
 
 bool setBitrate(std::string ifname, uint32_t bitrate) {
-    can_bittiming bt = {};
+    struct can_bittiming bt = {};
     bt.bitrate = bitrate;
 
-    nl::MessageFactory<ifinfomsg> req(RTM_NEWLINK, NLM_F_REQUEST | NLM_F_ACK);
+    NetlinkRequest<struct ifinfomsg> req(RTM_NEWLINK, NLM_F_REQUEST);
 
-    req->ifi_index = nametoindex(ifname);
-    if (req->ifi_index == 0) {
+    const auto ifidx = nametoindex(ifname);
+    if (ifidx == 0) {
         LOG(ERROR) << "Can't find interface " << ifname;
         return false;
     }
+    req.data().ifi_index = ifidx;
 
     {
-        auto linkinfo = req.addNested(IFLA_LINKINFO);
-        req.add(IFLA_INFO_KIND, "can");
+        auto linkinfo = req.nest(IFLA_LINKINFO);
+        req.addattr(IFLA_INFO_KIND, "can");
         {
-            auto infodata = req.addNested(IFLA_INFO_DATA);
+            auto infodata = req.nest(IFLA_INFO_DATA);
             /* For CAN FD, it would require to add IFLA_CAN_DATA_BITTIMING
              * and IFLA_CAN_CTRLMODE as well. */
-            req.add(IFLA_CAN_BITTIMING, bt);
+            req.addattr(IFLA_CAN_BITTIMING, bt);
         }
     }
 
-    nl::Socket sock(NETLINK_ROUTE);
-    return sock.send(req) && sock.receiveAck(req);
+    NetlinkSocket sock(NETLINK_ROUTE);
+    return sock.send(req) && sock.receiveAck();
 }
 
 }  // namespace android::netdevice::can

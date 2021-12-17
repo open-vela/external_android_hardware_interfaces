@@ -85,7 +85,11 @@ class MapperImpl : public Interface {
             return Error::BAD_BUFFER;
         }
 
-        return freeImportedBuffer(bufferHandle);
+        Error error = mHal->freeBuffer(bufferHandle);
+        if (error == Error::NONE) {
+            removeImportedBuffer(buffer);
+        }
+        return error;
     }
 
     Return<void> lock(void* buffer, uint64_t cpuUsage, const V2_0::IMapper::Rect& accessRegion,
@@ -156,8 +160,8 @@ class MapperImpl : public Interface {
         return static_cast<void*>(bufferHandle);
     }
 
-    virtual Error freeImportedBuffer(native_handle_t* bufferHandle) {
-        return mHal->freeBuffer(bufferHandle);
+    virtual native_handle_t* removeImportedBuffer(void* buffer) {
+        return static_cast<native_handle_t*>(buffer);
     }
 
     virtual native_handle_t* getImportedBuffer(void* buffer) const {

@@ -59,7 +59,7 @@ class PowerHidlTest : public testing::TestWithParam<std::string> {
   sp<IPower> power;
 };
 
-// Validate Power::setInteractive.
+// Sanity check Power::setInteractive.
 TEST_P(PowerHidlTest, SetInteractive) {
   Return<void> ret;
 
@@ -101,7 +101,7 @@ TEST_P(PowerHidlTest, TryDifferentGovernors) {
   ASSERT_TRUE(android::base::WriteStringToFile(old_governor, CPU_GOVERNOR_PATH));
 }
 
-// Validate Power::powerHint on good and bad inputs.
+// Sanity check Power::powerHint on good and bad inputs.
 TEST_P(PowerHidlTest, PowerHint) {
   PowerHint badHint = static_cast<PowerHint>(0xA);
   auto hints = {PowerHint::VSYNC,         PowerHint::INTERACTION,
@@ -139,7 +139,7 @@ TEST_P(PowerHidlTest, PowerHint) {
   } while (std::next_permutation(hints2.begin(), hints2.end(), compareHints));
 }
 
-// Validate Power::setFeature() on good and bad inputs.
+// Sanity check Power::setFeature() on good and bad inputs.
 TEST_P(PowerHidlTest, SetFeature) {
   Return<void> ret;
   ret = power->setFeature(Feature::POWER_FEATURE_DOUBLE_TAP_TO_WAKE, true);
@@ -154,7 +154,7 @@ TEST_P(PowerHidlTest, SetFeature) {
   ASSERT_TRUE(ret.isOk());
 }
 
-// Validate Power::getPlatformLowPowerStats().
+// Sanity check Power::getPlatformLowPowerStats().
 TEST_P(PowerHidlTest, GetPlatformLowPowerStats) {
   hidl_vec<PowerStatePlatformSleepState> vec;
   Status s;
@@ -168,7 +168,6 @@ TEST_P(PowerHidlTest, GetPlatformLowPowerStats) {
   ASSERT_TRUE(s == Status::SUCCESS || s == Status::FILESYSTEM_ERROR);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(PowerHidlTest);
 INSTANTIATE_TEST_SUITE_P(
         PerInstance, PowerHidlTest,
         testing::ValuesIn(android::hardware::getAllHalInstanceNames(IPower::descriptor)),

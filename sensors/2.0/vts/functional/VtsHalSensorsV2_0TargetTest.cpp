@@ -256,8 +256,8 @@ TEST_P(SensorsHidlTest, CleanupDirectConnectionOnInitialize) {
     // Clear the active direct connections so they are not stopped during TearDown
     auto handles = mDirectChannelHandles;
     mDirectChannelHandles.clear();
-    getEnvironment()->TearDown();
-    getEnvironment()->SetUp();
+    getEnvironment()->HidlTearDown();
+    getEnvironment()->HidlSetUp();
     if (HasFatalFailure()) {
         return;  // Exit early if resetting the environment failed
     }
@@ -296,7 +296,6 @@ TEST_P(SensorsHidlTest, FlushNonexistentSensor) {
                        0 /* expectedFlushCount */, Result::BAD_VALUE);
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SensorsHidlTest);
 INSTANTIATE_TEST_SUITE_P(PerInstance, SensorsHidlTest,
                          testing::ValuesIn(android::hardware::getAllHalInstanceNames(
                                  android::hardware::sensors::V2_0::ISensors::descriptor)),

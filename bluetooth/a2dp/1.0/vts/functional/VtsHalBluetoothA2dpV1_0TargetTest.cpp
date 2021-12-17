@@ -108,5 +108,3 @@ INSTANTIATE_TEST_SUITE_P(
     testing::ValuesIn(android::hardware::getAllHalInstanceNames(
         IBluetoothAudioOffload::descriptor)),
     android::hardware::PrintInstanceNameToString);
-
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(BluetoothA2dpHidlTest);
