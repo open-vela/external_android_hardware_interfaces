@@ -17,7 +17,6 @@
 package android.hardware.radio.data;
 
 import android.hardware.radio.RadioIndicationType;
-import android.hardware.radio.data.DataProfileInfo;
 import android.hardware.radio.data.KeepaliveStatus;
 import android.hardware.radio.data.PcoDataInfo;
 import android.hardware.radio.data.SetupDataCallResult;
@@ -69,7 +68,7 @@ oneway interface IRadioDataIndication {
      * is sent, AOSP will no longer throttle calls to IRadioData.SetupDataCall for the given APN.
      *
      * @param type Type of radio indication
-     * @param dataProfileInfo Data profile info.
+     * @param apn Apn to unthrottle
      */
-    void unthrottleApn(in RadioIndicationType type, in DataProfileInfo dataProfileInfo);
+    void unthrottleApn(in RadioIndicationType type, in String apn);
 }
