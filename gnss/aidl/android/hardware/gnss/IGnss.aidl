@@ -16,14 +16,9 @@
 
 package android.hardware.gnss;
 
-import android.hardware.gnss.IAGnss;
-import android.hardware.gnss.IGnssBatching;
 import android.hardware.gnss.IGnssCallback;
 import android.hardware.gnss.IGnssConfiguration;
-import android.hardware.gnss.IGnssDebug;
-import android.hardware.gnss.IGnssGeofence;
 import android.hardware.gnss.IGnssMeasurementInterface;
-import android.hardware.gnss.IGnssNavigationMessageInterface;
 import android.hardware.gnss.IGnssPowerIndication;
 import android.hardware.gnss.IGnssPsds;
 
@@ -32,8 +27,9 @@ import android.hardware.gnss.IGnssPsds;
  */
 @VintfStability
 interface IGnss {
+
     /**
-     * All GNSS binder calls may return a ServiceSpecificException with the following error
+     * All GNSS Binder calls may return a ServiceSpecificException with the following error
      * codes.
      */
     const int ERROR_INVALID_ARGUMENT = 1;
@@ -77,25 +73,27 @@ interface IGnss {
     /**
      * This method returns the IGnssPsds interface.
      *
-     * @return The IGnssPsds interface.
+     * This method must return non-null.
+     *
+     * @return Handle to the IGnssPsds interface.
      */
-    @nullable IGnssPsds getExtensionPsds();
+    IGnssPsds getExtensionPsds();
 
     /**
      * This method returns the IGnssConfiguration interface.
      *
      * This method must return non-null.
      *
-     * @return The IGnssConfiguration interface.
+     * @return Handle to the IGnssConfiguration interface.
      */
     IGnssConfiguration getExtensionGnssConfiguration();
 
     /**
-     * This method returns the IGnssMeasurementInterface interface.
+     * This methods returns the IGnssMeasurementInterface interface.
      *
      * This method must return non-null.
      *
-     * @return The IGnssMeasurementInterface interface.
+     * @return Handle to the IGnssMeasurementInterface interface.
      */
     IGnssMeasurementInterface getExtensionGnssMeasurement();
 
@@ -104,44 +102,7 @@ interface IGnss {
      *
      * This method must return non-null.
      *
-     * @return The IGnssPowerIndication interface.
+     * @return Handle to the IGnssPowerIndication interface.
      */
     IGnssPowerIndication getExtensionGnssPowerIndication();
-
-    /**
-     * This method returns the IGnssBatching interface.
-     *
-     * @return The IGnssBatching interface.
-     */
-    @nullable IGnssBatching getExtensionGnssBatching();
-
-    /**
-     * This method returns the IGnssGeofence interface.
-     *
-     * @return The IGnssGeofence interface.
-     */
-    @nullable IGnssGeofence getExtensionGnssGeofence();
-
-    /**
-     * This method returns the IGnssNavigationMessageInterface.
-     *
-     * @return The IGnssNavigationMessageInterface.
-     */
-    @nullable IGnssNavigationMessageInterface getExtensionGnssNavigationMessage();
-
-    /**
-     * This method returns the IAGnss interface.
-     *
-     * @return The IAGnss interface.
-     */
-    IAGnss getExtensionAGnss();
-
-    /**
-     * This method returns the IGnssDebug interface.
-     *
-     * This method must return non-null.
-     *
-     * @return Handle to the IGnssDebug interface.
-     */
-    IGnssDebug getExtensionGnssDebug();
 }
