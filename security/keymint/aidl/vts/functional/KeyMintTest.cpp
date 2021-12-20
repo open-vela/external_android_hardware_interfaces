@@ -69,14 +69,7 @@ namespace aidl::android::hardware::security::keymint::test {
 
 namespace {
 
-// Whether to check that BOOT_PATCHLEVEL is populated.
-bool check_boot_pl = true;
-
-// The maximum number of times we'll attempt to verify that corruption
-// of an encrypted blob results in an error. Retries are necessary as there
-// is a small (roughly 1/256) chance that corrupting ciphertext still results
-// in valid PKCS7 padding.
-constexpr size_t kMaxPaddingCorruptionRetries = 8;
+bool check_patchLevels = false;
 
 template <TagType tag_type, Tag tag, typename ValueT>
 bool contains(const vector<KeyParameter>& set, TypedTag<tag_type, tag> ttag,
@@ -530,14 +523,11 @@ class NewKeyGenerationTest : public KeyMintAidlTestBase {
         EXPECT_TRUE(os_pl);
         EXPECT_EQ(*os_pl, os_patch_level());
 
-        // Should include vendor patchlevel.
-        auto vendor_pl = auths.GetTagValue(TAG_VENDOR_PATCHLEVEL);
-        EXPECT_TRUE(vendor_pl);
-        EXPECT_EQ(*vendor_pl, vendor_patch_level());
-
-        // Should include boot patchlevel (but there are some test scenarios where this is not
-        // possible).
-        if (check_boot_pl) {
+        if (check_patchLevels) {
+            // Should include vendor and boot patchlevels.
+            auto vendor_pl = auths.GetTagValue(TAG_VENDOR_PATCHLEVEL);
+            EXPECT_TRUE(vendor_pl);
+            EXPECT_EQ(*vendor_pl, vendor_patch_level());
             auto boot_pl = auths.GetTagValue(TAG_BOOT_PATCHLEVEL);
             EXPECT_TRUE(boot_pl);
         }
@@ -942,7 +932,7 @@ TEST_P(NewKeyGenerationTest, RsaWithAttestation) {
 
         AuthorizationSet hw_enforced = HwEnforcedAuthorizations(key_characteristics);
         AuthorizationSet sw_enforced = SwEnforcedAuthorizations(key_characteristics);
-        EXPECT_TRUE(verify_attestation_record(AidlVersion(), challenge, app_id,  //
+        EXPECT_TRUE(verify_attestation_record(challenge, app_id,  //
                                               sw_enforced, hw_enforced, SecLevel(),
                                               cert_chain_[0].encodedCertificate));
 
@@ -1093,7 +1083,7 @@ TEST_P(NewKeyGenerationTest, RsaEncryptionWithAttestation) {
 
     AuthorizationSet hw_enforced = HwEnforcedAuthorizations(key_characteristics);
     AuthorizationSet sw_enforced = SwEnforcedAuthorizations(key_characteristics);
-    EXPECT_TRUE(verify_attestation_record(AidlVersion(), challenge, app_id,  //
+    EXPECT_TRUE(verify_attestation_record(challenge, app_id,  //
                                           sw_enforced, hw_enforced, SecLevel(),
                                           cert_chain_[0].encodedCertificate));
 
@@ -1315,7 +1305,7 @@ TEST_P(NewKeyGenerationTest, LimitedUsageRsaWithAttestation) {
 
         AuthorizationSet hw_enforced = HwEnforcedAuthorizations(key_characteristics);
         AuthorizationSet sw_enforced = SwEnforcedAuthorizations(key_characteristics);
-        EXPECT_TRUE(verify_attestation_record(AidlVersion(), challenge, app_id,  //
+        EXPECT_TRUE(verify_attestation_record(challenge, app_id,  //
                                               sw_enforced, hw_enforced, SecLevel(),
                                               cert_chain_[0].encodedCertificate));
 
@@ -1444,7 +1434,7 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestation) {
 
         AuthorizationSet hw_enforced = HwEnforcedAuthorizations(key_characteristics);
         AuthorizationSet sw_enforced = SwEnforcedAuthorizations(key_characteristics);
-        EXPECT_TRUE(verify_attestation_record(AidlVersion(), challenge, app_id,  //
+        EXPECT_TRUE(verify_attestation_record(challenge, app_id,  //
                                               sw_enforced, hw_enforced, SecLevel(),
                                               cert_chain_[0].encodedCertificate));
 
@@ -1490,7 +1480,6 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestationTags) {
                               .Authorization(TAG_TRUSTED_CONFIRMATION_REQUIRED)
                               .Authorization(TAG_UNLOCKED_DEVICE_REQUIRED)
                               .Authorization(TAG_CREATION_DATETIME, 1619621648000);
-
     for (const KeyParameter& tag : extra_tags) {
         SCOPED_TRACE(testing::Message() << "tag-" << tag);
         vector<uint8_t> key_blob;
@@ -1523,26 +1512,25 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestationTags) {
 
         // Verifying the attestation record will check for the specific tag because
         // it's included in the authorizations.
-        EXPECT_TRUE(verify_attestation_record(AidlVersion(), challenge, app_id, sw_enforced,
-                                              hw_enforced, SecLevel(),
-                                              cert_chain_[0].encodedCertificate));
+        EXPECT_TRUE(verify_attestation_record(challenge, app_id, sw_enforced, hw_enforced,
+                                              SecLevel(), cert_chain_[0].encodedCertificate));
 
         CheckedDeleteKey(&key_blob);
     }
 
-    // Collection of invalid attestation ID tags.
-    auto invalid_tags =
-            AuthorizationSetBuilder()
-                    .Authorization(TAG_ATTESTATION_ID_BRAND, "bogus-brand")
-                    .Authorization(TAG_ATTESTATION_ID_DEVICE, "devious-device")
-                    .Authorization(TAG_ATTESTATION_ID_PRODUCT, "punctured-product")
-                    .Authorization(TAG_ATTESTATION_ID_SERIAL, "suspicious-serial")
-                    .Authorization(TAG_ATTESTATION_ID_IMEI, "invalid-imei")
-                    .Authorization(TAG_ATTESTATION_ID_MEID, "mismatching-meid")
-                    .Authorization(TAG_ATTESTATION_ID_MANUFACTURER, "malformed-manufacturer")
-                    .Authorization(TAG_ATTESTATION_ID_MODEL, "malicious-model");
+    // Device attestation IDs should be rejected for normal attestation requests; these fields
+    // are only used for device unique attestation.
+    auto invalid_tags = AuthorizationSetBuilder()
+                                .Authorization(TAG_ATTESTATION_ID_BRAND, "brand")
+                                .Authorization(TAG_ATTESTATION_ID_DEVICE, "device")
+                                .Authorization(TAG_ATTESTATION_ID_PRODUCT, "product")
+                                .Authorization(TAG_ATTESTATION_ID_SERIAL, "serial")
+                                .Authorization(TAG_ATTESTATION_ID_IMEI, "imei")
+                                .Authorization(TAG_ATTESTATION_ID_MEID, "meid")
+                                .Authorization(TAG_ATTESTATION_ID_MANUFACTURER, "manufacturer")
+                                .Authorization(TAG_ATTESTATION_ID_MODEL, "model");
     for (const KeyParameter& tag : invalid_tags) {
-        SCOPED_TRACE(testing::Message() << "-incorrect-tag-" << tag);
+        SCOPED_TRACE(testing::Message() << "tag-" << tag);
         vector<uint8_t> key_blob;
         vector<KeyCharacteristics> key_characteristics;
         AuthorizationSetBuilder builder =
@@ -1559,171 +1547,6 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestationTags) {
         ASSERT_EQ(ErrorCode::CANNOT_ATTEST_IDS,
                   GenerateKey(builder, &key_blob, &key_characteristics));
     }
-}
-
-/*
- * NewKeyGenerationTest.EcdsaAttestationIdTags
- *
- * Verifies that creation of an attested ECDSA key includes various ID tags in the
- * attestation extension.
- */
-TEST_P(NewKeyGenerationTest, EcdsaAttestationIdTags) {
-    auto challenge = "hello";
-    auto app_id = "foo";
-    auto subject = "cert subj 2";
-    vector<uint8_t> subject_der(make_name_from_str(subject));
-    uint64_t serial_int = 0x1010;
-    vector<uint8_t> serial_blob(build_serial_blob(serial_int));
-    const AuthorizationSetBuilder base_builder =
-            AuthorizationSetBuilder()
-                    .Authorization(TAG_NO_AUTH_REQUIRED)
-                    .EcdsaSigningKey(EcCurve::P_256)
-                    .Digest(Digest::NONE)
-                    .AttestationChallenge(challenge)
-                    .AttestationApplicationId(app_id)
-                    .Authorization(TAG_CERTIFICATE_SERIAL, serial_blob)
-                    .Authorization(TAG_CERTIFICATE_SUBJECT, subject_der)
-                    .SetDefaultValidity();
-
-    // Various ATTESTATION_ID_* tags that map to fields in the attestation extension ASN.1 schema.
-    auto extra_tags = AuthorizationSetBuilder();
-    add_tag_from_prop(&extra_tags, TAG_ATTESTATION_ID_BRAND, "ro.product.brand");
-    add_tag_from_prop(&extra_tags, TAG_ATTESTATION_ID_DEVICE, "ro.product.device");
-    add_tag_from_prop(&extra_tags, TAG_ATTESTATION_ID_PRODUCT, "ro.product.name");
-    add_tag_from_prop(&extra_tags, TAG_ATTESTATION_ID_SERIAL, "ro.serial");
-    add_tag_from_prop(&extra_tags, TAG_ATTESTATION_ID_MANUFACTURER, "ro.product.manufacturer");
-    add_tag_from_prop(&extra_tags, TAG_ATTESTATION_ID_MODEL, "ro.product.model");
-
-    for (const KeyParameter& tag : extra_tags) {
-        SCOPED_TRACE(testing::Message() << "tag-" << tag);
-        vector<uint8_t> key_blob;
-        vector<KeyCharacteristics> key_characteristics;
-        AuthorizationSetBuilder builder = base_builder;
-        builder.push_back(tag);
-        auto result = GenerateKey(builder, &key_blob, &key_characteristics);
-        if (result == ErrorCode::CANNOT_ATTEST_IDS) {
-            // Device ID attestation is optional; KeyMint may not support it at all.
-            continue;
-        }
-        ASSERT_EQ(result, ErrorCode::OK);
-        ASSERT_GT(key_blob.size(), 0U);
-
-        EXPECT_TRUE(ChainSignaturesAreValid(cert_chain_));
-        ASSERT_GT(cert_chain_.size(), 0);
-        verify_subject_and_serial(cert_chain_[0], serial_int, subject, /* self_signed = */ false);
-
-        AuthorizationSet hw_enforced = HwEnforcedAuthorizations(key_characteristics);
-        AuthorizationSet sw_enforced = SwEnforcedAuthorizations(key_characteristics);
-
-        // The attested key characteristics will not contain APPLICATION_ID_* fields (their
-        // spec definitions all have "Must never appear in KeyCharacteristics"), but the
-        // attestation extension should contain them, so make sure the extra tag is added.
-        hw_enforced.push_back(tag);
-
-        // Verifying the attestation record will check for the specific tag because
-        // it's included in the authorizations.
-        EXPECT_TRUE(verify_attestation_record(AidlVersion(), challenge, app_id, sw_enforced,
-                                              hw_enforced, SecLevel(),
-                                              cert_chain_[0].encodedCertificate));
-
-        CheckedDeleteKey(&key_blob);
-    }
-}
-
-/*
- * NewKeyGenerationTest.EcdsaAttestationUniqueId
- *
- * Verifies that creation of an attested ECDSA key with a UNIQUE_ID included.
- */
-TEST_P(NewKeyGenerationTest, EcdsaAttestationUniqueId) {
-    auto get_unique_id = [this](const std::string& app_id, uint64_t datetime,
-                                vector<uint8_t>* unique_id, bool reset = false) {
-        auto challenge = "hello";
-        auto subject = "cert subj 2";
-        vector<uint8_t> subject_der(make_name_from_str(subject));
-        uint64_t serial_int = 0x1010;
-        vector<uint8_t> serial_blob(build_serial_blob(serial_int));
-        AuthorizationSetBuilder builder =
-                AuthorizationSetBuilder()
-                        .Authorization(TAG_NO_AUTH_REQUIRED)
-                        .Authorization(TAG_INCLUDE_UNIQUE_ID)
-                        .EcdsaSigningKey(EcCurve::P_256)
-                        .Digest(Digest::NONE)
-                        .AttestationChallenge(challenge)
-                        .Authorization(TAG_CERTIFICATE_SERIAL, serial_blob)
-                        .Authorization(TAG_CERTIFICATE_SUBJECT, subject_der)
-                        .AttestationApplicationId(app_id)
-                        .Authorization(TAG_CREATION_DATETIME, datetime)
-                        .SetDefaultValidity();
-        if (reset) {
-            builder.Authorization(TAG_RESET_SINCE_ID_ROTATION);
-        }
-
-        ASSERT_EQ(ErrorCode::OK, GenerateKey(builder));
-        ASSERT_GT(key_blob_.size(), 0U);
-
-        EXPECT_TRUE(ChainSignaturesAreValid(cert_chain_));
-        ASSERT_GT(cert_chain_.size(), 0);
-        verify_subject_and_serial(cert_chain_[0], serial_int, subject, /* self_signed = */ false);
-
-        AuthorizationSet hw_enforced = HwEnforcedAuthorizations(key_characteristics_);
-        AuthorizationSet sw_enforced = SwEnforcedAuthorizations(key_characteristics_);
-
-        // Check that the unique ID field in the extension is non-empty.
-        EXPECT_TRUE(verify_attestation_record(AidlVersion(), challenge, app_id, sw_enforced,
-                                              hw_enforced, SecLevel(),
-                                              cert_chain_[0].encodedCertificate, unique_id));
-        EXPECT_GT(unique_id->size(), 0);
-        CheckedDeleteKey();
-    };
-
-    // Generate unique ID
-    auto app_id = "foo";
-    uint64_t cert_date = 1619621648000;  // Wed Apr 28 14:54:08 2021 in ms since epoch
-    vector<uint8_t> unique_id;
-    get_unique_id(app_id, cert_date, &unique_id);
-
-    // Generating a new key with the same parameters should give the same unique ID.
-    vector<uint8_t> unique_id2;
-    get_unique_id(app_id, cert_date, &unique_id2);
-    EXPECT_EQ(unique_id, unique_id2);
-
-    // Generating a new key with a slightly different date should give the same unique ID.
-    uint64_t rounded_date = cert_date / 2592000000LLU;
-    uint64_t min_date = rounded_date * 2592000000LLU;
-    uint64_t max_date = ((rounded_date + 1) * 2592000000LLU) - 1;
-
-    vector<uint8_t> unique_id3;
-    get_unique_id(app_id, min_date, &unique_id3);
-    EXPECT_EQ(unique_id, unique_id3);
-
-    vector<uint8_t> unique_id4;
-    get_unique_id(app_id, max_date, &unique_id4);
-    EXPECT_EQ(unique_id, unique_id4);
-
-    // A different attestation application ID should yield a different unique ID.
-    auto app_id2 = "different_foo";
-    vector<uint8_t> unique_id5;
-    get_unique_id(app_id2, cert_date, &unique_id5);
-    EXPECT_NE(unique_id, unique_id5);
-
-    // A radically different date should yield a different unique ID.
-    vector<uint8_t> unique_id6;
-    get_unique_id(app_id, 1611621648000, &unique_id6);
-    EXPECT_NE(unique_id, unique_id6);
-
-    vector<uint8_t> unique_id7;
-    get_unique_id(app_id, max_date + 1, &unique_id7);
-    EXPECT_NE(unique_id, unique_id7);
-
-    vector<uint8_t> unique_id8;
-    get_unique_id(app_id, min_date - 1, &unique_id8);
-    EXPECT_NE(unique_id, unique_id8);
-
-    // Marking RESET_SINCE_ID_ROTATION should give a different unique ID.
-    vector<uint8_t> unique_id9;
-    get_unique_id(app_id, cert_date, &unique_id9, /* reset_id = */ true);
-    EXPECT_NE(unique_id, unique_id9);
 }
 
 /*
@@ -1767,9 +1590,8 @@ TEST_P(NewKeyGenerationTest, EcdsaAttestationTagNoApplicationId) {
 
     AuthorizationSet hw_enforced = HwEnforcedAuthorizations(key_characteristics);
     AuthorizationSet sw_enforced = SwEnforcedAuthorizations(key_characteristics);
-    EXPECT_TRUE(verify_attestation_record(AidlVersion(), challenge, attest_app_id, sw_enforced,
-                                          hw_enforced, SecLevel(),
-                                          cert_chain_[0].encodedCertificate));
+    EXPECT_TRUE(verify_attestation_record(challenge, attest_app_id, sw_enforced, hw_enforced,
+                                          SecLevel(), cert_chain_[0].encodedCertificate));
 
     // Check that the app id is not in the cert.
     string app_id = "clientid";
@@ -1922,7 +1744,7 @@ TEST_P(NewKeyGenerationTest, AttestationApplicationIDLengthProperlyEncoded) {
 
         AuthorizationSet hw_enforced = HwEnforcedAuthorizations(key_characteristics);
         AuthorizationSet sw_enforced = SwEnforcedAuthorizations(key_characteristics);
-        EXPECT_TRUE(verify_attestation_record(AidlVersion(), challenge, app_id,  //
+        EXPECT_TRUE(verify_attestation_record(challenge, app_id,  //
                                               sw_enforced, hw_enforced, SecLevel(),
                                               cert_chain_[0].encodedCertificate));
 
@@ -2016,9 +1838,7 @@ TEST_P(NewKeyGenerationTest, EcdsaInvalidSize) {
  * INVALID_ARGUMENT.
  */
 TEST_P(NewKeyGenerationTest, EcdsaMismatchKeySize) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        GTEST_SKIP() << "Test not applicable to StrongBox device";
-    }
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     auto result = GenerateKey(AuthorizationSetBuilder()
                                       .Authorization(TAG_ALGORITHM, Algorithm::EC)
@@ -2245,9 +2065,7 @@ TEST_P(NewKeyGenerationTest, HmacCheckMinMacLengths) {
  * Verifies that keymint rejects HMAC key generation with multiple specified digest algorithms.
  */
 TEST_P(NewKeyGenerationTest, HmacMultipleDigests) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        GTEST_SKIP() << "Test not applicable to StrongBox device";
-    }
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     ASSERT_EQ(ErrorCode::UNSUPPORTED_DIGEST,
               GenerateKey(AuthorizationSetBuilder()
@@ -2471,9 +2289,7 @@ TEST_P(SigningOperationsTest, RsaPaddingNoneDoesNotAllowOther) {
  * presented.
  */
 TEST_P(SigningOperationsTest, NoUserConfirmation) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        GTEST_SKIP() << "Test not applicable to StrongBox device";
-    }
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .RsaSigningKey(1024, 65537)
                                                  .Digest(Digest::NONE)
@@ -2563,9 +2379,7 @@ TEST_P(SigningOperationsTest, RsaPkcs1NoDigestTooLong) {
  * for a 1024-bit key.
  */
 TEST_P(SigningOperationsTest, RsaPssSha512TooSmallKey) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        GTEST_SKIP() << "Test not applicable to StrongBox device";
-    }
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .RsaSigningKey(1024, 65537)
                                                  .Digest(Digest::SHA_2_512)
@@ -3154,58 +2968,6 @@ TEST_P(VerificationOperationsTest, HmacSigningKeyCannotVerify) {
     CheckedDeleteKey(&verification_key);
 }
 
-/*
- * VerificationOperationsTest.HmacVerificationFailsForCorruptSignature
- *
- * Verifies HMAC signature verification should fails if message or signature is corrupted.
- */
-TEST_P(VerificationOperationsTest, HmacVerificationFailsForCorruptSignature) {
-    string key_material = "HelloThisIsAKey";
-
-    vector<uint8_t> signing_key, verification_key;
-    vector<KeyCharacteristics> signing_key_chars, verification_key_chars;
-    EXPECT_EQ(ErrorCode::OK,
-              ImportKey(AuthorizationSetBuilder()
-                                .Authorization(TAG_NO_AUTH_REQUIRED)
-                                .Authorization(TAG_ALGORITHM, Algorithm::HMAC)
-                                .Authorization(TAG_PURPOSE, KeyPurpose::SIGN)
-                                .Digest(Digest::SHA_2_256)
-                                .Authorization(TAG_MIN_MAC_LENGTH, 160),
-                        KeyFormat::RAW, key_material, &signing_key, &signing_key_chars));
-    EXPECT_EQ(ErrorCode::OK,
-              ImportKey(AuthorizationSetBuilder()
-                                .Authorization(TAG_NO_AUTH_REQUIRED)
-                                .Authorization(TAG_ALGORITHM, Algorithm::HMAC)
-                                .Authorization(TAG_PURPOSE, KeyPurpose::VERIFY)
-                                .Digest(Digest::SHA_2_256)
-                                .Authorization(TAG_MIN_MAC_LENGTH, 160),
-                        KeyFormat::RAW, key_material, &verification_key, &verification_key_chars));
-
-    string message = "This is a message.";
-    string signature = SignMessage(
-            signing_key, message,
-            AuthorizationSetBuilder().Digest(Digest::SHA_2_256).Authorization(TAG_MAC_LENGTH, 160));
-
-    AuthorizationSet begin_out_params;
-    ASSERT_EQ(ErrorCode::OK,
-              Begin(KeyPurpose::VERIFY, verification_key,
-                    AuthorizationSetBuilder().Digest(Digest::SHA_2_256), &begin_out_params));
-
-    string corruptMessage = "This is b message.";  // Corrupted message
-    string output;
-    EXPECT_EQ(ErrorCode::VERIFICATION_FAILED, Finish(corruptMessage, signature, &output));
-
-    ASSERT_EQ(ErrorCode::OK,
-              Begin(KeyPurpose::VERIFY, verification_key,
-                    AuthorizationSetBuilder().Digest(Digest::SHA_2_256), &begin_out_params));
-
-    signature[0] += 1;  // Corrupt a signature
-    EXPECT_EQ(ErrorCode::VERIFICATION_FAILED, Finish(message, signature, &output));
-
-    CheckedDeleteKey(&signing_key);
-    CheckedDeleteKey(&verification_key);
-}
-
 INSTANTIATE_KEYMINT_AIDL_TEST(VerificationOperationsTest);
 
 typedef KeyMintAidlTestBase ExportKeyTest;
@@ -3355,26 +3117,6 @@ TEST_P(ImportKeyTest, RsaPublicExponentMismatch) {
 }
 
 /*
- * ImportKeyTest.RsaAttestMultiPurposeFail
- *
- * Verifies that importing an RSA key pair with purpose ATTEST_KEY+SIGN fails.
- */
-TEST_P(ImportKeyTest, RsaAttestMultiPurposeFail) {
-    uint32_t key_size = 2048;
-    string key = rsa_2048_key;
-
-    ASSERT_EQ(ErrorCode::INCOMPATIBLE_PURPOSE,
-              ImportKey(AuthorizationSetBuilder()
-                                .Authorization(TAG_NO_AUTH_REQUIRED)
-                                .RsaSigningKey(key_size, 65537)
-                                .AttestKey()
-                                .Digest(Digest::SHA_2_256)
-                                .Padding(PaddingMode::RSA_PSS)
-                                .SetDefaultValidity(),
-                        KeyFormat::PKCS8, key));
-}
-
-/*
  * ImportKeyTest.EcdsaSuccess
  *
  * Verifies that importing and using an ECDSA P-256 key pair works correctly.
@@ -3456,9 +3198,7 @@ TEST_P(ImportKeyTest, EcdsaP256SEC1Success) {
  * Verifies that importing and using an ECDSA P-521 key pair works correctly.
  */
 TEST_P(ImportKeyTest, Ecdsa521Success) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        GTEST_SKIP() << "Test not applicable to StrongBox device";
-    }
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
     ASSERT_EQ(ErrorCode::OK, ImportKey(AuthorizationSetBuilder()
                                                .Authorization(TAG_NO_AUTH_REQUIRED)
                                                .EcdsaSigningKey(EcCurve::P_521)
@@ -3488,22 +3228,6 @@ TEST_P(ImportKeyTest, EcdsaCurveMismatch) {
               ImportKey(AuthorizationSetBuilder()
                                 .EcdsaSigningKey(EcCurve::P_224 /* Doesn't match key */)
                                 .Digest(Digest::NONE)
-                                .SetDefaultValidity(),
-                        KeyFormat::PKCS8, ec_256_key));
-}
-
-/*
- * ImportKeyTest.EcdsaAttestMultiPurposeFail
- *
- * Verifies that importing and using an ECDSA P-256 key pair with purpose ATTEST_KEY+SIGN fails.
- */
-TEST_P(ImportKeyTest, EcdsaAttestMultiPurposeFail) {
-    ASSERT_EQ(ErrorCode::INCOMPATIBLE_PURPOSE,
-              ImportKey(AuthorizationSetBuilder()
-                                .Authorization(TAG_NO_AUTH_REQUIRED)
-                                .EcdsaSigningKey(EcCurve::P_256)
-                                .AttestKey()
-                                .Digest(Digest::SHA_2_256)
                                 .SetDefaultValidity(),
                         KeyFormat::PKCS8, ec_256_key));
 }
@@ -3546,10 +3270,10 @@ TEST_P(ImportKeyTest, AesFailure) {
     for (uint32_t key_size : {bitlen - 1, bitlen + 1, bitlen - 8, bitlen + 8}) {
         // Explicit key size doesn't match that of the provided key.
         auto result = ImportKey(AuthorizationSetBuilder()
-                                        .Authorization(TAG_NO_AUTH_REQUIRED)
-                                        .AesEncryptionKey(key_size)
-                                        .EcbMode()
-                                        .Padding(PaddingMode::PKCS7),
+                                    .Authorization(TAG_NO_AUTH_REQUIRED)
+                                    .AesEncryptionKey(key_size)
+                                    .EcbMode()
+                                    .Padding(PaddingMode::PKCS7),
                                 KeyFormat::RAW, key);
         ASSERT_TRUE(result == ErrorCode::IMPORT_PARAMETER_MISMATCH ||
                     result == ErrorCode::UNSUPPORTED_KEY_SIZE)
@@ -3613,10 +3337,10 @@ TEST_P(ImportKeyTest, TripleDesFailure) {
     for (uint32_t key_size : {bitlen - 1, bitlen + 1, bitlen - 8, bitlen + 8}) {
         // Explicit key size doesn't match that of the provided key.
         auto result = ImportKey(AuthorizationSetBuilder()
-                                        .Authorization(TAG_NO_AUTH_REQUIRED)
-                                        .TripleDesEncryptionKey(key_size)
-                                        .EcbMode()
-                                        .Padding(PaddingMode::PKCS7),
+                                    .Authorization(TAG_NO_AUTH_REQUIRED)
+                                    .TripleDesEncryptionKey(key_size)
+                                    .EcbMode()
+                                    .Padding(PaddingMode::PKCS7),
                                 KeyFormat::RAW, key);
         ASSERT_TRUE(result == ErrorCode::IMPORT_PARAMETER_MISMATCH ||
                     result == ErrorCode::UNSUPPORTED_KEY_SIZE)
@@ -4183,9 +3907,7 @@ TEST_P(EncryptionOperationsTest, RsaOaepInvalidPadding) {
  * with a different digest than was used to encrypt.
  */
 TEST_P(EncryptionOperationsTest, RsaOaepDecryptWithWrongDigest) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        GTEST_SKIP() << "Test not applicable to StrongBox device";
-    }
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -4657,22 +4379,11 @@ TEST_P(EncryptionOperationsTest, AesEcbPkcs7PaddingCorrupted) {
     string ciphertext = EncryptMessage(message, params);
     EXPECT_EQ(16U, ciphertext.size());
     EXPECT_NE(ciphertext, message);
+    ++ciphertext[ciphertext.size() / 2];
 
-    for (size_t i = 0; i < kMaxPaddingCorruptionRetries; ++i) {
-        ++ciphertext[ciphertext.size() / 2];
-
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, params));
-        string plaintext;
-        ErrorCode error = Finish(message, &plaintext);
-        if (error == ErrorCode::INVALID_INPUT_LENGTH) {
-            // This is the expected error, we can exit the test now.
-            return;
-        } else {
-            // Very small chance we got valid decryption, so try again.
-            ASSERT_EQ(error, ErrorCode::OK);
-        }
-    }
-    FAIL() << "Corrupt ciphertext should have failed to decrypt by now.";
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, params));
+    string plaintext;
+    EXPECT_EQ(ErrorCode::INVALID_INPUT_LENGTH, Finish(message, &plaintext));
 }
 
 vector<uint8_t> CopyIv(const AuthorizationSet& set) {
@@ -4951,49 +4662,6 @@ TEST_P(EncryptionOperationsTest, AesCbcRoundTripSuccess) {
     params.push_back(TAG_NONCE, iv1);
     string plaintext = DecryptMessage(ciphertext1, params);
     EXPECT_EQ(message, plaintext);
-}
-
-/*
- * EncryptionOperationsTest.AesCbcZeroInputSuccessb
- *
- * Verifies that keymaster generates correct output on zero-input with
- * NonePadding mode
- */
-TEST_P(EncryptionOperationsTest, AesCbcZeroInputSuccess) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                 .AesEncryptionKey(128)
-                                                 .BlockMode(BlockMode::CBC)
-                                                 .Padding(PaddingMode::NONE, PaddingMode::PKCS7)));
-
-    // Zero input message
-    string message = "";
-    for (auto padding : {PaddingMode::NONE, PaddingMode::PKCS7}) {
-        auto params = AuthorizationSetBuilder().BlockMode(BlockMode::CBC).Padding(padding);
-        AuthorizationSet out_params;
-        string ciphertext1 = EncryptMessage(message, params, &out_params);
-        vector<uint8_t> iv1 = CopyIv(out_params);
-        if (padding == PaddingMode::NONE)
-            EXPECT_EQ(message.size(), ciphertext1.size()) << "PaddingMode: " << padding;
-        else
-            EXPECT_EQ(message.size(), ciphertext1.size() - 16) << "PaddingMode: " << padding;
-
-        out_params.Clear();
-
-        string ciphertext2 = EncryptMessage(message, params, &out_params);
-        vector<uint8_t> iv2 = CopyIv(out_params);
-        if (padding == PaddingMode::NONE)
-            EXPECT_EQ(message.size(), ciphertext2.size()) << "PaddingMode: " << padding;
-        else
-            EXPECT_EQ(message.size(), ciphertext2.size() - 16) << "PaddingMode: " << padding;
-
-        // IVs should be random
-        EXPECT_NE(iv1, iv2) << "PaddingMode: " << padding;
-
-        params.push_back(TAG_NONCE, iv1);
-        string plaintext = DecryptMessage(ciphertext1, params);
-        EXPECT_EQ(message, plaintext) << "PaddingMode: " << padding;
-    }
 }
 
 /*
@@ -5678,27 +5346,15 @@ TEST_P(EncryptionOperationsTest, TripleDesEcbPkcs7PaddingCorrupted) {
     string ciphertext = EncryptMessage(message, BlockMode::ECB, PaddingMode::PKCS7);
     EXPECT_EQ(8U, ciphertext.size());
     EXPECT_NE(ciphertext, message);
+    ++ciphertext[ciphertext.size() / 2];
 
     AuthorizationSetBuilder begin_params;
     begin_params.push_back(TAG_BLOCK_MODE, BlockMode::ECB);
     begin_params.push_back(TAG_PADDING, PaddingMode::PKCS7);
-
-    for (size_t i = 0; i < kMaxPaddingCorruptionRetries; ++i) {
-        ++ciphertext[ciphertext.size() / 2];
-
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
-        string plaintext;
-        EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext));
-        ErrorCode error = Finish(&plaintext);
-        if (error == ErrorCode::INVALID_ARGUMENT) {
-            // This is the expected error, we can exit the test now.
-            return;
-        } else {
-            // Very small chance we got valid decryption, so try again.
-            ASSERT_EQ(error, ErrorCode::OK);
-        }
-    }
-    FAIL() << "Corrupt ciphertext should have failed to decrypt by now.";
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
+    string plaintext;
+    EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext));
+    EXPECT_EQ(ErrorCode::INVALID_ARGUMENT, Finish(&plaintext));
 }
 
 struct TripleDesTestVector {
@@ -6026,27 +5682,16 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcPkcs7PaddingCorrupted) {
     string ciphertext = EncryptMessage(message, BlockMode::CBC, PaddingMode::PKCS7, &iv);
     EXPECT_EQ(8U, ciphertext.size());
     EXPECT_NE(ciphertext, message);
+    ++ciphertext[ciphertext.size() / 2];
 
     auto begin_params = AuthorizationSetBuilder()
                                 .BlockMode(BlockMode::CBC)
                                 .Padding(PaddingMode::PKCS7)
                                 .Authorization(TAG_NONCE, iv);
-
-    for (size_t i = 0; i < kMaxPaddingCorruptionRetries; ++i) {
-        ++ciphertext[ciphertext.size() / 2];
-        EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
-        string plaintext;
-        EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext));
-        ErrorCode error = Finish(&plaintext);
-        if (error == ErrorCode::INVALID_ARGUMENT) {
-            // This is the expected error, we can exit the test now.
-            return;
-        } else {
-            // Very small chance we got valid decryption, so try again.
-            ASSERT_EQ(error, ErrorCode::OK);
-        }
-    }
-    FAIL() << "Corrupt ciphertext should have failed to decrypt by now.";
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
+    string plaintext;
+    EXPECT_EQ(ErrorCode::OK, Update(ciphertext, &plaintext));
+    EXPECT_EQ(ErrorCode::INVALID_ARGUMENT, Finish(&plaintext));
 }
 
 /*
@@ -6099,9 +5744,7 @@ typedef KeyMintAidlTestBase MaxOperationsTest;
  * Verifies that the max uses per boot tag works correctly with AES keys.
  */
 TEST_P(MaxOperationsTest, TestLimitAes) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        GTEST_SKIP() << "Test not applicable to StrongBox device";
-    }
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -6128,9 +5771,7 @@ TEST_P(MaxOperationsTest, TestLimitAes) {
  * Verifies that the max uses per boot tag works correctly with RSA keys.
  */
 TEST_P(MaxOperationsTest, TestLimitRsa) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        GTEST_SKIP() << "Test not applicable to StrongBox device";
-    }
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -6161,9 +5802,7 @@ typedef KeyMintAidlTestBase UsageCountLimitTest;
  * Verifies that the usage count limit tag = 1 works correctly with AES keys.
  */
 TEST_P(UsageCountLimitTest, TestSingleUseAes) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        GTEST_SKIP() << "Test not applicable to StrongBox device";
-    }
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -6207,9 +5846,7 @@ TEST_P(UsageCountLimitTest, TestSingleUseAes) {
  * Verifies that the usage count limit tag > 1 works correctly with AES keys.
  */
 TEST_P(UsageCountLimitTest, TestLimitedUseAes) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        GTEST_SKIP() << "Test not applicable to StrongBox device";
-    }
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -6254,9 +5891,7 @@ TEST_P(UsageCountLimitTest, TestLimitedUseAes) {
  * Verifies that the usage count limit tag = 1 works correctly with RSA keys.
  */
 TEST_P(UsageCountLimitTest, TestSingleUseRsa) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        GTEST_SKIP() << "Test not applicable to StrongBox device";
-    }
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -6300,9 +5935,7 @@ TEST_P(UsageCountLimitTest, TestSingleUseRsa) {
  * Verifies that the usage count limit tag > 1 works correctly with RSA keys.
  */
 TEST_P(UsageCountLimitTest, TestLimitUseRsa) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        GTEST_SKIP() << "Test not applicable to StrongBox device";
-    }
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
                                                  .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -6349,9 +5982,7 @@ TEST_P(UsageCountLimitTest, TestLimitUseRsa) {
  * in hardware.
  */
 TEST_P(UsageCountLimitTest, TestSingleUseKeyAndRollbackResistance) {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        GTEST_SKIP() << "Test not applicable to StrongBox device";
-    }
+    if (SecLevel() == SecurityLevel::STRONGBOX) return;
 
     auto error = GenerateKey(AuthorizationSetBuilder()
                                      .RsaSigningKey(2048, 65537)
@@ -6360,39 +5991,38 @@ TEST_P(UsageCountLimitTest, TestSingleUseKeyAndRollbackResistance) {
                                      .Authorization(TAG_NO_AUTH_REQUIRED)
                                      .Authorization(TAG_ROLLBACK_RESISTANCE)
                                      .SetDefaultValidity());
-    if (error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE) {
-        GTEST_SKIP() << "Rollback resistance not supported";
+    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
+
+    if (error == ErrorCode::OK) {
+        // Rollback resistance is supported by KeyMint, verify it is enforced in hardware.
+        AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
+        ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
+        ASSERT_EQ(ErrorCode::OK, DeleteKey());
+
+        // The KeyMint should also enforce single use key in hardware when it supports rollback
+        // resistance.
+        ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                     .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                     .RsaSigningKey(1024, 65537)
+                                                     .NoDigestOrPadding()
+                                                     .Authorization(TAG_USAGE_COUNT_LIMIT, 1)
+                                                     .SetDefaultValidity()));
+
+        // Check the usage count limit tag appears in the hardware authorizations.
+        AuthorizationSet hardware_auths = HwEnforcedAuthorizations(key_characteristics_);
+        EXPECT_TRUE(hardware_auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U))
+                << "key usage count limit " << 1U << " missing";
+
+        string message = "1234567890123456";
+        auto params = AuthorizationSetBuilder().NoDigestOrPadding();
+
+        // First usage of RSA key should work.
+        SignMessage(message, params);
+
+        // Usage count limit tag is enforced by hardware. After using the key, the key blob
+        // must be invalidated from secure storage (such as RPMB partition).
+        EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB, Begin(KeyPurpose::SIGN, params));
     }
-
-    // Rollback resistance is supported by KeyMint, verify it is enforced in hardware.
-    ASSERT_EQ(ErrorCode::OK, error);
-    AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
-    ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
-    ASSERT_EQ(ErrorCode::OK, DeleteKey());
-
-    // The KeyMint should also enforce single use key in hardware when it supports rollback
-    // resistance.
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                 .RsaSigningKey(1024, 65537)
-                                                 .NoDigestOrPadding()
-                                                 .Authorization(TAG_USAGE_COUNT_LIMIT, 1)
-                                                 .SetDefaultValidity()));
-
-    // Check the usage count limit tag appears in the hardware authorizations.
-    AuthorizationSet hardware_auths = HwEnforcedAuthorizations(key_characteristics_);
-    EXPECT_TRUE(hardware_auths.Contains(TAG_USAGE_COUNT_LIMIT, 1U))
-            << "key usage count limit " << 1U << " missing";
-
-    string message = "1234567890123456";
-    auto params = AuthorizationSetBuilder().NoDigestOrPadding();
-
-    // First usage of RSA key should work.
-    SignMessage(message, params);
-
-    // Usage count limit tag is enforced by hardware. After using the key, the key blob
-    // must be invalidated from secure storage (such as RPMB partition).
-    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB, Begin(KeyPurpose::SIGN, params));
 }
 
 INSTANTIATE_KEYMINT_AIDL_TEST(UsageCountLimitTest);
@@ -6469,25 +6099,24 @@ TEST_P(KeyDeletionTest, DeleteKey) {
                                      .Authorization(TAG_NO_AUTH_REQUIRED)
                                      .Authorization(TAG_ROLLBACK_RESISTANCE)
                                      .SetDefaultValidity());
-    if (error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE) {
-        GTEST_SKIP() << "Rollback resistance not supported";
-    }
+    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
 
     // Delete must work if rollback protection is implemented
-    ASSERT_EQ(ErrorCode::OK, error);
-    AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
-    ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
+    if (error == ErrorCode::OK) {
+        AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
+        ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
 
-    ASSERT_EQ(ErrorCode::OK, DeleteKey(true /* keep key blob */));
+        ASSERT_EQ(ErrorCode::OK, DeleteKey(true /* keep key blob */));
 
-    string message = "12345678901234567890123456789012";
-    AuthorizationSet begin_out_params;
-    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
-              Begin(KeyPurpose::SIGN, key_blob_,
-                    AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
-                    &begin_out_params));
-    AbortIfNeeded();
-    key_blob_ = AidlBuf();
+        string message = "12345678901234567890123456789012";
+        AuthorizationSet begin_out_params;
+        EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
+                  Begin(KeyPurpose::SIGN, key_blob_,
+                        AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
+                        &begin_out_params));
+        AbortIfNeeded();
+        key_blob_ = AidlBuf();
+    }
 }
 
 /**
@@ -6504,22 +6133,21 @@ TEST_P(KeyDeletionTest, DeleteInvalidKey) {
                                      .Authorization(TAG_NO_AUTH_REQUIRED)
                                      .Authorization(TAG_ROLLBACK_RESISTANCE)
                                      .SetDefaultValidity());
-    if (error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE) {
-        GTEST_SKIP() << "Rollback resistance not supported";
-    }
+    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
 
     // Delete must work if rollback protection is implemented
-    ASSERT_EQ(ErrorCode::OK, error);
-    AuthorizationSet enforced(SecLevelAuthorizations());
-    ASSERT_TRUE(enforced.Contains(TAG_ROLLBACK_RESISTANCE));
+    if (error == ErrorCode::OK) {
+        AuthorizationSet enforced(SecLevelAuthorizations());
+        ASSERT_TRUE(enforced.Contains(TAG_ROLLBACK_RESISTANCE));
 
-    // Delete the key we don't care about the result at this point.
-    DeleteKey();
+        // Delete the key we don't care about the result at this point.
+        DeleteKey();
 
-    // Now create an invalid key blob and delete it.
-    key_blob_ = AidlBuf("just some garbage data which is not a valid key blob");
+        // Now create an invalid key blob and delete it.
+        key_blob_ = AidlBuf("just some garbage data which is not a valid key blob");
 
-    ASSERT_EQ(ErrorCode::OK, DeleteKey());
+        ASSERT_EQ(ErrorCode::OK, DeleteKey());
+    }
 }
 
 /**
@@ -6534,37 +6162,32 @@ TEST_P(KeyDeletionTest, DeleteInvalidKey) {
  * credentials stored in Keystore/Keymint.
  */
 TEST_P(KeyDeletionTest, DeleteAllKeys) {
-    if (!arm_deleteAllKeys) {
-        GTEST_SKIP() << "Option --arm_deleteAllKeys not set";
-        return;
-    }
+    if (!arm_deleteAllKeys) return;
     auto error = GenerateKey(AuthorizationSetBuilder()
                                      .RsaSigningKey(2048, 65537)
                                      .Digest(Digest::NONE)
                                      .Padding(PaddingMode::NONE)
                                      .Authorization(TAG_NO_AUTH_REQUIRED)
-                                     .Authorization(TAG_ROLLBACK_RESISTANCE)
-                                     .SetDefaultValidity());
-    if (error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE) {
-        GTEST_SKIP() << "Rollback resistance not supported";
-    }
+                                     .Authorization(TAG_ROLLBACK_RESISTANCE));
+    ASSERT_TRUE(error == ErrorCode::ROLLBACK_RESISTANCE_UNAVAILABLE || error == ErrorCode::OK);
 
     // Delete must work if rollback protection is implemented
-    ASSERT_EQ(ErrorCode::OK, error);
-    AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
-    ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
+    if (error == ErrorCode::OK) {
+        AuthorizationSet hardwareEnforced(SecLevelAuthorizations());
+        ASSERT_TRUE(hardwareEnforced.Contains(TAG_ROLLBACK_RESISTANCE));
 
-    ASSERT_EQ(ErrorCode::OK, DeleteAllKeys());
+        ASSERT_EQ(ErrorCode::OK, DeleteAllKeys());
 
-    string message = "12345678901234567890123456789012";
-    AuthorizationSet begin_out_params;
+        string message = "12345678901234567890123456789012";
+        AuthorizationSet begin_out_params;
 
-    EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
-              Begin(KeyPurpose::SIGN, key_blob_,
-                    AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
-                    &begin_out_params));
-    AbortIfNeeded();
-    key_blob_ = AidlBuf();
+        EXPECT_EQ(ErrorCode::INVALID_KEY_BLOB,
+                  Begin(KeyPurpose::SIGN, key_blob_,
+                        AuthorizationSetBuilder().Digest(Digest::NONE).Padding(PaddingMode::NONE),
+                        &begin_out_params));
+        AbortIfNeeded();
+        key_blob_ = AidlBuf();
+    }
 }
 
 INSTANTIATE_KEYMINT_AIDL_TEST(KeyDeletionTest);
@@ -6637,7 +6260,7 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
     size_t i;
 
     for (i = 0; i < max_operations; i++) {
-        result = Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params, op_handles[i]);
+        result = Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, op_handles[i]);
         if (ErrorCode::OK != result) {
             break;
         }
@@ -6645,12 +6268,12 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
     EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS, result);
     // Try again just in case there's a weird overflow bug
     EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
-              Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params));
+              Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params));
     for (size_t j = 0; j < i; j++) {
         EXPECT_EQ(ErrorCode::OK, Abort(op_handles[j]))
                 << "Aboort failed for i = " << j << std::endl;
     }
-    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params));
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params));
     AbortIfNeeded();
 }
 
@@ -6700,7 +6323,7 @@ INSTANTIATE_KEYMINT_AIDL_TEST(TransportLimitTest);
 
 typedef KeyMintAidlTestBase KeyAgreementTest;
 
-static int EcdhCurveToOpenSslCurveName(EcCurve curve) {
+int CurveToOpenSslCurveName(EcCurve curve) {
     switch (curve) {
         case EcCurve::P_224:
             return NID_secp224r1;
@@ -6710,8 +6333,6 @@ static int EcdhCurveToOpenSslCurveName(EcCurve curve) {
             return NID_secp384r1;
         case EcCurve::P_521:
             return NID_secp521r1;
-        case EcCurve::CURVE_25519:
-            return NID_X25519;
     }
 }
 
@@ -6733,7 +6354,7 @@ TEST_P(KeyAgreementTest, Ecdh) {
         for (auto localCurve : ValidCurves()) {
             // Generate EC key locally (with access to private key material)
             auto ecKey = EC_KEY_Ptr(EC_KEY_new());
-            int curveName = EcdhCurveToOpenSslCurveName(localCurve);
+            int curveName = CurveToOpenSslCurveName(localCurve);
             auto group = EC_GROUP_Ptr(EC_GROUP_new_by_curve_name(curveName));
             ASSERT_NE(group, nullptr);
             ASSERT_EQ(EC_KEY_set_group(ecKey.get(), group.get()), 1);
@@ -7015,11 +6636,9 @@ int main(int argc, char** argv) {
             } else {
                 std::cout << "NOT dumping attestations" << std::endl;
             }
-            if (std::string(argv[i]) == "--skip_boot_pl_check") {
-                // Allow checks of BOOT_PATCHLEVEL to be disabled, so that the tests can
-                // be run in emulated environments that don't have the normal bootloader
-                // interactions.
-                aidl::android::hardware::security::keymint::test::check_boot_pl = false;
+            // TODO(drysdale): Remove this flag when available KeyMint devices comply with spec
+            if (std::string(argv[i]) == "--check_patchLevels") {
+                aidl::android::hardware::security::keymint::test::check_patchLevels = true;
             }
         }
     }

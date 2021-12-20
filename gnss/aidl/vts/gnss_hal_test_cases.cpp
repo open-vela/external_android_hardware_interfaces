@@ -16,20 +16,12 @@
 
 #define LOG_TAG "GnssHalTestCases"
 
-#include <android/hardware/gnss/IAGnss.h>
 #include <android/hardware/gnss/IGnss.h>
-#include <android/hardware/gnss/IGnssBatching.h>
-#include <android/hardware/gnss/IGnssDebug.h>
 #include <android/hardware/gnss/IGnssMeasurementCallback.h>
 #include <android/hardware/gnss/IGnssMeasurementInterface.h>
 #include <android/hardware/gnss/IGnssPowerIndication.h>
 #include <android/hardware/gnss/IGnssPsds.h>
-#include <cutils/properties.h>
-#include "AGnssCallbackAidl.h"
-#include "GnssBatchingCallback.h"
-#include "GnssGeofenceCallback.h"
 #include "GnssMeasurementCallbackAidl.h"
-#include "GnssNavigationMessageCallback.h"
 #include "GnssPowerIndicationCallback.h"
 #include "gnss_hal_test.h"
 
@@ -40,29 +32,16 @@ using android::hardware::gnss::GnssClock;
 using android::hardware::gnss::GnssData;
 using android::hardware::gnss::GnssMeasurement;
 using android::hardware::gnss::GnssPowerStats;
-using android::hardware::gnss::IAGnss;
 using android::hardware::gnss::IGnss;
-using android::hardware::gnss::IGnssBatching;
-using android::hardware::gnss::IGnssBatchingCallback;
 using android::hardware::gnss::IGnssConfiguration;
-using android::hardware::gnss::IGnssDebug;
-using android::hardware::gnss::IGnssGeofence;
-using android::hardware::gnss::IGnssGeofenceCallback;
 using android::hardware::gnss::IGnssMeasurementCallback;
 using android::hardware::gnss::IGnssMeasurementInterface;
-using android::hardware::gnss::IGnssNavigationMessageInterface;
 using android::hardware::gnss::IGnssPowerIndication;
 using android::hardware::gnss::IGnssPsds;
 using android::hardware::gnss::PsdsType;
 using android::hardware::gnss::SatellitePvt;
 
 using GnssConstellationTypeAidl = android::hardware::gnss::GnssConstellationType;
-
-static bool IsAutomotiveDevice() {
-    char buffer[PROPERTY_VALUE_MAX] = {0};
-    property_get("ro.hardware.type", buffer, "");
-    return strncmp(buffer, "automotive", PROPERTY_VALUE_MAX) == 0;
-}
 
 /*
  * SetupTeardownCreateCleanup:
@@ -272,6 +251,7 @@ TEST_P(GnssHalTest, TestCorrelationVector) {
                 for (const auto& correlationVector : measurement.correlationVectors) {
                     ASSERT_GE(correlationVector.frequencyOffsetMps, 0);
                     ASSERT_GT(correlationVector.samplingWidthM, 0);
+                    ASSERT_GE(correlationVector.samplingStartM, 0);
                     ASSERT_TRUE(correlationVector.magnitude.size() > 0);
                     for (const auto& magnitude : correlationVector.magnitude) {
                         ASSERT_TRUE(magnitude >= -32768 && magnitude <= 32767);
@@ -769,110 +749,4 @@ TEST_P(GnssHalTest, BlocklistConstellationLocationOn) {
     sources.resize(0);
     status = gnss_configuration_hal->setBlocklist(sources);
     ASSERT_TRUE(status.isOk());
-}
-
-/*
- * TestAllExtensions.
- */
-TEST_P(GnssHalTest, TestAllExtensions) {
-    sp<IGnssBatching> iGnssBatching;
-    auto status = aidl_gnss_hal_->getExtensionGnssBatching(&iGnssBatching);
-    if (status.isOk() && iGnssBatching != nullptr) {
-        auto gnssBatchingCallback = sp<GnssBatchingCallback>::make();
-        status = iGnssBatching->init(gnssBatchingCallback);
-        ASSERT_TRUE(status.isOk());
-
-        status = iGnssBatching->cleanup();
-        ASSERT_TRUE(status.isOk());
-    }
-
-    sp<IGnssGeofence> iGnssGeofence;
-    status = aidl_gnss_hal_->getExtensionGnssGeofence(&iGnssGeofence);
-    if (status.isOk() && iGnssGeofence != nullptr) {
-        auto gnssGeofenceCallback = sp<GnssGeofenceCallback>::make();
-        status = iGnssGeofence->setCallback(gnssGeofenceCallback);
-        ASSERT_TRUE(status.isOk());
-    }
-
-    sp<IGnssNavigationMessageInterface> iGnssNavMsgIface;
-    status = aidl_gnss_hal_->getExtensionGnssNavigationMessage(&iGnssNavMsgIface);
-    if (status.isOk() && iGnssNavMsgIface != nullptr) {
-        auto gnssNavMsgCallback = sp<GnssNavigationMessageCallback>::make();
-        status = iGnssNavMsgIface->setCallback(gnssNavMsgCallback);
-        ASSERT_TRUE(status.isOk());
-
-        status = iGnssNavMsgIface->close();
-        ASSERT_TRUE(status.isOk());
-    }
-}
-
-/*
- * TestAGnssExtension:
- * 1. Gets the IAGnss extension.
- * 2. Sets AGnssCallback.
- * 3. Sets SUPL server host/port.
- */
-TEST_P(GnssHalTest, TestAGnssExtension) {
-    if (aidl_gnss_hal_->getInterfaceVersion() == 1) {
-        return;
-    }
-    sp<IAGnss> iAGnss;
-    auto status = aidl_gnss_hal_->getExtensionAGnss(&iAGnss);
-    ASSERT_TRUE(status.isOk());
-    ASSERT_TRUE(iAGnss != nullptr);
-
-    auto agnssCallback = sp<AGnssCallbackAidl>::make();
-    status = iAGnss->setCallback(agnssCallback);
-    ASSERT_TRUE(status.isOk());
-
-    // Set SUPL server host/port
-    status = iAGnss->setServer(AGnssType::SUPL, String16("supl.google.com"), 7275);
-    ASSERT_TRUE(status.isOk());
-}
-
-/*
- * GnssDebugValuesSanityTest:
- * Ensures that GnssDebug values make sense.
- */
-TEST_P(GnssHalTest, GnssDebugValuesSanityTest) {
-    if (aidl_gnss_hal_->getInterfaceVersion() == 1) {
-        return;
-    }
-    sp<IGnssDebug> iGnssDebug;
-    auto status = aidl_gnss_hal_->getExtensionGnssDebug(&iGnssDebug);
-    ASSERT_TRUE(status.isOk());
-
-    if (!IsAutomotiveDevice() && gnss_cb_->info_cbq_.calledCount() > 0) {
-        ASSERT_TRUE(iGnssDebug != nullptr);
-
-        IGnssDebug::DebugData data;
-        auto status = iGnssDebug->getDebugData(&data);
-        ASSERT_TRUE(status.isOk());
-
-        if (data.position.valid) {
-            ASSERT_TRUE(data.position.latitudeDegrees >= -90 &&
-                        data.position.latitudeDegrees <= 90);
-            ASSERT_TRUE(data.position.longitudeDegrees >= -180 &&
-                        data.position.longitudeDegrees <= 180);
-            ASSERT_TRUE(data.position.altitudeMeters >= -1000 &&  // Dead Sea: -414m
-                        data.position.altitudeMeters <= 20000);   // Mount Everest: 8850m
-            ASSERT_TRUE(data.position.speedMetersPerSec >= 0 &&
-                        data.position.speedMetersPerSec <= 600);
-            ASSERT_TRUE(data.position.bearingDegrees >= -360 &&
-                        data.position.bearingDegrees <= 360);
-            ASSERT_TRUE(data.position.horizontalAccuracyMeters > 0 &&
-                        data.position.horizontalAccuracyMeters <= 20000000);
-            ASSERT_TRUE(data.position.verticalAccuracyMeters > 0 &&
-                        data.position.verticalAccuracyMeters <= 20000);
-            ASSERT_TRUE(data.position.speedAccuracyMetersPerSecond > 0 &&
-                        data.position.speedAccuracyMetersPerSecond <= 500);
-            ASSERT_TRUE(data.position.bearingAccuracyDegrees > 0 &&
-                        data.position.bearingAccuracyDegrees <= 180);
-            ASSERT_TRUE(data.position.ageSeconds >= 0);
-        }
-        ASSERT_TRUE(data.time.timeEstimateMs >= 1483228800000);  // Jan 01 2017 00:00:00 GMT.
-        ASSERT_TRUE(data.time.timeUncertaintyNs > 0);
-        ASSERT_TRUE(data.time.frequencyUncertaintyNsPerSec > 0 &&
-                    data.time.frequencyUncertaintyNsPerSec <= 2.0e5);  // 200 ppm
-    }
 }
