@@ -29,13 +29,6 @@ namespace audio {
 using ::android::hardware::audio::common::V5_0::AudioSource;
 using ::android::hardware::audio::common::V5_0::RecordTrackMetadata;
 using ::android::hardware::audio::common::V5_0::SinkMetadata;
-using ::android::hardware::bluetooth::audio::V2_0::BitsPerSample;
-using ::android::hardware::bluetooth::audio::V2_0::ChannelMode;
-using ::android::hardware::bluetooth::audio::V2_2::LeAudioConfiguration;
-using ::android::hardware::bluetooth::audio::V2_2::LeAudioMode;
-using PcmParameters_2_1 =
-    ::android::hardware::bluetooth::audio::V2_1::PcmParameters;
-using SampleRate_2_1 = ::android::hardware::bluetooth::audio::V2_1::SampleRate;
 
 using SessionType_2_1 =
     ::android::hardware::bluetooth::audio::V2_1::SessionType;
@@ -45,24 +38,10 @@ using SessionType_2_0 =
 using AudioConfiguration_2_1 =
     ::android::hardware::bluetooth::audio::V2_1::AudioConfiguration;
 
-static constexpr PcmParameters_2_1 kInvalidPcmParameters = {
-    .sampleRate = SampleRate_2_1::RATE_UNKNOWN,
-    .channelMode = ChannelMode::UNKNOWN,
-    .bitsPerSample = BitsPerSample::BITS_UNKNOWN,
-    .dataIntervalUs = 0,
-};
-
-static LeAudioConfiguration kInvalidLeAudioConfig = {
-    .mode = LeAudioMode::UNKNOWN,
-    .config = {},
-};
-
 ::android::hardware::bluetooth::audio::V2_2::AudioConfiguration
     BluetoothAudioSession_2_2::invalidSoftwareAudioConfiguration = {};
 ::android::hardware::bluetooth::audio::V2_2::AudioConfiguration
     BluetoothAudioSession_2_2::invalidOffloadAudioConfiguration = {};
-::android::hardware::bluetooth::audio::V2_2::AudioConfiguration
-    BluetoothAudioSession_2_2::invalidLeOffloadAudioConfiguration = {};
 
 using IBluetoothAudioPort_2_2 =
     ::android::hardware::bluetooth::audio::V2_2::IBluetoothAudioPort;
@@ -93,10 +72,6 @@ BluetoothAudioSession_2_2::BluetoothAudioSession_2_2(
   } else {
     session_type_2_1_ = (session_type);
   }
-  invalidSoftwareAudioConfiguration.pcmConfig(kInvalidPcmParameters);
-  invalidOffloadAudioConfiguration.codecConfig(
-      audio_session->kInvalidCodecConfiguration);
-  invalidLeOffloadAudioConfiguration.leAudioConfig(kInvalidLeAudioConfig);
 }
 
 bool BluetoothAudioSession_2_2::IsSessionReady() {
@@ -174,17 +149,9 @@ const ::android::hardware::bluetooth::audio::V2_2::AudioConfiguration
 BluetoothAudioSession_2_2::GetAudioConfig() {
   std::lock_guard<std::recursive_mutex> guard(audio_session->mutex_);
   if (IsSessionReady()) {
-    auto audio_config_discriminator = audio_config_2_2_.getDiscriminator();
     // If session is unknown it means it should be 2.0 type
     if (session_type_2_1_ != SessionType_2_1::UNKNOWN) {
-      if ((audio_config_discriminator ==
-               ::android::hardware::bluetooth::audio::V2_2::AudioConfiguration::
-                   hidl_discriminator::pcmConfig &&
-           audio_config_2_2_ != kInvalidSoftwareAudioConfiguration) ||
-          (audio_config_discriminator ==
-               ::android::hardware::bluetooth::audio::V2_2::AudioConfiguration::
-                   hidl_discriminator::leAudioConfig &&
-           audio_config_2_2_ != kInvalidLeOffloadAudioConfiguration))
+      if (audio_config_2_2_ != invalidSoftwareAudioConfiguration)
         return audio_config_2_2_;
 
       ::android::hardware::bluetooth::audio::V2_2::AudioConfiguration toConf;
@@ -214,10 +181,8 @@ BluetoothAudioSession_2_2::GetAudioConfig() {
     }
     return toConf;
   } else if (session_type_2_1_ ==
-                 SessionType_2_1::LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH ||
-             session_type_2_1_ ==
-                 SessionType_2_1::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH) {
-    return kInvalidLeOffloadAudioConfiguration;
+             SessionType_2_1::A2DP_HARDWARE_OFFLOAD_DATAPATH) {
+    return kInvalidOffloadAudioConfiguration;
   } else {
     return kInvalidSoftwareAudioConfiguration;
   }
@@ -349,11 +314,8 @@ void BluetoothAudioSession_2_2::OnSessionStarted(
       LOG(ERROR) << __func__ << " - SessionType=" << toString(session_type_2_1_)
                  << " DataMQ Invalid";
       audio_config_2_2_ =
-          ((session_type_2_1_ ==
-                SessionType_2_1::LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH ||
-            session_type_2_1_ ==
-                SessionType_2_1::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH)
-               ? kInvalidLeOffloadAudioConfiguration
+          (session_type_2_1_ == SessionType_2_1::A2DP_HARDWARE_OFFLOAD_DATAPATH
+               ? kInvalidOffloadAudioConfiguration
                : kInvalidSoftwareAudioConfiguration);
     } else {
       audio_session->stack_iface_ = stack_iface;
@@ -361,32 +323,6 @@ void BluetoothAudioSession_2_2::OnSessionStarted(
                 << ", AudioConfiguration=" << toString(audio_config);
       audio_session->ReportSessionStatus();
     };
-  }
-}
-
-// The report function is used to report that the Bluetooth stack has ended the
-// session, and will invoke session_changed_cb_ to notify registered
-// bluetooth_audio outputs
-void BluetoothAudioSession_2_2::OnSessionEnded() {
-  std::lock_guard<std::recursive_mutex> guard(audio_session->mutex_);
-  bool toggled = IsSessionReady();
-  LOG(INFO) << __func__ << " - SessionType=" << toString(session_type_2_1_);
-  if (session_type_2_1_ == SessionType_2_1::UNKNOWN) {
-    audio_session->OnSessionEnded();
-    return;
-  }
-
-  audio_config_2_2_ =
-      ((session_type_2_1_ ==
-            SessionType_2_1::LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH ||
-        session_type_2_1_ ==
-            SessionType_2_1::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH)
-           ? kInvalidLeOffloadAudioConfiguration
-           : kInvalidSoftwareAudioConfiguration);
-  audio_session->stack_iface_ = nullptr;
-  audio_session->UpdateDataPath(nullptr);
-  if (toggled) {
-    audio_session->ReportSessionStatus();
   }
 }
 
