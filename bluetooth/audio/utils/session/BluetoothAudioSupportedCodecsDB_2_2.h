@@ -19,7 +19,6 @@
 #include <android/hardware/bluetooth/audio/2.2/types.h>
 
 #include "BluetoothAudioSupportedCodecsDB.h"
-#include "BluetoothAudioSupportedCodecsDB_2_1.h"
 
 namespace android {
 namespace bluetooth {
