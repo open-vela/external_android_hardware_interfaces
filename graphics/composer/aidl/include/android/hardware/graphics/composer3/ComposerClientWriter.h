@@ -63,8 +63,6 @@ namespace aidl::android::hardware::graphics::composer3 {
 
 class ComposerClientWriter {
   public:
-    static constexpr std::optional<ClockMonotonicTimestamp> kNoTimestamp = std::nullopt;
-
     ComposerClientWriter() { reset(); }
 
     virtual ~ComposerClientWriter() { reset(); }
@@ -75,11 +73,11 @@ class ComposerClientWriter {
         mCommands.clear();
     }
 
-    void setColorTransform(int64_t display, const float* matrix) {
-        std::vector<float> matVec;
-        matVec.reserve(16);
-        matVec.assign(matrix, matrix + 16);
-        getDisplayCommand(display).colorTransformMatrix.emplace(std::move(matVec));
+    void setColorTransform(int64_t display, const float* matrix, ColorTransform hint) {
+        ColorTransformPayload colorTransformPayload;
+        colorTransformPayload.matrix.assign(matrix, matrix + 16);
+        colorTransformPayload.hint = hint;
+        getDisplayCommand(display).colorTransform.emplace(std::move(colorTransformPayload));
     }
 
     void setClientTarget(int64_t display, uint32_t slot, const native_handle_t* target,
@@ -97,18 +95,10 @@ class ComposerClientWriter {
                 getBuffer(slot, buffer, releaseFence));
     }
 
-    void validateDisplay(int64_t display,
-                         std::optional<ClockMonotonicTimestamp> expectedPresentTime) {
-        auto& command = getDisplayCommand(display);
-        command.expectedPresentTime = expectedPresentTime;
-        command.validateDisplay = true;
-    }
+    void validateDisplay(int64_t display) { getDisplayCommand(display).validateDisplay = true; }
 
-    void presentOrvalidateDisplay(int64_t display,
-                                  std::optional<ClockMonotonicTimestamp> expectedPresentTime) {
-        auto& command = getDisplayCommand(display);
-        command.expectedPresentTime = expectedPresentTime;
-        command.presentOrValidateDisplay = true;
+    void presentOrvalidateDisplay(int64_t display) {
+        getDisplayCommand(display).presentOrValidateDisplay = true;
     }
 
     void acceptDisplayChanges(int64_t display) {
