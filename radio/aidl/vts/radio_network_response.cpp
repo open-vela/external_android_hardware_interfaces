@@ -31,10 +31,7 @@ ndk::ScopedAStatus RadioNetworkResponse::getAllowedNetworkTypesBitmapResponse(
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::getAvailableBandModesResponse(
-        const RadioResponseInfo& info, const std::vector<RadioBandMode>& bandModes) {
-    rspInfo = info;
-    radioBandModes = bandModes;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/, const std::vector<RadioBandMode>& /*bandModes*/) {
     return ndk::ScopedAStatus::ok();
 }
 
@@ -47,64 +44,48 @@ ndk::ScopedAStatus RadioNetworkResponse::getAvailableNetworksResponse(
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::getBarringInfoResponse(
-        const RadioResponseInfo& info, const CellIdentity& cellIdentity,
-        const std::vector<BarringInfo>& barringInfos) {
-    rspInfo = info;
-    barringCellIdentity = cellIdentity;
-    barringInfoList = barringInfos;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/, const CellIdentity& /*cellIdentity*/,
+        const std::vector<BarringInfo>& /*barringInfos*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::getCdmaRoamingPreferenceResponse(
-        const RadioResponseInfo& info, CdmaRoamingType /*type*/) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/, CdmaRoamingType /*type*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::getCellInfoListResponse(
-        const RadioResponseInfo& info, const std::vector<CellInfo>& /*cellInfo*/) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/, const std::vector<CellInfo>& /*cellInfo*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::getDataRegistrationStateResponse(
-        const RadioResponseInfo& info, const RegStateResult& regResponse) {
+        const RadioResponseInfo& info, const RegStateResult& /*regResponse*/) {
     rspInfo = info;
-    dataRegResp = regResponse;
     parent_network.notify(info.serial);
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::getImsRegistrationStateResponse(
-        const RadioResponseInfo& info, bool /*isRegistered*/, RadioTechnologyFamily /*ratFamily*/) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/, bool /*isRegistered*/,
+        RadioTechnologyFamily /*ratFamily*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::getNetworkSelectionModeResponse(
-        const RadioResponseInfo& info, bool /*manual*/) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/, bool /*manual*/) {
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioNetworkResponse::getOperatorResponse(const RadioResponseInfo& info,
+ndk::ScopedAStatus RadioNetworkResponse::getOperatorResponse(const RadioResponseInfo& /*info*/,
                                                              const std::string& /*longName*/,
                                                              const std::string& /*shortName*/,
                                                              const std::string& /*numeric*/) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::getSignalStrengthResponse(
-        const RadioResponseInfo& info, const SignalStrength& /*sig_strength*/) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/, const SignalStrength& /*sig_strength*/) {
     return ndk::ScopedAStatus::ok();
 }
 
@@ -124,16 +105,14 @@ ndk::ScopedAStatus RadioNetworkResponse::getUsageSettingResponse(const RadioResp
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::getVoiceRadioTechnologyResponse(
-        const RadioResponseInfo& info, RadioTechnology /*rat*/) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/, RadioTechnology /*rat*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::getVoiceRegistrationStateResponse(
         const RadioResponseInfo& info, const RegStateResult& regResponse) {
     rspInfo = info;
-    voiceRegResp = regResponse;
+    voiceRegResp.regState = regResponse.regState;
     parent_network.notify(info.serial);
     return ndk::ScopedAStatus::ok();
 }
@@ -153,63 +132,47 @@ ndk::ScopedAStatus RadioNetworkResponse::setAllowedNetworkTypesBitmapResponse(
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioNetworkResponse::setBandModeResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+ndk::ScopedAStatus RadioNetworkResponse::setBandModeResponse(const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioNetworkResponse::setBarringPasswordResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+ndk::ScopedAStatus RadioNetworkResponse::setBarringPasswordResponse(
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::setCdmaRoamingPreferenceResponse(
-        const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::setCellInfoListRateResponse(
-        const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::setIndicationFilterResponse(
-        const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::setLinkCapacityReportingCriteriaResponse(
-        const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioNetworkResponse::setLocationUpdatesResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+ndk::ScopedAStatus RadioNetworkResponse::setLocationUpdatesResponse(
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::setNetworkSelectionModeAutomaticResponse(
-        const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::setNetworkSelectionModeManualResponse(
-        const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
@@ -221,23 +184,17 @@ ndk::ScopedAStatus RadioNetworkResponse::setNrDualConnectivityStateResponse(
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::setSignalStrengthReportingCriteriaResponse(
-        const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::setSuppServiceNotificationsResponse(
-        const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::setSystemSelectionChannelsResponse(
-        const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
@@ -247,21 +204,17 @@ ndk::ScopedAStatus RadioNetworkResponse::setUsageSettingResponse(const RadioResp
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioNetworkResponse::startNetworkScanResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+ndk::ScopedAStatus RadioNetworkResponse::startNetworkScanResponse(
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioNetworkResponse::stopNetworkScanResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+ndk::ScopedAStatus RadioNetworkResponse::stopNetworkScanResponse(
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::supplyNetworkDepersonalizationResponse(
-        const RadioResponseInfo& info, int32_t /*remainingRetries*/) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+        const RadioResponseInfo& /*info*/, int32_t /*remainingRetries*/) {
     return ndk::ScopedAStatus::ok();
 }
