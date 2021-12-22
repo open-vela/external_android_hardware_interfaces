@@ -36,7 +36,5 @@ package android.hardware.audio.common;
 parcelable RecordTrackMetadata {
   android.media.audio.common.AudioSource source = android.media.audio.common.AudioSource.SYS_RESERVED_INVALID;
   float gain;
-  @nullable android.media.audio.common.AudioDevice destinationDevice;
-  android.media.audio.common.AudioChannelLayout channelMask;
   @utf8InCpp String[] tags;
 }

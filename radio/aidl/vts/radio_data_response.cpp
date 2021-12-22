@@ -36,9 +36,8 @@ ndk::ScopedAStatus RadioDataResponse::cancelHandoverResponse(const RadioResponse
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioDataResponse::deactivateDataCallResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_data.notify(info.serial);
+ndk::ScopedAStatus RadioDataResponse::deactivateDataCallResponse(
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
@@ -62,15 +61,11 @@ ndk::ScopedAStatus RadioDataResponse::releasePduSessionIdResponse(const RadioRes
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioDataResponse::setDataAllowedResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_data.notify(info.serial);
+ndk::ScopedAStatus RadioDataResponse::setDataAllowedResponse(const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioDataResponse::setDataProfileResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_data.notify(info.serial);
+ndk::ScopedAStatus RadioDataResponse::setDataProfileResponse(const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
@@ -80,9 +75,8 @@ ndk::ScopedAStatus RadioDataResponse::setDataThrottlingResponse(const RadioRespo
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioDataResponse::setInitialAttachApnResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_data.notify(info.serial);
+ndk::ScopedAStatus RadioDataResponse::setInitialAttachApnResponse(
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
@@ -100,15 +94,11 @@ ndk::ScopedAStatus RadioDataResponse::startHandoverResponse(const RadioResponseI
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioDataResponse::startKeepaliveResponse(const RadioResponseInfo& info,
+ndk::ScopedAStatus RadioDataResponse::startKeepaliveResponse(const RadioResponseInfo& /*info*/,
                                                              const KeepaliveStatus& /*status*/) {
-    rspInfo = info;
-    parent_data.notify(info.serial);
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioDataResponse::stopKeepaliveResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_data.notify(info.serial);
+ndk::ScopedAStatus RadioDataResponse::stopKeepaliveResponse(const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }

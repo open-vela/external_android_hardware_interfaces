@@ -81,7 +81,6 @@ interface ISupplicantP2pIface {
   void setSsidPostfix(in byte[] postfix);
   void setWfdDeviceInfo(in byte[] info);
   void setWfdR2DeviceInfo(in byte[] info);
-  void removeClient(in byte[] peerAddress, in boolean isLegacyClient);
   void setWpsConfigMethods(in android.hardware.wifi.supplicant.WpsConfigMethods configMethods);
   void setWpsDeviceName(in String name);
   void setWpsDeviceType(in byte[] type);
@@ -93,7 +92,4 @@ interface ISupplicantP2pIface {
   String startWpsPinDisplay(in String groupIfName, in byte[] bssid);
   void startWpsPinKeypad(in String groupIfName, in String pin);
   void stopFind();
-  void findOnSocialChannels(in int timeoutInSec);
-  void findOnSpecificFrequency(in int freqInHz, in int timeoutInSec);
-  void setVendorElements(in android.hardware.wifi.supplicant.P2pFrameTypeMask frameTypeMask, in byte[] vendorElemBytes);
 }
