@@ -16,10 +16,18 @@
 
 package android.hardware.graphics.composer3;
 
-/**
- * Represents a nanoseconds timestamp in CLOCK_MONOTONIC.
- */
+import android.hardware.graphics.composer3.LayerGenericMetadataKey;
+
 @VintfStability
-parcelable ClockMonotonicTimestamp {
-    long timestamp;
+parcelable GenericMetadata {
+    /**
+     * Indicates which metadata value should be set.
+     */
+    LayerGenericMetadataKey key;
+    /**
+     * The binary representation of a AIDL struct corresponding to
+     * the key as described above.
+     * TODO(b/209691612): revisit the use of byte[]
+     */
+    byte[] value;
 }

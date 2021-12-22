@@ -30,6 +30,7 @@ import android.hardware.graphics.composer3.DisplayIdentification;
 import android.hardware.graphics.composer3.FormatColorComponent;
 import android.hardware.graphics.composer3.HdrCapabilities;
 import android.hardware.graphics.composer3.IComposerCallback;
+import android.hardware.graphics.composer3.LayerGenericMetadataKey;
 import android.hardware.graphics.composer3.PerFrameMetadataKey;
 import android.hardware.graphics.composer3.PowerMode;
 import android.hardware.graphics.composer3.ReadbackBufferAttributes;
@@ -368,6 +369,20 @@ interface IComposerClient {
     HdrCapabilities getHdrCapabilities(long display);
 
     /**
+     * Retrieves the set of keys that may be passed into setLayerGenericMetadata
+     *
+     * Key names must meet the following requirements:
+     * - Must be specified in reverse domain name notation
+     * - Must not start with 'com.android' or 'android'
+     * - Must be unique within the returned vector
+     * - Must correspond to a matching HIDL struct type, which defines the
+     *   structure of its values. For example, the key 'com.example.V1-3.Foo'
+     *   should correspond to a value of type com.example@1.3::Foo, which is
+     *   defined in a vendor HAL extension
+     */
+    LayerGenericMetadataKey[] getLayerGenericMetadataKeys();
+
+    /**
      * Returns the maximum number of virtual displays supported by this device
      * (which may be 0). The client must not attempt to create more than this
      * many virtual displays on this device. This number must not change for
@@ -464,7 +479,7 @@ interface IComposerClient {
      *   getReadbackBufferAttributes
      *   setReadbackBuffer
      */
-    @nullable ParcelFileDescriptor getReadbackBufferFence(long display);
+    ParcelFileDescriptor getReadbackBufferFence(long display);
 
     /**
      * Returns the render intents supported by the specified display and color
@@ -687,15 +702,13 @@ interface IComposerClient {
      * This buffer must have been allocated as described in
      * getReadbackBufferAttributes and is in the dataspace provided by the same.
      *
-     * Also provides a file descriptor referring to a release sync fence
-     * object, which must be signaled when it is safe to write to the readback
-     * buffer. If it is already safe to write to the readback buffer, null may be passed instead.
-     *
      * If there is hardware protected content on the display at the time of the next
      * composition, the area of the readback buffer covered by such content must be
      * completely black. Any areas of the buffer not covered by such content may
      * optionally be black as well.
      *
+     * The release fence file descriptor provided works identically to the one
+     * described for setOutputBuffer.
      *
      * This function must not be called between any call to validateDisplay and a
      * subsequent call to presentDisplay.
@@ -703,8 +716,7 @@ interface IComposerClient {
      * Parameters:
      * @param display - the display on which to create the layer.
      * @param buffer - the new readback buffer
-     * @param releaseFence - a sync fence file descriptor as described above or null if it is
-     *                       already safe to write to the readback buffer.
+     * @param releaseFence - a sync fence file descriptor as described in setOutputBuffer
      *
      * @exception EX_BAD_DISPLAY - an invalid display handle was passed in
      * @exception EX_BAD_PARAMETER - the new readback buffer handle was invalid
@@ -714,7 +726,7 @@ interface IComposerClient {
      *   getReadbackBufferFence
      */
     void setReadbackBuffer(long display, in android.hardware.common.NativeHandle buffer,
-            in @nullable ParcelFileDescriptor releaseFence);
+            in ParcelFileDescriptor releaseFence);
 
     /**
      * Enables or disables the vsync signal for the given display. Virtual

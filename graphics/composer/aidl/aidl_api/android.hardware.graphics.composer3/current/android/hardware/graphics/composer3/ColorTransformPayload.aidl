@@ -33,6 +33,7 @@
 
 package android.hardware.graphics.composer3;
 @VintfStability
-parcelable ClockMonotonicTimestamp {
-  long timestamp;
+parcelable ColorTransformPayload {
+  float[] matrix;
+  android.hardware.graphics.common.ColorTransform hint;
 }
