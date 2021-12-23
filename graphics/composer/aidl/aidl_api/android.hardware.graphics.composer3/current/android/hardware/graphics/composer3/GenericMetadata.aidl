@@ -33,14 +33,7 @@
 
 package android.hardware.graphics.composer3;
 @VintfStability
-parcelable DisplayCommand {
-  long display;
-  android.hardware.graphics.composer3.LayerCommand[] layers;
-  @nullable android.hardware.graphics.composer3.ColorTransformPayload colorTransform;
-  @nullable android.hardware.graphics.composer3.ClientTarget clientTarget;
-  @nullable android.hardware.graphics.composer3.Buffer virtualDisplayOutputBuffer;
-  boolean validateDisplay;
-  boolean acceptDisplayChanges;
-  boolean presentDisplay;
-  boolean presentOrValidateDisplay;
+parcelable GenericMetadata {
+  android.hardware.graphics.composer3.LayerGenericMetadataKey key;
+  byte[] value;
 }

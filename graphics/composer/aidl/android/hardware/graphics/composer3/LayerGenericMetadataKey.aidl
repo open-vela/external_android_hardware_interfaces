@@ -16,10 +16,16 @@
 
 package android.hardware.graphics.composer3;
 
-/**
- * Represents a nanoseconds timestamp in CLOCK_MONOTONIC.
- */
 @VintfStability
-parcelable ClockMonotonicTimestamp {
-    long timestampNanos;
+parcelable LayerGenericMetadataKey {
+    /**
+     * Key names must comply with the requirements specified for
+     * getLayerGenericMetadataKeys below
+     */
+    String name;
+    /**
+     * The mandatory flag is defined in the description of
+     * setLayerGenericMetadata above
+     */
+    boolean mandatory;
 }

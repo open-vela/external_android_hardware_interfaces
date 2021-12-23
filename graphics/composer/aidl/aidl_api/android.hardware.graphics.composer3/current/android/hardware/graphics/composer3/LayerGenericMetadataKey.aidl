@@ -33,6 +33,7 @@
 
 package android.hardware.graphics.composer3;
 @VintfStability
-parcelable ClockMonotonicTimestamp {
-  long timestampNanos;
+parcelable LayerGenericMetadataKey {
+  String name;
+  boolean mandatory;
 }
