@@ -32,6 +32,7 @@
 #include "aidl/android/hardware/graphics/composer3/FormatColorComponent.h"
 #include "aidl/android/hardware/graphics/composer3/HandleIndex.h"
 #include "aidl/android/hardware/graphics/composer3/IComposer.h"
+#include "aidl/android/hardware/graphics/composer3/LayerGenericMetadataKey.h"
 #include "aidl/android/hardware/graphics/composer3/PerFrameMetadata.h"
 #include "aidl/android/hardware/graphics/composer3/PerFrameMetadataBlob.h"
 #include "aidl/android/hardware/graphics/composer3/PerFrameMetadataKey.h"
@@ -78,5 +79,9 @@ __attribute__((warn_unused_result)) bool translate(
         const ::android::hardware::graphics::composer::V2_4::IComposerClient::ClientTargetProperty&
                 in,
         aidl::android::hardware::graphics::composer3::ClientTargetProperty* out);
+__attribute__((warn_unused_result)) bool translate(
+        const ::android::hardware::graphics::composer::V2_4::IComposerClient::
+                LayerGenericMetadataKey& in,
+        aidl::android::hardware::graphics::composer3::LayerGenericMetadataKey* out);
 
 }  // namespace android::h2a
