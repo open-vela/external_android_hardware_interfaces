@@ -28,6 +28,7 @@ namespace common {
 using aidl::android::hardware::gnss::ElapsedRealtime;
 using aidl::android::hardware::gnss::GnssClock;
 using aidl::android::hardware::gnss::GnssData;
+using aidl::android::hardware::gnss::GnssLocation;
 using aidl::android::hardware::gnss::GnssMeasurement;
 using aidl::android::hardware::gnss::IGnss;
 using aidl::android::hardware::gnss::IGnssMeasurementCallback;
@@ -196,13 +197,13 @@ GnssData Utils::getMockMeasurement(const bool enableCorrVecOutputs) {
     GnssClock clock = {.gnssClockFlags = GnssClock::HAS_FULL_BIAS | GnssClock::HAS_BIAS |
                                          GnssClock::HAS_BIAS_UNCERTAINTY | GnssClock::HAS_DRIFT |
                                          GnssClock::HAS_DRIFT_UNCERTAINTY,
-                       .timeNs = 35854545000000,
-                       .fullBiasNs = -234621900521857520,
-                       .biasNs = 0.2352389998626708984,
-                       .biasUncertaintyNs = 274.989972114563,
-                       .driftNsps = -124.3742360,
-                       .driftUncertaintyNsps = 239.6234285828,
-                       .hwClockDiscontinuityCount = 999};
+                       .timeNs = 2713545000000,
+                       .fullBiasNs = -1226701900521857520,
+                       .biasNs = 0.59689998626708984,
+                       .biasUncertaintyNs = 47514.989972114563,
+                       .driftNsps = -51.757811607455452,
+                       .driftUncertaintyNsps = 310.64968328491528,
+                       .hwClockDiscontinuityCount = 1};
 
     ElapsedRealtime timestamp = {
             .flags = ElapsedRealtime::HAS_TIMESTAMP_NS | ElapsedRealtime::HAS_TIME_UNCERTAINTY_NS,
@@ -230,6 +231,30 @@ GnssData Utils::getMockMeasurement(const bool enableCorrVecOutputs) {
     GnssData gnssData = {
             .measurements = {measurement}, .clock = clock, .elapsedRealtime = timestamp};
     return gnssData;
+}
+
+GnssLocation Utils::getMockLocation() {
+    ElapsedRealtime elapsedRealtime = {
+            .flags = ElapsedRealtime::HAS_TIMESTAMP_NS | ElapsedRealtime::HAS_TIME_UNCERTAINTY_NS,
+            .timestampNs = ::android::elapsedRealtimeNano(),
+            // This is an hardcoded value indicating a 1ms of uncertainty between the two clocks.
+            // In an actual implementation provide an estimate of the synchronization uncertainty
+            // or don't set the field.
+            .timeUncertaintyNs = 1020400};
+    GnssLocation location = {.gnssLocationFlags = 0xFF,
+                             .latitudeDegrees = gMockLatitudeDegrees,
+                             .longitudeDegrees = gMockLongitudeDegrees,
+                             .altitudeMeters = gMockAltitudeMeters,
+                             .speedMetersPerSec = gMockSpeedMetersPerSec,
+                             .bearingDegrees = gMockBearingDegrees,
+                             .horizontalAccuracyMeters = kMockHorizontalAccuracyMeters,
+                             .verticalAccuracyMeters = kMockVerticalAccuracyMeters,
+                             .speedAccuracyMetersPerSecond = kMockSpeedAccuracyMetersPerSecond,
+                             .bearingAccuracyDegrees = kMockBearingAccuracyDegrees,
+                             .timestampMillis = static_cast<int64_t>(
+                                     kMockTimestamp + ::android::elapsedRealtimeNano() / 1e6),
+                             .elapsedRealtime = elapsedRealtime};
+    return location;
 }
 
 V2_0::GnssLocation Utils::getMockLocationV2_0() {
