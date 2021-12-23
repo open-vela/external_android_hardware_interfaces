@@ -87,60 +87,47 @@ Frontend::~Frontend() {}
 ::ndk::ScopedAStatus Frontend::scan(const FrontendSettings& in_settings, FrontendScanType in_type) {
     ALOGV("%s", __FUNCTION__);
 
-    // If it's in middle of scanning, stop it first.
-    if (mScanThread.joinable()) {
-        mScanThread.join();
-    }
-
-    mFrontendSettings = in_settings;
-    mFrontendScanType = in_type;
-    mScanThread = std::thread(&Frontend::scanThreadLoop, this);
-
-    return ::ndk::ScopedAStatus::ok();
-}
-
-void Frontend::scanThreadLoop() {
     if (mIsLocked) {
         FrontendScanMessage msg;
         msg.set<FrontendScanMessage::Tag::isEnd>(true);
         mCallback->onScanMessage(FrontendScanMessageType::END, msg);
-        return;
+        return ::ndk::ScopedAStatus::ok();
     }
 
     int64_t frequency = 0;
-    switch (mFrontendSettings.getTag()) {
+    switch (in_settings.getTag()) {
         case FrontendSettings::Tag::analog:
-            frequency = mFrontendSettings.get<FrontendSettings::Tag::analog>().frequency;
+            frequency = in_settings.get<FrontendSettings::Tag::analog>().frequency;
             break;
         case FrontendSettings::Tag::atsc:
-            frequency = mFrontendSettings.get<FrontendSettings::Tag::atsc>().frequency;
+            frequency = in_settings.get<FrontendSettings::Tag::atsc>().frequency;
             break;
         case FrontendSettings::Tag::atsc3:
-            frequency = mFrontendSettings.get<FrontendSettings::Tag::atsc3>().frequency;
+            frequency = in_settings.get<FrontendSettings::Tag::atsc3>().frequency;
             break;
         case FrontendSettings::Tag::dvbs:
-            frequency = mFrontendSettings.get<FrontendSettings::Tag::dvbs>().frequency;
+            frequency = in_settings.get<FrontendSettings::Tag::dvbs>().frequency;
             break;
         case FrontendSettings::Tag::dvbc:
-            frequency = mFrontendSettings.get<FrontendSettings::Tag::dvbc>().frequency;
+            frequency = in_settings.get<FrontendSettings::Tag::dvbc>().frequency;
             break;
         case FrontendSettings::Tag::dvbt:
-            frequency = mFrontendSettings.get<FrontendSettings::Tag::dvbt>().frequency;
+            frequency = in_settings.get<FrontendSettings::Tag::dvbt>().frequency;
             break;
         case FrontendSettings::Tag::isdbs:
-            frequency = mFrontendSettings.get<FrontendSettings::Tag::isdbs>().frequency;
+            frequency = in_settings.get<FrontendSettings::Tag::isdbs>().frequency;
             break;
         case FrontendSettings::Tag::isdbs3:
-            frequency = mFrontendSettings.get<FrontendSettings::Tag::isdbs3>().frequency;
+            frequency = in_settings.get<FrontendSettings::Tag::isdbs3>().frequency;
             break;
         case FrontendSettings::Tag::isdbt:
-            frequency = mFrontendSettings.get<FrontendSettings::Tag::isdbt>().frequency;
+            frequency = in_settings.get<FrontendSettings::Tag::isdbt>().frequency;
             break;
         default:
             break;
     }
 
-    if (mFrontendScanType == FrontendScanType::SCAN_BLIND) {
+    if (in_type == FrontendScanType::SCAN_BLIND) {
         frequency += 100 * 1000;
     }
 
@@ -263,14 +250,12 @@ void Frontend::scanThreadLoop() {
         mCallback->onScanMessage(FrontendScanMessageType::LOCKED, msg);
         mIsLocked = true;
     }
+
+    return ::ndk::ScopedAStatus::ok();
 }
 
 ::ndk::ScopedAStatus Frontend::stopScan() {
     ALOGV("%s", __FUNCTION__);
-
-    if (mScanThread.joinable()) {
-        mScanThread.join();
-    }
 
     mIsLocked = false;
     return ::ndk::ScopedAStatus::ok();
