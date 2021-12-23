@@ -16,17 +16,18 @@
 
 package android.hardware.graphics.composer3;
 
+/**
+ * Special index values (always negative) for command queue commands.
+ */
 @VintfStability
-parcelable PresentOrValidate {
+@Backing(type="int")
+enum HandleIndex {
     /**
-     * The display which this commands refers to.
-     * @see IComposer.createDisplay
+     * No handle
      */
-    long display;
-
+    EMPTY = -1,
     /**
-     * Whether PresentOrValidate presented or validated the display.
+     * Use cached handle
      */
-    @VintfStability enum Result { Presented, Validated }
-    Result result;
+    CACHED = -2,
 }

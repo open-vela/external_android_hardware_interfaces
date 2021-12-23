@@ -32,13 +32,8 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.graphics.composer3;
-@VintfStability
-parcelable PresentOrValidate {
-  long display;
-  android.hardware.graphics.composer3.PresentOrValidate.Result result;
-  @VintfStability
-  enum Result {
-    Presented = 0,
-    Validated = 1,
-  }
+@Backing(type="int") @VintfStability
+enum HandleIndex {
+  EMPTY = -1,
+  CACHED = -2,
 }
