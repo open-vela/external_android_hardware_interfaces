@@ -76,6 +76,12 @@ class BluetoothAudioSessionControl_2_2 {
     } else if (session_type ==
                SessionType_2_1::A2DP_HARDWARE_OFFLOAD_DATAPATH) {
       return BluetoothAudioSession_2_2::kInvalidOffloadAudioConfiguration;
+    } else if (
+        session_type ==
+            SessionType_2_1::LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH ||
+        session_type ==
+            SessionType_2_1::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH) {
+      return BluetoothAudioSession_2_2::kInvalidLeOffloadAudioConfiguration;
     } else {
       return BluetoothAudioSession_2_2::kInvalidSoftwareAudioConfiguration;
     }
@@ -87,7 +93,7 @@ class BluetoothAudioSessionControl_2_2 {
     std::shared_ptr<BluetoothAudioSession_2_2> session_ptr =
         BluetoothAudioSessionInstance_2_2::GetSessionInstance(session_type);
     if (session_ptr != nullptr) {
-      return session_ptr->GetAudioSession()->StartStream();
+      return session_ptr->StartStream();
     }
     return false;
   }
@@ -96,7 +102,7 @@ class BluetoothAudioSessionControl_2_2 {
     std::shared_ptr<BluetoothAudioSession_2_2> session_ptr =
         BluetoothAudioSessionInstance_2_2::GetSessionInstance(session_type);
     if (session_ptr != nullptr) {
-      return session_ptr->GetAudioSession()->SuspendStream();
+      return session_ptr->SuspendStream();
     }
     return false;
   }
@@ -105,7 +111,7 @@ class BluetoothAudioSessionControl_2_2 {
     std::shared_ptr<BluetoothAudioSession_2_2> session_ptr =
         BluetoothAudioSessionInstance_2_2::GetSessionInstance(session_type);
     if (session_ptr != nullptr) {
-      session_ptr->GetAudioSession()->StopStream();
+      session_ptr->StopStream();
     }
   }
 
