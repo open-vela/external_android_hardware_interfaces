@@ -41,10 +41,8 @@
 #include <android/hardware/camera/device/3.6/ICameraDevice.h>
 #include <android/hardware/camera/device/3.6/ICameraDeviceSession.h>
 #include <android/hardware/camera/device/3.7/ICameraDevice.h>
-#include <android/hardware/camera/device/3.8/ICameraDevice.h>
 #include <android/hardware/camera/device/3.7/ICameraDeviceSession.h>
 #include <android/hardware/camera/device/3.7/ICameraInjectionSession.h>
-#include <android/hardware/camera/device/3.8/ICameraDeviceCallback.h>
 #include <android/hardware/camera/metadata/3.4/types.h>
 #include <android/hardware/camera/provider/2.4/ICameraProvider.h>
 #include <android/hardware/camera/provider/2.5/ICameraProvider.h>
@@ -196,7 +194,6 @@ enum SystemCameraKind {
 namespace {
     // "device@<version>/legacy/<id>"
     const char *kDeviceNameRE = "device@([0-9]+\\.[0-9]+)/%s/(.+)";
-    const int CAMERA_DEVICE_API_VERSION_3_8 = 0x308;
     const int CAMERA_DEVICE_API_VERSION_3_7 = 0x307;
     const int CAMERA_DEVICE_API_VERSION_3_6 = 0x306;
     const int CAMERA_DEVICE_API_VERSION_3_5 = 0x305;
@@ -204,7 +201,6 @@ namespace {
     const int CAMERA_DEVICE_API_VERSION_3_3 = 0x303;
     const int CAMERA_DEVICE_API_VERSION_3_2 = 0x302;
     const int CAMERA_DEVICE_API_VERSION_1_0 = 0x100;
-    const char *kHAL3_8 = "3.8";
     const char *kHAL3_7 = "3.7";
     const char *kHAL3_6 = "3.6";
     const char *kHAL3_5 = "3.5";
@@ -242,9 +238,7 @@ namespace {
             return -1;
         }
 
-        if (version.compare(kHAL3_8) == 0) {
-            return CAMERA_DEVICE_API_VERSION_3_8;
-        } else if (version.compare(kHAL3_7) == 0) {
+        if (version.compare(kHAL3_7) == 0) {
             return CAMERA_DEVICE_API_VERSION_3_7;
         } else if (version.compare(kHAL3_6) == 0) {
             return CAMERA_DEVICE_API_VERSION_3_6;
@@ -644,7 +638,7 @@ public:
      }
  };
 
-    struct DeviceCb : public V3_8::ICameraDeviceCallback {
+    struct DeviceCb : public V3_5::ICameraDeviceCallback {
         DeviceCb(CameraHidlTest *parent, int deviceVersion, const camera_metadata_t *staticMeta) :
                 mParent(parent), mDeviceVersion(deviceVersion) {
             mStaticMetadata = staticMeta;
@@ -654,7 +648,6 @@ public:
                 const hidl_vec<V3_4::CaptureResult>& results) override;
         Return<void> processCaptureResult(const hidl_vec<CaptureResult>& results) override;
         Return<void> notify(const hidl_vec<NotifyMsg>& msgs) override;
-        Return<void> notify_3_8(const hidl_vec<V3_8::NotifyMsg>& msgs) override;
 
         Return<void> requestStreamBuffers(
                 const hidl_vec<V3_5::BufferRequest>& bufReqs,
@@ -670,8 +663,6 @@ public:
      private:
         bool processCaptureResultLocked(const CaptureResult& results,
                 hidl_vec<PhysicalCameraMetadata> physicalCameraMetadata);
-        Return<void> notifyHelper(const hidl_vec<NotifyMsg>& msgs,
-                const std::vector<std::pair<bool, nsecs_t>>& readoutTimestamps);
 
         CameraHidlTest *mParent; // Parent object
         int mDeviceVersion;
@@ -912,7 +903,6 @@ public:
             uint32_t* outBufSize);
     static Status isConstrainedModeAvailable(camera_metadata_t *staticMeta);
     static Status isLogicalMultiCamera(const camera_metadata_t *staticMeta);
-    static bool isTorchStrengthControlSupported(const camera_metadata_t *staticMeta);
     static Status isOfflineSessionSupported(const camera_metadata_t *staticMeta);
     static Status getPhysicalCameraIds(const camera_metadata_t *staticMeta,
             std::unordered_set<std::string> *physicalIds/*out*/);
@@ -966,9 +956,6 @@ protected:
         // Set by notify() SHUTTER call.
         nsecs_t shutterTimestamp;
 
-        bool shutterReadoutTimestampValid;
-        nsecs_t shutterReadoutTimestamp;
-
         bool errorCodeValid;
         ErrorCode errorCode;
 
@@ -1014,8 +1001,6 @@ protected:
 
         InFlightRequest() :
                 shutterTimestamp(0),
-                shutterReadoutTimestampValid(false),
-                shutterReadoutTimestamp(0),
                 errorCodeValid(false),
                 errorCode(ErrorCode::ERROR_BUFFER),
                 usePartialResult(false),
@@ -1033,8 +1018,6 @@ protected:
                 bool partialResults, uint32_t partialCount,
                 std::shared_ptr<ResultMetadataQueue> queue = nullptr) :
                 shutterTimestamp(0),
-                shutterReadoutTimestampValid(false),
-                shutterReadoutTimestamp(0),
                 errorCodeValid(false),
                 errorCode(ErrorCode::ERROR_BUFFER),
                 usePartialResult(partialResults),
@@ -1053,8 +1036,6 @@ protected:
                 const std::unordered_set<std::string>& extraPhysicalResult,
                 std::shared_ptr<ResultMetadataQueue> queue = nullptr) :
                 shutterTimestamp(0),
-                shutterReadoutTimestampValid(false),
-                shutterReadoutTimestamp(0),
                 errorCodeValid(false),
                 errorCode(ErrorCode::ERROR_BUFFER),
                 usePartialResult(partialResults),
@@ -1481,46 +1462,8 @@ void CameraHidlTest::DeviceCb::waitForBuffersReturned() {
     }
 }
 
-Return<void> CameraHidlTest::DeviceCb::notify_3_8(
-        const hidl_vec<V3_8::NotifyMsg>& msgs) {
-    hidl_vec<NotifyMsg> msgs3_2;
-    std::vector<std::pair<bool, nsecs_t>> readoutTimestamps;
-
-    nsecs_t count = msgs.size();
-    msgs3_2.resize(count);
-    readoutTimestamps.resize(count);
-
-    for (size_t i = 0; i < count; i++) {
-        msgs3_2[i].type = msgs[i].type;
-        switch (msgs[i].type) {
-            case MsgType::ERROR:
-                msgs3_2[i].msg.error = msgs[i].msg.error;
-                readoutTimestamps[i] = {false, 0};
-                break;
-            case MsgType::SHUTTER:
-                msgs3_2[i].msg.shutter = msgs[i].msg.shutter.v3_2;
-                readoutTimestamps[i] = {true, msgs[i].msg.shutter.readoutTimestamp};
-                break;
-        }
-    }
-
-    return notifyHelper(msgs3_2, readoutTimestamps);
-}
-
 Return<void> CameraHidlTest::DeviceCb::notify(
         const hidl_vec<NotifyMsg>& messages) {
-    std::vector<std::pair<bool, nsecs_t>> readoutTimestamps;
-    readoutTimestamps.resize(messages.size());
-    for (size_t i = 0; i < messages.size(); i++) {
-        readoutTimestamps[i] = {false, 0};
-    }
-
-    return notifyHelper(messages, readoutTimestamps);
-}
-
-Return<void> CameraHidlTest::DeviceCb::notifyHelper(
-        const hidl_vec<NotifyMsg>& messages,
-        const std::vector<std::pair<bool, nsecs_t>>& readoutTimestamps) {
     std::lock_guard<std::mutex> l(mParent->mLock);
 
     for (size_t i = 0; i < messages.size(); i++) {
@@ -1583,8 +1526,6 @@ Return<void> CameraHidlTest::DeviceCb::notifyHelper(
                 }
                 InFlightRequest *r = mParent->mInflightMap.editValueAt(idx);
                 r->shutterTimestamp = messages[i].msg.shutter.timestamp;
-                r->shutterReadoutTimestampValid = readoutTimestamps[i].first;
-                r->shutterReadoutTimestamp = readoutTimestamps[i].second;
             }
                 break;
             default:
@@ -1999,7 +1940,6 @@ TEST_P(CameraHidlTest, getCameraDeviceInterface) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -2044,7 +1984,6 @@ TEST_P(CameraHidlTest, getResourceCost) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -2786,7 +2725,6 @@ TEST_P(CameraHidlTest, systemCameraTest) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -2874,7 +2812,6 @@ TEST_P(CameraHidlTest, getCameraCharacteristics) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -2935,137 +2872,6 @@ TEST_P(CameraHidlTest, getCameraCharacteristics) {
     }
 }
 
-// Verify that the torch strength level can be set and retrieved successfully.
-TEST_P(CameraHidlTest, turnOnTorchWithStrengthLevel) {
-    hidl_vec<hidl_string> cameraDeviceNames = getCameraDeviceNames(mProvider);
-    bool torchControlSupported = false;
-    bool torchStrengthControlSupported = false;
-    Return<void> ret;
-
-    ret = mProvider->isSetTorchModeSupported([&](auto status, bool support) {
-        ALOGI("isSetTorchModeSupported returns status:%d supported:%d", (int)status, support);
-        ASSERT_EQ(Status::OK, status);
-        torchControlSupported = support;
-    });
-
-    sp<TorchProviderCb> cb = new TorchProviderCb(this);
-    Return<Status> returnStatus = mProvider->setCallback(cb);
-    ASSERT_TRUE(returnStatus.isOk());
-    ASSERT_EQ(Status::OK, returnStatus);
-
-    for (const auto& name : cameraDeviceNames) {
-        int deviceVersion = getCameraDeviceVersion(name, mProviderType);
-        int32_t defaultLevel;
-        switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8: {
-                ::android::sp<::android::hardware::camera::device::V3_8::ICameraDevice> device3_8;
-                ALOGI("%s: Testing camera device %s", __FUNCTION__, name.c_str());
-                ret = mProvider->getCameraDeviceInterface_V3_x(
-                        name, [&](auto status, const auto& device) {
-                            ASSERT_EQ(Status::OK, status);
-                            ASSERT_NE(device, nullptr);
-                            auto castResult = device::V3_8::ICameraDevice::castFrom(device);
-                            ASSERT_TRUE(castResult.isOk());
-                            device3_8 = castResult;
-                        });
-                ASSERT_TRUE(ret.isOk());
-
-                ret = device3_8->getCameraCharacteristics([&] (auto s, const auto& chars) {
-                    ASSERT_EQ(Status::OK, s);
-                    const camera_metadata_t* staticMeta =
-                            reinterpret_cast<const camera_metadata_t*>(chars.data());
-                    ASSERT_NE(nullptr, staticMeta);
-                    torchStrengthControlSupported = isTorchStrengthControlSupported(staticMeta);
-                    camera_metadata_ro_entry entry;
-                    int rc = find_camera_metadata_ro_entry(staticMeta,
-                            ANDROID_FLASH_INFO_STRENGTH_DEFAULT_LEVEL, &entry);
-                    if (torchStrengthControlSupported) {
-                        ASSERT_EQ(rc, 0);
-                        ASSERT_GT(entry.count, 0);
-                        defaultLevel = *entry.data.i32;
-                        ALOGI("Default level is:%d", defaultLevel);
-                    }
-                });
-                ASSERT_TRUE(ret.isOk());
-                // If torchStrengthControl is supported, torchControlSupported should be true.
-                if (torchStrengthControlSupported) {
-                    ASSERT_TRUE(torchControlSupported);
-                }
-                mTorchStatus = TorchModeStatus::NOT_AVAILABLE;
-                returnStatus = device3_8->turnOnTorchWithStrengthLevel(2);
-                ASSERT_TRUE(returnStatus.isOk());
-                // Method_not_supported check
-                if (!torchStrengthControlSupported) {
-                    ALOGI("Torch strength control not supported.");
-                    ASSERT_EQ(Status::METHOD_NOT_SUPPORTED, returnStatus);
-                } else {
-                    ASSERT_EQ(Status::OK, returnStatus);
-                    if (returnStatus == Status::OK) {
-                        {
-                            std::unique_lock<std::mutex> l(mTorchLock);
-                            while (TorchModeStatus::NOT_AVAILABLE == mTorchStatus) {
-                                auto timeout = std::chrono::system_clock::now() +
-                                        std::chrono::seconds(kTorchTimeoutSec);
-                                ASSERT_NE(std::cv_status::timeout, mTorchCond.wait_until(l,
-                                        timeout));
-                            }
-                            ASSERT_EQ(TorchModeStatus::AVAILABLE_ON, mTorchStatus);
-                            mTorchStatus = TorchModeStatus::NOT_AVAILABLE;
-                        }
-                        ALOGI("getTorchStrengthLevel: Testing");
-                        ret = device3_8->getTorchStrengthLevel([&]
-                                (auto status, const auto& strengthLevel) {
-                                    ASSERT_TRUE(ret.isOk());
-                                    ASSERT_EQ(Status::OK, status);
-                                    ALOGI("Torch strength level is : %d", strengthLevel);
-                                    ASSERT_EQ(strengthLevel, 2);
-                                });
-                        // Turn OFF the torch and verify torch strength level is reset to default level.
-                        ALOGI("Testing torch strength level reset after turning the torch OFF.");
-                        returnStatus = device3_8->setTorchMode(TorchMode::OFF);
-                        ASSERT_TRUE(returnStatus.isOk());
-                        ASSERT_EQ(Status::OK, returnStatus);
-                        {
-                            std::unique_lock<std::mutex> l(mTorchLock);
-                            while (TorchModeStatus::NOT_AVAILABLE == mTorchStatus) {
-                                auto timeout = std::chrono::system_clock::now() +
-                                        std::chrono::seconds(kTorchTimeoutSec);
-                                ASSERT_NE(std::cv_status::timeout, mTorchCond.wait_until(l,
-                                        timeout));
-                            }
-                            ASSERT_EQ(TorchModeStatus::AVAILABLE_OFF, mTorchStatus);
-                        }
-                        ret = device3_8->getTorchStrengthLevel([&]
-                                (auto status, const auto& strengthLevel) {
-                                    ASSERT_TRUE(ret.isOk());
-                                    ASSERT_EQ(Status::OK, status);
-                                    ALOGI("Torch strength level after turning OFF torch is : %d",
-                                            strengthLevel);
-                                    ASSERT_EQ(strengthLevel, defaultLevel);
-                                });
-                    }
-                }
-            }
-            break;
-            case CAMERA_DEVICE_API_VERSION_3_7:
-            case CAMERA_DEVICE_API_VERSION_3_6:
-            case CAMERA_DEVICE_API_VERSION_3_5:
-            case CAMERA_DEVICE_API_VERSION_3_4:
-            case CAMERA_DEVICE_API_VERSION_3_3:
-            case CAMERA_DEVICE_API_VERSION_3_2:
-            case CAMERA_DEVICE_API_VERSION_1_0: {
-                ALOGI("Torch strength control feature not supported.");
-            }
-            break;
-            default: {
-                ALOGI("Invalid device version.");
-                ADD_FAILURE();
-            }
-            break;
-        }
-    }
-}
-
 //In case it is supported verify that torch can be enabled.
 //Check for corresponding toch callbacks as well.
 TEST_P(CameraHidlTest, setTorchMode) {
@@ -3087,7 +2893,6 @@ TEST_P(CameraHidlTest, setTorchMode) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -3216,7 +3021,6 @@ TEST_P(CameraHidlTest, dumpState) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -3284,7 +3088,6 @@ TEST_P(CameraHidlTest, openClose) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -3321,7 +3124,7 @@ TEST_P(CameraHidlTest, openClose) {
                 castSession(session, deviceVersion, &sessionV3_3,
                         &sessionV3_4, &sessionV3_5, &sessionV3_6,
                         &sessionV3_7);
-                if (deviceVersion >= CAMERA_DEVICE_API_VERSION_3_7) {
+                if (deviceVersion == CAMERA_DEVICE_API_VERSION_3_7) {
                     ASSERT_TRUE(sessionV3_7.get() != nullptr);
                 } else if (deviceVersion == CAMERA_DEVICE_API_VERSION_3_6) {
                     ASSERT_TRUE(sessionV3_6.get() != nullptr);
@@ -3387,7 +3190,6 @@ TEST_P(CameraHidlTest, constructDefaultRequestSettings) {
     for (const auto& name : cameraDeviceNames) {
         int deviceVersion = getCameraDeviceVersion(name, mProviderType);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -4928,28 +4730,6 @@ void CameraHidlTest::processCaptureRequestInternal(uint64_t bufferUsage,
             ASSERT_NE(inflightReq.resultOutputBuffers.size(), 0u);
             ASSERT_EQ(testStream.id, inflightReq.resultOutputBuffers[0].streamId);
 
-            // For camera device 3.8 or newer, shutterReadoutTimestamp must be
-            // available, and it must be >= shutterTimestamp + exposureTime, and
-            // < shutterTimestamp + exposureTime + rollingShutterSkew / 2.
-            if (deviceVersion >= CAMERA_DEVICE_API_VERSION_3_8) {
-                ASSERT_TRUE(inflightReq.shutterReadoutTimestampValid);
-                ASSERT_FALSE(inflightReq.collectedResult.isEmpty());
-                if (inflightReq.collectedResult.exists(ANDROID_SENSOR_EXPOSURE_TIME)) {
-                    camera_metadata_entry_t exposureTimeResult = inflightReq.collectedResult.find(
-                            ANDROID_SENSOR_EXPOSURE_TIME);
-                    nsecs_t exposureToReadout =
-                            inflightReq.shutterReadoutTimestamp - inflightReq.shutterTimestamp;
-                    ASSERT_GE(exposureToReadout, exposureTimeResult.data.i64[0]);
-                    if (inflightReq.collectedResult.exists(ANDROID_SENSOR_ROLLING_SHUTTER_SKEW)) {
-                        camera_metadata_entry_t rollingShutterSkew =
-                                inflightReq.collectedResult.find(
-                                        ANDROID_SENSOR_ROLLING_SHUTTER_SKEW);
-                        ASSERT_LT(exposureToReadout, exposureTimeResult.data.i64[0] +
-                                                             rollingShutterSkew.data.i64[0] / 2);
-                    }
-                }
-            }
-
             request.frameNumber++;
             // Empty settings should be supported after the first call
             // for repeating requests.
@@ -6442,7 +6222,6 @@ TEST_P(CameraHidlTest, grfSMultiCameraTest) {
         std::string cameraId;
         int deviceVersion = getCameraDeviceVersionAndId(name, mProviderType, &cameraId);
         switch (deviceVersion) {
-            case CAMERA_DEVICE_API_VERSION_3_8:
             case CAMERA_DEVICE_API_VERSION_3_7:
             case CAMERA_DEVICE_API_VERSION_3_6:
             case CAMERA_DEVICE_API_VERSION_3_5:
@@ -6731,22 +6510,6 @@ Status CameraHidlTest::isLogicalMultiCamera(const camera_metadata_t *staticMeta)
     }
 
     return ret;
-}
-
-bool CameraHidlTest::isTorchStrengthControlSupported(const camera_metadata_t *staticMetadata) {
-    int32_t maxLevel = 0;
-    camera_metadata_ro_entry maxEntry;
-    int rc = find_camera_metadata_ro_entry(staticMetadata,
-            ANDROID_FLASH_INFO_STRENGTH_MAXIMUM_LEVEL, &maxEntry);
-    if (rc != 0) {
-        return false;
-    }
-    maxLevel = *maxEntry.data.i32;
-    if (maxLevel > 1) {
-        ALOGI("Torch strength control supported.");
-        return true;
-    }
-    return false;
 }
 
 // Check if the camera device has logical multi-camera capability.
@@ -7888,7 +7651,6 @@ void CameraHidlTest::castDevice(const sp<device::V3_2::ICameraDevice>& device,
     ASSERT_NE(nullptr, device3_7);
 
     switch (deviceVersion) {
-        case CAMERA_DEVICE_API_VERSION_3_8:
         case CAMERA_DEVICE_API_VERSION_3_7: {
             auto castResult = device::V3_7::ICameraDevice::castFrom(device);
             ASSERT_TRUE(castResult.isOk());
@@ -7945,7 +7707,6 @@ void CameraHidlTest::castSession(const sp<ICameraDeviceSession> &session, int32_
     ASSERT_NE(nullptr, session3_7);
 
     switch (deviceVersion) {
-        case CAMERA_DEVICE_API_VERSION_3_8:
         case CAMERA_DEVICE_API_VERSION_3_7: {
             auto castResult = device::V3_7::ICameraDeviceSession::castFrom(session);
             ASSERT_TRUE(castResult.isOk());
