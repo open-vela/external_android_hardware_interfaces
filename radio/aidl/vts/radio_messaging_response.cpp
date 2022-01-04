@@ -16,7 +16,7 @@
 
 #include "radio_messaging_utils.h"
 
-RadioMessagingResponse::RadioMessagingResponse(RadioServiceTest& parent)
+RadioMessagingResponse::RadioMessagingResponse(RadioResponseWaiter& parent)
     : parent_messaging(parent) {}
 
 ndk::ScopedAStatus RadioMessagingResponse::acknowledgeIncomingGsmSmsWithPduResponse(
