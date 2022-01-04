@@ -21,7 +21,6 @@
 #include <aidl/android/hardware/radio/voice/IRadioVoice.h>
 
 #include "radio_aidl_hal_utils.h"
-#include "radio_network_utils.h"
 
 using namespace aidl::android::hardware::radio::voice;
 
@@ -30,10 +29,10 @@ class RadioVoiceTest;
 /* Callback class for radio voice response */
 class RadioVoiceResponse : public BnRadioVoiceResponse {
   protected:
-    RadioServiceTest& parent_voice;
+    RadioResponseWaiter& parent_voice;
 
   public:
-    RadioVoiceResponse(RadioServiceTest& parent_voice);
+    RadioVoiceResponse(RadioResponseWaiter& parent_voice);
     virtual ~RadioVoiceResponse() = default;
 
     RadioResponseInfo rspInfo;
@@ -131,10 +130,10 @@ class RadioVoiceResponse : public BnRadioVoiceResponse {
 /* Callback class for radio voice indication */
 class RadioVoiceIndication : public BnRadioVoiceIndication {
   protected:
-    RadioServiceTest& parent_voice;
+    RadioVoiceTest& parent_voice;
 
   public:
-    RadioVoiceIndication(RadioServiceTest& parent_voice);
+    RadioVoiceIndication(RadioVoiceTest& parent_voice);
     virtual ~RadioVoiceIndication() = default;
 
     virtual ndk::ScopedAStatus callRing(RadioIndicationType type, bool isGsm,
@@ -176,13 +175,10 @@ class RadioVoiceIndication : public BnRadioVoiceIndication {
 };
 
 // The main test class for Radio AIDL Voice.
-class RadioVoiceTest : public ::testing::TestWithParam<std::string>, public RadioServiceTest {
+class RadioVoiceTest : public ::testing::TestWithParam<std::string>, public RadioResponseWaiter {
   protected:
     /* Clear Potential Established Calls */
     virtual ndk::ScopedAStatus clearPotentialEstablishedCalls();
-    std::shared_ptr<network::IRadioNetwork> radio_network;
-    std::shared_ptr<RadioNetworkResponse> radioRsp_network;
-    std::shared_ptr<RadioNetworkIndication> radioInd_network;
 
   public:
     virtual void SetUp() override;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 
-#include "radio_config_utils.h"
+#include <libprotocan/Checksum.h>
 
-RadioConfigIndication::RadioConfigIndication(RadioServiceTest& parent) : parent_config(parent) {}
+namespace android::hardware::automotive::protocan {
 
-ndk::ScopedAStatus RadioConfigIndication::simSlotsStatusChanged(
-        RadioIndicationType /*type*/, const std::vector<SimSlotStatus>& /*slotStatus*/) {
-    return ndk::ScopedAStatus::ok();
+Checksum::Checksum(Signal signal, formula f) : mSignal(signal), mFormula(f) {}
+
+void Checksum::update(can::V1_0::CanMessage& msg) const {
+  mSignal.set(msg, 0);
+  mSignal.set(msg, mFormula(msg) % (mSignal.maxValue + 1));
 }
+
+}  // namespace android::hardware::automotive::protocan
