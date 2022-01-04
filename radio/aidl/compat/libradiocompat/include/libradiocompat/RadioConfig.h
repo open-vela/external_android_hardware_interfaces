@@ -15,9 +15,6 @@
  */
 #pragma once
 
-#include "RadioConfigIndication.h"
-#include "RadioConfigResponse.h"
-
 #include <aidl/android/hardware/radio/config/BnRadioConfig.h>
 #include <android/hardware/radio/config/1.2/IRadioConfigIndication.h>
 #include <android/hardware/radio/config/1.3/IRadioConfig.h>
@@ -33,13 +30,11 @@ namespace android::hardware::radio::compat {
  * fetch source implementation and publish resulting HAL instance.
  */
 class RadioConfig : public aidl::android::hardware::radio::config::BnRadioConfig {
-    const sp<config::V1_1::IRadioConfig> mHal1_1;
-    const sp<config::V1_3::IRadioConfig> mHal1_3;
+    sp<config::V1_1::IRadioConfig> mHal1_1;
+    sp<config::V1_3::IRadioConfig> mHal1_3;
 
-    const sp<RadioConfigResponse> mRadioConfigResponse;
-    const sp<RadioConfigIndication> mRadioConfigIndication;
-
-    std::shared_ptr<::aidl::android::hardware::radio::config::IRadioConfigResponse> respond();
+    sp<config::V1_3::IRadioConfigResponse> mRadioConfigResponse;
+    sp<config::V1_2::IRadioConfigIndication> mRadioConfigIndication;
 
     ::ndk::ScopedAStatus getHalDeviceCapabilities(int32_t serial) override;
     ::ndk::ScopedAStatus getNumOfLiveModems(int32_t serial) override;
@@ -56,6 +51,8 @@ class RadioConfig : public aidl::android::hardware::radio::config::BnRadioConfig
             int32_t serial,
             const std::vector<aidl::android::hardware::radio::config::SlotPortMapping>& slotMap)
             override;
+
+    config::V1_3::IRadioConfigResponse& respond();
 
   public:
     /**
