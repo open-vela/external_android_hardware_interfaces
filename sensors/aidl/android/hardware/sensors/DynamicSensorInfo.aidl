@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,24 +14,26 @@
  * limitations under the License.
  */
 
-#pragma once
+package android.hardware.sensors;
 
-#include <android/hardware/automotive/can/1.0/types.h>
-#include <libprotocan/Signal.h>
+@VintfStability
+@FixedSize
+parcelable DynamicSensorInfo {
+    boolean connected;
 
-namespace android::hardware::automotive::protocan {
+    int sensorHandle;
 
-class Checksum {
- public:
-  using formula = std::function<Signal::value(const can::V1_0::CanMessage&)>;
+    /**
+     * UUID of a dynamic sensor (using RFC 4122 byte order)
+     * For UUID 12345678-90AB-CDEF-1122-334455667788 the uuid field is
+     * initialized as:
+     *   {0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF, 0x11, ...}
+     */
+    Uuid uuid;
 
-  Checksum(Signal signal, formula f);
-
-  void update(can::V1_0::CanMessage& msg) const;
-
- private:
-  const Signal mSignal;
-  const formula mFormula;
-};
-
-}  // namespace android::hardware::automotive::protocan
+    @FixedSize
+    @VintfStability
+    parcelable Uuid {
+        byte[16] values;
+    }
+}

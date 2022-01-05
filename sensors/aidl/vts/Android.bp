@@ -1,5 +1,4 @@
-//
-// Copyright (C) 2020 The Android Open Source Project
+// Copyright 2021 The Android Open Source Project
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
 package {
     // See: http://go/android-license-faq
@@ -24,16 +22,28 @@ package {
 }
 
 cc_test {
-    name: "libprotocan_signal_test",
-    defaults: ["android.hardware.automotive.can@defaults"],
-    vendor: true,
-    gtest: true,
-    srcs: ["libprotocan_signal_test.cpp"],
-    static_libs: [
-        "libprotocan",
+    name: "VtsAidlHalSensorsTargetTest",
+    defaults: [
+        "VtsHalTargetTestDefaults",
+        "use_libaidlvintf_gtest_helper_static",
+    ],
+    srcs: [
+        "VtsAidlHalSensorsTargetTest.cpp",
+        "SensorsAidlEnvironment.cpp",
     ],
     shared_libs: [
-        "android.hardware.automotive.can@1.0",
-        "libhidlbase",
+        "libbinder",
+        "libbinder_ndk",
+        "libfmq",
+        "android.hardware.common-V2-ndk",
+        "android.hardware.common.fmq-V1-ndk",
+    ],
+    static_libs: [
+        "android.hardware.sensors-V1-ndk",
+        "VtsHalSensorsTargetTestUtils",
+    ],
+    test_suites: [
+        "general-tests",
+        "vts",
     ],
 }
