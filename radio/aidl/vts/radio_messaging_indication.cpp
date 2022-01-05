@@ -16,7 +16,7 @@
 
 #include "radio_messaging_utils.h"
 
-RadioMessagingIndication::RadioMessagingIndication(RadioServiceTest& parent)
+RadioMessagingIndication::RadioMessagingIndication(RadioMessagingTest& parent)
     : parent_messaging(parent) {}
 
 ndk::ScopedAStatus RadioMessagingIndication::cdmaNewSms(RadioIndicationType /*type*/,

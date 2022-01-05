@@ -22,6 +22,7 @@
 
 #include "radio_aidl_hal_utils.h"
 
+using namespace aidl::android::hardware::radio::config;
 using namespace aidl::android::hardware::radio::modem;
 
 class RadioModemTest;
@@ -29,10 +30,10 @@ class RadioModemTest;
 /* Callback class for radio modem response */
 class RadioModemResponse : public BnRadioModemResponse {
   protected:
-    RadioServiceTest& parent_modem;
+    RadioResponseWaiter& parent_modem;
 
   public:
-    RadioModemResponse(RadioServiceTest& parent_modem);
+    RadioModemResponse(RadioResponseWaiter& parent_modem);
     virtual ~RadioModemResponse() = default;
 
     RadioResponseInfo rspInfo;
@@ -86,10 +87,10 @@ class RadioModemResponse : public BnRadioModemResponse {
 /* Callback class for radio modem indication */
 class RadioModemIndication : public BnRadioModemIndication {
   protected:
-    RadioServiceTest& parent_modem;
+    RadioModemTest& parent_modem;
 
   public:
-    RadioModemIndication(RadioServiceTest& parent_modem);
+    RadioModemIndication(RadioModemTest& parent_modem);
     virtual ~RadioModemIndication() = default;
 
     virtual ndk::ScopedAStatus hardwareConfigChanged(
@@ -108,7 +109,7 @@ class RadioModemIndication : public BnRadioModemIndication {
 };
 
 // The main test class for Radio AIDL Modem.
-class RadioModemTest : public ::testing::TestWithParam<std::string>, public RadioServiceTest {
+class RadioModemTest : public ::testing::TestWithParam<std::string>, public RadioResponseWaiter {
   public:
     virtual void SetUp() override;
 

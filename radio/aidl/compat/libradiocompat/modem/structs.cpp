@@ -25,6 +25,7 @@
 namespace android::hardware::radio::compat {
 
 using ::aidl::android::hardware::radio::AccessNetwork;
+using ::aidl::android::hardware::radio::RadioAccessFamily;
 using ::aidl::android::hardware::radio::RadioTechnology;
 namespace aidl = ::aidl::android::hardware::radio::modem;
 
@@ -39,7 +40,7 @@ aidl::RadioCapability toAidl(const V1_0::RadioCapability& capa) {
     return {
             .session = capa.session,
             .phase = static_cast<int32_t>(capa.phase),
-            .raf = static_cast<int32_t>(capa.raf),
+            .raf = RadioAccessFamily(capa.raf),
             .logicalModemUuid = capa.logicalModemUuid,
             .status = static_cast<int32_t>(capa.status),
     };
