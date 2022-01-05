@@ -34,7 +34,7 @@ namespace aidl = ::aidl::android::hardware::radio::network;
 constexpr auto ok = &ScopedAStatus::ok;
 
 std::shared_ptr<aidl::IRadioNetworkResponse> RadioNetwork::respond() {
-    return mCallbackManager->response().networkCb();
+    return mRadioResponse->networkCb();
 }
 
 ScopedAStatus RadioNetwork::getAllowedNetworkTypesBitmap(int32_t serial) {
@@ -73,21 +73,13 @@ ScopedAStatus RadioNetwork::getCdmaRoamingPreference(int32_t serial) {
 
 ScopedAStatus RadioNetwork::getCellInfoList(int32_t serial) {
     LOG_CALL << serial;
-    if (mHal1_6) {
-        mHal1_6->getCellInfoList_1_6(serial);
-    } else {
-        mHal1_5->getCellInfoList(serial);
-    }
+    mHal1_5->getCellInfoList(serial);
     return ok();
 }
 
 ScopedAStatus RadioNetwork::getDataRegistrationState(int32_t serial) {
     LOG_CALL << serial;
-    if (mHal1_6) {
-        mHal1_6->getDataRegistrationState_1_6(serial);
-    } else {
-        mHal1_5->getDataRegistrationState_1_5(serial);
-    }
+    mHal1_5->getDataRegistrationState(serial);
     return ok();
 }
 
@@ -111,11 +103,7 @@ ScopedAStatus RadioNetwork::getOperator(int32_t serial) {
 
 ScopedAStatus RadioNetwork::getSignalStrength(int32_t serial) {
     LOG_CALL << serial;
-    if (mHal1_6) {
-        mHal1_6->getSignalStrength_1_6(serial);
-    } else {
-        mHal1_5->getSignalStrength_1_4(serial);
-    }
+    mHal1_5->getSignalStrength(serial);
     return ok();
 }
 
@@ -137,11 +125,7 @@ ScopedAStatus RadioNetwork::getVoiceRadioTechnology(int32_t serial) {
 
 ScopedAStatus RadioNetwork::getVoiceRegistrationState(int32_t serial) {
     LOG_CALL << serial;
-    if (mHal1_6) {
-        mHal1_6->getVoiceRegistrationState_1_6(serial);
-    } else {
-        mHal1_5->getVoiceRegistrationState_1_5(serial);
-    }
+    mHal1_5->getVoiceRegistrationState(serial);
     return ok();
 }
 
@@ -199,7 +183,7 @@ ScopedAStatus RadioNetwork::setCellInfoListRate(int32_t serial, int32_t rate) {
 
 ScopedAStatus RadioNetwork::setIndicationFilter(int32_t serial, aidl::IndicationFilter indFilter) {
     LOG_CALL << serial;
-    mHal1_5->setIndicationFilter_1_5(serial, toHidlBitfield<V1_5::IndicationFilter>(indFilter));
+    mHal1_5->setIndicationFilter(serial, toHidlBitfield<V1_0::IndicationFilter>(indFilter));
     return ok();
 }
 
@@ -208,9 +192,9 @@ ScopedAStatus RadioNetwork::setLinkCapacityReportingCriteria(  //
         const std::vector<int32_t>& thrDownlinkKbps, const std::vector<int32_t>& thrUplinkKbps,
         AccessNetwork accessNetwork) {
     LOG_CALL << serial;
-    mHal1_5->setLinkCapacityReportingCriteria_1_5(  //
+    mHal1_5->setLinkCapacityReportingCriteria(  //
             serial, hysteresisMs, hysteresisDlKbps, hysteresisUlKbps, thrDownlinkKbps,
-            thrUplinkKbps, V1_5::AccessNetwork(accessNetwork));
+            thrUplinkKbps, V1_2::AccessNetwork(accessNetwork));
     return ok();
 }
 
@@ -245,10 +229,16 @@ ScopedAStatus RadioNetwork::setNrDualConnectivityState(int32_t serial,
 }
 
 ScopedAStatus RadioNetwork::setResponseFunctions(
-        const std::shared_ptr<aidl::IRadioNetworkResponse>& response,
-        const std::shared_ptr<aidl::IRadioNetworkIndication>& indication) {
-    LOG_CALL << response << ' ' << indication;
-    mCallbackManager->setResponseFunctions(response, indication);
+        const std::shared_ptr<aidl::IRadioNetworkResponse>& networkResponse,
+        const std::shared_ptr<aidl::IRadioNetworkIndication>& networkIndication) {
+    LOG_CALL << networkResponse << ' ' << networkIndication;
+
+    CHECK(networkResponse);
+    CHECK(networkIndication);
+
+    mRadioResponse->setResponseFunction(networkResponse);
+    mRadioIndication->setResponseFunction(networkIndication);
+
     return ok();
 }
 
