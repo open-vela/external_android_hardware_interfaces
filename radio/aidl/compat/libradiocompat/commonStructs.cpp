@@ -20,11 +20,11 @@ namespace android::hardware::radio::compat {
 
 namespace aidl = ::aidl::android::hardware::radio;
 
-aidl::RadioResponseInfo notSupported(int32_t serial) {
+V1_6::RadioResponseInfo notSupported(int32_t serial) {
     return {
-            .type = aidl::RadioResponseType::SOLICITED,
+            .type = V1_0::RadioResponseType::SOLICITED,
             .serial = serial,
-            .error = aidl::RadioError::REQUEST_NOT_SUPPORTED,
+            .error = V1_6::RadioError::REQUEST_NOT_SUPPORTED,
     };
 }
 
