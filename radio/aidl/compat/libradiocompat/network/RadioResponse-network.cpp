@@ -27,6 +27,7 @@
 
 namespace android::hardware::radio::compat {
 
+using ::aidl::android::hardware::radio::RadioAccessFamily;
 using ::aidl::android::hardware::radio::RadioTechnology;
 using ::aidl::android::hardware::radio::RadioTechnologyFamily;
 namespace aidl = ::aidl::android::hardware::radio::network;
@@ -43,14 +44,16 @@ Return<void> RadioResponse::getAllowedNetworkTypesBitmapResponse(
         const V1_6::RadioResponseInfo& info,
         hidl_bitfield<V1_4::RadioAccessFamily> networkTypeBitmap) {
     LOG_CALL << info.serial;
-    networkCb()->getAllowedNetworkTypesBitmapResponse(toAidl(info), networkTypeBitmap);
+    networkCb()->getAllowedNetworkTypesBitmapResponse(toAidl(info),
+                                                      RadioAccessFamily(networkTypeBitmap));
     return {};
 }
 
 Return<void> RadioResponse::getPreferredNetworkTypeResponse(const V1_0::RadioResponseInfo& info,
                                                             V1_0::PreferredNetworkType nwType) {
     LOG_CALL << info.serial;
-    networkCb()->getAllowedNetworkTypesBitmapResponse(toAidl(info), getRafFromNetworkType(nwType));
+    networkCb()->getAllowedNetworkTypesBitmapResponse(  //
+            toAidl(info), RadioAccessFamily(getRafFromNetworkType(nwType)));
     return {};
 }
 
