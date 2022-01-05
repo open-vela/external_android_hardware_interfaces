@@ -31,7 +31,7 @@ namespace aidl = ::aidl::android::hardware::radio::sim;
 constexpr auto ok = &ScopedAStatus::ok;
 
 std::shared_ptr<aidl::IRadioSimResponse> RadioSim::respond() {
-    return mCallbackManager->response().simCb();
+    return mRadioResponse->simCb();
 }
 
 ScopedAStatus RadioSim::areUiccApplicationsEnabled(int32_t serial) {
@@ -62,7 +62,7 @@ ScopedAStatus RadioSim::enableUiccApplications(int32_t serial, bool enable) {
 
 ScopedAStatus RadioSim::getAllowedCarriers(int32_t serial) {
     LOG_CALL << serial;
-    mHal1_5->getAllowedCarriers_1_4(serial);
+    mHal1_5->getAllowedCarriers(serial);
     return ok();
 }
 
@@ -221,10 +221,16 @@ ScopedAStatus RadioSim::setFacilityLockForApp(  //
 }
 
 ScopedAStatus RadioSim::setResponseFunctions(
-        const std::shared_ptr<aidl::IRadioSimResponse>& response,
-        const std::shared_ptr<aidl::IRadioSimIndication>& indication) {
-    LOG_CALL << response << ' ' << indication;
-    mCallbackManager->setResponseFunctions(response, indication);
+        const std::shared_ptr<aidl::IRadioSimResponse>& simResponse,
+        const std::shared_ptr<aidl::IRadioSimIndication>& simIndication) {
+    LOG_CALL << simResponse << ' ' << simIndication;
+
+    CHECK(simResponse);
+    CHECK(simIndication);
+
+    mRadioResponse->setResponseFunction(simResponse);
+    mRadioIndication->setResponseFunction(simIndication);
+
     return ok();
 }
 
