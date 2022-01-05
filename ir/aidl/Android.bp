@@ -25,6 +25,7 @@ aidl_interface {
             sdk_version: "module_current",
         },
         ndk: {
+            separate_platform_variant: false,
             vndk: {
                 // TODO(b/206116595) enable this
                 enabled: false,
