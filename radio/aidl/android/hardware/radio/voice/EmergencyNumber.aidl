@@ -78,7 +78,7 @@ parcelable EmergencyNumber {
      * The bitfield of EmergencyServiceCategory(s). See EmergencyServiceCategory for the value of
      * each bit.
      */
-    int categories;
+    EmergencyServiceCategory categories;
     /**
      * The list of emergency Uniform Resource Names (URN).
      */
