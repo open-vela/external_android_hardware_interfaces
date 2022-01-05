@@ -31,6 +31,7 @@ import android.hardware.radio.network.RadioAccessSpecifier;
 import android.hardware.radio.network.RadioBandMode;
 import android.hardware.radio.network.RegStateResult;
 import android.hardware.radio.network.SignalStrength;
+import android.hardware.radio.network.UsageSetting;
 
 /**
  * Interface declaring response functions to solicited radio requests for network APIs.
@@ -61,8 +62,7 @@ oneway interface IRadioNetworkResponse {
      *   RadioError:REQUEST_NOT_SUPPORTED
      *   RadioError:NO_RESOURCES
      */
-    void getAllowedNetworkTypesBitmapResponse(
-            in RadioResponseInfo info, in RadioAccessFamily networkTypeBitmap);
+    void getAllowedNetworkTypesBitmapResponse(in RadioResponseInfo info, in int networkTypeBitmap);
 
     /**
      * @param info Response info struct containing response type, serial no. and error
@@ -549,4 +549,30 @@ oneway interface IRadioNetworkResponse {
      *   RadioError:SIM_ABSENT
      */
     void supplyNetworkDepersonalizationResponse(in RadioResponseInfo info, in int remainingRetries);
+
+    /**
+     * @param info Response info struct containing response type, serial no. and error.
+     *
+     * Valid errors returned:
+     *   RadioError:NONE
+     *   RadioError:RADIO_NOT_AVAILABLE
+     *   RadioError:INVALID_STATE
+     *   RadioError:INVALID_ARGUMENTS
+     *   RadioError:INTERNAL_ERR
+     *   RadioError:SIM_ABSENT
+     */
+    oneway void setUsageSettingResponse(in RadioResponseInfo info);
+
+    /**
+     * @param info Response info struct containing response type, serial no. and error.
+     * @param usageSetting the usage setting for the current SIM.
+     *
+     * Valid errors returned:
+     *   RadioError:NONE
+     *   RadioError:RADIO_NOT_AVAILABLE
+     *   RadioError:INVALID_STATE
+     *   RadioError:INTERNAL_ERR
+     *   RadioError:SIM_ABSENT
+     */
+    oneway void getUsageSettingResponse(in RadioResponseInfo info, in UsageSetting usageSetting);
 }
