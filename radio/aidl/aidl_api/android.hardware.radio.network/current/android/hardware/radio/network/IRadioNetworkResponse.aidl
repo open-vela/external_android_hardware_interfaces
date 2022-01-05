@@ -35,7 +35,7 @@ package android.hardware.radio.network;
 @VintfStability
 interface IRadioNetworkResponse {
   oneway void acknowledgeRequest(in int serial);
-  oneway void getAllowedNetworkTypesBitmapResponse(in android.hardware.radio.RadioResponseInfo info, in android.hardware.radio.RadioAccessFamily networkTypeBitmap);
+  oneway void getAllowedNetworkTypesBitmapResponse(in android.hardware.radio.RadioResponseInfo info, in int networkTypeBitmap);
   oneway void getAvailableBandModesResponse(in android.hardware.radio.RadioResponseInfo info, in android.hardware.radio.network.RadioBandMode[] bandModes);
   oneway void getAvailableNetworksResponse(in android.hardware.radio.RadioResponseInfo info, in android.hardware.radio.network.OperatorInfo[] networkInfos);
   oneway void getBarringInfoResponse(in android.hardware.radio.RadioResponseInfo info, in android.hardware.radio.network.CellIdentity cellIdentity, in android.hardware.radio.network.BarringInfo[] barringInfos);
@@ -67,4 +67,6 @@ interface IRadioNetworkResponse {
   oneway void startNetworkScanResponse(in android.hardware.radio.RadioResponseInfo info);
   oneway void stopNetworkScanResponse(in android.hardware.radio.RadioResponseInfo info);
   oneway void supplyNetworkDepersonalizationResponse(in android.hardware.radio.RadioResponseInfo info, in int remainingRetries);
+  oneway void setUsageSettingResponse(in android.hardware.radio.RadioResponseInfo info);
+  oneway void getUsageSettingResponse(in android.hardware.radio.RadioResponseInfo info, in android.hardware.radio.network.UsageSetting usageSetting);
 }
