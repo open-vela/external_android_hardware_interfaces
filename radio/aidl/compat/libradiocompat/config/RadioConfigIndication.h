@@ -15,17 +15,13 @@
  */
 #pragma once
 
-#include "GuaranteedCallback.h"
-
 #include <aidl/android/hardware/radio/config/IRadioConfigIndication.h>
 #include <android/hardware/radio/config/1.2/IRadioConfigIndication.h>
 
 namespace android::hardware::radio::compat {
 
 class RadioConfigIndication : public config::V1_2::IRadioConfigIndication {
-    GuaranteedCallback<aidl::android::hardware::radio::config::IRadioConfigIndication,
-                       aidl::android::hardware::radio::config::IRadioConfigIndicationDefault, true>
-            mCallback;
+    std::shared_ptr<aidl::android::hardware::radio::config::IRadioConfigIndication> mCallback;
 
     Return<void> simSlotsStatusChanged(
             V1_0::RadioIndicationType type,
@@ -35,10 +31,8 @@ class RadioConfigIndication : public config::V1_2::IRadioConfigIndication {
             const hidl_vec<config::V1_2::SimSlotStatus>& slotStatus) override;
 
   public:
-    void setResponseFunction(
+    RadioConfigIndication(
             std::shared_ptr<aidl::android::hardware::radio::config::IRadioConfigIndication> cb);
-
-    std::shared_ptr<aidl::android::hardware::radio::config::IRadioConfigIndication> indicate();
 };
 
 }  // namespace android::hardware::radio::compat

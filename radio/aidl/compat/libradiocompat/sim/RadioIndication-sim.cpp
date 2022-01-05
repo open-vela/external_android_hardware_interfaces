@@ -29,29 +29,29 @@ namespace android::hardware::radio::compat {
 namespace aidl = ::aidl::android::hardware::radio::sim;
 
 void RadioIndication::setResponseFunction(std::shared_ptr<aidl::IRadioSimIndication> simCb) {
+    CHECK(simCb);
     mSimCb = simCb;
-}
-
-std::shared_ptr<aidl::IRadioSimIndication> RadioIndication::simCb() {
-    return mSimCb.get();
 }
 
 Return<void> RadioIndication::carrierInfoForImsiEncryption(V1_0::RadioIndicationType type) {
     LOG_CALL << type;
-    simCb()->carrierInfoForImsiEncryption(toAidl(type));
+    CHECK_CB(mSimCb);
+    mSimCb->carrierInfoForImsiEncryption(toAidl(type));
     return {};
 }
 
 Return<void> RadioIndication::cdmaSubscriptionSourceChanged(
         V1_0::RadioIndicationType type, V1_0::CdmaSubscriptionSource cdmaSource) {
     LOG_CALL << type;
-    simCb()->cdmaSubscriptionSourceChanged(toAidl(type), aidl::CdmaSubscriptionSource(cdmaSource));
+    CHECK_CB(mSimCb);
+    mSimCb->cdmaSubscriptionSourceChanged(toAidl(type), aidl::CdmaSubscriptionSource(cdmaSource));
     return {};
 }
 
 Return<void> RadioIndication::simPhonebookChanged(V1_0::RadioIndicationType type) {
     LOG_CALL << type;
-    simCb()->simPhonebookChanged(toAidl(type));
+    CHECK_CB(mSimCb);
+    mSimCb->simPhonebookChanged(toAidl(type));
     return {};
 }
 
@@ -59,54 +59,62 @@ Return<void> RadioIndication::simPhonebookRecordsReceived(
         V1_0::RadioIndicationType type, V1_6::PbReceivedStatus status,
         const hidl_vec<V1_6::PhonebookRecordInfo>& rec) {
     LOG_CALL << type;
-    simCb()->simPhonebookRecordsReceived(toAidl(type), aidl::PbReceivedStatus(status), toAidl(rec));
+    CHECK_CB(mSimCb);
+    mSimCb->simPhonebookRecordsReceived(toAidl(type), aidl::PbReceivedStatus(status), toAidl(rec));
     return {};
 }
 
 Return<void> RadioIndication::simRefresh(V1_0::RadioIndicationType type,
                                          const V1_0::SimRefreshResult& refreshResult) {
     LOG_CALL << type;
-    simCb()->simRefresh(toAidl(type), toAidl(refreshResult));
+    CHECK_CB(mSimCb);
+    mSimCb->simRefresh(toAidl(type), toAidl(refreshResult));
     return {};
 }
 
 Return<void> RadioIndication::simStatusChanged(V1_0::RadioIndicationType type) {
     LOG_CALL << type;
-    simCb()->simStatusChanged(toAidl(type));
+    CHECK_CB(mSimCb);
+    mSimCb->simStatusChanged(toAidl(type));
     return {};
 }
 
 Return<void> RadioIndication::stkEventNotify(V1_0::RadioIndicationType type,
                                              const hidl_string& cmd) {
     LOG_CALL << type;
-    simCb()->stkEventNotify(toAidl(type), cmd);
+    CHECK_CB(mSimCb);
+    mSimCb->stkEventNotify(toAidl(type), cmd);
     return {};
 }
 
 Return<void> RadioIndication::stkProactiveCommand(V1_0::RadioIndicationType type,
                                                   const hidl_string& cmd) {
     LOG_CALL << type;
-    simCb()->stkProactiveCommand(toAidl(type), cmd);
+    CHECK_CB(mSimCb);
+    mSimCb->stkProactiveCommand(toAidl(type), cmd);
     return {};
 }
 
 Return<void> RadioIndication::stkSessionEnd(V1_0::RadioIndicationType type) {
     LOG_CALL << type;
-    simCb()->stkSessionEnd(toAidl(type));
+    CHECK_CB(mSimCb);
+    mSimCb->stkSessionEnd(toAidl(type));
     return {};
 }
 
 Return<void> RadioIndication::subscriptionStatusChanged(V1_0::RadioIndicationType type,
                                                         bool activate) {
     LOG_CALL << type;
-    simCb()->subscriptionStatusChanged(toAidl(type), activate);
+    CHECK_CB(mSimCb);
+    mSimCb->subscriptionStatusChanged(toAidl(type), activate);
     return {};
 }
 
 Return<void> RadioIndication::uiccApplicationsEnablementChanged(V1_0::RadioIndicationType type,
                                                                 bool enabled) {
     LOG_CALL << type;
-    simCb()->uiccApplicationsEnablementChanged(toAidl(type), enabled);
+    CHECK_CB(mSimCb);
+    mSimCb->uiccApplicationsEnablementChanged(toAidl(type), enabled);
     return {};
 }
 
