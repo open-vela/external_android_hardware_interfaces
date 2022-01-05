@@ -36,7 +36,7 @@ package android.hardware.radio.modem;
 parcelable RadioCapability {
   int session;
   int phase;
-  int raf;
+  android.hardware.radio.RadioAccessFamily raf;
   String logicalModemUuid;
   int status;
   const int PHASE_CONFIGURED = 0;
