@@ -14,20 +14,14 @@
  * limitations under the License.
  */
 
-package {
-    default_applicable_licenses: ["Android-Apache-2.0"],
-}
+package android.hardware.sensors;
 
-cc_test {
-    name: "VehicleHalVehicleUtilsTest",
-    srcs: ["*.cpp"],
-    vendor: true,
-    static_libs: [
-        "VehicleHalUtils",
-        "libgtest",
-        "libgmock",
-    ],
-    header_libs: ["VehicleHalTestUtilHeaders"],
-    defaults: ["VehicleHalDefaults"],
-    test_suites: ["device-tests"],
+@VintfStability
+@Backing(type="byte")
+enum SensorStatus {
+    NO_CONTACT = -1,
+    UNRELIABLE = 0,
+    ACCURACY_LOW = 1,
+    ACCURACY_MEDIUM = 2,
+    ACCURACY_HIGH = 3,
 }

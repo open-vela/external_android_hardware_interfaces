@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright (C) 2020 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,15 @@
  * limitations under the License.
  */
 
-package {
-    default_applicable_licenses: ["Android-Apache-2.0"],
+#include <libprotocan/Checksum.h>
+
+namespace android::hardware::automotive::protocan {
+
+Checksum::Checksum(Signal signal, formula f) : mSignal(signal), mFormula(f) {}
+
+void Checksum::update(can::V1_0::CanMessage& msg) const {
+  mSignal.set(msg, 0);
+  mSignal.set(msg, mFormula(msg) % (mSignal.maxValue + 1));
 }
 
-cc_test {
-    name: "VehicleHalVehicleUtilsTest",
-    srcs: ["*.cpp"],
-    vendor: true,
-    static_libs: [
-        "VehicleHalUtils",
-        "libgtest",
-        "libgmock",
-    ],
-    header_libs: ["VehicleHalTestUtilHeaders"],
-    defaults: ["VehicleHalDefaults"],
-    test_suites: ["device-tests"],
-}
+}  // namespace android::hardware::automotive::protocan
