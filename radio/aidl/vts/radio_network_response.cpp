@@ -23,7 +23,7 @@ ndk::ScopedAStatus RadioNetworkResponse::acknowledgeRequest(int32_t /*serial*/) 
 }
 
 ndk::ScopedAStatus RadioNetworkResponse::getAllowedNetworkTypesBitmapResponse(
-        const RadioResponseInfo& info, const RadioAccessFamily networkTypeBitmap) {
+        const RadioResponseInfo& info, const int32_t networkTypeBitmap) {
     rspInfo = info;
     networkTypeBitmapResponse = networkTypeBitmap;
     parent_network.notify(info.serial);
@@ -96,11 +96,8 @@ ndk::ScopedAStatus RadioNetworkResponse::getSystemSelectionChannelsResponse(
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioNetworkResponse::getUsageSettingResponse(const RadioResponseInfo& info,
-                                                                 const UsageSetting usageSetting) {
-    rspInfo = info;
-    this->usageSetting = usageSetting;
-    parent_network.notify(info.serial);
+ndk::ScopedAStatus RadioNetworkResponse::getUsageSettingResponse(
+        const RadioResponseInfo& /*info*/, const UsageSetting /*usageSetting*/) {
     return ndk::ScopedAStatus::ok();
 }
 
@@ -198,9 +195,8 @@ ndk::ScopedAStatus RadioNetworkResponse::setSystemSelectionChannelsResponse(
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioNetworkResponse::setUsageSettingResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_network.notify(info.serial);
+ndk::ScopedAStatus RadioNetworkResponse::setUsageSettingResponse(
+        const RadioResponseInfo& /*info*/) {
     return ndk::ScopedAStatus::ok();
 }
 
