@@ -39,16 +39,15 @@ class RadioNetworkResponse : public BnRadioNetworkResponse {
     std::vector<RadioBandMode> radioBandModes;
     std::vector<OperatorInfo> networkInfos;
     bool isNrDualConnectivityEnabled;
-    RadioAccessFamily networkTypeBitmapResponse;
+    int networkTypeBitmapResponse;
     RegStateResult regStateResp;
     CellIdentity barringCellIdentity;
     std::vector<BarringInfo> barringInfos;
-    UsageSetting usageSetting;
 
     virtual ndk::ScopedAStatus acknowledgeRequest(int32_t serial) override;
 
     virtual ndk::ScopedAStatus getAllowedNetworkTypesBitmapResponse(
-            const RadioResponseInfo& info, const RadioAccessFamily networkTypeBitmap) override;
+            const RadioResponseInfo& info, const int32_t networkTypeBitmap) override;
 
     virtual ndk::ScopedAStatus getAvailableBandModesResponse(
             const RadioResponseInfo& info, const std::vector<RadioBandMode>& bandModes) override;
@@ -187,7 +186,7 @@ class RadioNetworkIndication : public BnRadioNetworkIndication {
 
     virtual ndk::ScopedAStatus registrationFailed(RadioIndicationType type,
                                                   const CellIdentity& cellIdentity,
-                                                  const std::string& chosenPlmn, Domain domain,
+                                                  const std::string& chosenPlmn, int32_t domain,
                                                   int32_t causeCode,
                                                   int32_t additionalCauseCode) override;
 
@@ -212,10 +211,4 @@ class RadioNetworkTest : public ::testing::TestWithParam<std::string>, public Ra
     std::shared_ptr<RadioNetworkResponse> radioRsp_network;
     /* radio network indication handle */
     std::shared_ptr<RadioNetworkIndication> radioInd_network;
-
-    void invokeAndExpectResponse(std::function<ndk::ScopedAStatus(int32_t serial)> request,
-                                 std::vector<RadioError> errors_to_check);
-
-    // Helper function to reduce copy+paste
-    void testSetUsageSetting_InvalidValues(std::vector<RadioError> errors);
 };
