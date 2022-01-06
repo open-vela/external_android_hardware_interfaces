@@ -39,9 +39,7 @@ class MockDevice final : public IDevice {
     MOCK_METHOD(GeneralResult<SharedPreparedModel>, prepareModel,
                 (const Model& model, ExecutionPreference preference, Priority priority,
                  OptionalTimePoint deadline, const std::vector<SharedHandle>& modelCache,
-                 const std::vector<SharedHandle>& dataCache, const CacheToken& token,
-                 const std::vector<TokenValuePair>& hints,
-                 const std::vector<nn::ExtensionNameAndPrefix>& extensionNameToPrefix),
+                 const std::vector<SharedHandle>& dataCache, const CacheToken& token),
                 (const, override));
     MOCK_METHOD(GeneralResult<SharedPreparedModel>, prepareModelFromCache,
                 (OptionalTimePoint deadline, const std::vector<SharedHandle>& modelCache,

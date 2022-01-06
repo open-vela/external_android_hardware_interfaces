@@ -62,11 +62,9 @@ cc_library {
         "android.hardware.health@2.0",
         "android.hardware.health@2.1",
     ],
-    target: {
-        darwin: {
-            enabled: false,
-        },
-    },
+    defaults: [
+        "libbinder_ndk_host_user",
+    ],
 }
 
 java_library {
