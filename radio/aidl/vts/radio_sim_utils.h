@@ -29,10 +29,10 @@ class RadioSimTest;
 /* Callback class for radio SIM response */
 class RadioSimResponse : public BnRadioSimResponse {
   protected:
-    RadioServiceTest& parent_sim;
+    RadioResponseWaiter& parent_sim;
 
   public:
-    RadioSimResponse(RadioServiceTest& parent_sim);
+    RadioSimResponse(RadioResponseWaiter& parent_sim);
     virtual ~RadioSimResponse() = default;
 
     RadioResponseInfo rspInfo;
@@ -152,10 +152,10 @@ class RadioSimResponse : public BnRadioSimResponse {
 /* Callback class for radio SIM indication */
 class RadioSimIndication : public BnRadioSimIndication {
   protected:
-    RadioServiceTest& parent_sim;
+    RadioSimTest& parent_sim;
 
   public:
-    RadioSimIndication(RadioServiceTest& parent_sim);
+    RadioSimIndication(RadioSimTest& parent_sim);
     virtual ~RadioSimIndication() = default;
 
     virtual ndk::ScopedAStatus carrierInfoForImsiEncryption(RadioIndicationType info) override;
@@ -190,14 +190,16 @@ class RadioSimIndication : public BnRadioSimIndication {
 };
 
 // The main test class for Radio AIDL SIM.
-class RadioSimTest : public ::testing::TestWithParam<std::string>, public RadioServiceTest {
+class RadioSimTest : public ::testing::TestWithParam<std::string>, public RadioResponseWaiter {
+  protected:
+    /* Update Sim Card Status */
+    virtual ndk::ScopedAStatus updateSimCardStatus();
+
   public:
     virtual void SetUp() override;
 
-    /* Override updateSimCardStatus in RadioServiceTest to not call setResponseFunctions */
-    void updateSimCardStatus();
-
-    /* radio SIM service handle in RadioServiceTest */
+    /* radio SIM service handle */
+    std::shared_ptr<IRadioSim> radio_sim;
     /* radio SIM response handle */
     std::shared_ptr<RadioSimResponse> radioRsp_sim;
     /* radio SIM indication handle */
