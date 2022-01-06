@@ -16,7 +16,7 @@
 
 #include "radio_network_utils.h"
 
-RadioNetworkIndication::RadioNetworkIndication(RadioServiceTest& parent) : parent_network(parent) {}
+RadioNetworkIndication::RadioNetworkIndication(RadioNetworkTest& parent) : parent_network(parent) {}
 
 ndk::ScopedAStatus RadioNetworkIndication::barringInfoChanged(
         RadioIndicationType /*type*/, const CellIdentity& /*cellIdentity*/,
@@ -72,7 +72,7 @@ ndk::ScopedAStatus RadioNetworkIndication::nitzTimeReceived(RadioIndicationType 
 ndk::ScopedAStatus RadioNetworkIndication::registrationFailed(RadioIndicationType /*type*/,
                                                               const CellIdentity& /*cellIdentity*/,
                                                               const std::string& /*chosenPlmn*/,
-                                                              int32_t /*domain*/,
+                                                              Domain /*domain*/,
                                                               int32_t /*causeCode*/,
                                                               int32_t /*additionalCauseCode*/) {
     return ndk::ScopedAStatus::ok();

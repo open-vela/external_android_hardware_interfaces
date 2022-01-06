@@ -29,26 +29,25 @@ class RadioNetworkTest;
 /* Callback class for radio network response */
 class RadioNetworkResponse : public BnRadioNetworkResponse {
   protected:
-    RadioServiceTest& parent_network;
+    RadioResponseWaiter& parent_network;
 
   public:
-    RadioNetworkResponse(RadioServiceTest& parent_network);
+    RadioNetworkResponse(RadioResponseWaiter& parent_network);
     virtual ~RadioNetworkResponse() = default;
 
     RadioResponseInfo rspInfo;
     std::vector<RadioBandMode> radioBandModes;
     std::vector<OperatorInfo> networkInfos;
     bool isNrDualConnectivityEnabled;
-    int networkTypeBitmapResponse;
-    RegStateResult voiceRegResp;
+    RadioAccessFamily networkTypeBitmapResponse;
+    RegStateResult regStateResp;
     CellIdentity barringCellIdentity;
     std::vector<BarringInfo> barringInfos;
-    UsageSetting usageSetting;
 
     virtual ndk::ScopedAStatus acknowledgeRequest(int32_t serial) override;
 
     virtual ndk::ScopedAStatus getAllowedNetworkTypesBitmapResponse(
-            const RadioResponseInfo& info, const int32_t networkTypeBitmap) override;
+            const RadioResponseInfo& info, const RadioAccessFamily networkTypeBitmap) override;
 
     virtual ndk::ScopedAStatus getAvailableBandModesResponse(
             const RadioResponseInfo& info, const std::vector<RadioBandMode>& bandModes) override;
@@ -150,10 +149,10 @@ class RadioNetworkResponse : public BnRadioNetworkResponse {
 /* Callback class for radio network indication */
 class RadioNetworkIndication : public BnRadioNetworkIndication {
   protected:
-    RadioServiceTest& parent_network;
+    RadioNetworkTest& parent_network;
 
   public:
-    RadioNetworkIndication(RadioServiceTest& parent_network);
+    RadioNetworkIndication(RadioNetworkTest& parent_network);
     virtual ~RadioNetworkIndication() = default;
 
     virtual ndk::ScopedAStatus barringInfoChanged(
@@ -187,7 +186,7 @@ class RadioNetworkIndication : public BnRadioNetworkIndication {
 
     virtual ndk::ScopedAStatus registrationFailed(RadioIndicationType type,
                                                   const CellIdentity& cellIdentity,
-                                                  const std::string& chosenPlmn, int32_t domain,
+                                                  const std::string& chosenPlmn, Domain domain,
                                                   int32_t causeCode,
                                                   int32_t additionalCauseCode) override;
 
@@ -202,7 +201,7 @@ class RadioNetworkIndication : public BnRadioNetworkIndication {
 };
 
 // The main test class for Radio AIDL Network.
-class RadioNetworkTest : public ::testing::TestWithParam<std::string>, public RadioServiceTest {
+class RadioNetworkTest : public ::testing::TestWithParam<std::string>, public RadioResponseWaiter {
   public:
     virtual void SetUp() override;
 
@@ -212,10 +211,4 @@ class RadioNetworkTest : public ::testing::TestWithParam<std::string>, public Ra
     std::shared_ptr<RadioNetworkResponse> radioRsp_network;
     /* radio network indication handle */
     std::shared_ptr<RadioNetworkIndication> radioInd_network;
-
-    void invokeAndExpectResponse(std::function<ndk::ScopedAStatus(int32_t serial)> request,
-                                 std::vector<RadioError> errors_to_check);
-
-    // Helper function to reduce copy+paste
-    void testSetUsageSetting_InvalidValues(std::vector<RadioError> errors);
 };
