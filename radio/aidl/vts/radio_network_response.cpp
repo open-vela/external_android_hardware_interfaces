@@ -16,7 +16,7 @@
 
 #include "radio_network_utils.h"
 
-RadioNetworkResponse::RadioNetworkResponse(RadioServiceTest& parent) : parent_network(parent) {}
+RadioNetworkResponse::RadioNetworkResponse(RadioResponseWaiter& parent) : parent_network(parent) {}
 
 ndk::ScopedAStatus RadioNetworkResponse::acknowledgeRequest(int32_t /*serial*/) {
     return ndk::ScopedAStatus::ok();
@@ -109,7 +109,7 @@ ndk::ScopedAStatus RadioNetworkResponse::getVoiceRadioTechnologyResponse(
 ndk::ScopedAStatus RadioNetworkResponse::getVoiceRegistrationStateResponse(
         const RadioResponseInfo& info, const RegStateResult& regResponse) {
     rspInfo = info;
-    voiceRegResp.regState = regResponse.regState;
+    regStateResp.regState = regResponse.regState;
     parent_network.notify(info.serial);
     return ndk::ScopedAStatus::ok();
 }

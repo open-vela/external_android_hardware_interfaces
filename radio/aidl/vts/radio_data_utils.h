@@ -23,16 +23,17 @@
 #include "radio_aidl_hal_utils.h"
 
 using namespace aidl::android::hardware::radio::data;
+using aidl::android::hardware::radio::sim::CardStatus;
 
 class RadioDataTest;
 
 /* Callback class for radio data response */
 class RadioDataResponse : public BnRadioDataResponse {
   protected:
-    RadioServiceTest& parent_data;
+    RadioResponseWaiter& parent_data;
 
   public:
-    RadioDataResponse(RadioServiceTest& parent_data);
+    RadioDataResponse(RadioResponseWaiter& parent_data);
     virtual ~RadioDataResponse() = default;
 
     RadioResponseInfo rspInfo;
@@ -79,10 +80,10 @@ class RadioDataResponse : public BnRadioDataResponse {
 /* Callback class for radio data indication */
 class RadioDataIndication : public BnRadioDataIndication {
   protected:
-    RadioServiceTest& parent_data;
+    RadioDataTest& parent_data;
 
   public:
-    RadioDataIndication(RadioServiceTest& parent_data);
+    RadioDataIndication(RadioDataTest& parent_data);
     virtual ~RadioDataIndication() = default;
 
     virtual ndk::ScopedAStatus dataCallListChanged(
@@ -98,7 +99,7 @@ class RadioDataIndication : public BnRadioDataIndication {
 };
 
 // The main test class for Radio AIDL Data.
-class RadioDataTest : public ::testing::TestWithParam<std::string>, public RadioServiceTest {
+class RadioDataTest : public ::testing::TestWithParam<std::string>, public RadioResponseWaiter {
   protected:
     /* Get current data call list */
     ndk::ScopedAStatus getDataCallList();
