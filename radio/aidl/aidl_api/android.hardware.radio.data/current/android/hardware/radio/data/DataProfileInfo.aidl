@@ -46,12 +46,14 @@ parcelable DataProfileInfo {
   int maxConns;
   int waitTime;
   boolean enabled;
-  android.hardware.radio.data.ApnTypes supportedApnTypesBitmap;
-  android.hardware.radio.RadioAccessFamily bearerBitmap;
+  int supportedApnTypesBitmap;
+  int bearerBitmap;
   int mtuV4;
   int mtuV6;
   boolean preferred;
   boolean persistent;
+  boolean alwaysOn;
+  @nullable android.hardware.radio.data.TrafficDescriptor trafficDescriptor;
   const int ID_DEFAULT = 0;
   const int ID_TETHERED = 1;
   const int ID_IMS = 2;
