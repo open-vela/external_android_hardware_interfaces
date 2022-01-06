@@ -43,23 +43,20 @@ void RadioSimTest::SetUp() {
     ASSERT_NE(nullptr, radioInd_sim.get());
 
     radio_sim->setResponseFunctions(radioRsp_sim, radioInd_sim);
-    // Assert SIM is present before testing
-    updateSimCardStatus();
-    EXPECT_EQ(CardStatus::STATE_PRESENT, cardStatus.cardState);
 
     // Assert IRadioConfig exists before testing
-    radio_config = config::IRadioConfig::fromBinder(ndk::SpAIBinder(
-            AServiceManager_waitForService("android.hardware.radio.config.IRadioConfig/default")));
-    ASSERT_NE(nullptr, radio_config.get());
+    std::shared_ptr<aidl::android::hardware::radio::config::IRadioConfig> radioConfig =
+            aidl::android::hardware::radio::config::IRadioConfig::fromBinder(
+                    ndk::SpAIBinder(AServiceManager_waitForService(
+                            "android.hardware.radio.config.IRadioConfig/default")));
+    ASSERT_NE(nullptr, radioConfig.get());
 }
 
-void RadioSimTest::updateSimCardStatus() {
+ndk::ScopedAStatus RadioSimTest::updateSimCardStatus() {
     serial = GetRandomSerialNumber();
     radio_sim->getIccCardStatus(serial);
     EXPECT_EQ(std::cv_status::no_timeout, wait());
-    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_sim->rspInfo.type);
-    EXPECT_EQ(serial, radioRsp_sim->rspInfo.serial);
-    EXPECT_EQ(RadioError::NONE, radioRsp_sim->rspInfo.error);
+    return ndk::ScopedAStatus::ok();
 }
 
 /*
