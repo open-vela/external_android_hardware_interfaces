@@ -58,16 +58,3 @@ cc_test {
         "vts",
     ],
 }
-
-java_test_host {
-    name: "IdentityCredentialImplementedTest",
-    libs: [
-        "tradefed",
-        "vts-core-tradefed-harness",
-    ],
-    srcs: ["src/**/*.java"],
-    test_suites: [
-        "vts",
-    ],
-    test_config: "IdentityCredentialImplementedTest.xml",
-}
