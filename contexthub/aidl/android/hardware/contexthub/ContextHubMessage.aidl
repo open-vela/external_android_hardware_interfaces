@@ -32,14 +32,10 @@ parcelable ContextHubMessage {
      */
     char hostEndPoint;
 
-    /**
-     * The type of this message payload, defined by the communication endpoints (i.e.
-     * either the nanoapp or the host endpoint). This value can be used to distinguish
-     * the handling of messageBody (e.g. for decoding).
-     */
+    /** The type of this message */
     int messageType;
 
-    /** The payload containing the message. */
+    /** The payload containing the message */
     byte[] messageBody;
 
     /**
