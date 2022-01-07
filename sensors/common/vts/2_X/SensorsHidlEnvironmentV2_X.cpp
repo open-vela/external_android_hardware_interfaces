@@ -103,7 +103,7 @@ bool SensorsHidlEnvironmentV2_X::resetHal() {
     return succeed;
 }
 
-void SensorsHidlEnvironmentV2_X::TearDown() {
+void SensorsHidlEnvironmentV2_X::HidlTearDown() {
     mStopThread = true;
 
     if (mEventQueueFlag != nullptr) {
