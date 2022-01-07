@@ -41,6 +41,7 @@ void TestLayer::write(ComposerClientWriter& writer) {
     writer.setLayerTransform(mDisplay, mLayer, mTransform);
     writer.setLayerPlaneAlpha(mDisplay, mLayer, mAlpha);
     writer.setLayerBlendMode(mDisplay, mLayer, mBlendMode);
+    writer.setLayerWhitePointNits(mDisplay, mLayer, mWhitePointNits);
 }
 
 std::string ReadbackHelper::getColorModeString(ColorMode mode) {
@@ -103,6 +104,7 @@ LayerSettings TestLayer::toRenderEngineLayerSettings() {
             1.0f, 1.0f));
 
     layerSettings.geometry.positionTransform = scale * translation;
+    layerSettings.whitePointNits = mWhitePointNits;
 
     return layerSettings;
 }
