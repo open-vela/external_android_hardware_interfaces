@@ -52,12 +52,9 @@ interface IContextHub {
      * @param appBinary The nanoapp binary with header
      * @param transactionId The transaction ID associated with this request
      *
-     * @throws EX_ILLEGAL_ARGUMENT if any of the arguments are invalid.
-     *         EX_UNSUPPORTED_OPERATION if this functionality is unsupported.
-     *         EX_SERVICE_SPECIFIC on error
-     *         - EX_CONTEXT_HUB_UNSPECIFIED if the request failed for other reasons.
+     * @return The return code
      */
-    void loadNanoapp(in int contextHubId, in NanoappBinary appBinary, in int transactionId);
+    boolean loadNanoapp(in int contextHubId, in NanoappBinary appBinary, in int transactionId);
 
     /**
      * Invokes the nanoapp's deinitialization "end()" entrypoint, and unloads the nanoapp.
@@ -72,12 +69,9 @@ interface IContextHub {
      * @param appId The unique ID of the nanoapp
      * @param transactionId The transaction ID associated with this request
      *
-     * @throws EX_ILLEGAL_ARGUMENT if any of the arguments are invalid.
-     *         EX_UNSUPPORTED_OPERATION if this functionality is unsupported.
-     *         EX_SERVICE_SPECIFIC on error
-     *         - EX_CONTEXT_HUB_UNSPECIFIED if the request failed for other reasons.
+     * @return The return code
      */
-    void unloadNanoapp(in int contextHubId, in long appId, in int transactionId);
+    boolean unloadNanoapp(in int contextHubId, in long appId, in int transactionId);
 
     /**
      * Disables a nanoapp by invoking the nanoapp's "end()" entrypoint, but does not unload the
@@ -93,12 +87,9 @@ interface IContextHub {
      * @param appId The unique ID of the nanoapp
      * @param transactionId The transaction ID associated with this request
      *
-     * @throws EX_ILLEGAL_ARGUMENT if any of the arguments are invalid.
-     *         EX_UNSUPPORTED_OPERATION if this functionality is unsupported.
-     *         EX_SERVICE_SPECIFIC on error
-     *         - EX_CONTEXT_HUB_UNSPECIFIED if the request failed for other reasons.
+     * @return The return code
      */
-    void disableNanoapp(in int contextHubId, in long appId, in int transactionId);
+    boolean disableNanoapp(in int contextHubId, in long appId, in int transactionId);
 
     /**
      * Enables a nanoapp by invoking the nanoapp's initialization "start()" entrypoint.
@@ -113,12 +104,9 @@ interface IContextHub {
      * @param appId appIdentifier returned by the HAL
      * @param message   message to be sent
      *
-     * @throws EX_ILLEGAL_ARGUMENT if any of the arguments are invalid.
-     *         EX_UNSUPPORTED_OPERATION if this functionality is unsupported.
-     *         EX_SERVICE_SPECIFIC on error
-     *         - EX_CONTEXT_HUB_UNSPECIFIED if the request failed for other reasons.
+     * @return true on success
      */
-    void enableNanoapp(in int contextHubId, in long appId, in int transactionId);
+    boolean enableNanoapp(in int contextHubId, in long appId, in int transactionId);
 
     /**
      * Notification sent by the framework to indicate that the user has changed a setting.
@@ -136,12 +124,9 @@ interface IContextHub {
      *
      * @param contextHubId The identifier of the Context Hub
      *
-     * @throws EX_ILLEGAL_ARGUMENT if any of the arguments are invalid.
-     *         EX_UNSUPPORTED_OPERATION if this functionality is unsupported.
-     *         EX_SERVICE_SPECIFIC on error
-     *         - EX_CONTEXT_HUB_UNSPECIFIED if the request failed for other reasons.
+     * @return true on success
      */
-    void queryNanoapps(in int contextHubId);
+    boolean queryNanoapps(in int contextHubId);
 
     /**
      * Register a callback for the HAL implementation to send asynchronous messages to the service
@@ -153,11 +138,10 @@ interface IContextHub {
      * @param contextHubId The identifier of the Context Hub
      * @param callback an implementation of the IContextHubCallbacks
      *
-     * @throws EX_ILLEGAL_ARGUMENT if any of the arguments are invalid.
-     *         EX_SERVICE_SPECIFIC on error
-     *         - EX_CONTEXT_HUB_UNSPECIFIED if the request failed for other reasons.
+     * @return true on success
+     *
      */
-    void registerCallback(in int contextHubId, in IContextHubCallback cb);
+    boolean registerCallback(in int contextHubId, in IContextHubCallback cb);
 
     /**
      * Sends a message targeted to a nanoapp to the Context Hub.
@@ -165,11 +149,9 @@ interface IContextHub {
      * @param contextHubId The identifier of the Context Hub
      * @param message The message to be sent
      *
-     * @throws EX_ILLEGAL_ARGUMENT if any of the arguments are invalid.
-     *         EX_SERVICE_SPECIFIC on error
-     *         - EX_CONTEXT_HUB_UNSPECIFIED if the request failed for other reasons.
+     * @return true on success
      */
-    void sendMessageToHub(in int contextHubId, in ContextHubMessage message);
+    boolean sendMessageToHub(in int contextHubId, in ContextHubMessage message);
 
     /**
      * Invoked when a host endpoint has connected with the ContextHubService.
@@ -191,13 +173,8 @@ interface IContextHub {
      *
      * @param hostEndPointId The ID of the host that has disconnected.
      *
-     * @throws EX_ILLEGAL_ARGUMENT if hostEndpointId is not associated with a connected host.
+     * @return Status::ok on success
+     *         EX_ILLEGAL_ARGUMENT if hostEndpointId is not associated with a connected host.
      */
     void onHostEndpointDisconnected(char hostEndpointId);
-
-    /**
-     * Error codes that are used as service specific errors with the AIDL return
-     * value EX_SERVICE_SPECIFIC.
-     */
-    const int EX_CONTEXT_HUB_UNSPECIFIED = -1;
 }
