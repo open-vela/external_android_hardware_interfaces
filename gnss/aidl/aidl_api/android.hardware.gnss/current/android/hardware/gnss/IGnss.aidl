@@ -36,11 +36,52 @@ package android.hardware.gnss;
 interface IGnss {
   void setCallback(in android.hardware.gnss.IGnssCallback callback);
   void close();
-  android.hardware.gnss.IGnssPsds getExtensionPsds();
+  @nullable android.hardware.gnss.IGnssPsds getExtensionPsds();
   android.hardware.gnss.IGnssConfiguration getExtensionGnssConfiguration();
   android.hardware.gnss.IGnssMeasurementInterface getExtensionGnssMeasurement();
   android.hardware.gnss.IGnssPowerIndication getExtensionGnssPowerIndication();
+  @nullable android.hardware.gnss.IGnssBatching getExtensionGnssBatching();
+  @nullable android.hardware.gnss.IGnssGeofence getExtensionGnssGeofence();
+  @nullable android.hardware.gnss.IGnssNavigationMessageInterface getExtensionGnssNavigationMessage();
+  android.hardware.gnss.IAGnss getExtensionAGnss();
+  android.hardware.gnss.IAGnssRil getExtensionAGnssRil();
+  android.hardware.gnss.IGnssDebug getExtensionGnssDebug();
+  android.hardware.gnss.visibility_control.IGnssVisibilityControl getExtensionGnssVisibilityControl();
+  void start();
+  void stop();
+  void injectTime(in long timeMs, in long timeReferenceMs, in int uncertaintyMs);
+  void injectLocation(in android.hardware.gnss.GnssLocation location);
+  void injectBestLocation(in android.hardware.gnss.GnssLocation location);
+  void deleteAidingData(in android.hardware.gnss.IGnss.GnssAidingData aidingDataFlags);
+  void setPositionMode(in android.hardware.gnss.IGnss.GnssPositionMode mode, in android.hardware.gnss.IGnss.GnssPositionRecurrence recurrence, in int minIntervalMs, in int preferredAccuracyMeters, in int preferredTimeMs, in boolean lowPowerMode);
   const int ERROR_INVALID_ARGUMENT = 1;
   const int ERROR_ALREADY_INIT = 2;
   const int ERROR_GENERIC = 3;
+  @Backing(type="int") @VintfStability
+  enum GnssPositionMode {
+    STANDALONE = 0,
+    MS_BASED = 1,
+    MS_ASSISTED = 2,
+  }
+  @Backing(type="int") @VintfStability
+  enum GnssPositionRecurrence {
+    RECURRENCE_PERIODIC = 0,
+    RECURRENCE_SINGLE = 1,
+  }
+  @Backing(type="int") @VintfStability
+  enum GnssAidingData {
+    DELETE_EPHEMERIS = 1,
+    DELETE_ALMANAC = 2,
+    DELETE_POSITION = 4,
+    DELETE_TIME = 8,
+    DELETE_IONO = 16,
+    DELETE_UTC = 32,
+    DELETE_HEALTH = 64,
+    DELETE_SVDIR = 128,
+    DELETE_SVSTEER = 256,
+    DELETE_SADATA = 512,
+    DELETE_RTI = 1024,
+    DELETE_CELLDB_INFO = 32768,
+    DELETE_ALL = 65535,
+  }
 }
