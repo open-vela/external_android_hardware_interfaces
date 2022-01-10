@@ -1426,7 +1426,8 @@ class GraphicsComposerAidlCommandTest : public GraphicsComposerAidlTest {
         presentFence2->waitForever(LOG_TAG);
 
         const auto actualPresentTime = presentFence2->getSignalTime();
-        EXPECT_GE(actualPresentTime, expectedPresentTime - vsyncPeriod / 2);
+        const auto presentError = std::abs(expectedPresentTime - actualPresentTime);
+        EXPECT_LE(presentError, vsyncPeriod / 2);
 
         ASSERT_TRUE(mComposerClient->setPowerMode(mPrimaryDisplay, PowerMode::OFF).isOk());
     }
