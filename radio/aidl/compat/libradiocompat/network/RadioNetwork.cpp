@@ -28,7 +28,6 @@
 namespace android::hardware::radio::compat {
 
 using ::aidl::android::hardware::radio::AccessNetwork;
-using ::aidl::android::hardware::radio::RadioAccessFamily;
 using ::ndk::ScopedAStatus;
 namespace aidl = ::aidl::android::hardware::radio::network;
 constexpr auto ok = &ScopedAStatus::ok;
@@ -161,7 +160,7 @@ ScopedAStatus RadioNetwork::responseAcknowledgement() {
     return ok();
 }
 
-ScopedAStatus RadioNetwork::setAllowedNetworkTypesBitmap(int32_t serial, RadioAccessFamily ntype) {
+ScopedAStatus RadioNetwork::setAllowedNetworkTypesBitmap(int32_t serial, int32_t ntype) {
     LOG_CALL << serial;
     const auto raf = toHidlBitfield<V1_4::RadioAccessFamily>(ntype);
     if (mHal1_6) {
@@ -197,7 +196,7 @@ ScopedAStatus RadioNetwork::setCellInfoListRate(int32_t serial, int32_t rate) {
     return ok();
 }
 
-ScopedAStatus RadioNetwork::setIndicationFilter(int32_t serial, aidl::IndicationFilter indFilter) {
+ScopedAStatus RadioNetwork::setIndicationFilter(int32_t serial, int32_t indFilter) {
     LOG_CALL << serial;
     mHal1_5->setIndicationFilter_1_5(serial, toHidlBitfield<V1_5::IndicationFilter>(indFilter));
     return ok();
@@ -255,7 +254,13 @@ ScopedAStatus RadioNetwork::setResponseFunctions(
 ScopedAStatus RadioNetwork::setSignalStrengthReportingCriteria(
         int32_t serial, const std::vector<aidl::SignalThresholdInfo>& infos) {
     LOG_CALL << serial;
-    // TODO(b/203699028): how about other infos?
+    if (infos.size() == 0) {
+        LOG(ERROR) << "Threshold info array is empty - dropping setSignalStrengthReportingCriteria";
+        return ok();
+    }
+    if (infos.size() > 1) {
+        LOG(WARNING) << "Multi-element reporting criteria are not supported with HIDL HAL";
+    }
     mHal1_5->setSignalStrengthReportingCriteria_1_5(serial, toHidl(infos[0]),
                                                     V1_5::AccessNetwork(infos[0].ran));
     return ok();
@@ -292,18 +297,17 @@ ScopedAStatus RadioNetwork::supplyNetworkDepersonalization(int32_t ser, const st
     return ok();
 }
 
-// TODO(b/210498497): is there a cleaner way to send a response back to Android, even though these
-// methods must never be called?
-ScopedAStatus RadioNetwork::setUsageSetting(
-        int32_t ser, ::aidl::android::hardware::radio::network::UsageSetting) {
-    LOG_CALL << ser;
+ScopedAStatus RadioNetwork::setUsageSetting(int32_t serial, aidl::UsageSetting) {
+    LOG_CALL << serial;
     LOG(ERROR) << "setUsageSetting is unsupported by HIDL HALs";
+    respond()->setUsageSettingResponse(notSupported(serial));
     return ok();
 }
 
-ScopedAStatus RadioNetwork::getUsageSetting(int32_t ser) {
-    LOG_CALL << ser;
+ScopedAStatus RadioNetwork::getUsageSetting(int32_t serial) {
+    LOG_CALL << serial;
     LOG(ERROR) << "getUsageSetting is unsupported by HIDL HALs";
+    respond()->getUsageSettingResponse(notSupported(serial), {});  // {} = neither voice nor data
     return ok();
 }
 

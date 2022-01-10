@@ -98,14 +98,8 @@ Return<void> BluetoothAudioProvidersFactory::openProvider_2_1(
     case V2_1::SessionType::LE_AUDIO_SOFTWARE_ENCODING_DATAPATH:
       provider = &leaudio_output_provider_instance_;
       break;
-    case V2_1::SessionType::LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH:
-      provider = &leaudio_offload_output_provider_instance_;
-      break;
     case V2_1::SessionType::LE_AUDIO_SOFTWARE_DECODED_DATAPATH:
       provider = &leaudio_input_provider_instance_;
-      break;
-    case V2_1::SessionType::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH:
-      provider = &leaudio_offload_input_provider_instance_;
       break;
     default:
       status = BluetoothAudioStatus::FAILURE;
@@ -239,7 +233,7 @@ Return<void> BluetoothAudioProvidersFactory::getProviderCapabilities_2_2(
                                 LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH ||
              sessionType == V2_1::SessionType::
                                 LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH) {
-    std::vector<LeAudioCodecCapabilitiesPair> db_codec_capabilities =
+    std::vector<LeAudioCodecCapabilitiesSetting> db_codec_capabilities =
         android::bluetooth::audio::GetLeAudioOffloadCodecCapabilities(
             sessionType);
     if (db_codec_capabilities.size()) {
