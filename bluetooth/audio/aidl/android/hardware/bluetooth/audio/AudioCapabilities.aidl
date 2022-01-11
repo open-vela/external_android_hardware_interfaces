@@ -17,7 +17,7 @@
 package android.hardware.bluetooth.audio;
 
 import android.hardware.bluetooth.audio.CodecCapabilities;
-import android.hardware.bluetooth.audio.LeAudioCapabilities;
+import android.hardware.bluetooth.audio.LeAudioCodecCapabilitiesSetting;
 import android.hardware.bluetooth.audio.PcmCapabilities;
 
 /**
@@ -27,5 +27,5 @@ import android.hardware.bluetooth.audio.PcmCapabilities;
 union AudioCapabilities {
     PcmCapabilities pcmCapabilities;
     CodecCapabilities codecCapabilities;
-    LeAudioCapabilities leAudioCapabilities;
+    LeAudioCodecCapabilitiesSetting leAudioCapabilities;
 }
