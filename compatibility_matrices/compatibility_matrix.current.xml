@@ -328,7 +328,7 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.identity</name>
-        <version>1-4</version>
+        <version>1-3</version>
         <interface>
             <name>IIdentityCredentialStore</name>
             <instance>default</instance>
@@ -405,6 +405,7 @@
         <interface>
             <name>IRemotelyProvisionedComponent</name>
             <instance>default</instance>
+            <instance>strongbox</instance>
         </interface>
     </hal>
     <hal format="aidl" optional="true">

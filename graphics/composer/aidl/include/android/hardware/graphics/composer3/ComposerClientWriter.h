@@ -218,10 +218,6 @@ class ComposerClientWriter {
         getLayerCommand(display, layer).whitePointNits.emplace(Luminance{.nits = whitePointNits});
     }
 
-    void setLayerBlockingRegion(int64_t display, int64_t layer, const std::vector<Rect>& blocking) {
-        getLayerCommand(display, layer).blockingRegion.emplace(blocking.begin(), blocking.end());
-    }
-
     const std::vector<DisplayCommand>& getPendingCommands() {
         flushLayerCommand();
         flushDisplayCommand();

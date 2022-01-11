@@ -17,21 +17,8 @@
 #include "EicProvisioning.h"
 #include "EicCommon.h"
 
-#include <inttypes.h>
-
-// Global used for assigning ids for provisioning objects.
-//
-static uint32_t gProvisioningLastIdAssigned = 0;
-
 bool eicProvisioningInit(EicProvisioning* ctx, bool testCredential) {
     eicMemSet(ctx, '\0', sizeof(EicProvisioning));
-
-    if (!eicNextId(&gProvisioningLastIdAssigned)) {
-        eicDebug("Error getting id for object");
-        return false;
-    }
-    ctx->id = gProvisioningLastIdAssigned;
-
     ctx->testCredential = testCredential;
     if (!eicOpsRandom(ctx->storageKey, EIC_AES_128_KEY_SIZE)) {
         return false;
@@ -60,13 +47,6 @@ bool eicProvisioningInitForUpdate(EicProvisioning* ctx, bool testCredential, con
     }
 
     eicMemSet(ctx, '\0', sizeof(EicProvisioning));
-
-    if (!eicNextId(&gProvisioningLastIdAssigned)) {
-        eicDebug("Error getting id for object");
-        return false;
-    }
-    ctx->id = gProvisioningLastIdAssigned;
-
     ctx->testCredential = testCredential;
 
     if (!eicOpsDecryptAes128Gcm(eicOpsGetHardwareBoundKey(testCredential), encryptedCredentialKeys,
@@ -113,21 +93,6 @@ bool eicProvisioningInitForUpdate(EicProvisioning* ctx, bool testCredential, con
     eicMemCpy(ctx->credentialPrivateKey, credentialKeys + 20, EIC_P256_PRIV_KEY_SIZE);
     // Note: We don't care about the previous ProofOfProvisioning SHA-256
     ctx->isUpdate = true;
-    return true;
-}
-
-bool eicProvisioningShutdown(EicProvisioning* ctx) {
-    if (ctx->id == 0) {
-        eicDebug("Trying to shut down provsioning with id 0");
-        return false;
-    }
-    eicDebug("Shut down provsioning with id %" PRIu32, ctx->id);
-    eicMemSet(ctx, '\0', sizeof(EicProvisioning));
-    return true;
-}
-
-bool eicProvisioningGetId(EicProvisioning* ctx, uint32_t* outId) {
-    *outId = ctx->id;
     return true;
 }
 

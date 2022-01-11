@@ -39,5 +39,4 @@ parcelable DemuxFilterSectionSettings {
   boolean isCheckCrc;
   boolean isRepeat;
   boolean isRaw;
-  int bitWidthOfLengthField;
 }
