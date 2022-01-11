@@ -1,11 +1,11 @@
-/*
- * Copyright 2022 The Android Open Source Project
+/**
+ * Copyright (c) 2021, The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,20 +31,11 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.bluetooth.audio;
+package android.hardware.graphics.composer3;
 @VintfStability
-parcelable BroadcastCapability {
-  android.hardware.bluetooth.audio.CodecType codecType;
-  android.hardware.bluetooth.audio.AudioLocation supportedChannel;
-  int channelCountPerStream;
-  android.hardware.bluetooth.audio.BroadcastCapability.LeAudioCodecCapabilities leAudioCodecCapabilities;
-  @VintfStability
-  parcelable VendorCapabilities {
-    ParcelableHolder extension;
-  }
-  @VintfStability
-  union LeAudioCodecCapabilities {
-    @nullable android.hardware.bluetooth.audio.Lc3Capabilities[] lc3Capabilities;
-    @nullable android.hardware.bluetooth.audio.BroadcastCapability.VendorCapabilities[] vendorCapabillities;
-  }
+parcelable FloatColor {
+  float r;
+  float g;
+  float b;
+  float a;
 }
