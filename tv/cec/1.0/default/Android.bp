@@ -12,17 +12,12 @@ cc_library_shared {
     defaults: ["hidl_defaults"],
     vendor: true,
     relative_install_path: "hw",
-    srcs: [
-        "HdmiCec.cpp",
-        "HdmiCecDefault.cpp",
-        "HdmiCecPort.cpp",
-    ],
+    srcs: ["HdmiCec.cpp"],
 
     shared_libs: [
         "libhidlbase",
         "liblog",
         "libbase",
-        "libcutils",
         "libutils",
         "libhardware",
         "android.hardware.tv.cec@1.0",
