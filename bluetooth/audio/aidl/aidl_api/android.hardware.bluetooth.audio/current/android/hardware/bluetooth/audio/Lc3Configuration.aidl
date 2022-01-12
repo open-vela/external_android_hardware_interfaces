@@ -39,5 +39,4 @@ parcelable Lc3Configuration {
   int frameDurationUs;
   int octetsPerFrame;
   byte blocksPerSdu;
-  android.hardware.bluetooth.audio.ChannelMode channelMode;
 }

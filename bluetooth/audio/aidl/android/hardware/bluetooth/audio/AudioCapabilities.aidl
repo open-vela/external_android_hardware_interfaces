@@ -26,6 +26,6 @@ import android.hardware.bluetooth.audio.PcmCapabilities;
 @VintfStability
 union AudioCapabilities {
     PcmCapabilities pcmCapabilities;
-    CodecCapabilities a2dpCapabilities;
+    CodecCapabilities codecCapabilities;
     LeAudioCodecCapabilitiesSetting leAudioCapabilities;
 }
