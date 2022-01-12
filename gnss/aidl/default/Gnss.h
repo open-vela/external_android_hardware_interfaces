@@ -79,7 +79,6 @@ class Gnss : public BnGnss {
     std::vector<IGnssCallback::GnssSvInfo> filterBlocklistedSatellites(
             std::vector<IGnssCallback::GnssSvInfo> gnssSvInfoList);
     void reportGnssStatusValue(const IGnssCallback::GnssStatusValue gnssStatusValue) const;
-    std::unique_ptr<GnssLocation> getLocationFromHW();
 
     static std::shared_ptr<IGnssCallback> sGnssCallback;
 
