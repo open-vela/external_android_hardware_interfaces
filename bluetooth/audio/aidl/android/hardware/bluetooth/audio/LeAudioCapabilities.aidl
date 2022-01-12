@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 The Android Open Source Project
+ * Copyright 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,22 +22,26 @@ import android.hardware.bluetooth.audio.Lc3Capabilities;
 import android.hardware.bluetooth.audio.LeAudioMode;
 
 /**
- * Used to specify the le audio broadcast codec capabilities for hardware offload.
+ * Used to specify the capabilities of the LC3 codecs supported by Hardware Encoding.
  */
 @VintfStability
-parcelable BroadcastCapability {
+parcelable LeAudioCapabilities {
     @VintfStability
     parcelable VendorCapabilities {
         ParcelableHolder extension;
     }
     @VintfStability
     union LeAudioCodecCapabilities {
-        @nullable Lc3Capabilities[] lc3Capabilities;
-        @nullable VendorCapabilities[] vendorCapabillities;
+        Lc3Capabilities lc3Capabilities;
+        VendorCapabilities vendorCapabillities;
     }
+    LeAudioMode mode;
     CodecType codecType;
+    /*
+     * This is bitfield, if bit N is set, HW Offloader supports N+1 channels at the same time.
+     * Example: 0x27 = 0b00100111: One, two, three or six channels supported.
+     */
     AudioLocation supportedChannel;
-    // Supported channel count for each stream
-    int channelCountPerStream;
+    int supportedChannelCount;
     LeAudioCodecCapabilities leAudioCodecCapabilities;
 }

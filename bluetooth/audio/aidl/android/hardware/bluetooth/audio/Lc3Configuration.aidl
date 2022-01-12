@@ -16,8 +16,6 @@
 
 package android.hardware.bluetooth.audio;
 
-import android.hardware.bluetooth.audio.ChannelMode;
-
 /**
  * Used for Hardware Encoding/Decoding LC3 codec configuration.
  */
@@ -43,8 +41,4 @@ parcelable Lc3Configuration {
      * Number of blocks of codec frames per single SDU (Service Data Unit)
      */
     byte blocksPerSdu;
-    /*
-     * Channel mode used in A2DP special audio, ignored in standard LE Audio mode
-     */
-    ChannelMode channelMode;
 }

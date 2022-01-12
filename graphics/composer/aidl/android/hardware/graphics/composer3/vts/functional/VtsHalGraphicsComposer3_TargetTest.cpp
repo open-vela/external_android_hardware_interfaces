@@ -1720,11 +1720,13 @@ TEST_P(GraphicsComposerAidlCommandTest, SET_LAYER_COLOR) {
     int64_t layer;
     EXPECT_TRUE(mComposerClient->createLayer(mPrimaryDisplay, kBufferSlotCount, &layer).isOk());
 
-    mWriter.setLayerColor(mPrimaryDisplay, layer, Color{1.0f, 1.0f, 1.0f, 1.0f});
+    mWriter.setLayerColor(mPrimaryDisplay, layer,
+                          Color{static_cast<int8_t>(0xff), static_cast<int8_t>(0xff),
+                                static_cast<int8_t>(0xff), static_cast<int8_t>(0xff)});
     execute();
     ASSERT_TRUE(mReader.takeErrors().empty());
 
-    mWriter.setLayerColor(mPrimaryDisplay, layer, Color{0.0f, 0.0f, 0.0f, 0.0f});
+    mWriter.setLayerColor(mPrimaryDisplay, layer, Color{0, 0, 0, 0});
     execute();
     ASSERT_TRUE(mReader.takeErrors().empty());
 }
