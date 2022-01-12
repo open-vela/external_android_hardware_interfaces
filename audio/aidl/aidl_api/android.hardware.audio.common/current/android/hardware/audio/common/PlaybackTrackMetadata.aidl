@@ -37,7 +37,5 @@ parcelable PlaybackTrackMetadata {
   android.media.audio.common.AudioUsage usage = android.media.audio.common.AudioUsage.INVALID;
   android.media.audio.common.AudioContentType contentType = android.media.audio.common.AudioContentType.UNKNOWN;
   float gain;
-  android.media.audio.common.AudioChannelLayout channelMask;
-  @nullable android.media.audio.common.AudioDevice sourceDevice;
   @utf8InCpp String[] tags;
 }
