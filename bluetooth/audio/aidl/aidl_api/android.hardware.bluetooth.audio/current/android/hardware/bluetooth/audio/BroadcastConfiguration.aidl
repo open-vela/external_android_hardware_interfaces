@@ -39,6 +39,6 @@ parcelable BroadcastConfiguration {
   parcelable BroadcastStreamMap {
     char streamHandle;
     int audioChannelAllocation;
-    android.hardware.bluetooth.audio.LeAudioCodecConfiguration leAudioCodecConfig;
+    android.hardware.bluetooth.audio.LeAudioCodecConfiguration leAudioCondecConfig;
   }
 }
