@@ -19,22 +19,15 @@ aidl_interface {
         "android/hardware/common/fmq/*.aidl",
     ],
     imports: [
-        "android.hardware.common-V2",
+        "android.hardware.common",
     ],
     stability: "vintf",
     backend: {
         java: {
-            sdk_version: "module_current",
+            enabled: false,
         },
         cpp: {
             enabled: false,
-        },
-        ndk: {
-            apex_available: [
-                "//apex_available:platform",
-                "com.android.bluetooth",
-            ],
-            min_sdk_version: "29",
         },
     },
     versions: ["1"],
