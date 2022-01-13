@@ -29,7 +29,8 @@
 #include <aidl/android/hardware/graphics/common/BlendMode.h>
 #include <aidl/android/hardware/graphics/composer3/Color.h>
 #include <aidl/android/hardware/graphics/composer3/Composition.h>
-#include <aidl/android/hardware/graphics/composer3/FloatColor.h>
+#include <aidl/android/hardware/graphics/composer3/DisplayBrightness.h>
+#include <aidl/android/hardware/graphics/composer3/Luminance.h>
 #include <aidl/android/hardware/graphics/composer3/PerFrameMetadata.h>
 #include <aidl/android/hardware/graphics/composer3/PerFrameMetadataBlob.h>
 
@@ -77,6 +78,10 @@ class ComposerClientWriter {
         matVec.reserve(16);
         matVec.assign(matrix, matrix + 16);
         getDisplayCommand(display).colorTransformMatrix.emplace(std::move(matVec));
+    }
+
+    void setDisplayBrightness(int64_t display, float brightness) {
+        getDisplayCommand(display).brightness.emplace(DisplayBrightness{.brightness = brightness});
     }
 
     void setClientTarget(int64_t display, uint32_t slot, const native_handle_t* target,
@@ -204,13 +209,12 @@ class ComposerClientWriter {
                 .perFrameMetadataBlob.emplace(metadata.begin(), metadata.end());
     }
 
-    void setLayerFloatColor(int64_t display, int64_t layer, FloatColor color) {
-        getLayerCommand(display, layer).floatColor.emplace(color);
+    void setLayerWhitePointNits(int64_t display, int64_t layer, float whitePointNits) {
+        getLayerCommand(display, layer).whitePointNits.emplace(Luminance{.nits = whitePointNits});
     }
 
-    void setLayerWhitePointNits(int64_t display, int64_t layer, float whitePointNits) {
-        getLayerCommand(display, layer)
-                .whitePointNits.emplace(WhitePointNits{.nits = whitePointNits});
+    void setLayerBlockingRegion(int64_t display, int64_t layer, const std::vector<Rect>& blocking) {
+        getLayerCommand(display, layer).blockingRegion.emplace(blocking.begin(), blocking.end());
     }
 
     const std::vector<DisplayCommand>& getPendingCommands() {

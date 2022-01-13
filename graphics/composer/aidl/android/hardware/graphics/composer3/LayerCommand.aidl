@@ -22,7 +22,7 @@ import android.hardware.graphics.common.Point;
 import android.hardware.graphics.common.Rect;
 import android.hardware.graphics.composer3.Buffer;
 import android.hardware.graphics.composer3.Color;
-import android.hardware.graphics.composer3.FloatColor;
+import android.hardware.graphics.composer3.Luminance;
 import android.hardware.graphics.composer3.ParcelableBlendMode;
 import android.hardware.graphics.composer3.ParcelableComposition;
 import android.hardware.graphics.composer3.ParcelableDataspace;
@@ -30,7 +30,6 @@ import android.hardware.graphics.composer3.ParcelableTransform;
 import android.hardware.graphics.composer3.PerFrameMetadata;
 import android.hardware.graphics.composer3.PerFrameMetadataBlob;
 import android.hardware.graphics.composer3.PlaneAlpha;
-import android.hardware.graphics.composer3.WhitePointNits;
 import android.hardware.graphics.composer3.ZOrder;
 
 @VintfStability
@@ -112,13 +111,6 @@ parcelable LayerCommand {
      * other effect.
      */
     @nullable Color color;
-
-    /**
-     * Sets the color of the given layer. If the composition type of the layer
-     * is not Composition.SOLID_COLOR, this call must succeed and have no
-     * other effect.
-     */
-    @nullable FloatColor floatColor;
 
     /**
      * Sets the desired composition type of the given layer. During
@@ -243,7 +235,7 @@ parcelable LayerCommand {
      * brightness in nits, and accordingly SDR content shall be dimmed to the desired white point
      * provided.
      */
-    @nullable WhitePointNits whitePointNits;
+    @nullable Luminance whitePointNits;
 
     /**
      * Sets the PerFrameMetadata for the display. This metadata must be used
@@ -264,4 +256,15 @@ parcelable LayerCommand {
      * This command may be called every frame.
      */
     @nullable PerFrameMetadataBlob[] perFrameMetadataBlob;
+
+    /**
+     * Specifies a region of the layer that is transparent and may be skipped
+     * by the DPU, e.g. using a blocking region, in order to save power. This
+     * is only a hint, so the composition of the layer must look the same
+     * whether or not this region is skipped.
+     *
+     * The region is in screen space and must not exceed the dimensions of
+     * the screen.
+     */
+    @nullable Rect[] blockingRegion;
 }
