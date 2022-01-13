@@ -65,9 +65,8 @@ class ResilientDevice final : public nn::IDevice,
     nn::GeneralResult<nn::SharedPreparedModel> prepareModel(
             const nn::Model& model, nn::ExecutionPreference preference, nn::Priority priority,
             nn::OptionalTimePoint deadline, const std::vector<nn::SharedHandle>& modelCache,
-            const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token,
-            const std::vector<nn::TokenValuePair>& hints,
-            const std::vector<nn::ExtensionNameAndPrefix>& extensionNameToPrefix) const override;
+            const std::vector<nn::SharedHandle>& dataCache,
+            const nn::CacheToken& token) const override;
 
     nn::GeneralResult<nn::SharedPreparedModel> prepareModelFromCache(
             nn::OptionalTimePoint deadline, const std::vector<nn::SharedHandle>& modelCache,
@@ -84,9 +83,7 @@ class ResilientDevice final : public nn::IDevice,
     nn::GeneralResult<nn::SharedPreparedModel> prepareModelInternal(
             const nn::Model& model, nn::ExecutionPreference preference, nn::Priority priority,
             nn::OptionalTimePoint deadline, const std::vector<nn::SharedHandle>& modelCache,
-            const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token,
-            const std::vector<nn::TokenValuePair>& hints,
-            const std::vector<nn::ExtensionNameAndPrefix>& extensionNameToPrefix) const;
+            const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token) const;
     nn::GeneralResult<nn::SharedPreparedModel> prepareModelFromCacheInternal(
             nn::OptionalTimePoint deadline, const std::vector<nn::SharedHandle>& modelCache,
             const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token) const;

@@ -155,7 +155,8 @@ interface IKeyMintOperation {
      * it must process all but the tag length and buffer the possible tag data for processing during
      * finish().
      *
-     * @param input Data to be processed.  update() must consume all input data.
+     * @param input Data to be processed.  Note that update() may or may not consume all of the data
+     *        provided.  See return value.
      *
      * @param authToken Authentication token. Can be nullable if not provided.
      *
@@ -227,8 +228,7 @@ interface IKeyMintOperation {
      * o PaddingMode::RSA_PSS.  For PSS-padded signature operations, the PSS salt length must match
      *   the size of the PSS digest selected.  The digest specified with Tag::DIGEST in params
      *   on begin() must be used as the PSS digest algorithm, MGF1 must be used as the mask
-     *   generation function and the digest specified with Tag:DIGEST in params on begin() must also
-     *   be used as the MGF1 digest algorithm.
+     *   generation function and SHA1 must be used as the MGF1 digest algorithm.
      *
      * -- ECDSA keys --
      *

@@ -153,7 +153,7 @@ func (g *vintfCompatibilityMatrixRule) GenerateAndroidBuildActions(ctx android.M
 		if k, ok := m.(*configs.KernelConfigRule); ok {
 			inputPaths = append(inputPaths, k.OutputPath())
 		} else {
-			ctx.PropertyErrorf("kernel_configs",
+			ctx.PropertyErrorf("kernel_config",
 				"module %q is not a kernel_config", ctx.OtherModuleName(m))
 		}
 	})

@@ -31,7 +31,6 @@ class BluetoothAudioSession_2_1 {
   std::shared_ptr<BluetoothAudioSession> audio_session;
 
   ::android::hardware::bluetooth::audio::V2_1::SessionType session_type_2_1_;
-  ::android::hardware::bluetooth::audio::V2_1::SessionType raw_session_type_;
 
   // audio data configuration for both software and offloading
   ::android::hardware::bluetooth::audio::V2_1::AudioConfiguration
