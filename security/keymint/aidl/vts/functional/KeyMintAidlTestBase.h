@@ -80,8 +80,6 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
     uint32_t boot_patch_level(const vector<KeyCharacteristics>& key_characteristics);
     uint32_t boot_patch_level();
 
-    bool Curve25519Supported();
-
     ErrorCode GetReturnErrorCode(const Status& result);
 
     ErrorCode GenerateKey(const AuthorizationSet& key_desc, vector<uint8_t>* key_blob,
