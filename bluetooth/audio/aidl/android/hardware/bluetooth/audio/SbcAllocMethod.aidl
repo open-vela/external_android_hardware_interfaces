@@ -22,9 +22,9 @@ enum SbcAllocMethod {
     /**
      * SNR
      */
-    ALLOC_MD_S,
+    ALLOC_MD_S = 1,
     /**
      * Loudness
      */
-    ALLOC_MD_L,
+    ALLOC_MD_L = 1 << 1,
 }
