@@ -20,8 +20,6 @@
 #include "Callbacks.h"
 #include "Conversions.h"
 #include "Execution.h"
-#include "HandleError.h"
-#include "ProtectCallback.h"
 #include "Utils.h"
 
 #include <android/hardware/neuralnetworks/1.0/IPreparedModel.h>
@@ -30,6 +28,8 @@
 #include <nnapi/Result.h>
 #include <nnapi/Types.h>
 #include <nnapi/hal/CommonUtils.h>
+#include <nnapi/hal/HandleError.h>
+#include <nnapi/hal/ProtectCallback.h>
 
 #include <memory>
 #include <tuple>
@@ -59,17 +59,16 @@ PreparedModel::PreparedModel(PrivateConstructorTag /*tag*/, sp<V1_0::IPreparedMo
 nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> PreparedModel::execute(
         const nn::Request& request, nn::MeasureTiming /*measure*/,
         const nn::OptionalTimePoint& /*deadline*/,
-        const nn::OptionalDuration& /*loopTimeoutDuration*/,
-        const std::vector<nn::TokenValuePair>& /*hints*/,
-        const std::vector<nn::ExtensionNameAndPrefix>& /*extensionNameToPrefix*/) const {
+        const nn::OptionalDuration& /*loopTimeoutDuration*/) const {
     // Ensure that request is ready for IPC.
     std::optional<nn::Request> maybeRequestInShared;
     hal::utils::RequestRelocation relocation;
-    const nn::Request& requestInShared = NN_TRY(hal::utils::convertRequestFromPointerToShared(
-            &request, nn::kDefaultRequestMemoryAlignment, nn::kMinMemoryPadding,
-            &maybeRequestInShared, &relocation));
+    const nn::Request& requestInShared =
+            NN_TRY(hal::utils::makeExecutionFailure(hal::utils::convertRequestFromPointerToShared(
+                    &request, nn::kDefaultRequestMemoryAlignment, nn::kMinMemoryPadding,
+                    &maybeRequestInShared, &relocation)));
 
-    const auto hidlRequest = NN_TRY(convert(requestInShared));
+    const auto hidlRequest = NN_TRY(hal::utils::makeExecutionFailure(convert(requestInShared)));
 
     return executeInternal(hidlRequest, relocation);
 }
@@ -86,7 +85,7 @@ PreparedModel::executeInternal(const V1_0::Request& request,
 
     const auto ret = kPreparedModel->execute(request, cb);
     const auto status = HANDLE_TRANSPORT_FAILURE(ret);
-    HANDLE_STATUS_HIDL(status) << "execution failed with " << toString(status);
+    HANDLE_HAL_STATUS(status) << "execution failed with " << toString(status);
 
     auto result = NN_TRY(cb->get());
     if (relocation.output) {
@@ -96,22 +95,19 @@ PreparedModel::executeInternal(const V1_0::Request& request,
 }
 
 nn::GeneralResult<std::pair<nn::SyncFence, nn::ExecuteFencedInfoCallback>>
-PreparedModel::executeFenced(
-        const nn::Request& /*request*/, const std::vector<nn::SyncFence>& /*waitFor*/,
-        nn::MeasureTiming /*measure*/, const nn::OptionalTimePoint& /*deadline*/,
-        const nn::OptionalDuration& /*loopTimeoutDuration*/,
-        const nn::OptionalDuration& /*timeoutDurationAfterFence*/,
-        const std::vector<nn::TokenValuePair>& /*hints*/,
-        const std::vector<nn::ExtensionNameAndPrefix>& /*extensionNameToPrefix*/) const {
+PreparedModel::executeFenced(const nn::Request& /*request*/,
+                             const std::vector<nn::SyncFence>& /*waitFor*/,
+                             nn::MeasureTiming /*measure*/,
+                             const nn::OptionalTimePoint& /*deadline*/,
+                             const nn::OptionalDuration& /*loopTimeoutDuration*/,
+                             const nn::OptionalDuration& /*timeoutDurationAfterFence*/) const {
     return NN_ERROR(nn::ErrorStatus::GENERAL_FAILURE)
            << "IPreparedModel::executeFenced is not supported on 1.0 HAL service";
 }
 
 nn::GeneralResult<nn::SharedExecution> PreparedModel::createReusableExecution(
         const nn::Request& request, nn::MeasureTiming /*measure*/,
-        const nn::OptionalDuration& /*loopTimeoutDuration*/,
-        const std::vector<nn::TokenValuePair>& /*hints*/,
-        const std::vector<nn::ExtensionNameAndPrefix>& /*extensionNameToPrefix*/) const {
+        const nn::OptionalDuration& /*loopTimeoutDuration*/) const {
     // Ensure that request is ready for IPC.
     std::optional<nn::Request> maybeRequestInShared;
     hal::utils::RequestRelocation relocation;
