@@ -37,8 +37,3 @@ ndk::ScopedAStatus RadioDataIndication::unthrottleApn(RadioIndicationType /*type
                                                       const DataProfileInfo& /*dataProfileInfo*/) {
     return ndk::ScopedAStatus::ok();
 }
-
-ndk::ScopedAStatus RadioDataIndication::slicingConfigChanged(
-        RadioIndicationType /*type*/, const SlicingConfig& /*slicingConfig*/) {
-    return ndk::ScopedAStatus::ok();
-}
