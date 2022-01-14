@@ -22,7 +22,6 @@ void convert(const HealthInfo& info, struct ::android::BatteryProperties* p) {
     p->chargerAcOnline = info.chargerAcOnline;
     p->chargerUsbOnline = info.chargerUsbOnline;
     p->chargerWirelessOnline = info.chargerWirelessOnline;
-    p->chargerDockOnline = info.chargerDockOnline;
     p->maxChargingCurrent = info.maxChargingCurrentMicroamps;
     p->maxChargingVoltage = info.maxChargingVoltageMicrovolts;
     p->batteryStatus = static_cast<int>(info.batteryStatus);
