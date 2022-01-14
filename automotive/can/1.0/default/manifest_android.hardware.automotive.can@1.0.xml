@@ -1,5 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Copyright 2021 The Android Open Source Project
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright (C) 2020 The Android Open Source Project
 
      Licensed under the Apache License, Version 2.0 (the "License");
      you may not use this file except in compliance with the License.
@@ -13,6 +13,10 @@
      See the License for the specific language governing permissions and
      limitations under the License.
 -->
-<permissions>
-  <feature name="android.hardware.identity_credential" version="202101" />
-</permissions>
+<manifest version="1.0" type="device" >
+    <hal format="hidl">
+        <name>android.hardware.automotive.can</name>
+        <transport>hwbinder</transport>
+        <fqname>@1.0::ICanController/socketcan</fqname>
+    </hal>
+</manifest>
