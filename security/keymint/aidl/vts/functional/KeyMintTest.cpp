@@ -4608,8 +4608,10 @@ TEST_P(EncryptionOperationsTest, AesEcbPkcs7Padding) {
     auto params = AuthorizationSetBuilder().BlockMode(BlockMode::ECB).Padding(PaddingMode::PKCS7);
 
     // Try various message lengths; all should work.
-    for (size_t i = 0; i < 32; ++i) {
-        string message(i, 'a');
+    for (size_t i = 0; i <= 48; i++) {
+        SCOPED_TRACE(testing::Message() << "i = " << i);
+        // Edge case: '\t' (0x09) is also a valid PKCS7 padding character.
+        string message(i, '\t');
         string ciphertext = EncryptMessage(message, params);
         EXPECT_EQ(i + 16 - (i % 16), ciphertext.size());
         string plaintext = DecryptMessage(ciphertext, params);
@@ -4633,7 +4635,7 @@ TEST_P(EncryptionOperationsTest, AesEcbWrongPadding) {
     auto params = AuthorizationSetBuilder().BlockMode(BlockMode::ECB).Padding(PaddingMode::PKCS7);
 
     // Try various message lengths; all should fail
-    for (size_t i = 0; i < 32; ++i) {
+    for (size_t i = 0; i <= 48; i++) {
         string message(i, 'a');
         EXPECT_EQ(ErrorCode::INCOMPATIBLE_PADDING_MODE, Begin(KeyPurpose::ENCRYPT, params));
     }
@@ -4951,49 +4953,6 @@ TEST_P(EncryptionOperationsTest, AesCbcRoundTripSuccess) {
     params.push_back(TAG_NONCE, iv1);
     string plaintext = DecryptMessage(ciphertext1, params);
     EXPECT_EQ(message, plaintext);
-}
-
-/*
- * EncryptionOperationsTest.AesCbcZeroInputSuccessb
- *
- * Verifies that keymaster generates correct output on zero-input with
- * NonePadding mode
- */
-TEST_P(EncryptionOperationsTest, AesCbcZeroInputSuccess) {
-    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
-                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
-                                                 .AesEncryptionKey(128)
-                                                 .BlockMode(BlockMode::CBC)
-                                                 .Padding(PaddingMode::NONE, PaddingMode::PKCS7)));
-
-    // Zero input message
-    string message = "";
-    for (auto padding : {PaddingMode::NONE, PaddingMode::PKCS7}) {
-        auto params = AuthorizationSetBuilder().BlockMode(BlockMode::CBC).Padding(padding);
-        AuthorizationSet out_params;
-        string ciphertext1 = EncryptMessage(message, params, &out_params);
-        vector<uint8_t> iv1 = CopyIv(out_params);
-        if (padding == PaddingMode::NONE)
-            EXPECT_EQ(message.size(), ciphertext1.size()) << "PaddingMode: " << padding;
-        else
-            EXPECT_EQ(message.size(), ciphertext1.size() - 16) << "PaddingMode: " << padding;
-
-        out_params.Clear();
-
-        string ciphertext2 = EncryptMessage(message, params, &out_params);
-        vector<uint8_t> iv2 = CopyIv(out_params);
-        if (padding == PaddingMode::NONE)
-            EXPECT_EQ(message.size(), ciphertext2.size()) << "PaddingMode: " << padding;
-        else
-            EXPECT_EQ(message.size(), ciphertext2.size() - 16) << "PaddingMode: " << padding;
-
-        // IVs should be random
-        EXPECT_NE(iv1, iv2) << "PaddingMode: " << padding;
-
-        params.push_back(TAG_NONCE, iv1);
-        string plaintext = DecryptMessage(ciphertext1, params);
-        EXPECT_EQ(message, plaintext) << "PaddingMode: " << padding;
-    }
 }
 
 /*
@@ -5818,8 +5777,8 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcRoundTripSuccess) {
 
     ASSERT_GT(key_blob_.size(), 0U);
 
-    // Two-block message.
-    string message = "1234567890123456";
+    // Four-block message.
+    string message = "12345678901234561234567890123456";
     vector<uint8_t> iv1;
     string ciphertext1 = EncryptMessage(message, BlockMode::CBC, PaddingMode::NONE, &iv1);
     EXPECT_EQ(message.size(), ciphertext1.size());
@@ -5979,8 +5938,10 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcPkcs7Padding) {
                                                  .Padding(PaddingMode::PKCS7)));
 
     // Try various message lengths; all should work.
-    for (size_t i = 0; i < 32; ++i) {
-        string message(i, 'a');
+    for (size_t i = 0; i <= 32; i++) {
+        SCOPED_TRACE(testing::Message() << "i = " << i);
+        // Edge case: '\t' (0x09) is also a valid PKCS7 padding character, albeit not for 3DES.
+        string message(i, '\t');
         vector<uint8_t> iv;
         string ciphertext = EncryptMessage(message, BlockMode::CBC, PaddingMode::PKCS7, &iv);
         EXPECT_EQ(i + 8 - (i % 8), ciphertext.size());
@@ -6002,7 +5963,7 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcNoPaddingKeyWithPkcs7Padding) {
                                                  .Padding(PaddingMode::NONE)));
 
     // Try various message lengths; all should fail.
-    for (size_t i = 0; i < 32; ++i) {
+    for (size_t i = 0; i <= 32; i++) {
         auto begin_params =
                 AuthorizationSetBuilder().BlockMode(BlockMode::CBC).Padding(PaddingMode::PKCS7);
         EXPECT_EQ(ErrorCode::INCOMPATIBLE_PADDING_MODE, Begin(KeyPurpose::ENCRYPT, begin_params));
@@ -6033,6 +5994,7 @@ TEST_P(EncryptionOperationsTest, TripleDesCbcPkcs7PaddingCorrupted) {
                                 .Authorization(TAG_NONCE, iv);
 
     for (size_t i = 0; i < kMaxPaddingCorruptionRetries; ++i) {
+        SCOPED_TRACE(testing::Message() << "i = " << i);
         ++ciphertext[ciphertext.size() / 2];
         EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, begin_params));
         string plaintext;
@@ -6637,7 +6599,7 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
     size_t i;
 
     for (i = 0; i < max_operations; i++) {
-        result = Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params, op_handles[i]);
+        result = Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params, op_handles[i]);
         if (ErrorCode::OK != result) {
             break;
         }
@@ -6645,12 +6607,12 @@ TEST_P(ClearOperationsTest, TooManyOperations) {
     EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS, result);
     // Try again just in case there's a weird overflow bug
     EXPECT_EQ(ErrorCode::TOO_MANY_OPERATIONS,
-              Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params));
+              Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params));
     for (size_t j = 0; j < i; j++) {
         EXPECT_EQ(ErrorCode::OK, Abort(op_handles[j]))
                 << "Aboort failed for i = " << j << std::endl;
     }
-    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::DECRYPT, key_blob_, params, &out_params));
+    EXPECT_EQ(ErrorCode::OK, Begin(KeyPurpose::ENCRYPT, key_blob_, params, &out_params));
     AbortIfNeeded();
 }
 
