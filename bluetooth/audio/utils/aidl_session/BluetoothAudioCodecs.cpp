@@ -356,6 +356,7 @@ BluetoothAudioCodecs::GetA2dpOffloadCodecCapabilities(
         break;
       case CodecType::UNKNOWN:
       case CodecType::VENDOR:
+        codec_capability = {};
         break;
     }
   }
