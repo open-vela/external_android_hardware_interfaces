@@ -26,7 +26,9 @@ import android.hardware.bluetooth.audio.LdacQualityIndex;
 @VintfStability
 parcelable LdacCapabilities {
     int[] sampleRateHz;
-    LdacChannelMode[] channelMode;
-    LdacQualityIndex[] qualityIndex;
+    /* bitfiled */
+    LdacChannelMode channelMode;
+    /* bitfiled */
+    LdacQualityIndex qualityIndex;
     byte[] bitsPerSample;
 }
