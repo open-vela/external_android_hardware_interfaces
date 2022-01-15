@@ -31,18 +31,19 @@ namespace vehicle {
 
 template <class T1, class T2>
 ::ndk::ScopedAStatus vectorToStableLargeParcelable(std::vector<T1>&& values, T2* output) {
-    output->payloads = std::move(values);
     auto result = ::android::automotive::car_binder_lib::LargeParcelableBase::
-            parcelableToStableLargeParcelable(*output);
+            parcelableVectorToStableLargeParcelable(values);
     if (!result.ok()) {
         return toScopedAStatus(
                 result, ::aidl::android::hardware::automotive::vehicle::StatusCode::INTERNAL_ERROR);
     }
     auto& fd = result.value();
-    if (fd != nullptr) {
+    if (fd == nullptr) {
+        // If we no longer needs values, move it inside the payloads to avoid copying.
+        output->payloads = std::move(values);
+    } else {
         // Move the returned ScopedFileDescriptor pointer to ScopedFileDescriptor value in
         // 'sharedMemoryFd' field.
-        output->payloads.clear();
         output->sharedMemoryFd = std::move(*fd);
     }
     return ::ndk::ScopedAStatus::ok();
@@ -56,13 +57,12 @@ template <class T1, class T2>
     return vectorToStableLargeParcelable(std::move(valuesCopy), output);
 }
 
-template <class T>
-::android::base::expected<
-        ::android::automotive::car_binder_lib::LargeParcelableBase::BorrowedOwnedObject<T>,
-        ::ndk::ScopedAStatus>
-fromStableLargeParcelable(const T& largeParcelable) {
-    auto result = ::android::automotive::car_binder_lib::LargeParcelableBase::
-            stableLargeParcelableToParcelable(largeParcelable);
+template <class T1, class T2>
+::android::base::expected<std::vector<T1>, ::ndk::ScopedAStatus> stableLargeParcelableToVector(
+        const T2& largeParcelable) {
+    ::android::base::Result<std::optional<std::vector<T1>>> result =
+            ::android::automotive::car_binder_lib::LargeParcelableBase::
+                    stableLargeParcelableToParcelableVector<T1>(largeParcelable.sharedMemoryFd);
 
     if (!result.ok()) {
         return ::android::base::unexpected(toScopedAStatus(
@@ -70,7 +70,15 @@ fromStableLargeParcelable(const T& largeParcelable) {
                 "failed to parse large parcelable"));
     }
 
-    return std::move(result.value());
+    if (!result.value().has_value()) {
+        return ::android::base::unexpected(
+                ::ndk::ScopedAStatus::fromServiceSpecificErrorWithMessage(
+                        toInt(::aidl::android::hardware::automotive::vehicle::StatusCode::
+                                      INVALID_ARG),
+                        "empty request"));
+    }
+
+    return std::move(result.value().value());
 }
 
 }  // namespace vehicle
