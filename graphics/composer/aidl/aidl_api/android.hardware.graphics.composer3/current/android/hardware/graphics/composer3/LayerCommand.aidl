@@ -53,4 +53,5 @@ parcelable LayerCommand {
   @nullable android.hardware.graphics.composer3.Luminance whitePointNits;
   @nullable android.hardware.graphics.composer3.PerFrameMetadata[] perFrameMetadata;
   @nullable android.hardware.graphics.composer3.PerFrameMetadataBlob[] perFrameMetadataBlob;
+  @nullable android.hardware.graphics.common.Rect[] blockingRegion;
 }
