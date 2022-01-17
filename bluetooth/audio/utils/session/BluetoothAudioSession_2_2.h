@@ -68,6 +68,7 @@ class BluetoothAudioSession_2_2 {
   std::shared_ptr<BluetoothAudioSession_2_1> audio_session_2_1;
 
   ::android::hardware::bluetooth::audio::V2_1::SessionType session_type_2_1_;
+  ::android::hardware::bluetooth::audio::V2_1::SessionType raw_session_type_;
 
   // audio data configuration for both software and offloading
   ::android::hardware::bluetooth::audio::V2_2::AudioConfiguration
@@ -151,6 +152,7 @@ class BluetoothAudioSession_2_2 {
   const ::android::hardware::bluetooth::audio::V2_2::AudioConfiguration
   GetAudioConfig();
 
+  void UpdateTracksMetadata(const struct source_metadata* source_metadata);
   void UpdateSinkMetadata(const struct sink_metadata* sink_metadata);
 
   static constexpr ::android::hardware::bluetooth::audio::V2_2::
