@@ -92,6 +92,12 @@ class SupplicantStaNetworkCallback : public BnSupplicantStaNetworkCallback {
         TransitionDisableIndication /* ind */) override {
         return ndk::ScopedAStatus::ok();
     }
+    ::ndk::ScopedAStatus onServerCertificateAvailable(
+            int32_t /* depth */, const std::vector<uint8_t>& /* subject */,
+            const std::vector<uint8_t>& /* certHash */,
+            const std::vector<uint8_t>& /* certBlob */) override {
+        return ndk::ScopedAStatus::ok();
+    }
 };
 
 class SupplicantStaNetworkAidlTest
@@ -778,6 +784,15 @@ TEST_P(SupplicantStaNetworkAidlTest, GetWpsNfcConfigurationToken) {
     EXPECT_NE(retrievedToken.size(), 0);
 }
 
+/*
+ * SetRoamingConsortiumSelection
+ */
+TEST_P(SupplicantStaNetworkAidlTest, SetRoamingConsortiumSelection) {
+    const std::vector<uint8_t> testSelection = std::vector<uint8_t>({0x11, 0x21, 0x33, 0x44});
+    EXPECT_TRUE(sta_network_->setRoamingConsortiumSelection(testSelection).isOk());
+}
+
+GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantStaNetworkAidlTest);
 INSTANTIATE_TEST_SUITE_P(Supplicant, SupplicantStaNetworkAidlTest,
                          testing::ValuesIn(android::getAidlHalInstanceNames(
                              ISupplicant::descriptor)),
