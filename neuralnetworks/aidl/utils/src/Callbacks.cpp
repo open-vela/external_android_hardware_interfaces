@@ -38,17 +38,16 @@ namespace {
 // nn::kVersionFeatureLevel5. On failure, this function returns with the appropriate
 // nn::GeneralError.
 nn::GeneralResult<nn::SharedPreparedModel> prepareModelCallback(
-        ErrorStatus status, const std::shared_ptr<IPreparedModel>& preparedModel,
-        nn::Version featureLevel) {
+        ErrorStatus status, const std::shared_ptr<IPreparedModel>& preparedModel) {
     HANDLE_STATUS_AIDL(status) << "model preparation failed with " << toString(status);
-    return NN_TRY(PreparedModel::create(preparedModel, featureLevel));
+    return NN_TRY(PreparedModel::create(preparedModel));
 }
 
 }  // namespace
 
 ndk::ScopedAStatus PreparedModelCallback::notify(
         ErrorStatus status, const std::shared_ptr<IPreparedModel>& preparedModel) {
-    mData.put(prepareModelCallback(status, preparedModel, kFeatureLevel));
+    mData.put(prepareModelCallback(status, preparedModel));
     return ndk::ScopedAStatus::ok();
 }
 
