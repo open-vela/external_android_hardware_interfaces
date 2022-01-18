@@ -17,7 +17,7 @@
 #ifndef ANDROID_SENSORS_HIDL_ENVIRONMENT_V1_0_H
 #define ANDROID_SENSORS_HIDL_ENVIRONMENT_V1_0_H
 
-#include "sensors-vts-utils/SensorsVtsEnvironmentBase.h"
+#include "sensors-vts-utils/SensorsHidlEnvironmentBase.h"
 
 #include <android/hardware/sensors/1.0/ISensors.h>
 #include <android/hardware/sensors/1.0/types.h>
@@ -30,13 +30,13 @@ using ::android::sp;
 
 class SensorsHidlTest;
 class SensorsHidlEnvironmentV1_0
-    : public SensorsVtsEnvironmentBase<::android::hardware::sensors::V1_0::Event> {
+    : public SensorsHidlEnvironmentBase<::android::hardware::sensors::V1_0::Event> {
   public:
-    void TearDown() override;
+    void HidlTearDown() override;
 
     using Event = ::android::hardware::sensors::V1_0::Event;
     SensorsHidlEnvironmentV1_0(const std::string& service_name)
-        : SensorsVtsEnvironmentBase(service_name) {}
+        : SensorsHidlEnvironmentBase(service_name) {}
 
   private:
     friend SensorsHidlTest;
