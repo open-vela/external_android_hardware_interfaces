@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,13 +31,9 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.neuralnetworks;
+package android.hardware.gnss.visibility_control;
 @VintfStability
-interface IPreparedModel {
-  android.hardware.neuralnetworks.ExecutionResult executeSynchronously(in android.hardware.neuralnetworks.Request request, in boolean measureTiming, in long deadlineNs, in long loopTimeoutDurationNs);
-  android.hardware.neuralnetworks.FencedExecutionResult executeFenced(in android.hardware.neuralnetworks.Request request, in ParcelFileDescriptor[] waitFor, in boolean measureTiming, in long deadlineNs, in long loopTimeoutDurationNs, in long durationNs);
-  android.hardware.neuralnetworks.IBurst configureExecutionBurst();
-  android.hardware.neuralnetworks.IExecution createReusableExecution(in android.hardware.neuralnetworks.Request request, in boolean measureTiming, in long loopTimeoutDurationNs);
-  const long DEFAULT_LOOP_TIMEOUT_DURATION_NS = 2000000000;
-  const long MAXIMUM_LOOP_TIMEOUT_DURATION_NS = 15000000000;
+interface IGnssVisibilityControl {
+  void enableNfwLocationAccess(in String[] proxyApps);
+  void setCallback(in android.hardware.gnss.visibility_control.IGnssVisibilityControlCallback callback);
 }
