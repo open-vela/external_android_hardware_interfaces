@@ -28,6 +28,7 @@
 #include <nnapi/hal/1.0/Conversions.h>
 #include <nnapi/hal/1.2/Conversions.h>
 #include <nnapi/hal/CommonUtils.h>
+#include <nnapi/hal/HandleError.h>
 
 #include <algorithm>
 #include <chrono>
@@ -130,8 +131,9 @@ GeneralResult<Capabilities> unvalidatedConvert(const hal::V1_3::Capabilities& ca
     }
 
     auto operandPerformance = NN_TRY(unvalidatedConvert(capabilities.operandPerformance));
-    auto table =
-            NN_TRY(Capabilities::OperandPerformanceTable::create(std::move(operandPerformance)));
+    auto table = NN_TRY(hal::utils::makeGeneralFailure(
+            Capabilities::OperandPerformanceTable::create(std::move(operandPerformance)),
+            nn::ErrorStatus::GENERAL_FAILURE));
 
     return Capabilities{
             .relaxedFloat32toFloat16PerformanceScalar = NN_TRY(
@@ -193,7 +195,7 @@ GeneralResult<Model::Subgraph> unvalidatedConvert(const hal::V1_3::Subgraph& sub
 
     // Verify number of consumers.
     const auto numberOfConsumers =
-            NN_TRY(countNumberOfConsumers(subgraph.operands.size(), operations));
+            NN_TRY(hal::utils::countNumberOfConsumers(subgraph.operands.size(), operations));
     CHECK(subgraph.operands.size() == numberOfConsumers.size());
     for (size_t i = 0; i < subgraph.operands.size(); ++i) {
         if (subgraph.operands[i].numberOfConsumers != numberOfConsumers[i]) {
@@ -237,7 +239,7 @@ GeneralResult<Request::MemoryPool> unvalidatedConvert(
     using Discriminator = hal::V1_3::Request::MemoryPool::hidl_discriminator;
     switch (memoryPool.getDiscriminator()) {
         case Discriminator::hidlMemory:
-            return unvalidatedConvert(memoryPool.hidlMemory());
+            return hal::utils::createSharedMemoryFromHidlMemory(memoryPool.hidlMemory());
         case Discriminator::token:
             return static_cast<Request::MemoryDomainToken>(memoryPool.token());
     }
@@ -379,7 +381,7 @@ nn::GeneralResult<hidl_vec<uint8_t>> unvalidatedConvert(
 }
 
 nn::GeneralResult<hidl_handle> unvalidatedConvert(const nn::SharedHandle& handle) {
-    return V1_0::utils::unvalidatedConvert(handle);
+    return V1_2::utils::unvalidatedConvert(handle);
 }
 
 nn::GeneralResult<hidl_memory> unvalidatedConvert(const nn::SharedMemory& memory) {
@@ -396,7 +398,7 @@ nn::GeneralResult<V1_2::Operand::ExtraParams> unvalidatedConvert(
 }
 
 nn::GeneralResult<V1_2::Model::ExtensionNameAndPrefix> unvalidatedConvert(
-        const nn::ExtensionNameAndPrefix& extensionNameAndPrefix) {
+        const nn::Model::ExtensionNameAndPrefix& extensionNameAndPrefix) {
     return V1_2::utils::unvalidatedConvert(extensionNameAndPrefix);
 }
 
@@ -542,7 +544,7 @@ nn::GeneralResult<Subgraph> unvalidatedConvert(const nn::Model::Subgraph& subgra
 
     // Update number of consumers.
     const auto numberOfConsumers =
-            NN_TRY(countNumberOfConsumers(operands.size(), subgraph.operations));
+            NN_TRY(hal::utils::countNumberOfConsumers(operands.size(), subgraph.operations));
     CHECK(operands.size() == numberOfConsumers.size());
     for (size_t i = 0; i < operands.size(); ++i) {
         operands[i].numberOfConsumers = numberOfConsumers[i];
@@ -724,15 +726,6 @@ nn::GeneralResult<V1_2::MeasureTiming> convert(const nn::MeasureTiming& measureT
 
 nn::GeneralResult<V1_2::Timing> convert(const nn::Timing& timing) {
     return V1_2::utils::convert(timing);
-}
-
-nn::GeneralResult<hidl_vec<hidl_handle>> convertSyncFences(
-        const std::vector<nn::SyncFence>& syncFences) {
-    std::vector<nn::SharedHandle> handles;
-    handles.reserve(syncFences.size());
-    std::transform(syncFences.begin(), syncFences.end(), std::back_inserter(handles),
-                   [](const nn::SyncFence& syncFence) { return syncFence.getSharedHandle(); });
-    return convert(handles);
 }
 
 }  // namespace android::hardware::neuralnetworks::V1_3::utils
