@@ -28,9 +28,9 @@
 #include <Utils.h>
 #include <nnapi/SharedMemory.h>
 #include <nnapi/hal/aidl/Conversions.h>
-#include <nnapi/hal/aidl/HalInterfaces.h>
 #include <nnapi/hal/aidl/Utils.h>
 
+#include "AidlHalInterfaces.h"
 #include "Callbacks.h"
 #include "GeneratedTestHarness.h"
 #include "MemoryUtils.h"
@@ -205,11 +205,6 @@ class InvalidPreparedModel : public BnPreparedModel {
                 static_cast<int32_t>(ErrorStatus::GENERAL_FAILURE));
     }
     ndk::ScopedAStatus configureExecutionBurst(std::shared_ptr<IBurst>*) override {
-        return ndk::ScopedAStatus::fromServiceSpecificError(
-                static_cast<int32_t>(ErrorStatus::GENERAL_FAILURE));
-    }
-    ndk::ScopedAStatus createReusableExecution(const aidl_hal::Request&, bool, int64_t,
-                                               std::shared_ptr<aidl_hal::IExecution>*) override {
         return ndk::ScopedAStatus::fromServiceSpecificError(
                 static_cast<int32_t>(ErrorStatus::GENERAL_FAILURE));
     }

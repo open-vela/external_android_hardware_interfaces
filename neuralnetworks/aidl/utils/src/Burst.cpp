@@ -26,6 +26,7 @@
 #include <nnapi/Result.h>
 #include <nnapi/TypeUtils.h>
 #include <nnapi/Types.h>
+#include <nnapi/hal/HandleError.h>
 
 #include <memory>
 #include <mutex>
@@ -175,14 +176,16 @@ nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> Burst::
     // Ensure that request is ready for IPC.
     std::optional<nn::Request> maybeRequestInShared;
     hal::utils::RequestRelocation relocation;
-    const nn::Request& requestInShared = NN_TRY(hal::utils::convertRequestFromPointerToShared(
-            &request, nn::kDefaultRequestMemoryAlignment, nn::kDefaultRequestMemoryPadding,
-            &maybeRequestInShared, &relocation));
+    const nn::Request& requestInShared =
+            NN_TRY(hal::utils::makeExecutionFailure(hal::utils::convertRequestFromPointerToShared(
+                    &request, nn::kDefaultRequestMemoryAlignment, nn::kDefaultRequestMemoryPadding,
+                    &maybeRequestInShared, &relocation)));
 
-    const auto aidlRequest = NN_TRY(convert(requestInShared));
-    const auto aidlMeasure = NN_TRY(convert(measure));
-    const auto aidlDeadline = NN_TRY(convert(deadline));
-    const auto aidlLoopTimeoutDuration = NN_TRY(convert(loopTimeoutDuration));
+    const auto aidlRequest = NN_TRY(hal::utils::makeExecutionFailure(convert(requestInShared)));
+    const auto aidlMeasure = NN_TRY(hal::utils::makeExecutionFailure(convert(measure)));
+    const auto aidlDeadline = NN_TRY(hal::utils::makeExecutionFailure(convert(deadline)));
+    const auto aidlLoopTimeoutDuration =
+            NN_TRY(hal::utils::makeExecutionFailure(convert(loopTimeoutDuration)));
 
     std::vector<int64_t> memoryIdentifierTokens;
     std::vector<OptionalCacheHold> holds;
@@ -230,8 +233,8 @@ nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> Burst::
         return NN_ERROR(nn::ErrorStatus::OUTPUT_INSUFFICIENT_SIZE, std::move(canonicalOutputShapes))
                << "execution failed with " << nn::ErrorStatus::OUTPUT_INSUFFICIENT_SIZE;
     }
-    auto [outputShapes, timing] =
-            NN_TRY(convertExecutionResults(executionResult.outputShapes, executionResult.timing));
+    auto [outputShapes, timing] = NN_TRY(hal::utils::makeExecutionFailure(
+            convertExecutionResults(executionResult.outputShapes, executionResult.timing)));
 
     if (relocation.output) {
         relocation.output->flush();
@@ -305,7 +308,7 @@ BurstExecution::BurstExecution(PrivateConstructorTag /*tag*/, std::shared_ptr<co
 
 nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> BurstExecution::compute(
         const nn::OptionalTimePoint& deadline) const {
-    const auto aidlDeadline = NN_TRY(convert(deadline));
+    const auto aidlDeadline = NN_TRY(hal::utils::makeExecutionFailure(convert(deadline)));
     return kBurst->executeInternal(kRequest, kMemoryIdentifierTokens, kMeasure, aidlDeadline,
                                    kLoopTimeoutDuration, kRelocation);
 }
