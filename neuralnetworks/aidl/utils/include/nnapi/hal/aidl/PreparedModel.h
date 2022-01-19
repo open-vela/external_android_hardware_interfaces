@@ -41,11 +41,10 @@ class PreparedModel final : public nn::IPreparedModel,
 
   public:
     static nn::GeneralResult<std::shared_ptr<const PreparedModel>> create(
-            std::shared_ptr<aidl_hal::IPreparedModel> preparedModel, nn::Version featureLevel);
+            std::shared_ptr<aidl_hal::IPreparedModel> preparedModel);
 
     PreparedModel(PrivateConstructorTag tag,
-                  std::shared_ptr<aidl_hal::IPreparedModel> preparedModel,
-                  nn::Version featureLevel);
+                  std::shared_ptr<aidl_hal::IPreparedModel> preparedModel);
 
     nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> execute(
             const nn::Request& request, nn::MeasureTiming measure,
@@ -79,7 +78,6 @@ class PreparedModel final : public nn::IPreparedModel,
 
   private:
     const std::shared_ptr<aidl_hal::IPreparedModel> kPreparedModel;
-    const nn::Version kFeatureLevel;
 };
 
 }  // namespace aidl::android::hardware::neuralnetworks::utils
