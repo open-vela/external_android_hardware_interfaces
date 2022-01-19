@@ -128,9 +128,8 @@ PreparedModel::PreparedModel(PrivateConstructorTag /*tag*/,
 
 nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> PreparedModel::execute(
         const nn::Request& request, nn::MeasureTiming measure,
-        const nn::OptionalTimePoint& deadline, const nn::OptionalDuration& loopTimeoutDuration,
-        const std::vector<nn::TokenValuePair>& hints,
-        const std::vector<nn::ExtensionNameAndPrefix>& extensionNameToPrefix) const {
+        const nn::OptionalTimePoint& deadline,
+        const nn::OptionalDuration& loopTimeoutDuration) const {
     // Ensure that request is ready for IPC.
     std::optional<nn::Request> maybeRequestInShared;
     hal::utils::RequestRelocation relocation;
@@ -142,46 +141,30 @@ nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>> Prepare
     const auto aidlMeasure = NN_TRY(convert(measure));
     const auto aidlDeadline = NN_TRY(convert(deadline));
     const auto aidlLoopTimeoutDuration = NN_TRY(convert(loopTimeoutDuration));
-    return executeInternal(aidlRequest, aidlMeasure, aidlDeadline, aidlLoopTimeoutDuration, hints,
-                           extensionNameToPrefix, relocation);
+    return executeInternal(aidlRequest, aidlMeasure, aidlDeadline, aidlLoopTimeoutDuration,
+                           relocation);
 }
 
 nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>>
 PreparedModel::executeInternal(const Request& request, bool measure, int64_t deadline,
                                int64_t loopTimeoutDuration,
-                               const std::vector<nn::TokenValuePair>& hints,
-                               const std::vector<nn::ExtensionNameAndPrefix>& extensionNameToPrefix,
                                const hal::utils::RequestRelocation& relocation) const {
     if (relocation.input) {
         relocation.input->flush();
     }
 
     ExecutionResult executionResult;
-    if (kFeatureLevel.level >= nn::Version::Level::FEATURE_LEVEL_8) {
-        auto aidlHints = NN_TRY(convert(hints));
-        auto aidlExtensionPrefix = NN_TRY(convert(extensionNameToPrefix));
-        const auto ret = kPreparedModel->executeSynchronouslyWithConfig(
-                request,
-                {measure, loopTimeoutDuration, std::move(aidlHints),
-                 std::move(aidlExtensionPrefix)},
-                deadline, &executionResult);
-        HANDLE_ASTATUS(ret) << "executeSynchronouslyWithConfig failed";
-    } else {
-        const auto ret = kPreparedModel->executeSynchronously(
-                request, measure, deadline, loopTimeoutDuration, &executionResult);
-        HANDLE_ASTATUS(ret) << "executeSynchronously failed";
-    }
+    const auto ret = kPreparedModel->executeSynchronously(request, measure, deadline,
+                                                          loopTimeoutDuration, &executionResult);
+    HANDLE_ASTATUS(ret) << "executeSynchronously failed";
     return handleExecutionResult(executionResult, relocation);
 }
 
 nn::GeneralResult<std::pair<nn::SyncFence, nn::ExecuteFencedInfoCallback>>
-PreparedModel::executeFenced(
-        const nn::Request& request, const std::vector<nn::SyncFence>& waitFor,
-        nn::MeasureTiming measure, const nn::OptionalTimePoint& deadline,
-        const nn::OptionalDuration& loopTimeoutDuration,
-        const nn::OptionalDuration& timeoutDurationAfterFence,
-        const std::vector<nn::TokenValuePair>& hints,
-        const std::vector<nn::ExtensionNameAndPrefix>& extensionNameToPrefix) const {
+PreparedModel::executeFenced(const nn::Request& request, const std::vector<nn::SyncFence>& waitFor,
+                             nn::MeasureTiming measure, const nn::OptionalTimePoint& deadline,
+                             const nn::OptionalDuration& loopTimeoutDuration,
+                             const nn::OptionalDuration& timeoutDurationAfterFence) const {
     // Ensure that request is ready for IPC.
     std::optional<nn::Request> maybeRequestInShared;
     hal::utils::RequestRelocation relocation;
@@ -196,45 +179,31 @@ PreparedModel::executeFenced(
     const auto aidlLoopTimeoutDuration = NN_TRY(convert(loopTimeoutDuration));
     const auto aidlTimeoutDurationAfterFence = NN_TRY(convert(timeoutDurationAfterFence));
     return executeFencedInternal(aidlRequest, aidlWaitFor, aidlMeasure, aidlDeadline,
-                                 aidlLoopTimeoutDuration, aidlTimeoutDurationAfterFence, hints,
-                                 extensionNameToPrefix, relocation);
+                                 aidlLoopTimeoutDuration, aidlTimeoutDurationAfterFence,
+                                 relocation);
 }
 
 nn::GeneralResult<std::pair<nn::SyncFence, nn::ExecuteFencedInfoCallback>>
-PreparedModel::executeFencedInternal(
-        const Request& request, const std::vector<ndk::ScopedFileDescriptor>& waitFor, bool measure,
-        int64_t deadline, int64_t loopTimeoutDuration, int64_t timeoutDurationAfterFence,
-        const std::vector<nn::TokenValuePair>& hints,
-        const std::vector<nn::ExtensionNameAndPrefix>& extensionNameToPrefix,
-        const hal::utils::RequestRelocation& relocation) const {
+PreparedModel::executeFencedInternal(const Request& request,
+                                     const std::vector<ndk::ScopedFileDescriptor>& waitFor,
+                                     bool measure, int64_t deadline, int64_t loopTimeoutDuration,
+                                     int64_t timeoutDurationAfterFence,
+                                     const hal::utils::RequestRelocation& relocation) const {
     if (relocation.input) {
         relocation.input->flush();
     }
 
     FencedExecutionResult result;
-    if (kFeatureLevel.level >= nn::Version::Level::FEATURE_LEVEL_8) {
-        auto aidlHints = NN_TRY(convert(hints));
-        auto aidlExtensionPrefix = NN_TRY(convert(extensionNameToPrefix));
-        const auto ret = kPreparedModel->executeFencedWithConfig(
-                request, waitFor,
-                {measure, loopTimeoutDuration, std::move(aidlHints),
-                 std::move(aidlExtensionPrefix)},
-                deadline, timeoutDurationAfterFence, &result);
-        HANDLE_ASTATUS(ret) << "executeFencedWithConfig failed";
-    } else {
-        const auto ret = kPreparedModel->executeFenced(request, waitFor, measure, deadline,
-                                                       loopTimeoutDuration,
-                                                       timeoutDurationAfterFence, &result);
-        HANDLE_ASTATUS(ret) << "executeFenced failed";
-    }
+    const auto ret =
+            kPreparedModel->executeFenced(request, waitFor, measure, deadline, loopTimeoutDuration,
+                                          timeoutDurationAfterFence, &result);
+    HANDLE_ASTATUS(ret) << "executeFenced failed";
     return handleFencedExecutionResult(result, relocation);
 }
 
 nn::GeneralResult<nn::SharedExecution> PreparedModel::createReusableExecution(
         const nn::Request& request, nn::MeasureTiming measure,
-        const nn::OptionalDuration& loopTimeoutDuration,
-        const std::vector<nn::TokenValuePair>& hints,
-        const std::vector<nn::ExtensionNameAndPrefix>& extensionNameToPrefix) const {
+        const nn::OptionalDuration& loopTimeoutDuration) const {
     // Ensure that request is ready for IPC.
     std::optional<nn::Request> maybeRequestInShared;
     hal::utils::RequestRelocation relocation;
@@ -248,14 +217,8 @@ nn::GeneralResult<nn::SharedExecution> PreparedModel::createReusableExecution(
 
     if (kFeatureLevel.level >= nn::Version::Level::FEATURE_LEVEL_8) {
         std::shared_ptr<IExecution> execution;
-        auto aidlHints = NN_TRY(convert(hints));
-        auto aidlExtensionPrefix = NN_TRY(convert(extensionNameToPrefix));
-
         const auto ret = kPreparedModel->createReusableExecution(
-                aidlRequest,
-                {aidlMeasure, aidlLoopTimeoutDuration, std::move(aidlHints),
-                 std::move(aidlExtensionPrefix)},
-                &execution);
+                aidlRequest, aidlMeasure, aidlLoopTimeoutDuration, &execution);
         HANDLE_ASTATUS(ret) << "createReusableExecution failed";
         return Execution::create(std::move(execution), std::move(relocation));
     }
@@ -269,7 +232,7 @@ nn::GeneralResult<nn::SharedBurst> PreparedModel::configureExecutionBurst() cons
     std::shared_ptr<IBurst> burst;
     const auto ret = kPreparedModel->configureExecutionBurst(&burst);
     HANDLE_ASTATUS(ret) << "configureExecutionBurst failed";
-    return Burst::create(std::move(burst), kFeatureLevel);
+    return Burst::create(std::move(burst));
 }
 
 std::any PreparedModel::getUnderlyingResource() const {
