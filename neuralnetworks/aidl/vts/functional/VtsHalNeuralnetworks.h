@@ -51,8 +51,8 @@ std::string printNeuralNetworksAidlTest(
 // Create an IPreparedModel object. If the model cannot be prepared,
 // "preparedModel" will be nullptr instead.
 void createPreparedModel(const std::shared_ptr<IDevice>& device, const Model& model,
-                         std::shared_ptr<IPreparedModel>* preparedModel, bool reportSkipping = true,
-                         bool useConfig = false);
+                         std::shared_ptr<IPreparedModel>* preparedModel,
+                         bool reportSkipping = true);
 
 enum class Executor { SYNC, BURST, FENCED };
 
