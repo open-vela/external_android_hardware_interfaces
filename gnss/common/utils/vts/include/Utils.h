@@ -21,8 +21,6 @@
 #include <android/hardware/gnss/2.0/IGnss.h>
 #include <android/hardware/gnss/measurement_corrections/1.0/IMeasurementCorrections.h>
 #include <android/hardware/gnss/measurement_corrections/1.1/IMeasurementCorrections.h>
-#include <android/hardware/gnss/measurement_corrections/BnMeasurementCorrectionsInterface.h>
-
 #include <gtest/gtest.h>
 
 namespace android {
@@ -38,8 +36,6 @@ struct Utils {
     getMockMeasurementCorrections();
     static const measurement_corrections::V1_1::MeasurementCorrections
     getMockMeasurementCorrections_1_1();
-    static const android::hardware::gnss::measurement_corrections::MeasurementCorrections
-    getMockMeasurementCorrections_aidl();
 
     static V1_0::GnssConstellationType mapConstellationType(
             V2_0::GnssConstellationType constellation);
