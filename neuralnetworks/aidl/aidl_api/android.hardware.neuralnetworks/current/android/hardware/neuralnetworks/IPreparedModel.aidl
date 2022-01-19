@@ -37,6 +37,7 @@ interface IPreparedModel {
   android.hardware.neuralnetworks.ExecutionResult executeSynchronously(in android.hardware.neuralnetworks.Request request, in boolean measureTiming, in long deadlineNs, in long loopTimeoutDurationNs);
   android.hardware.neuralnetworks.FencedExecutionResult executeFenced(in android.hardware.neuralnetworks.Request request, in ParcelFileDescriptor[] waitFor, in boolean measureTiming, in long deadlineNs, in long loopTimeoutDurationNs, in long durationNs);
   android.hardware.neuralnetworks.IBurst configureExecutionBurst();
+  android.hardware.neuralnetworks.IExecution createReusableExecution(in android.hardware.neuralnetworks.Request request, in boolean measureTiming, in long loopTimeoutDurationNs);
   const long DEFAULT_LOOP_TIMEOUT_DURATION_NS = 2000000000;
   const long MAXIMUM_LOOP_TIMEOUT_DURATION_NS = 15000000000;
 }
