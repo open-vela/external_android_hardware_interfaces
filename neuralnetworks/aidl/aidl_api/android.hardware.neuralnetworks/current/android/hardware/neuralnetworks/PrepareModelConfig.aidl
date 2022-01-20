@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,14 +31,15 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.bluetooth.audio;
-@Backing(type="int") @VintfStability
-enum CodecType {
-  UNKNOWN = 0,
-  SBC = 1,
-  AAC = 2,
-  APTX = 3,
-  APTX_HD = 4,
-  LDAC = 5,
-  LC3 = 6,
+package android.hardware.neuralnetworks;
+@VintfStability
+parcelable PrepareModelConfig {
+  android.hardware.neuralnetworks.ExecutionPreference preference;
+  android.hardware.neuralnetworks.Priority priority;
+  long deadlineNs;
+  ParcelFileDescriptor[] modelCache;
+  ParcelFileDescriptor[] dataCache;
+  byte[] cacheToken;
+  android.hardware.neuralnetworks.TokenValuePair[] compilationHints;
+  android.hardware.neuralnetworks.ExtensionNameAndPrefix[] extensionNameToPrefix;
 }
