@@ -76,10 +76,7 @@ class GraphicsComposerAidlTest : public ::testing::TestWithParam<std::string> {
         ASSERT_NE(binder, nullptr);
         ASSERT_NO_FATAL_FAILURE(mComposer = IComposer::fromBinder(binder));
         ASSERT_NE(mComposer, nullptr);
-
-        ndk::ScopedAStatus status;
-        ASSERT_NO_FATAL_FAILURE(status = mComposer->createClient(&mComposerClient));
-        ASSERT_TRUE(status.isOk());
+        ASSERT_NO_FATAL_FAILURE(mComposer->createClient(&mComposerClient));
 
         mComposerCallback = ::ndk::SharedRefBase::make<GraphicsComposerCallback>();
         EXPECT_TRUE(mComposerClient->registerCallback(mComposerCallback).isOk());
@@ -719,61 +716,6 @@ TEST_P(GraphicsComposerAidlTest, setActiveConfigWithConstraints_BadConfig) {
     }
 }
 
-TEST_P(GraphicsComposerAidlTest, setBootDisplayConfig_BadDisplay) {
-    int32_t config = 0;
-    auto const error = mComposerClient->setBootDisplayConfig(mInvalidDisplayId, config);
-
-    EXPECT_FALSE(error.isOk());
-    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, error.getServiceSpecificError());
-}
-
-TEST_P(GraphicsComposerAidlTest, setBootDisplayConfig_BadConfig) {
-    for (VtsDisplay& display : mDisplays) {
-        int32_t invalidConfigId = GetInvalidConfigId();
-        const auto error = mComposerClient->setBootDisplayConfig(display.get(), invalidConfigId);
-        EXPECT_FALSE(error.isOk());
-        EXPECT_EQ(IComposerClient::EX_BAD_CONFIG, error.getServiceSpecificError());
-    }
-}
-
-TEST_P(GraphicsComposerAidlTest, setBootDisplayConfig) {
-    std::vector<int32_t> configs;
-    EXPECT_TRUE(mComposerClient->getDisplayConfigs(mPrimaryDisplay, &configs).isOk());
-    for (auto config : configs) {
-        EXPECT_TRUE(mComposerClient->setBootDisplayConfig(mPrimaryDisplay, config).isOk());
-    }
-}
-
-TEST_P(GraphicsComposerAidlTest, clearBootDisplayConfig_BadDisplay) {
-    auto const error = mComposerClient->clearBootDisplayConfig(mInvalidDisplayId);
-
-    EXPECT_FALSE(error.isOk());
-    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, error.getServiceSpecificError());
-}
-
-TEST_P(GraphicsComposerAidlTest, clearBootDisplayConfig) {
-    EXPECT_TRUE(mComposerClient->clearBootDisplayConfig(mPrimaryDisplay).isOk());
-}
-
-TEST_P(GraphicsComposerAidlTest, getPreferredBootDisplayConfig_BadDisplay) {
-    int32_t config;
-    auto const error = mComposerClient->getPreferredBootDisplayConfig(mInvalidDisplayId, &config);
-
-    EXPECT_FALSE(error.isOk());
-    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, error.getServiceSpecificError());
-}
-
-TEST_P(GraphicsComposerAidlTest, getPreferredBootDisplayConfig) {
-    int32_t preferredDisplayConfig = 0;
-    auto const error = mComposerClient->getPreferredBootDisplayConfig(mPrimaryDisplay,
-                                                                      &preferredDisplayConfig);
-    EXPECT_TRUE(error.isOk());
-
-    std::vector<int32_t> configs;
-    EXPECT_TRUE(mComposerClient->getDisplayConfigs(mPrimaryDisplay, &configs).isOk());
-    EXPECT_NE(configs.end(), std::find(configs.begin(), configs.end(), preferredDisplayConfig));
-}
-
 TEST_P(GraphicsComposerAidlTest, setAutoLowLatencyModeBadDisplay) {
     EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY,
               mComposerClient->setAutoLowLatencyMode(mInvalidDisplayId, true)
@@ -960,33 +902,6 @@ TEST_P(GraphicsComposerAidlTest, GetDisplayConfigBadDisplay) {
 TEST_P(GraphicsComposerAidlTest, GetDisplayName) {
     std::string displayName;
     EXPECT_TRUE(mComposerClient->getDisplayName(mPrimaryDisplay, &displayName).isOk());
-}
-
-TEST_P(GraphicsComposerAidlTest, GetDisplayPhysicalOrientationBadDisplay) {
-    Transform displayOrientation;
-    const auto error =
-            mComposerClient->getDisplayPhysicalOrientation(mInvalidDisplayId, &displayOrientation);
-
-    EXPECT_FALSE(error.isOk());
-    ASSERT_EQ(IComposerClient::EX_BAD_DISPLAY, error.getServiceSpecificError());
-}
-
-TEST_P(GraphicsComposerAidlTest, GetDisplayPhysicalOrientation) {
-    const auto allowedDisplayOrientations = std::array<Transform, 4>{
-            Transform::NONE,
-            Transform::ROT_90,
-            Transform::ROT_180,
-            Transform::ROT_270,
-    };
-
-    Transform displayOrientation;
-    const auto error =
-            mComposerClient->getDisplayPhysicalOrientation(mPrimaryDisplay, &displayOrientation);
-
-    EXPECT_TRUE(error.isOk());
-    EXPECT_NE(std::find(allowedDisplayOrientations.begin(), allowedDisplayOrientations.end(),
-                        displayOrientation),
-              allowedDisplayOrientations.end());
 }
 
 TEST_P(GraphicsComposerAidlTest, SetClientTargetSlotCount) {
@@ -1779,26 +1694,6 @@ TEST_P(GraphicsComposerAidlCommandTest, SET_LAYER_SURFACE_DAMAGE) {
     ASSERT_TRUE(mReader.takeErrors().empty());
 
     mWriter.setLayerSurfaceDamage(mPrimaryDisplay, layer, std::vector<Rect>());
-    execute();
-    ASSERT_TRUE(mReader.takeErrors().empty());
-}
-
-TEST_P(GraphicsComposerAidlCommandTest, SET_LAYER_BLOCKING_REGION) {
-    int64_t layer;
-    EXPECT_TRUE(mComposerClient->createLayer(mPrimaryDisplay, kBufferSlotCount, &layer).isOk());
-
-    Rect empty{0, 0, 0, 0};
-    Rect unit{0, 0, 1, 1};
-
-    mWriter.setLayerBlockingRegion(mPrimaryDisplay, layer, std::vector<Rect>(1, empty));
-    execute();
-    ASSERT_TRUE(mReader.takeErrors().empty());
-
-    mWriter.setLayerBlockingRegion(mPrimaryDisplay, layer, std::vector<Rect>(1, unit));
-    execute();
-    ASSERT_TRUE(mReader.takeErrors().empty());
-
-    mWriter.setLayerBlockingRegion(mPrimaryDisplay, layer, std::vector<Rect>());
     execute();
     ASSERT_TRUE(mReader.takeErrors().empty());
 }

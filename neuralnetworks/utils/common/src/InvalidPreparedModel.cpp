@@ -27,12 +27,9 @@
 namespace android::hardware::neuralnetworks::utils {
 
 nn::ExecutionResult<std::pair<std::vector<nn::OutputShape>, nn::Timing>>
-InvalidPreparedModel::execute(
-        const nn::Request& /*request*/, nn::MeasureTiming /*measure*/,
-        const nn::OptionalTimePoint& /*deadline*/,
-        const nn::OptionalDuration& /*loopTimeoutDuration*/,
-        const std::vector<nn::TokenValuePair>& /*hints*/,
-        const std::vector<nn::ExtensionNameAndPrefix>& /*extensionNameToPrefix*/) const {
+InvalidPreparedModel::execute(const nn::Request& /*request*/, nn::MeasureTiming /*measure*/,
+                              const nn::OptionalTimePoint& /*deadline*/,
+                              const nn::OptionalDuration& /*loopTimeoutDuration*/) const {
     return NN_ERROR() << "InvalidPreparedModel";
 }
 
@@ -41,17 +38,13 @@ InvalidPreparedModel::executeFenced(
         const nn::Request& /*request*/, const std::vector<nn::SyncFence>& /*waitFor*/,
         nn::MeasureTiming /*measure*/, const nn::OptionalTimePoint& /*deadline*/,
         const nn::OptionalDuration& /*loopTimeoutDuration*/,
-        const nn::OptionalDuration& /*timeoutDurationAfterFence*/,
-        const std::vector<nn::TokenValuePair>& /*hints*/,
-        const std::vector<nn::ExtensionNameAndPrefix>& /*extensionNameToPrefix*/) const {
+        const nn::OptionalDuration& /*timeoutDurationAfterFence*/) const {
     return NN_ERROR() << "InvalidPreparedModel";
 }
 
 nn::GeneralResult<nn::SharedExecution> InvalidPreparedModel::createReusableExecution(
         const nn::Request& /*request*/, nn::MeasureTiming /*measure*/,
-        const nn::OptionalDuration& /*loopTimeoutDuration*/,
-        const std::vector<nn::TokenValuePair>& /*hints*/,
-        const std::vector<nn::ExtensionNameAndPrefix>& /*extensionNameToPrefix*/) const {
+        const nn::OptionalDuration& /*loopTimeoutDuration*/) const {
     return NN_ERROR() << "InvalidPreparedModel";
 }
 

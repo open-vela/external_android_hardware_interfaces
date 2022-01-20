@@ -51,7 +51,6 @@ interface IComposerClient {
   int getDisplayVsyncPeriod(long display);
   android.hardware.graphics.composer3.DisplayContentSample getDisplayedContentSample(long display, long maxFrames, long timestamp);
   android.hardware.graphics.composer3.DisplayContentSamplingAttributes getDisplayedContentSamplingAttributes(long display);
-  android.hardware.graphics.common.Transform getDisplayPhysicalOrientation(long display);
   android.hardware.graphics.composer3.HdrCapabilities getHdrCapabilities(long display);
   int getMaxVirtualDisplayCount();
   android.hardware.graphics.composer3.PerFrameMetadataKey[] getPerFrameMetadataKeys(long display);
@@ -62,9 +61,6 @@ interface IComposerClient {
   void registerCallback(in android.hardware.graphics.composer3.IComposerCallback callback);
   void setActiveConfig(long display, int config);
   android.hardware.graphics.composer3.VsyncPeriodChangeTimeline setActiveConfigWithConstraints(long display, int config, in android.hardware.graphics.composer3.VsyncPeriodChangeConstraints vsyncPeriodChangeConstraints);
-  void setBootDisplayConfig(long display, int config);
-  void clearBootDisplayConfig(long display);
-  int getPreferredBootDisplayConfig(long display);
   void setAutoLowLatencyMode(long display, boolean on);
   void setClientTargetSlotCount(long display, int clientTargetSlotCount);
   void setColorMode(long display, android.hardware.graphics.composer3.ColorMode mode, android.hardware.graphics.composer3.RenderIntent intent);
