@@ -1,30 +1,14 @@
-/*
- * Copyright 2019 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 ///////////////////////////////////////////////////////////////////////////////
 // THIS FILE IS IMMUTABLE. DO NOT EDIT IN ANY CASE.                          //
 ///////////////////////////////////////////////////////////////////////////////
 
-// This file is a snapshot of an AIDL file. Do not edit it manually. There are
-// two cases:
-// 1). this is a frozen version file - do not edit this in any case.
-// 2). this is a 'current' file. If you make a backwards compatible change to
-//     the interface (from the latest frozen version), the build system will
-//     prompt you to update this file with `m <name>-update-api`.
+// This file is a snapshot of an AIDL interface (or parcelable). Do not try to
+// edit this file. It looks like you are doing that because you have modified
+// an AIDL interface in a backward-incompatible way, e.g., deleting a function
+// from an interface or a field from a parcelable and it broke the build. That
+// breakage is intended.
 //
-// You must not make a backward incompatible change to any AIDL file built
+// You must not make a backward incompatible changes to the AIDL files built
 // with the aidl_interface module type with versions property set. The module
 // type is used to build AIDL files in a way that they can be used across
 // independently updatable components of the system. If a device is shipped
@@ -54,11 +38,10 @@ enum BufferUsage {
   RENDERSCRIPT = 1048576,
   VIDEO_DECODER = 4194304,
   SENSOR_DIRECT_DATA = 8388608,
-  GPU_DATA_BUFFER = 16777216,
   GPU_CUBE_MAP = 33554432,
   GPU_MIPMAP_COMPLETE = 67108864,
   HW_IMAGE_ENCODER = 134217728,
-  FRONT_BUFFER = 4294967296,
+  GPU_DATA_BUFFER = 16777216,
   VENDOR_MASK = -268435456,
   VENDOR_MASK_HI = -281474976710656,
 }
