@@ -31,16 +31,6 @@ namespace hardware {
 namespace automotive {
 namespace vehicle {
 
-template <class T>
-std::optional<T> pop(std::list<T>& items) {
-    if (items.size() > 0) {
-        auto item = std::move(items.front());
-        items.pop_front();
-        return item;
-    }
-    return std::nullopt;
-}
-
 // MockVehicleCallback is a mock VehicleCallback implementation that simply stores the results.
 class MockVehicleCallback final
     : public ::aidl::android::hardware::automotive::vehicle::BnVehicleCallback {
@@ -62,8 +52,6 @@ class MockVehicleCallback final
     nextGetValueResults();
     std::optional<::aidl::android::hardware::automotive::vehicle::SetValueResults>
     nextSetValueResults();
-    std::optional<::aidl::android::hardware::automotive::vehicle::VehiclePropValues>
-    nextOnPropertyEventResults();
 
   private:
     std::mutex mLock;
@@ -71,9 +59,6 @@ class MockVehicleCallback final
             GUARDED_BY(mLock);
     std::list<::aidl::android::hardware::automotive::vehicle::SetValueResults> mSetValueResults
             GUARDED_BY(mLock);
-    std::list<::aidl::android::hardware::automotive::vehicle::VehiclePropValues>
-            mOnPropertyEventResults GUARDED_BY(mLock);
-    int32_t mSharedMemoryFileCount GUARDED_BY(mLock);
 };
 
 }  // namespace vehicle
