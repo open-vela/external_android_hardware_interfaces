@@ -20,7 +20,9 @@
 #include <inttypes.h>
 #include <log/log.h>
 #include "AGnss.h"
+#include "AGnssRil.h"
 #include "DeviceFileReader.h"
+#include "GnssAntennaInfo.h"
 #include "GnssBatching.h"
 #include "GnssConfiguration.h"
 #include "GnssDebug.h"
@@ -29,6 +31,7 @@
 #include "GnssNavigationMessageInterface.h"
 #include "GnssPsds.h"
 #include "GnssVisibilityControl.h"
+#include "MeasurementCorrectionsInterface.h"
 #include "NmeaFixInfo.h"
 #include "Utils.h"
 
@@ -169,7 +172,7 @@ ScopedAStatus Gnss::close() {
     return ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus Gnss::getExtensionAGnss(std::shared_ptr<IAGnss>* iAGnss) {
+ScopedAStatus Gnss::getExtensionAGnss(std::shared_ptr<IAGnss>* iAGnss) {
     ALOGD("Gnss::getExtensionAGnss");
     *iAGnss = SharedRefBase::make<AGnss>();
     return ndk::ScopedAStatus::ok();
@@ -179,6 +182,12 @@ ScopedAStatus Gnss::injectTime(int64_t timeMs, int64_t timeReferenceMs, int unce
     ALOGD("injectTime. timeMs:%" PRId64 ", timeReferenceMs:%" PRId64 ", uncertaintyMs:%d", timeMs,
           timeReferenceMs, uncertaintyMs);
     return ScopedAStatus::ok();
+}
+
+ScopedAStatus Gnss::getExtensionAGnssRil(std::shared_ptr<IAGnssRil>* iAGnssRil) {
+    ALOGD("Gnss::getExtensionAGnssRil");
+    *iAGnssRil = SharedRefBase::make<AGnssRil>();
+    return ndk::ScopedAStatus::ok();
 }
 
 ScopedAStatus Gnss::injectLocation(const GnssLocation& location) {
@@ -276,6 +285,24 @@ ndk::ScopedAStatus Gnss::getExtensionGnssVisibilityControl(
     ALOGD("Gnss::getExtensionGnssVisibilityControl");
 
     *iGnssVisibilityControl = SharedRefBase::make<visibility_control::GnssVisibilityControl>();
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Gnss::getExtensionGnssAntennaInfo(
+        std::shared_ptr<IGnssAntennaInfo>* iGnssAntennaInfo) {
+    ALOGD("Gnss::getExtensionGnssAntennaInfo");
+
+    *iGnssAntennaInfo = SharedRefBase::make<GnssAntennaInfo>();
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus Gnss::getExtensionMeasurementCorrections(
+        std::shared_ptr<measurement_corrections::IMeasurementCorrectionsInterface>*
+                iMeasurementCorrections) {
+    ALOGD("Gnss::getExtensionMeasurementCorrections");
+
+    *iMeasurementCorrections =
+            SharedRefBase::make<measurement_corrections::MeasurementCorrectionsInterface>();
     return ndk::ScopedAStatus::ok();
 }
 
