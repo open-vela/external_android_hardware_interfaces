@@ -43,5 +43,4 @@ parcelable HwModeParams {
   boolean enableHeMultiUserBeamformer;
   boolean enableHeTargetWakeTime;
   boolean enableEdmg;
-  boolean enable80211BE;
 }
