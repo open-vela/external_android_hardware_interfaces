@@ -15,7 +15,6 @@
  */
 
 #include "include/RenderEngineVts.h"
-#include "renderengine/impl/ExternalTexture.h"
 
 namespace aidl::android::hardware::graphics::composer3::vts {
 
@@ -63,9 +62,9 @@ void TestRenderEngine::drawLayers() {
                    std::back_insert_iterator(compositionLayers),
                    [](::android::renderengine::LayerSettings& settings)
                            -> ::android::renderengine::LayerSettings { return settings; });
-    auto texture = std::make_shared<::android::renderengine::impl::ExternalTexture>(
+    auto texture = std::make_shared<::android::renderengine::ExternalTexture>(
             mGraphicBuffer, *mRenderEngine,
-            ::android::renderengine::impl::ExternalTexture::Usage::WRITEABLE);
+            ::android::renderengine::ExternalTexture::Usage::WRITEABLE);
     auto [status, readyFence] = mRenderEngine
                                         ->drawLayers(mDisplaySettings, compositionLayers, texture,
                                                      true, std::move(bufferFence))

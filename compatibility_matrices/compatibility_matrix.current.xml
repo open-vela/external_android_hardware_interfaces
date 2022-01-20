@@ -60,14 +60,6 @@
             <regex-instance>.*</regex-instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.automotive.evs</name>
-        <interface>
-            <name>IEvsEnumerator</name>
-            <instance>default</instance>
-            <regex-instance>[a-z]+/[0-9]+</regex-instance>
-        </interface>
-    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.automotive.evs</name>
         <version>1.0-1</version>
@@ -82,6 +74,14 @@
         <version>1</version>
         <interface>
             <name>IOccupantAwareness</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="hidl" optional="true">
+        <name>android.hardware.automotive.sv</name>
+        <version>1.0</version>
+        <interface>
+            <name>ISurroundViewService</name>
             <instance>default</instance>
         </interface>
     </hal>
@@ -110,7 +110,6 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.biometrics.face</name>
-        <version>2</version>
         <interface>
             <name>IFace</name>
             <instance>default</instance>
@@ -273,14 +272,6 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.gnss.measurement_corrections</name>
-        <version>1</version>
-        <interface>
-            <name>IMeasurementCorrectionsInterface</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
     <hal format="hidl" optional="false">
         <name>android.hardware.graphics.allocator</name>
         <!-- New, non-Go devices should use 4.0, tested in vts_treble_vintf_vendor_test -->
@@ -337,7 +328,7 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.identity</name>
-        <version>1-4</version>
+        <version>1-3</version>
         <interface>
             <name>IIdentityCredentialStore</name>
             <instance>default</instance>
@@ -464,7 +455,7 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.neuralnetworks</name>
-        <version>1-4</version>
+        <version>1-3</version>
         <interface>
             <name>IDevice</name>
             <regex-instance>.*</regex-instance>
@@ -473,13 +464,6 @@
     <hal format="hidl" optional="true">
         <name>android.hardware.nfc</name>
         <version>1.2</version>
-        <interface>
-            <name>INfc</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.nfc</name>
         <interface>
             <name>INfc</name>
             <instance>default</instance>
@@ -703,7 +687,7 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="hidl" optional="false">
+    <hal format="hidl" optional="true">
         <name>android.hardware.thermal</name>
         <version>2.0</version>
         <interface>
@@ -793,7 +777,7 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.wifi</name>
-        <version>1.3-6</version>
+        <version>1.3-5</version>
         <interface>
             <name>IWifi</name>
             <instance>default</instance>

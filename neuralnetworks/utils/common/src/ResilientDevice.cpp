@@ -179,21 +179,19 @@ nn::GeneralResult<std::vector<bool>> ResilientDevice::getSupportedOperations(
 nn::GeneralResult<nn::SharedPreparedModel> ResilientDevice::prepareModel(
         const nn::Model& model, nn::ExecutionPreference preference, nn::Priority priority,
         nn::OptionalTimePoint deadline, const std::vector<nn::SharedHandle>& modelCache,
-        const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token,
-        const std::vector<nn::TokenValuePair>& hints,
-        const std::vector<nn::ExtensionNameAndPrefix>& extensionNameToPrefix) const {
+        const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token) const {
 #if 0
     auto self = shared_from_this();
     ResilientPreparedModel::Factory makePreparedModel = [device = std::move(self), model,
                                                          preference, priority, deadline, modelCache,
-                                                         dataCache, token, hints, extensionNameToPrefix] {
+                                                         dataCache, token] {
         return device->prepareModelInternal(model, preference, priority, deadline, modelCache,
-                                            dataCache, token, hints, extensionNameToPrefix);
+                                            dataCache, token);
     };
     return ResilientPreparedModel::create(std::move(makePreparedModel));
 #else
-    return prepareModelInternal(model, preference, priority, deadline, modelCache, dataCache, token,
-                                hints, extensionNameToPrefix);
+    return prepareModelInternal(model, preference, priority, deadline, modelCache, dataCache,
+                                token);
 #endif
 }
 
@@ -236,16 +234,14 @@ bool ResilientDevice::isValidInternal() const {
 nn::GeneralResult<nn::SharedPreparedModel> ResilientDevice::prepareModelInternal(
         const nn::Model& model, nn::ExecutionPreference preference, nn::Priority priority,
         nn::OptionalTimePoint deadline, const std::vector<nn::SharedHandle>& modelCache,
-        const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token,
-        const std::vector<nn::TokenValuePair>& hints,
-        const std::vector<nn::ExtensionNameAndPrefix>& extensionNameToPrefix) const {
+        const std::vector<nn::SharedHandle>& dataCache, const nn::CacheToken& token) const {
     if (!isValidInternal()) {
         return std::make_shared<const InvalidPreparedModel>();
     }
-    const auto fn = [&model, preference, priority, &deadline, &modelCache, &dataCache, &token,
-                     &hints, &extensionNameToPrefix](const nn::IDevice& device) {
+    const auto fn = [&model, preference, priority, &deadline, &modelCache, &dataCache,
+                     &token](const nn::IDevice& device) {
         return device.prepareModel(model, preference, priority, deadline, modelCache, dataCache,
-                                   token, hints, extensionNameToPrefix);
+                                   token);
     };
     return protect(*this, fn, /*blocking=*/false);
 }

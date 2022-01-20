@@ -18,27 +18,21 @@
 
 #include <android/hardware/gnss/IAGnss.h>
 #include <android/hardware/gnss/IGnss.h>
-#include <android/hardware/gnss/IGnssAntennaInfo.h>
 #include <android/hardware/gnss/IGnssBatching.h>
 #include <android/hardware/gnss/IGnssDebug.h>
 #include <android/hardware/gnss/IGnssMeasurementCallback.h>
 #include <android/hardware/gnss/IGnssMeasurementInterface.h>
 #include <android/hardware/gnss/IGnssPowerIndication.h>
 #include <android/hardware/gnss/IGnssPsds.h>
-#include <android/hardware/gnss/measurement_corrections/IMeasurementCorrectionsInterface.h>
 #include <android/hardware/gnss/visibility_control/IGnssVisibilityControl.h>
 #include <cutils/properties.h>
 #include "AGnssCallbackAidl.h"
-#include "AGnssRilCallbackAidl.h"
-#include "GnssAntennaInfoCallbackAidl.h"
 #include "GnssBatchingCallback.h"
 #include "GnssGeofenceCallback.h"
 #include "GnssMeasurementCallbackAidl.h"
 #include "GnssNavigationMessageCallback.h"
 #include "GnssPowerIndicationCallback.h"
 #include "GnssVisibilityControlCallback.h"
-#include "MeasurementCorrectionsCallback.h"
-#include "Utils.h"
 #include "gnss_hal_test.h"
 
 using android::sp;
@@ -49,10 +43,7 @@ using android::hardware::gnss::GnssData;
 using android::hardware::gnss::GnssMeasurement;
 using android::hardware::gnss::GnssPowerStats;
 using android::hardware::gnss::IAGnss;
-using android::hardware::gnss::IAGnssRil;
 using android::hardware::gnss::IGnss;
-using android::hardware::gnss::IGnssAntennaInfo;
-using android::hardware::gnss::IGnssAntennaInfoCallback;
 using android::hardware::gnss::IGnssBatching;
 using android::hardware::gnss::IGnssBatchingCallback;
 using android::hardware::gnss::IGnssCallback;
@@ -67,8 +58,6 @@ using android::hardware::gnss::IGnssPowerIndication;
 using android::hardware::gnss::IGnssPsds;
 using android::hardware::gnss::PsdsType;
 using android::hardware::gnss::SatellitePvt;
-using android::hardware::gnss::common::Utils;
-using android::hardware::gnss::measurement_corrections::IMeasurementCorrectionsInterface;
 using android::hardware::gnss::visibility_control::IGnssVisibilityControl;
 
 using GnssConstellationTypeV2_0 = android::hardware::gnss::V2_0::GnssConstellationType;
@@ -813,10 +802,6 @@ TEST_P(GnssHalTest, BlocklistConstellationLocationOn) {
  * TestAllExtensions.
  */
 TEST_P(GnssHalTest, TestAllExtensions) {
-    if (aidl_gnss_hal_->getInterfaceVersion() == 1) {
-        return;
-    }
-
     sp<IGnssBatching> iGnssBatching;
     auto status = aidl_gnss_hal_->getExtensionGnssBatching(&iGnssBatching);
     if (status.isOk() && iGnssBatching != nullptr) {
@@ -873,42 +858,6 @@ TEST_P(GnssHalTest, TestAGnssExtension) {
 }
 
 /*
- * TestAGnssRilExtension:
- * 1. Gets the IAGnssRil extension.
- * 2. Sets AGnssRilCallback.
- * 3. Sets reference location.
- */
-TEST_P(GnssHalTest, TestAGnssRilExtension) {
-    if (aidl_gnss_hal_->getInterfaceVersion() == 1) {
-        return;
-    }
-    sp<IAGnssRil> iAGnssRil;
-    auto status = aidl_gnss_hal_->getExtensionAGnssRil(&iAGnssRil);
-    ASSERT_TRUE(status.isOk());
-    ASSERT_TRUE(iAGnssRil != nullptr);
-
-    auto agnssRilCallback = sp<AGnssRilCallbackAidl>::make();
-    status = iAGnssRil->setCallback(agnssRilCallback);
-    ASSERT_TRUE(status.isOk());
-
-    // Set RefLocation
-    IAGnssRil::AGnssRefLocationCellID agnssReflocationCellId;
-    agnssReflocationCellId.type = IAGnssRil::AGnssRefLocationType::LTE_CELLID;
-    agnssReflocationCellId.mcc = 466;
-    agnssReflocationCellId.mnc = 97;
-    agnssReflocationCellId.lac = 46697;
-    agnssReflocationCellId.cid = 59168142;
-    agnssReflocationCellId.pcid = 420;
-    agnssReflocationCellId.tac = 11460;
-    IAGnssRil::AGnssRefLocation agnssReflocation;
-    agnssReflocation.type = IAGnssRil::AGnssRefLocationType::LTE_CELLID;
-    agnssReflocation.cellID = agnssReflocationCellId;
-
-    status = iAGnssRil->setRefLocation(agnssReflocation);
-    ASSERT_TRUE(status.isOk());
-}
-
-/*
  * GnssDebugValuesSanityTest:
  * Ensures that GnssDebug values make sense.
  */
@@ -956,6 +905,7 @@ TEST_P(GnssHalTest, GnssDebugValuesSanityTest) {
 }
 
 /*
+ * TestAGnssExtension:
  * TestGnssVisibilityControlExtension:
  * 1. Gets the IGnssVisibilityControl extension.
  * 2. Sets GnssVisibilityControlCallback
@@ -973,8 +923,7 @@ TEST_P(GnssHalTest, TestGnssVisibilityControlExtension) {
     status = iGnssVisibilityControl->setCallback(gnssVisibilityControlCallback);
     ASSERT_TRUE(status.isOk());
 
-    std::vector<std::string> proxyApps{std::string("com.example.ims"),
-                                       std::string("com.example.mdt")};
+    std::vector<String16> proxyApps{String16("com.example.ims"), String16("com.example.mdt")};
     status = iGnssVisibilityControl->enableNfwLocationAccess(proxyApps);
     ASSERT_TRUE(status.isOk());
 }
@@ -1015,169 +964,5 @@ TEST_P(GnssHalTest, TestGnssMeasurementSetCallbackWithOptions) {
     }
 
     status = iGnssMeasurement->close();
-    ASSERT_TRUE(status.isOk());
-}
-
-/*
- * TestGnssAgcInGnssMeasurement:
- * 1. Gets the GnssMeasurementExtension and verifies that it returns a non-null extension.
- * 2. Sets a GnssMeasurementCallback, waits for a measurement.
- */
-TEST_P(GnssHalTest, TestGnssAgcInGnssMeasurement) {
-    if (aidl_gnss_hal_->getInterfaceVersion() == 1) {
-        return;
-    }
-    const int kFirstGnssMeasurementTimeoutSeconds = 10;
-    const int kNumMeasurementEvents = 15;
-
-    sp<IGnssMeasurementInterface> iGnssMeasurement;
-    auto status = aidl_gnss_hal_->getExtensionGnssMeasurement(&iGnssMeasurement);
-    ASSERT_TRUE(status.isOk());
-    ASSERT_TRUE(iGnssMeasurement != nullptr);
-
-    auto callback = sp<GnssMeasurementCallbackAidl>::make();
-    status = iGnssMeasurement->setCallback(callback, /* enableFullTracking= */ false,
-                                           /* enableCorrVecOutputs */ false);
-    ASSERT_TRUE(status.isOk());
-
-    for (int i = 0; i < kNumMeasurementEvents; i++) {
-        GnssData lastMeasurement;
-        ASSERT_TRUE(callback->gnss_data_cbq_.retrieve(lastMeasurement,
-                                                      kFirstGnssMeasurementTimeoutSeconds));
-        EXPECT_EQ(callback->gnss_data_cbq_.calledCount(), i + 1);
-        ASSERT_TRUE(lastMeasurement.measurements.size() > 0);
-
-        // Validity check GnssData fields
-        CheckGnssMeasurementClockFields(lastMeasurement);
-
-        ASSERT_TRUE(lastMeasurement.gnssAgcs.has_value());
-        for (const auto& gnssAgc : lastMeasurement.gnssAgcs.value()) {
-            ASSERT_TRUE(gnssAgc.has_value());
-            ASSERT_TRUE(gnssAgc.value().carrierFrequencyHz >= 0);
-        }
-    }
-
-    status = iGnssMeasurement->close();
-    ASSERT_TRUE(status.isOk());
-}
-
-/*
- * TestGnssAntennaInfo:
- * Sets a GnssAntennaInfoCallback, waits for report, and verifies
- * 1. phaseCenterOffsetCoordinateMillimeters is valid
- * 2. phaseCenterOffsetCoordinateUncertaintyMillimeters is valid.
- * PhaseCenterVariationCorrections and SignalGainCorrections are optional.
- */
-TEST_P(GnssHalTest, TestGnssAntennaInfo) {
-    const int kAntennaInfoTimeoutSeconds = 2;
-
-    if (aidl_gnss_hal_->getInterfaceVersion() == 1) {
-        return;
-    }
-
-    sp<IGnssAntennaInfo> iGnssAntennaInfo;
-    auto status = aidl_gnss_hal_->getExtensionGnssAntennaInfo(&iGnssAntennaInfo);
-    ASSERT_TRUE(status.isOk());
-
-    if (!(aidl_gnss_cb_->last_capabilities_ & (int)GnssCallbackAidl::CAPABILITY_ANTENNA_INFO) ||
-        iGnssAntennaInfo == nullptr) {
-        ALOGD("GnssAntennaInfo AIDL is not supported.");
-        return;
-    }
-
-    auto callback = sp<GnssAntennaInfoCallbackAidl>::make();
-    status = iGnssAntennaInfo->setCallback(callback);
-    ASSERT_TRUE(status.isOk());
-
-    std::vector<IGnssAntennaInfoCallback::GnssAntennaInfo> antennaInfos;
-    ASSERT_TRUE(callback->antenna_info_cbq_.retrieve(antennaInfos, kAntennaInfoTimeoutSeconds));
-    EXPECT_EQ(callback->antenna_info_cbq_.calledCount(), 1);
-    ASSERT_TRUE(antennaInfos.size() > 0);
-
-    for (auto antennaInfo : antennaInfos) {
-        // Remaining fields are optional
-        if (!antennaInfo.phaseCenterVariationCorrectionMillimeters.empty()) {
-            int numRows = antennaInfo.phaseCenterVariationCorrectionMillimeters.size();
-            int numColumns = antennaInfo.phaseCenterVariationCorrectionMillimeters[0].row.size();
-            // Must have at least 1 row and 2 columns
-            ASSERT_TRUE(numRows >= 1 && numColumns >= 2);
-
-            // Corrections and uncertainties must have same dimensions
-            ASSERT_TRUE(antennaInfo.phaseCenterVariationCorrectionMillimeters.size() ==
-                        antennaInfo.phaseCenterVariationCorrectionUncertaintyMillimeters.size());
-            ASSERT_TRUE(
-                    antennaInfo.phaseCenterVariationCorrectionMillimeters[0].row.size() ==
-                    antennaInfo.phaseCenterVariationCorrectionUncertaintyMillimeters[0].row.size());
-
-            // Must be rectangular
-            for (auto row : antennaInfo.phaseCenterVariationCorrectionMillimeters) {
-                ASSERT_TRUE(row.row.size() == numColumns);
-            }
-            for (auto row : antennaInfo.phaseCenterVariationCorrectionUncertaintyMillimeters) {
-                ASSERT_TRUE(row.row.size() == numColumns);
-            }
-        }
-        if (!antennaInfo.signalGainCorrectionDbi.empty()) {
-            int numRows = antennaInfo.signalGainCorrectionDbi.size();
-            int numColumns = antennaInfo.signalGainCorrectionUncertaintyDbi[0].row.size();
-            // Must have at least 1 row and 2 columns
-            ASSERT_TRUE(numRows >= 1 && numColumns >= 2);
-
-            // Corrections and uncertainties must have same dimensions
-            ASSERT_TRUE(antennaInfo.signalGainCorrectionDbi.size() ==
-                        antennaInfo.signalGainCorrectionUncertaintyDbi.size());
-            ASSERT_TRUE(antennaInfo.signalGainCorrectionDbi[0].row.size() ==
-                        antennaInfo.signalGainCorrectionUncertaintyDbi[0].row.size());
-
-            // Must be rectangular
-            for (auto row : antennaInfo.signalGainCorrectionDbi) {
-                ASSERT_TRUE(row.row.size() == numColumns);
-            }
-            for (auto row : antennaInfo.signalGainCorrectionUncertaintyDbi) {
-                ASSERT_TRUE(row.row.size() == numColumns);
-            }
-        }
-    }
-
-    iGnssAntennaInfo->close();
-}
-
-/*
- * TestGnssMeasurementCorrections:
- * If measurement corrections capability is supported, verifies that the measurement corrections
- * capabilities are reported and the mandatory LOS_SATS or the EXCESS_PATH_LENGTH
- * capability flag is set.
- */
-TEST_P(GnssHalTest, TestGnssMeasurementCorrections) {
-    if (aidl_gnss_hal_->getInterfaceVersion() == 1) {
-        return;
-    }
-    if (!(aidl_gnss_cb_->last_capabilities_ &
-          (int)GnssCallbackAidl::CAPABILITY_MEASUREMENT_CORRECTIONS)) {
-        return;
-    }
-
-    sp<IMeasurementCorrectionsInterface> iMeasurementCorrectionsAidl;
-    auto status = aidl_gnss_hal_->getExtensionMeasurementCorrections(&iMeasurementCorrectionsAidl);
-    ASSERT_TRUE(status.isOk());
-    ASSERT_TRUE(iMeasurementCorrectionsAidl != nullptr);
-
-    // Setup measurement corrections callback.
-    auto gnssMeasurementCorrectionsCallback = sp<MeasurementCorrectionsCallback>::make();
-    status = iMeasurementCorrectionsAidl->setCallback(gnssMeasurementCorrectionsCallback);
-    ASSERT_TRUE(status.isOk());
-
-    const int kTimeoutSec = 5;
-    EXPECT_TRUE(gnssMeasurementCorrectionsCallback->capabilities_cbq_.retrieve(
-            gnssMeasurementCorrectionsCallback->last_capabilities_, kTimeoutSec));
-    ASSERT_TRUE(gnssMeasurementCorrectionsCallback->capabilities_cbq_.calledCount() > 0);
-
-    ASSERT_TRUE((gnssMeasurementCorrectionsCallback->last_capabilities_ &
-                 (MeasurementCorrectionsCallback::CAPABILITY_LOS_SATS |
-                  MeasurementCorrectionsCallback::CAPABILITY_EXCESS_PATH_LENGTH)) != 0);
-
-    // Set a mock MeasurementCorrections.
-    status = iMeasurementCorrectionsAidl->setCorrections(
-            Utils::getMockMeasurementCorrections_aidl());
     ASSERT_TRUE(status.isOk());
 }

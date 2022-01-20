@@ -44,7 +44,6 @@ interface IGnss {
   @nullable android.hardware.gnss.IGnssGeofence getExtensionGnssGeofence();
   @nullable android.hardware.gnss.IGnssNavigationMessageInterface getExtensionGnssNavigationMessage();
   android.hardware.gnss.IAGnss getExtensionAGnss();
-  android.hardware.gnss.IAGnssRil getExtensionAGnssRil();
   android.hardware.gnss.IGnssDebug getExtensionGnssDebug();
   android.hardware.gnss.visibility_control.IGnssVisibilityControl getExtensionGnssVisibilityControl();
   void start();
@@ -54,8 +53,6 @@ interface IGnss {
   void injectBestLocation(in android.hardware.gnss.GnssLocation location);
   void deleteAidingData(in android.hardware.gnss.IGnss.GnssAidingData aidingDataFlags);
   void setPositionMode(in android.hardware.gnss.IGnss.GnssPositionMode mode, in android.hardware.gnss.IGnss.GnssPositionRecurrence recurrence, in int minIntervalMs, in int preferredAccuracyMeters, in int preferredTimeMs, in boolean lowPowerMode);
-  android.hardware.gnss.IGnssAntennaInfo getExtensionGnssAntennaInfo();
-  @nullable android.hardware.gnss.measurement_corrections.IMeasurementCorrectionsInterface getExtensionMeasurementCorrections();
   const int ERROR_INVALID_ARGUMENT = 1;
   const int ERROR_ALREADY_INIT = 2;
   const int ERROR_GENERIC = 3;

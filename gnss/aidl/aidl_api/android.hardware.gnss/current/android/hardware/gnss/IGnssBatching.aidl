@@ -36,15 +36,9 @@ package android.hardware.gnss;
 interface IGnssBatching {
   void init(in android.hardware.gnss.IGnssBatchingCallback callback);
   int getBatchSize();
-  void start(in android.hardware.gnss.IGnssBatching.Options options);
+  void start(in long periodNanos, in int flags);
   void flush();
   void stop();
   void cleanup();
   const int WAKEUP_ON_FIFO_FULL = 1;
-  @VintfStability
-  parcelable Options {
-    long periodNanos;
-    float minDistanceMeters;
-    int flags;
-  }
 }
