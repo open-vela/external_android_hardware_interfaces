@@ -21,10 +21,8 @@
 
 #include <VehicleHalTypes.h>
 #include <VehicleUtils.h>
-#include <android-base/stringprintf.h>
+#include <android-base/format.h>
 #include <math/HashCombine.h>
-
-#include <inttypes.h>
 
 namespace android {
 namespace hardware {
@@ -38,14 +36,13 @@ using ::aidl::android::hardware::automotive::vehicle::VehiclePropertyStatus;
 using ::aidl::android::hardware::automotive::vehicle::VehiclePropValue;
 using ::android::base::Error;
 using ::android::base::Result;
-using ::android::base::StringPrintf;
 
 bool VehiclePropertyStore::RecordId::operator==(const VehiclePropertyStore::RecordId& other) const {
     return area == other.area && token == other.token;
 }
 
 std::string VehiclePropertyStore::RecordId::toString() const {
-    return StringPrintf("RecordID{{.areaId=% " PRId32 ", .token=%" PRId64 "}", area, token);
+    return ::fmt::format("RecordID{{.areaId={:d}, .token={:d}}}", area, token);
 }
 
 size_t VehiclePropertyStore::RecordIdHash::operator()(RecordId const& recordId) const {
