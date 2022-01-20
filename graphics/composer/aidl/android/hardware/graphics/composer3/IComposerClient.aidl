@@ -16,7 +16,6 @@
 
 package android.hardware.graphics.composer3;
 
-import android.hardware.graphics.common.Transform;
 import android.hardware.graphics.composer3.ClientTargetProperty;
 import android.hardware.graphics.composer3.ColorMode;
 import android.hardware.graphics.composer3.CommandResultPayload;
@@ -355,23 +354,6 @@ interface IComposerClient {
     DisplayContentSamplingAttributes getDisplayedContentSamplingAttributes(long display);
 
     /**
-     * Queries the physical orientation of a display. Orientation 'Transform::NONE'
-     * represents a display that doesn't require any transformation on layers
-     * to be presented at their natural orientation.
-     *
-     * @param display is the display where the physical orientation is queried.
-     *
-     * @return is one of the below values:
-     *         Transform::NONE
-     *         Transform::ROT_90
-     *         Transform::ROT_180
-     *         Transform::ROT_270
-     *
-     * @exception EX_BAD_DISPLAY when an invalid display was passed in.
-     */
-    Transform getDisplayPhysicalOrientation(long display);
-
-    /**
      * Returns the high dynamic range (HDR) capabilities of the given display,
      * which are invariant with regard to the active configuration.
      *
@@ -565,58 +547,6 @@ interface IComposerClient {
      */
     VsyncPeriodChangeTimeline setActiveConfigWithConstraints(
             long display, int config, in VsyncPeriodChangeConstraints vsyncPeriodChangeConstraints);
-
-    /**
-     * Sets the display config in which the device boots.
-     *
-     * If the device is unable to boot in this config for any reason (example HDMI display changed),
-     * the implementation should try to find a config which matches the resolution and refresh-rate
-     * of this config. If no such config exists, the implementation's preferred display config
-     * should be used.
-     *
-     * @param display is the display for which the boot config is set.
-     * @param config is the new boot config for the display.
-     *
-     * @exception EX_BAD_DISPLAY when an invalid display handle was passed in.
-     * @exception EX_BAD_CONFIG when an invalid config id was passed in.
-     *
-     * @see getDisplayConfigs
-     * @see clearBootDisplayConfig
-     * @see getPreferredBootDisplayConfig
-     */
-    void setBootDisplayConfig(long display, int config);
-
-    /**
-     * Clears the boot display config.
-     *
-     * The device should boot in the implementation's preferred display config.
-     *
-     * @param display is the display for which the cached boot config is cleared.
-     *
-     * @exception EX_BAD_DISPLAY when an invalid display handle was passed in.
-     *
-     * @see getDisplayConfigs
-     * @see setBootDisplayConfig
-     * @see getPreferredBootDisplayConfig
-     */
-    void clearBootDisplayConfig(long display);
-
-    /**
-     * Returns the implementation's preferred display config.
-     *
-     * This is the display config used by the implementation at boot time, if the boot display
-     * config has not been requested yet, or if it has been previously cleared.
-     *
-     * @param display is the display to which the preferred config is queried.
-     * @return the implementation's preferred display config.
-     *
-     * @exception EX_BAD_DISPLAY when an invalid display handle was passed in.
-     *
-     * @see getDisplayConfigs
-     * @see setBootDisplayConfig
-     * @see clearBootDisplayConfig
-     */
-    int getPreferredBootDisplayConfig(long display);
 
     /**
      * Requests the display to enable/disable its low latency mode.

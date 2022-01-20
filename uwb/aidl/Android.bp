@@ -16,7 +16,7 @@ aidl_interface {
     stability: "vintf",
     backend: {
         java: {
-            sdk_version: "module_Tiramisu",
+            sdk_version: "module_current",
             enabled: false,
         },
         ndk: {
@@ -27,7 +27,7 @@ aidl_interface {
                 "//apex_available:platform",
                 "com.android.uwb",
             ],
-            min_sdk_version: "Tiramisu",
+            min_sdk_version: "current",
         },
         rust: {
             enabled: true,
@@ -35,7 +35,7 @@ aidl_interface {
                 "//apex_available:platform",
                 "com.android.uwb",
             ],
-            min_sdk_version: "Tiramisu",
+            min_sdk_version: "current",
         },
     },
 }
@@ -47,7 +47,7 @@ aidl_interface {
     stability: "vintf",
     backend: {
         java: {
-            sdk_version: "module_Tiramisu",
+            sdk_version: "module_current",
             enabled: true,
             apex_available: [
                 "com.android.uwb",
@@ -58,7 +58,7 @@ aidl_interface {
                 "//apex_available:platform",
                 "com.android.uwb",
             ],
-            min_sdk_version: "Tiramisu",
+            min_sdk_version: "current",
         },
     },
 }

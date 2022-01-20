@@ -71,7 +71,7 @@ interface IGnssVisibilityControl {
      * The package name of the proxy Android application follows the standard Java language
      * package naming format. For example, com.example.myapp.
      */
-    void enableNfwLocationAccess(in @utf8InCpp String[] proxyApps);
+    void enableNfwLocationAccess(in String[] proxyApps);
 
     /**
      * Registers the callback for HAL implementation to use.

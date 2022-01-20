@@ -22,7 +22,6 @@
 #include <aidl/android/hardware/graphics/common/BufferUsage.h>
 #include "include/RenderEngineVts.h"
 #include "renderengine/ExternalTexture.h"
-#include "renderengine/impl/ExternalTexture.h"
 
 // TODO(b/129481165): remove the #pragma below and fix conversion issues
 #pragma clang diagnostic pop  // ignored "-Wconversion
@@ -41,6 +40,7 @@ void TestLayer::write(ComposerClientWriter& writer) {
     writer.setLayerTransform(mDisplay, mLayer, mTransform);
     writer.setLayerPlaneAlpha(mDisplay, mLayer, mAlpha);
     writer.setLayerBlendMode(mDisplay, mLayer, mBlendMode);
+    writer.setLayerWhitePointNits(mDisplay, mLayer, mWhitePointNits);
 }
 
 std::string ReadbackHelper::getColorModeString(ColorMode mode) {
@@ -103,6 +103,7 @@ LayerSettings TestLayer::toRenderEngineLayerSettings() {
             1.0f, 1.0f));
 
     layerSettings.geometry.positionTransform = scale * translation;
+    layerSettings.whitePointNits = mWhitePointNits;
 
     return layerSettings;
 }
@@ -186,7 +187,6 @@ void ReadbackHelper::compareColorBuffers(std::vector<Color>& expectedColors, voi
             int offset = (row * stride + col) * bytesPerPixel;
             uint8_t* pixelColor = (uint8_t*)bufferData + offset;
             const Color expectedColor = expectedColors[static_cast<size_t>(pixel)];
-
             ASSERT_EQ(std::round(255.0f * expectedColor.r), pixelColor[0]);
             ASSERT_EQ(std::round(255.0f * expectedColor.g), pixelColor[1]);
             ASSERT_EQ(std::round(255.0f * expectedColor.b), pixelColor[2]);
@@ -195,13 +195,11 @@ void ReadbackHelper::compareColorBuffers(std::vector<Color>& expectedColors, voi
 }
 
 ReadbackBuffer::ReadbackBuffer(int64_t display, const std::shared_ptr<IComposerClient>& client,
-                               const ::android::sp<::android::GraphicBuffer>& graphicBuffer,
                                int32_t width, int32_t height, common::PixelFormat pixelFormat,
                                common::Dataspace dataspace) {
     mDisplay = display;
 
     mComposerClient = client;
-    mGraphicBuffer = graphicBuffer;
 
     mPixelFormat = pixelFormat;
     mDataspace = dataspace;
@@ -235,6 +233,7 @@ void ReadbackBuffer::setReadbackBuffer() {
 }
 
 void ReadbackBuffer::checkReadbackBuffer(std::vector<Color> expectedColors) {
+    ASSERT_NE(nullptr, mGraphicBuffer);
     // lock buffer for reading
     ndk::ScopedFileDescriptor fenceHandle;
     EXPECT_TRUE(mComposerClient->getReadbackBufferFence(mDisplay, &fenceHandle).isOk());
@@ -242,7 +241,8 @@ void ReadbackBuffer::checkReadbackBuffer(std::vector<Color> expectedColors) {
     int outBytesPerPixel;
     int outBytesPerStride;
     void* bufData = nullptr;
-    auto status = mGraphicBuffer->lockAsync(mUsage, mAccessRegion, &bufData, fenceHandle.get(),
+
+    auto status = mGraphicBuffer->lockAsync(mUsage, mAccessRegion, &bufData, dup(fenceHandle.get()),
                                             &outBytesPerPixel, &outBytesPerStride);
     EXPECT_EQ(::android::OK, status);
     ASSERT_TRUE(mPixelFormat == PixelFormat::RGB_888 || mPixelFormat == PixelFormat::RGBA_8888);
@@ -301,13 +301,12 @@ void TestBufferLayer::write(ComposerClientWriter& writer) {
 
 LayerSettings TestBufferLayer::toRenderEngineLayerSettings() {
     LayerSettings layerSettings = TestLayer::toRenderEngineLayerSettings();
-    layerSettings.source.buffer.buffer =
-            std::make_shared<::android::renderengine::impl::ExternalTexture>(
-                    ::android::sp<::android::GraphicBuffer>::make(
-                            mGraphicBuffer->handle, ::android::GraphicBuffer::CLONE_HANDLE, mWidth,
-                            mHeight, static_cast<int32_t>(mPixelFormat), 1, mUsage, mStride),
-                    mRenderEngine.getInternalRenderEngine(),
-                    ::android::renderengine::impl::ExternalTexture::Usage::READABLE);
+    layerSettings.source.buffer.buffer = std::make_shared<::android::renderengine::ExternalTexture>(
+            ::android::sp<::android::GraphicBuffer>::make(
+                    mGraphicBuffer->handle, ::android::GraphicBuffer::CLONE_HANDLE, mWidth, mHeight,
+                    static_cast<int32_t>(mPixelFormat), 1, mUsage, mStride),
+            mRenderEngine.getInternalRenderEngine(),
+            ::android::renderengine::ExternalTexture::Usage::READABLE);
 
     layerSettings.source.buffer.usePremultipliedAlpha = mBlendMode == BlendMode::PREMULTIPLIED;
 
