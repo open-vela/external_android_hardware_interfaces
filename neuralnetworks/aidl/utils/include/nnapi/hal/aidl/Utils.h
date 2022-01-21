@@ -19,33 +19,17 @@
 
 #include "nnapi/hal/aidl/Conversions.h"
 
-#include <aidl/android/hardware/neuralnetworks/IDevice.h>
 #include <android-base/logging.h>
 #include <nnapi/Result.h>
 #include <nnapi/TypeUtils.h>
 #include <nnapi/Types.h>
 #include <nnapi/Validation.h>
+#include <nnapi/hal/HandleError.h>
 
 namespace aidl::android::hardware::neuralnetworks::utils {
 
 constexpr auto kDefaultPriority = Priority::MEDIUM;
-
-constexpr std::optional<nn::Version> aidlVersionToCanonicalVersion(int aidlVersion) {
-    switch (aidlVersion) {
-        case 1:
-            return nn::kVersionFeatureLevel5;
-        case 2:
-            return nn::kVersionFeatureLevel6;
-        case 3:
-            return nn::kVersionFeatureLevel7;
-        case 4:
-            return nn::kVersionFeatureLevel8;
-        default:
-            return std::nullopt;
-    }
-}
-
-constexpr auto kVersion = aidlVersionToCanonicalVersion(IDevice::version).value();
+constexpr auto kVersion = nn::Version::ANDROID_S;
 
 template <typename Type>
 nn::Result<void> validate(const Type& halObject) {
@@ -66,9 +50,10 @@ bool valid(const Type& halObject) {
 }
 
 template <typename Type>
-nn::Result<void> compliantVersion(const Type& canonical) {
-    const auto version = NN_TRY(nn::validate(canonical));
-    if (!nn::isCompliantVersion(version, kVersion)) {
+nn::GeneralResult<void> compliantVersion(const Type& canonical) {
+    const auto version = NN_TRY(::android::hardware::neuralnetworks::utils::makeGeneralFailure(
+            nn::validate(canonical)));
+    if (version > kVersion) {
         return NN_ERROR() << "Insufficient version: " << version << " vs required " << kVersion;
     }
     return {};
@@ -90,13 +75,6 @@ nn::GeneralResult<void> handleTransportError(const ndk::ScopedAStatus& ret);
 #define HANDLE_ASTATUS(ret)                                            \
     for (const auto status = handleTransportError(ret); !status.ok();) \
     return NN_ERROR(status.error().code) << status.error().message << ": "
-
-#define HANDLE_STATUS_AIDL(status)                                                            \
-    if (const ::android::nn::ErrorStatus canonical = ::android::nn::convert(status).value_or( \
-                ::android::nn::ErrorStatus::GENERAL_FAILURE);                                 \
-        canonical == ::android::nn::ErrorStatus::NONE) {                                      \
-    } else                                                                                    \
-        return NN_ERROR(canonical)
 
 }  // namespace aidl::android::hardware::neuralnetworks::utils
 
