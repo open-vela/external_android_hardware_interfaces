@@ -19,11 +19,17 @@
 #include "GnssMeasurementInterface.h"
 #include <aidl/android/hardware/gnss/BnGnss.h>
 #include <log/log.h>
+#include "DeviceFileReader.h"
+#include "GnssRawMeasurementParser.h"
+#include "GnssReplayUtils.h"
 #include "Utils.h"
 
 namespace aidl::android::hardware::gnss {
 
 using Utils = ::android::hardware::gnss::common::Utils;
+using ReplayUtils = ::android::hardware::gnss::common::ReplayUtils;
+using GnssRawMeasurementParser = ::android::hardware::gnss::common::GnssRawMeasurementParser;
+using DeviceFileReader = ::android::hardware::gnss::common::DeviceFileReader;
 
 std::shared_ptr<IGnssMeasurementCallback> GnssMeasurementInterface::sCallback = nullptr;
 
@@ -50,11 +56,29 @@ ndk::ScopedAStatus GnssMeasurementInterface::setCallback(
     return ndk::ScopedAStatus::ok();
 }
 
+ndk::ScopedAStatus GnssMeasurementInterface::setCallbackWithOptions(
+        const std::shared_ptr<IGnssMeasurementCallback>& callback, const Options& options) {
+    ALOGD("setCallbackWithOptions: fullTracking:%d, corrVec:%d, intervalMs:%d",
+          (int)options.enableFullTracking, (int)options.enableCorrVecOutputs, options.intervalMs);
+    std::unique_lock<std::mutex> lock(mMutex);
+    sCallback = callback;
+
+    if (mIsActive) {
+        ALOGW("GnssMeasurement callback already set. Resetting the callback...");
+        stop();
+    }
+    mMinIntervalMillis = options.intervalMs;
+    start(options.enableCorrVecOutputs);
+
+    return ndk::ScopedAStatus::ok();
+}
+
 ndk::ScopedAStatus GnssMeasurementInterface::close() {
     ALOGD("close");
     stop();
     std::unique_lock<std::mutex> lock(mMutex);
     sCallback = nullptr;
+    mMinIntervalMillis = 1000;
     return ndk::ScopedAStatus::ok();
 }
 
@@ -63,9 +87,22 @@ void GnssMeasurementInterface::start(const bool enableCorrVecOutputs) {
     mIsActive = true;
     mThread = std::thread([this, enableCorrVecOutputs]() {
         while (mIsActive == true) {
-            auto measurement = Utils::getMockMeasurement(enableCorrVecOutputs);
-            this->reportMeasurement(measurement);
-
+            std::string rawMeasurementStr = "";
+            if (ReplayUtils::hasGnssDeviceFile() &&
+                ReplayUtils::isGnssRawMeasurement(
+                        rawMeasurementStr =
+                                DeviceFileReader::Instance().getGnssRawMeasurementData())) {
+                ALOGD("rawMeasurementStr(size: %zu) from device file: %s", rawMeasurementStr.size(),
+                      rawMeasurementStr.c_str());
+                auto measurement =
+                        GnssRawMeasurementParser::getMeasurementFromStrs(rawMeasurementStr);
+                if (measurement != nullptr) {
+                    this->reportMeasurement(*measurement);
+                }
+            } else {
+                auto measurement = Utils::getMockMeasurement(enableCorrVecOutputs);
+                this->reportMeasurement(measurement);
+            }
             std::this_thread::sleep_for(std::chrono::milliseconds(mMinIntervalMillis));
         }
     });
