@@ -18,6 +18,13 @@
 
 #include <aidl/android/hardware/bluetooth/audio/BnBluetoothAudioProviderFactory.h>
 
+#include "A2dpOffloadAudioProvider.h"
+#include "A2dpSoftwareAudioProvider.h"
+#include "BluetoothAudioProvider.h"
+#include "HearingAidAudioProvider.h"
+#include "LeAudioOffloadAudioProvider.h"
+#include "LeAudioSoftwareAudioProvider.h"
+
 namespace aidl {
 namespace android {
 namespace hardware {

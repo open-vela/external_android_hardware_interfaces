@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "BTAudioProviderFactoryAIDL"
+#define LOG_TAG "BTAudioProvidersFactory"
 
 #include "BluetoothAudioProviderFactory.h"
 

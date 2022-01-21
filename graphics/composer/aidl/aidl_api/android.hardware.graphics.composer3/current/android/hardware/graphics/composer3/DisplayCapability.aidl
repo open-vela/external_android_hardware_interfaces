@@ -42,5 +42,4 @@ enum DisplayCapability {
   AUTO_LOW_LATENCY_MODE = 5,
   SUSPEND = 6,
   DISPLAY_DECORATION = 7,
-  DISPLAY_IDLE_TIMER = 8,
 }
