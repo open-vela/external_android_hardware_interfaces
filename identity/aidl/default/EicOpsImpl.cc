@@ -20,13 +20,9 @@
 #include <tuple>
 #include <vector>
 
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-#include <string.h>
-
 #include <android-base/logging.h>
 #include <android-base/stringprintf.h>
+#include <string.h>
 
 #include <android/hardware/identity/support/IdentityCredentialSupport.h>
 
@@ -65,11 +61,6 @@ void* eicMemCpy(void* dest, const void* src, size_t n) {
 
 size_t eicStrLen(const char* s) {
     return strlen(s);
-}
-
-void* eicMemMem(const uint8_t* haystack, size_t haystackLen, const uint8_t* needle,
-                size_t needleLen) {
-    return memmem(haystack, haystackLen, needle, needleLen);
 }
 
 int eicCryptoMemCmp(const void* s1, const void* s2, size_t n) {
@@ -123,25 +114,6 @@ bool eicOpsRandom(uint8_t* buf, size_t numBytes) {
         return false;
     }
     memcpy(buf, bytes.value().data(), numBytes);
-    return true;
-}
-
-bool eicNextId(uint32_t* id) {
-    uint32_t oldId = *id;
-    uint32_t newId = 0;
-
-    do {
-        union {
-            uint8_t value8;
-            uint32_t value32;
-        } value;
-        if (!eicOpsRandom(&value.value8, sizeof(value))) {
-            return false;
-        }
-        newId = value.value32;
-    } while (newId == oldId && newId == 0);
-
-    *id = newId;
     return true;
 }
 
