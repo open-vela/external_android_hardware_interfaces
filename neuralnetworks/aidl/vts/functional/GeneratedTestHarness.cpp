@@ -20,6 +20,7 @@
 #include <aidl/android/hardware/neuralnetworks/RequestMemoryPool.h>
 #include <android-base/logging.h>
 #include <android/binder_auto_utils.h>
+#include <android/sync.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -29,6 +30,7 @@
 #include <numeric>
 #include <vector>
 
+#include <MemoryUtils.h>
 #include <android/binder_status.h>
 #include <nnapi/Result.h>
 #include <nnapi/SharedMemory.h>
@@ -40,10 +42,6 @@
 #include "TestHarness.h"
 #include "Utils.h"
 #include "VtsHalNeuralnetworks.h"
-
-#ifdef __ANDROID__
-#include <android/sync.h>
-#endif  // __ANDROID__
 
 namespace aidl::android::hardware::neuralnetworks::vts::functional {
 
@@ -283,14 +281,10 @@ void copyTestBuffers(const std::vector<const TestBuffer*>& buffers, uint8_t* out
 }  // namespace
 
 void waitForSyncFence(int syncFd) {
-    ASSERT_GT(syncFd, 0);
-#ifdef __ANDROID__
     constexpr int kInfiniteTimeout = -1;
+    ASSERT_GT(syncFd, 0);
     int r = sync_wait(syncFd, kInfiniteTimeout);
     ASSERT_GE(r, 0);
-#else   // __ANDROID__
-    LOG(FATAL) << "waitForSyncFence not supported on host";
-#endif  // __ANDROID__
 }
 
 Model createModel(const TestModel& testModel) {
@@ -901,11 +895,7 @@ void EvaluatePreparedModel(const std::shared_ptr<IDevice>& device,
             outputTypesList = {OutputType::FULLY_SPECIFIED};
             measureTimingList = {false};
             executorList = {Executor::SYNC, Executor::BURST, Executor::FENCED};
-#ifdef __ANDROID__
             memoryTypeList = {MemoryType::BLOB_AHWB, MemoryType::DEVICE};
-#else   // __ANDROID__
-            memoryTypeList = {MemoryType::DEVICE};  // BLOB_AHWB is not supported on the host.
-#endif  // __ANDROID__
         } break;
         case TestKind::FENCED_COMPUTE: {
             outputTypesList = {OutputType::FULLY_SPECIFIED};
