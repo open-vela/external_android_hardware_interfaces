@@ -292,7 +292,8 @@ void ExternalCameraProviderImpl_2_7::deviceRemoved(const char* devName) {
     } else {
         deviceName = std::string("device@3.4/external/") + cameraId;
     }
-    if (mCameraStatusMap.erase(deviceName) != 0) {
+    if (mCameraStatusMap.find(deviceName) != mCameraStatusMap.end()) {
+        mCameraStatusMap.erase(deviceName);
         if (mCallbacks != nullptr) {
             mCallbacks->cameraDeviceStatusChange(deviceName, CameraDeviceStatus::NOT_PRESENT);
         }
