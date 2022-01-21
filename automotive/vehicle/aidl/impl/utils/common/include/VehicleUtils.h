@@ -67,28 +67,22 @@ inline constexpr bool isSystemProp(int32_t prop) {
 }
 
 inline const ::aidl::android::hardware::automotive::vehicle::VehicleAreaConfig* getAreaConfig(
-        int32_t propId, int32_t areaId,
+        const ::aidl::android::hardware::automotive::vehicle::VehiclePropValue& propValue,
         const ::aidl::android::hardware::automotive::vehicle::VehiclePropConfig& config) {
     if (config.areaConfigs.size() == 0) {
         return nullptr;
     }
 
-    if (isGlobalProp(propId)) {
+    if (isGlobalProp(propValue.prop)) {
         return &(config.areaConfigs[0]);
     }
 
     for (const auto& c : config.areaConfigs) {
-        if (c.areaId == areaId) {
+        if (c.areaId == propValue.areaId) {
             return &c;
         }
     }
     return nullptr;
-}
-
-inline const ::aidl::android::hardware::automotive::vehicle::VehicleAreaConfig* getAreaConfig(
-        const ::aidl::android::hardware::automotive::vehicle::VehiclePropValue& propValue,
-        const ::aidl::android::hardware::automotive::vehicle::VehiclePropConfig& config) {
-    return getAreaConfig(propValue.prop, propValue.areaId, config);
 }
 
 inline std::unique_ptr<::aidl::android::hardware::automotive::vehicle::VehiclePropValue>
