@@ -23,6 +23,7 @@
 #include <nnapi/Result.h>
 #include <nnapi/Types.h>
 #include <nnapi/hal/CommonUtils.h>
+#include <nnapi/hal/ProtectCallback.h>
 
 #include <functional>
 #include <mutex>
@@ -33,39 +34,19 @@
 
 namespace aidl::android::hardware::neuralnetworks::utils {
 
-class IProtectedCallback {
-  public:
-    /**
-     * Marks this object as a dead object.
-     */
-    virtual void notifyAsDeadObject() = 0;
-
-    // Public virtual destructor to allow objects to be stored (and destroyed) as smart pointers.
-    // E.g., std::unique_ptr<IProtectedCallback>.
-    virtual ~IProtectedCallback() = default;
-
-  protected:
-    // Protect the non-destructor special member functions to prevent object slicing.
-    IProtectedCallback() = default;
-    IProtectedCallback(const IProtectedCallback&) = default;
-    IProtectedCallback(IProtectedCallback&&) noexcept = default;
-    IProtectedCallback& operator=(const IProtectedCallback&) = default;
-    IProtectedCallback& operator=(IProtectedCallback&&) noexcept = default;
-};
-
 // Thread safe class
 class DeathMonitor final {
   public:
     static void serviceDied(void* cookie);
     void serviceDied();
     // Precondition: `killable` must be non-null.
-    void add(IProtectedCallback* killable) const;
+    void add(hal::utils::IProtectedCallback* killable) const;
     // Precondition: `killable` must be non-null.
-    void remove(IProtectedCallback* killable) const;
+    void remove(hal::utils::IProtectedCallback* killable) const;
 
   private:
     mutable std::mutex mMutex;
-    mutable std::vector<IProtectedCallback*> mObjects GUARDED_BY(mMutex);
+    mutable std::vector<hal::utils::IProtectedCallback*> mObjects GUARDED_BY(mMutex);
 };
 
 class DeathHandler final {
@@ -81,7 +62,7 @@ class DeathHandler final {
     using Cleanup = std::function<void()>;
     // Precondition: `killable` must be non-null.
     [[nodiscard]] ::android::base::ScopeGuard<Cleanup> protectCallback(
-            IProtectedCallback* killable) const;
+            hal::utils::IProtectedCallback* killable) const;
 
     std::shared_ptr<DeathMonitor> getDeathMonitor() const { return kDeathMonitor; }
 
