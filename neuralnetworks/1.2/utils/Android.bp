@@ -31,41 +31,36 @@ cc_library_static {
     export_include_dirs: ["include"],
     cflags: ["-Wthread-safety"],
     static_libs: [
-        "android.hardware.neuralnetworks@1.0",
-        "android.hardware.neuralnetworks@1.1",
-        "android.hardware.neuralnetworks@1.2",
-        "libfmq",
         "neuralnetworks_types",
         "neuralnetworks_utils_hal_common",
         "neuralnetworks_utils_hal_1_0",
         "neuralnetworks_utils_hal_1_1",
+    ],
+    shared_libs: [
+        "android.hardware.neuralnetworks@1.0",
+        "android.hardware.neuralnetworks@1.1",
+        "android.hardware.neuralnetworks@1.2",
+        "libfmq",
+    ],
+    export_static_lib_headers: [
+        "neuralnetworks_utils_hal_common",
     ],
     product_variables: {
         debuggable: { // eng and userdebug builds
             cflags: ["-DNN_DEBUGGABLE"],
         },
     },
-    target: {
-        host: {
-            cflags: [
-                "-D__INTRODUCED_IN(x)=",
-                "-D__assert(a,b,c)=",
-                // We want all the APIs to be available on the host.
-                "-D__ANDROID_API__=10000",
-            ],
-        },
-    },
 }
 
 cc_test {
     name: "neuralnetworks_utils_hal_1_2_test",
-    host_supported: true,
     srcs: ["test/*.cpp"],
     static_libs: [
         "android.hardware.neuralnetworks@1.0",
         "android.hardware.neuralnetworks@1.1",
         "android.hardware.neuralnetworks@1.2",
         "libgmock",
+        "libneuralnetworks_common",
         "neuralnetworks_types",
         "neuralnetworks_utils_hal_common",
         "neuralnetworks_utils_hal_1_0",
@@ -73,17 +68,16 @@ cc_test {
         "neuralnetworks_utils_hal_1_2",
     ],
     shared_libs: [
+        "android.hidl.allocator@1.0",
+        "android.hidl.memory@1.0",
         "libbase",
         "libcutils",
         "libfmq",
         "libhidlbase",
+        "libhidlmemory",
         "liblog",
+        "libnativewindow",
         "libutils",
     ],
-    target: {
-        android: {
-            shared_libs: ["libnativewindow"],
-        },
-    },
     test_suites: ["general-tests"],
 }
