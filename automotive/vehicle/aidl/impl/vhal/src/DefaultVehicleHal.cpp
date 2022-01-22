@@ -24,8 +24,6 @@
 
 #include <android-base/result.h>
 #include <android-base/stringprintf.h>
-#include <android/binder_ibinder.h>
-#include <private/android_filesystem_config.h>
 #include <utils/Log.h>
 #include <utils/SystemClock.h>
 
@@ -389,7 +387,7 @@ ScopedAStatus DefaultVehicleHal::getValues(const CallbackType& callback,
 
     if (!failedResults.empty()) {
         // First send the failed results we already know back to the client.
-        client->sendResults(std::move(failedResults));
+        client->sendResults(failedResults);
     }
 
     if (hardwareRequests.empty()) {
@@ -478,7 +476,7 @@ ScopedAStatus DefaultVehicleHal::setValues(const CallbackType& callback,
 
     if (!failedResults.empty()) {
         // First send the failed results we already know back to the client.
-        client->sendResults(std::move(failedResults));
+        client->sendResults(failedResults);
     }
 
     if (hardwareRequests.empty()) {
@@ -718,39 +716,6 @@ binder_status_t DefaultVehicleHal::AIBinderLinkToDeathImpl::linkToDeath(
 
 void DefaultVehicleHal::setLinkToDeathImpl(std::unique_ptr<ILinkToDeath> impl) {
     mLinkToDeathImpl = std::move(impl);
-}
-
-bool DefaultVehicleHal::checkDumpPermission() {
-    uid_t uid = AIBinder_getCallingUid();
-    return uid == AID_ROOT || uid == AID_SHELL || uid == AID_SYSTEM;
-}
-
-binder_status_t DefaultVehicleHal::dump(int fd, const char** args, uint32_t numArgs) {
-    if (!checkDumpPermission()) {
-        dprintf(fd, "Caller must be root, system or shell");
-        return STATUS_PERMISSION_DENIED;
-    }
-
-    std::vector<std::string> options;
-    for (uint32_t i = 0; i < numArgs; i++) {
-        options.push_back(args[i]);
-    }
-    DumpResult result = mVehicleHardware->dump(options);
-    dprintf(fd, "%s", (result.buffer + "\n").c_str());
-    if (!result.callerShouldDumpState) {
-        dprintf(fd, "Skip dumping Vehicle HAL State.\n");
-        return STATUS_OK;
-    }
-    dprintf(fd, "Vehicle HAL State: \n");
-    {
-        std::scoped_lock<std::mutex> lockGuard(mLock);
-        dprintf(fd, "Containing %zu property configs\n", mConfigsByPropId.size());
-        dprintf(fd, "Currently have %zu getValues clients\n", mGetValuesClients.size());
-        dprintf(fd, "Currently have %zu setValues clients\n", mSetValuesClients.size());
-        dprintf(fd, "Currently have %zu subscription clients\n",
-                mSubscriptionClients->countClients());
-    }
-    return STATUS_OK;
 }
 
 }  // namespace vehicle

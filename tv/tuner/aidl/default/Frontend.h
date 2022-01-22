@@ -51,9 +51,6 @@ class Frontend : public BnFrontend {
     ::ndk::ScopedAStatus unlinkCiCam(int32_t in_ciCamId) override;
     ::ndk::ScopedAStatus getHardwareInfo(std::string* _aidl_return) override;
     ::ndk::ScopedAStatus removeOutputPid(int32_t in_pid) override;
-    ::ndk::ScopedAStatus getFrontendStatusReadiness(
-            const std::vector<FrontendStatusType>& in_statusTypes,
-            std::vector<FrontendStatusReadiness>* _aidl_return) override;
 
     binder_status_t dump(int fd, const char** args, uint32_t numArgs) override;
 
@@ -61,7 +58,6 @@ class Frontend : public BnFrontend {
     int32_t getFrontendId();
     string getSourceFile();
     bool isLocked();
-    void getFrontendInfo(FrontendInfo* _aidl_return);
 
   private:
     virtual ~Frontend();
@@ -78,8 +74,6 @@ class Frontend : public BnFrontend {
     FrontendSettings mFrontendSettings;
     FrontendScanType mFrontendScanType;
     std::ifstream mFrontendData;
-    FrontendCapabilities mFrontendCaps;
-    vector<FrontendStatusType> mFrontendStatusCaps;
 };
 
 }  // namespace tuner

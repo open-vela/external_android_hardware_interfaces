@@ -80,8 +80,7 @@ TEST_F(ConnectedClientTest, testSendGetValueResults) {
 
     GetValuesClient client(getPool(), getCallbackClient());
 
-    auto resultsCopy = results;
-    client.sendResults(std::move(resultsCopy));
+    client.sendResults(results);
 
     auto maybeGetValueResults = getCallback()->nextGetValueResults();
     ASSERT_TRUE(maybeGetValueResults.has_value());
@@ -161,8 +160,7 @@ TEST_F(ConnectedClientTest, testSendSetValueResults) {
 
     SetValuesClient client(getPool(), getCallbackClient());
 
-    auto resultsCopy = results;
-    client.sendResults(std::move(resultsCopy));
+    client.sendResults(results);
 
     auto maybeSetValueResults = getCallback()->nextSetValueResults();
     ASSERT_TRUE(maybeSetValueResults.has_value());

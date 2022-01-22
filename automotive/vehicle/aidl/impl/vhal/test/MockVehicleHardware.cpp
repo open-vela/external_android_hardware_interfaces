@@ -71,15 +71,13 @@ StatusCode MockVehicleHardware::getValues(std::shared_ptr<const GetValuesCallbac
                                 &mGetValueResponses);
 }
 
-void MockVehicleHardware::setDumpResult(DumpResult result) {
-    mDumpResult = result;
-}
-
 DumpResult MockVehicleHardware::dump(const std::vector<std::string>&) {
-    return mDumpResult;
+    // TODO(b/200737967): mock this.
+    return DumpResult{};
 }
 
 StatusCode MockVehicleHardware::checkHealth() {
+    // TODO(b/200737967): mock this.
     return StatusCode::OK;
 }
 

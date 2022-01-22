@@ -79,7 +79,6 @@ class MockVehicleHardware final : public IVehicleHardware {
     void setStatus(const char* functionName,
                    ::aidl::android::hardware::automotive::vehicle::StatusCode status);
     void setSleepTime(int64_t timeInNano);
-    void setDumpResult(DumpResult result);
 
   private:
     mutable std::mutex mLock;
@@ -115,8 +114,6 @@ class MockVehicleHardware final : public IVehicleHardware {
             const std::vector<RequestType>& requests,
             std::list<std::vector<RequestType>>* storedRequests,
             std::list<std::vector<ResultType>>* storedResponses) const REQUIRES(mLock);
-
-    DumpResult mDumpResult;
 };
 
 }  // namespace vehicle
