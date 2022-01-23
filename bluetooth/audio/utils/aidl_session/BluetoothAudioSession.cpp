@@ -35,8 +35,22 @@ static constexpr int kFmqReceiveTimeoutMs =
 static constexpr int kWritePollMs = 1;  // polled non-blocking interval
 static constexpr int kReadPollMs = 1;   // polled non-blocking interval
 
+const CodecConfiguration BluetoothAudioSession::kInvalidCodecConfiguration = {};
+const LeAudioConfiguration kInvalidLeAudioConfiguration = {};
+AudioConfiguration BluetoothAudioSession::invalidSoftwareAudioConfiguration =
+    {};
+AudioConfiguration BluetoothAudioSession::invalidOffloadAudioConfiguration = {};
+AudioConfiguration BluetoothAudioSession::invalidLeOffloadAudioConfig = {};
+
 BluetoothAudioSession::BluetoothAudioSession(const SessionType& session_type)
-    : session_type_(session_type), stack_iface_(nullptr), data_mq_(nullptr) {}
+    : session_type_(session_type), stack_iface_(nullptr), data_mq_(nullptr) {
+  invalidSoftwareAudioConfiguration.set<AudioConfiguration::pcmConfig>(
+      kInvalidPcmConfiguration);
+  invalidOffloadAudioConfiguration.set<AudioConfiguration::a2dpConfig>(
+      kInvalidCodecConfiguration);
+  invalidLeOffloadAudioConfig.set<AudioConfiguration::leAudioConfig>(
+      kInvalidLeAudioConfiguration);
+}
 
 /***
  *
@@ -58,7 +72,13 @@ void BluetoothAudioSession::OnSessionStarted(
   } else if (!UpdateDataPath(mq_desc)) {
     LOG(ERROR) << __func__ << " - SessionType=" << toString(session_type_)
                << " MqDescriptor Invalid";
-    audio_config_ = nullptr;
+    if (session_type_ == SessionType::A2DP_HARDWARE_OFFLOAD_ENCODING_DATAPATH) {
+      audio_config_ = std::make_unique<AudioConfiguration>(
+          invalidOffloadAudioConfiguration);
+    } else {
+      audio_config_ = std::make_unique<AudioConfiguration>(
+          invalidSoftwareAudioConfiguration);
+    }
   } else {
     stack_iface_ = stack_iface;
     LOG(INFO) << __func__ << " - SessionType=" << toString(session_type_)
@@ -71,7 +91,13 @@ void BluetoothAudioSession::OnSessionEnded() {
   std::lock_guard<std::recursive_mutex> guard(mutex_);
   bool toggled = IsSessionReady();
   LOG(INFO) << __func__ << " - SessionType=" << toString(session_type_);
-  audio_config_ = nullptr;
+  if (session_type_ == SessionType::A2DP_HARDWARE_OFFLOAD_ENCODING_DATAPATH) {
+    audio_config_ =
+        std::make_unique<AudioConfiguration>(invalidOffloadAudioConfiguration);
+  } else {
+    audio_config_ =
+        std::make_unique<AudioConfiguration>(invalidSoftwareAudioConfiguration);
+  }
   stack_iface_ = nullptr;
   UpdateDataPath(nullptr);
   if (toggled) {
@@ -85,17 +111,17 @@ void BluetoothAudioSession::OnSessionEnded() {
  *
  ***/
 
-const AudioConfiguration BluetoothAudioSession::GetAudioConfig() {
+const AudioConfiguration& BluetoothAudioSession::GetAudioConfig() {
   std::lock_guard<std::recursive_mutex> guard(mutex_);
   if (!IsSessionReady()) {
     switch (session_type_) {
       case SessionType::A2DP_HARDWARE_OFFLOAD_ENCODING_DATAPATH:
-        return AudioConfiguration(CodecConfiguration{});
+        return invalidOffloadAudioConfiguration;
       case SessionType::LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH:
       case SessionType::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH:
-        return AudioConfiguration(LeAudioConfiguration{});
+        return invalidLeOffloadAudioConfig;
       default:
-        return AudioConfiguration(PcmConfiguration{});
+        return invalidSoftwareAudioConfiguration;
     }
   }
   return *audio_config_;
@@ -138,7 +164,7 @@ bool BluetoothAudioSession::IsSessionReady() {
        session_type_ ==
            SessionType::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH ||
        (data_mq_ != nullptr && data_mq_->isValid()));
-  return stack_iface_ != nullptr && is_mq_valid && audio_config_ != nullptr;
+  return stack_iface_ != nullptr && is_mq_valid;
 }
 
 /***
