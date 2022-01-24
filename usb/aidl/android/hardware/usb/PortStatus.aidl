@@ -22,8 +22,6 @@ import android.hardware.usb.ContaminantProtectionStatus;
 import android.hardware.usb.PortDataRole;
 import android.hardware.usb.PortMode;
 import android.hardware.usb.PortPowerRole;
-import android.hardware.usb.PowerBrickStatus;
-import android.hardware.usb.UsbDataStatus;
 
 @VintfStability
 parcelable PortStatus {
@@ -104,15 +102,10 @@ parcelable PortStatus {
     ContaminantDetectionStatus contaminantDetectionStatus = ContaminantDetectionStatus.NOT_SUPPORTED;
     /**
      * UsbData status of the port.
-     * Lists reasons for USB data being disabled.
      */
-    UsbDataStatus[] usbDataStatus;
+    boolean usbDataEnabled;
     /**
      * Denoted whether power transfer is limited in the port.
      */
     boolean powerTransferLimited;
-    /**
-     * Denotes whether Power brick is connected.
-     */
-    PowerBrickStatus powerBrickStatus;
 }

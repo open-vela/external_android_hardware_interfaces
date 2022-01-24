@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,20 +14,20 @@
  * limitations under the License.
  */
 
-package android.hardware.usb;
+package android.hardware.wifi@1.6;
 
-@VintfStability
-enum PowerBrickStatus {
-    /**
-     * Status not known.
+import @1.4::IWifiRttControllerEventCallback;
+import @1.0::CommandId;
+
+/**
+ * RTT Response and Event Callbacks.
+ */
+interface IWifiRttControllerEventCallback extends @1.4::IWifiRttControllerEventCallback {
+    /*
+     * Invoked when an RTT result is available.
+     *
+     * @param cmdId command Id corresponding to the original request.
+     * @param results Vector of |RttResult| instances.
      */
-    UNKNOWN = 0,
-    /**
-     * Port partner is power brick.
-     */
-    CONNECTED = 1,
-    /**
-     * Port partner is not power brick.
-     */
-    NOT_CONNECTED = 2,
-}
+    oneway onResults_1_6(CommandId cmdId, vec<RttResult> results);
+};
