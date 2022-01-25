@@ -396,7 +396,7 @@ nn::GeneralResult<V1_2::Operand::ExtraParams> unvalidatedConvert(
 }
 
 nn::GeneralResult<V1_2::Model::ExtensionNameAndPrefix> unvalidatedConvert(
-        const nn::ExtensionNameAndPrefix& extensionNameAndPrefix) {
+        const nn::Model::ExtensionNameAndPrefix& extensionNameAndPrefix) {
     return V1_2::utils::unvalidatedConvert(extensionNameAndPrefix);
 }
 
