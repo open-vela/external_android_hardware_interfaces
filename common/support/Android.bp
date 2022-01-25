@@ -11,21 +11,16 @@ cc_library_static {
     name: "libaidlcommonsupport",
     vendor_available: true,
     host_supported: true,
-    target: {
-        darwin: {
-            enabled: false,
-        },
-    },
+    defaults: ["libbinder_ndk_host_user"],
     srcs: ["NativeHandle.cpp"],
     export_include_dirs: ["include"],
     shared_libs: [
-        "android.hardware.common-V2-ndk",
+        "android.hardware.common-V2-ndk_platform",
         "libcutils",
     ],
     apex_available: [
         "//apex_available:platform",
         "com.android.neuralnetworks",
-        "com.android.media.swcodec",
     ],
     min_sdk_version: "29",
 }
@@ -33,14 +28,10 @@ cc_library_static {
 cc_test {
     name: "libaidlcommonsupport_test",
     host_supported: true,
-    target: {
-        darwin: {
-            enabled: false,
-        },
-    },
+    defaults: ["libbinder_ndk_host_user"],
     srcs: ["test.cpp"],
     static_libs: [
-        "android.hardware.common-V2-ndk",
+        "android.hardware.common-V2-ndk_platform",
         "libaidlcommonsupport",
     ],
     shared_libs: [
