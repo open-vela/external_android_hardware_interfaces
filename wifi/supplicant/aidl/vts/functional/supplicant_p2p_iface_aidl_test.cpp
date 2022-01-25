@@ -159,10 +159,6 @@ class SupplicantP2pIfaceCallback : public BnSupplicantP2pIfaceCallback {
         const std::vector<uint8_t>& /* p2pDeviceAddress */) override {
         return ndk::ScopedAStatus::ok();
     }
-    ::ndk::ScopedAStatus onGroupFrequencyChanged(const std::string& /* groupIfname */,
-                                                 int32_t /* frequency */) override {
-        return ndk::ScopedAStatus::ok();
-    }
 };
 
 class SupplicantP2pIfaceAidlTest : public testing::TestWithParam<std::string> {
@@ -481,20 +477,6 @@ TEST_P(SupplicantP2pIfaceAidlTest, Find) {
 }
 
 /*
- * FindSocialChannelsOnly
- */
-TEST_P(SupplicantP2pIfaceAidlTest, FindSocialChannelsOnly) {
-    EXPECT_TRUE(p2p_iface_->findOnSocialChannels(kTestFindTimeout).isOk());
-}
-
-/*
- * FindSpecificFrequency
- */
-TEST_P(SupplicantP2pIfaceAidlTest, FindSpecificFrequency) {
-    EXPECT_TRUE(p2p_iface_->findOnSpecificFrequency(2412, kTestFindTimeout).isOk());
-}
-
-/*
  * StopFind
  */
 TEST_P(SupplicantP2pIfaceAidlTest, StopFind) {
@@ -638,7 +620,6 @@ TEST_P(SupplicantP2pIfaceAidlTest, AddAndRemoveUpnpService) {
         p2p_iface_->removeUpnpService(0 /* version */, upnpServiceName).isOk());
 }
 
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantP2pIfaceAidlTest);
 INSTANTIATE_TEST_SUITE_P(Supplicant, SupplicantP2pIfaceAidlTest,
                          testing::ValuesIn(android::getAidlHalInstanceNames(
                              ISupplicant::descriptor)),
