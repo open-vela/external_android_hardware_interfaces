@@ -17,7 +17,7 @@
 #include "AudioPrimaryHidlHalTest.h"
 
 #if MAJOR_VERSION >= 7
-#include PATH(APM_XSD_H_FILENAME)
+#include <android_audio_policy_configuration_V7_0.h>
 #include <xsdc/XsdcSupport.h>
 
 using android::xsdc_enum_range;
@@ -28,37 +28,17 @@ TEST_P(AudioHidlTest, OpenPrimaryDeviceUsingGetDevice) {
     if (getDeviceName() != DeviceManager::kPrimaryDevice) {
         GTEST_SKIP() << "No primary device on this factory";  // returns
     }
+
+    {  // Scope for device SPs
+        sp<IDevice> baseDevice =
+                DeviceManager::getInstance().get(getFactoryName(), DeviceManager::kPrimaryDevice);
+        ASSERT_TRUE(baseDevice != nullptr);
+        Return<sp<IPrimaryDevice>> primaryDevice = IPrimaryDevice::castFrom(baseDevice);
+        EXPECT_TRUE(primaryDevice.isOk());
+        EXPECT_TRUE(sp<IPrimaryDevice>(primaryDevice) != nullptr);
+    }
     EXPECT_TRUE(
             DeviceManager::getInstance().reset(getFactoryName(), DeviceManager::kPrimaryDevice));
-
-    // Must use IDevicesFactory directly because DeviceManager always uses
-    // the latest interfaces version and corresponding methods for opening
-    // them. However, in minor package uprevs IPrimaryDevice does not inherit
-    // IDevice from the same package and thus IDevice can not be upcasted
-    // (see the interfaces in V7.1).
-    auto factory = DevicesFactoryManager::getInstance().get(getFactoryName());
-    ASSERT_TRUE(factory != nullptr);
-    sp<::android::hardware::audio::CORE_TYPES_CPP_VERSION::IDevice> baseDevice;
-    Result result;
-    auto ret = factory->openDevice(DeviceManager::kPrimaryDevice, returnIn(result, baseDevice));
-    ASSERT_TRUE(ret.isOk()) << ret.description();
-    ASSERT_EQ(Result::OK, result);
-    ASSERT_TRUE(baseDevice != nullptr);
-    {
-        Return<sp<::android::hardware::audio::CORE_TYPES_CPP_VERSION::IPrimaryDevice>>
-                primaryDevice = ::android::hardware::audio::CORE_TYPES_CPP_VERSION::IPrimaryDevice::
-                        castFrom(baseDevice);
-        EXPECT_TRUE(primaryDevice.isOk());
-        EXPECT_TRUE(sp<::android::hardware::audio::CORE_TYPES_CPP_VERSION::IPrimaryDevice>(
-                            primaryDevice) != nullptr);
-    }
-#if MAJOR_VERSION < 6
-    baseDevice.clear();
-    DeviceManager::waitForInstanceDestruction();
-#else
-    auto closeRet = baseDevice->close();
-    EXPECT_TRUE(closeRet.isOk());
-#endif
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -203,7 +183,7 @@ TEST_IO_STREAM(SetDevices, "Check that the stream can be rerouted to SPEAKER or 
                areAudioPatchesSupported() ? doc::partialTest("Audio patches are supported")
                                           : testSetDevices(stream.get(), address))
 
-static void checkGetHwAVSync(::android::hardware::audio::CPP_VERSION::IDevice* device) {
+static void checkGetHwAVSync(IDevice* device) {
     Result res;
     AudioHwSync sync;
     ASSERT_OK(device->getHwAvSync(returnIn(res, sync)));
@@ -235,7 +215,7 @@ TEST_P(InputStreamTest, updateSinkMetadata) {
     ASSERT_OK(stream->updateSinkMetadata(initMetadata));
 
 #elif MAJOR_VERSION >= 7
-    xsdc_enum_range<android::audio::policy::configuration::CPP_VERSION::AudioSource> range;
+    xsdc_enum_range<android::audio::policy::configuration::V7_0::AudioSource> range;
     // Test all possible track configuration
     for (auto source : range) {
         for (float volume : {0.0, 0.5, 1.0}) {
@@ -292,9 +272,8 @@ TEST_P(OutputStreamTest, updateSourceMetadata) {
     // Restore initial
     ASSERT_OK(stream->updateSourceMetadata(initMetadata));
 #elif MAJOR_VERSION >= 7
-    xsdc_enum_range<android::audio::policy::configuration::CPP_VERSION::AudioUsage> usageRange;
-    xsdc_enum_range<android::audio::policy::configuration::CPP_VERSION::AudioContentType>
-            contentRange;
+    xsdc_enum_range<android::audio::policy::configuration::V7_0::AudioUsage> usageRange;
+    xsdc_enum_range<android::audio::policy::configuration::V7_0::AudioContentType> contentRange;
     // Test all possible track configuration
     for (auto usage : usageRange) {
         for (auto content : contentRange) {
