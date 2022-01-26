@@ -172,8 +172,4 @@ ndk::ScopedAStatus Session::detectInteractionWithContext(
     return detectInteraction(out);
 }
 
-ndk::ScopedAStatus Session::onContextChanged(const common::OperationContext& /*context*/) {
-    return ndk::ScopedAStatus::ok();
-}
-
 }  // namespace aidl::android::hardware::biometrics::face
