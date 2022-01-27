@@ -81,7 +81,6 @@ interface ISupplicantP2pIface {
   void setSsidPostfix(in byte[] postfix);
   void setWfdDeviceInfo(in byte[] info);
   void setWfdR2DeviceInfo(in byte[] info);
-  void removeClient(in byte[] peerAddress, in boolean isLegacyClient);
   void setWpsConfigMethods(in android.hardware.wifi.supplicant.WpsConfigMethods configMethods);
   void setWpsDeviceName(in String name);
   void setWpsDeviceType(in byte[] type);
