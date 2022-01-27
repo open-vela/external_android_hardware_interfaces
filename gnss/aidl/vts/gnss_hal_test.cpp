@@ -79,14 +79,9 @@ void GnssHalTest::SetPositionMode(const int min_interval_msec, const bool low_po
     const int kPreferredAccuracy = 0;  // Ideally perfect (matches GnssLocationProvider)
     const int kPreferredTimeMsec = 0;  // Ideally immediate
 
-    IGnss::PositionModeOptions options;
-    options.mode = IGnss::GnssPositionMode::MS_BASED;
-    options.recurrence = IGnss::GnssPositionRecurrence::RECURRENCE_PERIODIC;
-    options.minIntervalMs = min_interval_msec;
-    options.preferredAccuracyMeters = kPreferredAccuracy;
-    options.preferredTimeMs = kPreferredTimeMsec;
-    options.lowPowerMode = low_power_mode;
-    auto status = aidl_gnss_hal_->setPositionMode(options);
+    auto status = aidl_gnss_hal_->setPositionMode(
+            IGnss::GnssPositionMode::MS_BASED, IGnss::GnssPositionRecurrence::RECURRENCE_PERIODIC,
+            min_interval_msec, kPreferredAccuracy, kPreferredTimeMsec, low_power_mode);
 
     ASSERT_TRUE(status.isOk());
 }

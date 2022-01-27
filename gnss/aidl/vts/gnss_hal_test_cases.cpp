@@ -1050,9 +1050,10 @@ TEST_P(GnssHalTest, TestGnssAgcInGnssMeasurement) {
         // Validity check GnssData fields
         CheckGnssMeasurementClockFields(lastMeasurement);
 
-        ASSERT_TRUE(lastMeasurement.gnssAgcs.size() > 0);
-        for (const auto& gnssAgc : lastMeasurement.gnssAgcs) {
-            ASSERT_TRUE(gnssAgc.carrierFrequencyHz >= 0);
+        ASSERT_TRUE(lastMeasurement.gnssAgcs.has_value());
+        for (const auto& gnssAgc : lastMeasurement.gnssAgcs.value()) {
+            ASSERT_TRUE(gnssAgc.has_value());
+            ASSERT_TRUE(gnssAgc.value().carrierFrequencyHz >= 0);
         }
     }
 

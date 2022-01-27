@@ -95,8 +95,6 @@ class Session : public BnSession {
 
     ndk::ScopedAStatus onPointerUpWithContext(const PointerContext& context) override;
 
-    ndk::ScopedAStatus onContextChanged(const common::OperationContext& context) override;
-
     bool isClosed();
 
   private:

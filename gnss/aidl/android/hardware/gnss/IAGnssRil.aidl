@@ -17,6 +17,7 @@
 package android.hardware.gnss;
 
 import android.hardware.gnss.IAGnssRilCallback;
+import android.hardware.gnss.IAGnssRilCallback.SetIDType;
 
 /**
  * Extended interface for AGNSS RIL support. An Assisted GNSS Radio Interface
@@ -45,7 +46,7 @@ interface IAGnssRil {
     /** SET ID type*/
     @VintfStability
     @Backing(type="int")
-    enum SetIdType {
+    enum SetIDType {
         NONE = 0,
         IMSI = 1,
         MSISDM = 2,
@@ -99,7 +100,7 @@ interface IAGnssRil {
     /** Represents network connection status and capabilities. */
     @VintfStability
     parcelable NetworkAttributes {
-        /** A handle representing this Network. */
+        /** Network handle of the network for use with the NDK API. */
         long networkHandle;
 
         /**
@@ -150,7 +151,7 @@ interface IAGnssRil {
      * If the type is NONE, then the string must be empty.
      *
      */
-    void setSetId(in SetIdType type, in @utf8InCpp String setid);
+    void setSetId(in SetIDType type, in @utf8InCpp String setid);
 
     /**
      * Notifies GNSS of network status changes.

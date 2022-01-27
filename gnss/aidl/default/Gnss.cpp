@@ -210,10 +210,11 @@ ScopedAStatus Gnss::deleteAidingData(GnssAidingData aidingDataFlags) {
     return ScopedAStatus::ok();
 }
 
-ScopedAStatus Gnss::setPositionMode(const PositionModeOptions& options) {
-    ALOGD("setPositionMode. minIntervalMs:%d, lowPowerMode:%d", options.minIntervalMs,
-          (int)options.lowPowerMode);
-    mMinIntervalMs = options.minIntervalMs;
+ScopedAStatus Gnss::setPositionMode(GnssPositionMode, GnssPositionRecurrence, int minIntervalMs,
+                                    int /* preferredAccuracyMeters */, int /* preferredTimeMs */,
+                                    bool lowPowerMode) {
+    ALOGD("setPositionMode. minIntervalMs:%d, lowPowerMode:%d", minIntervalMs, (int)lowPowerMode);
+    mMinIntervalMs = minIntervalMs;
     return ScopedAStatus::ok();
 }
 
