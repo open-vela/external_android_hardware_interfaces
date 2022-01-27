@@ -160,8 +160,6 @@ class WifiChip : public V1_6::IWifiChip {
                                        hidl_bitfield<V1_5::WifiIfaceMode> ifaceModeMask,
                                        hidl_bitfield<UsableChannelFilter> filterMask,
                                        getUsableChannels_1_6_cb _hidl_cb) override;
-    Return<void> getSupportedRadioCombinationsMatrix(
-            getSupportedRadioCombinationsMatrix_cb hidl_status_cb) override;
 
   private:
     void invalidateAndRemoveAllIfaces();
@@ -269,7 +267,6 @@ class WifiChip : public V1_6::IWifiChip {
             const sp<IWifiIface>& bound_iface);
     std::pair<WifiStatus, std::vector<V1_6::WifiUsableChannel>> getUsableChannelsInternal_1_6(
             WifiBand band, uint32_t ifaceModeMask, uint32_t filterMask);
-    std::pair<WifiStatus, WifiRadioCombinationMatrix> getSupportedRadioCombinationsMatrixInternal();
 
     ChipId chip_id_;
     std::weak_ptr<legacy_hal::WifiLegacyHal> legacy_hal_;
