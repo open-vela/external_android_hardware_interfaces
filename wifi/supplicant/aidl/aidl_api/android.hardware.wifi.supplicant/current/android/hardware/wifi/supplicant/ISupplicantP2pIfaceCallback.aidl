@@ -50,5 +50,4 @@ interface ISupplicantP2pIfaceCallback {
   oneway void onServiceDiscoveryResponse(in byte[] srcAddress, in char updateIndicator, in byte[] tlvs);
   oneway void onStaAuthorized(in byte[] srcAddress, in byte[] p2pDeviceAddress);
   oneway void onStaDeauthorized(in byte[] srcAddress, in byte[] p2pDeviceAddress);
-  oneway void onGroupFrequencyChanged(in String groupIfname, in int frequency);
 }
