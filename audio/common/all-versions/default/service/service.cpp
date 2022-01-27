@@ -66,7 +66,6 @@ int main(int /* argc */, char* /* argv */ []) {
     const std::vector<InterfacesList> mandatoryInterfaces = {
         {
             "Audio Core API",
-            "android.hardware.audio@7.1::IDevicesFactory",
             "android.hardware.audio@7.0::IDevicesFactory",
             "android.hardware.audio@6.0::IDevicesFactory",
             "android.hardware.audio@5.0::IDevicesFactory",
