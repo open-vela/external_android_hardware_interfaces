@@ -20,6 +20,7 @@
 #include <aidl/android/hardware/radio/network/CellInfo.h>
 #include <aidl/android/hardware/radio/network/LceDataInfo.h>
 #include <aidl/android/hardware/radio/network/LinkCapacityEstimate.h>
+#include <aidl/android/hardware/radio/network/NeighboringCell.h>
 #include <aidl/android/hardware/radio/network/NetworkScanRequest.h>
 #include <aidl/android/hardware/radio/network/NetworkScanResult.h>
 #include <aidl/android/hardware/radio/network/OperatorInfo.h>
@@ -90,6 +91,8 @@ toAidl(const V1_0::SuppSvcNotification& svc);
 
 ::aidl::android::hardware::radio::network::RegStateResult toAidl(const V1_5::RegStateResult& res);
 ::aidl::android::hardware::radio::network::RegStateResult toAidl(const V1_6::RegStateResult& res);
+
+::aidl::android::hardware::radio::network::NeighboringCell toAidl(const V1_0::NeighboringCell& c);
 
 ::aidl::android::hardware::radio::network::LceDataInfo toAidl(const V1_0::LceDataInfo& info);
 

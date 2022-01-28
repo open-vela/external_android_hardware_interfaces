@@ -14,33 +14,17 @@
  * limitations under the License.
  */
 
-package android.hardware.radio.voice;
+package android.hardware.radio.network;
 
 @VintfStability
-@Backing(type="int")
-enum UssdModeType {
+parcelable NeighboringCell {
     /**
-     * USSD-Notify
+     * Combination of LAC and cell ID in 32 bits in GSM. Upper 16 bits is LAC and lower 16 bits is
+     * CID (as described in TS 27.005).
      */
-    NOTIFY,
+    String cid;
     /**
-     * USSD-Request
+     * Received RSSI in GSM, level index of CPICH Received Signal Code Power in UMTS
      */
-    REQUEST,
-    /**
-     * Session terminated by network
-     */
-    NW_RELEASE,
-    /**
-     * Other local client (eg, SIM Toolkit) has responded
-     */
-    LOCAL_CLIENT,
-    /**
-     * Operation not supported
-     */
-    NOT_SUPPORTED,
-    /**
-     * Network timeout
-     */
-    NW_TIMEOUT,
+    int rssi;
 }

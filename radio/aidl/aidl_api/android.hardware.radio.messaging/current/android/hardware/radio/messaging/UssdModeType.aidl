@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright (C) 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,24 +31,13 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.input.common;
+package android.hardware.radio.messaging;
 @Backing(type="int") @VintfStability
-enum Source {
-  UNKNOWN = 0,
-  KEYBOARD = 257,
-  DPAD = 513,
-  GAMEPAD = 1025,
-  TOUCHSCREEN = 4098,
-  MOUSE = 8194,
-  STYLUS = 16386,
-  BLUETOOTH_STYLUS = 49154,
-  TRACKBALL = 65540,
-  MOUSE_RELATIVE = 131076,
-  TOUCHPAD = 1048584,
-  TOUCH_NAVIGATION = 2097152,
-  ROTARY_ENCODER = 4194304,
-  JOYSTICK = 16777232,
-  HDMI = 33554433,
-  SENSOR = 67108864,
-  ANY = -256,
+enum UssdModeType {
+  NOTIFY = 0,
+  REQUEST = 1,
+  NW_RELEASE = 2,
+  LOCAL_CLIENT = 3,
+  NOT_SUPPORTED = 4,
+  NW_TIMEOUT = 5,
 }
