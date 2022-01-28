@@ -17,17 +17,16 @@
 package android.hardware.uwb.fira_android;
 
 /**
- * Android specific vendor app params set/expected in UCI command:
+ * Android specific vendor app params set in UCI command:
  * GID: 0001b (UWB Session config Group)
  * OID: 000011b (SESSION_SET_APP_CONFIG_CMD)
- * OID: 000100b (SESSION_GET_APP_CONFIG_CMD)
  *
  * Note: Refer to Table 34 of the UCI specification for the other params
  * expected in this command.
  */
 @VintfStability
 @Backing(type="int")
-enum UwbVendorSessionAppConfigTlvTypes {
+enum UwbVendorSessionSetAppConfigCmdParams {
     /** CCC params for ranging start */
 
     /**
