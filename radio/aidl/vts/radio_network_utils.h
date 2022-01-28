@@ -41,10 +41,8 @@ class RadioNetworkResponse : public BnRadioNetworkResponse {
     bool isNrDualConnectivityEnabled;
     int networkTypeBitmapResponse;
     RegStateResult voiceRegResp;
-    RegStateResult dataRegResp;
     CellIdentity barringCellIdentity;
-    std::vector<BarringInfo> barringInfoList;
-    UsageSetting usageSetting;
+    std::vector<BarringInfo> barringInfos;
 
     virtual ndk::ScopedAStatus acknowledgeRequest(int32_t serial) override;
 
@@ -213,12 +211,4 @@ class RadioNetworkTest : public ::testing::TestWithParam<std::string>, public Ra
     std::shared_ptr<RadioNetworkResponse> radioRsp_network;
     /* radio network indication handle */
     std::shared_ptr<RadioNetworkIndication> radioInd_network;
-
-    void invokeAndExpectResponse(std::function<ndk::ScopedAStatus(int32_t serial)> request,
-                                 std::vector<RadioError> errors_to_check);
-
-    // Helper function to reduce copy+paste
-    void testSetUsageSetting_InvalidValues(std::vector<RadioError> errors);
-
-    void stopNetworkScan();
 };
