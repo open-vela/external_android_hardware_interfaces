@@ -19,15 +19,12 @@
 RadioConfigResponse::RadioConfigResponse(RadioServiceTest& parent) : parent_config(parent) {}
 
 ndk::ScopedAStatus RadioConfigResponse::getSimSlotsStatusResponse(
-        const RadioResponseInfo& info, const std::vector<SimSlotStatus>& /* slotStatus */) {
-    rspInfo = info;
-    parent_config.notify(info.serial);
+        const RadioResponseInfo& /* info */, const std::vector<SimSlotStatus>& /* slotStatus */) {
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioConfigResponse::setSimSlotsMappingResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_config.notify(info.serial);
+ndk::ScopedAStatus RadioConfigResponse::setSimSlotsMappingResponse(
+        const RadioResponseInfo& /* info */) {
     return ndk::ScopedAStatus::ok();
 }
 
@@ -40,28 +37,22 @@ ndk::ScopedAStatus RadioConfigResponse::getPhoneCapabilityResponse(
 }
 
 ndk::ScopedAStatus RadioConfigResponse::setPreferredDataModemResponse(
-        const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_config.notify(info.serial);
+        const RadioResponseInfo& /* info */) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioConfigResponse::getNumOfLiveModemsResponse(
-        const RadioResponseInfo& info, const int8_t /* numOfLiveModems */) {
-    rspInfo = info;
-    parent_config.notify(info.serial);
+        const RadioResponseInfo& /* info */, const int8_t /* numOfLiveModems */) {
     return ndk::ScopedAStatus::ok();
 }
 
-ndk::ScopedAStatus RadioConfigResponse::setNumOfLiveModemsResponse(const RadioResponseInfo& info) {
-    rspInfo = info;
-    parent_config.notify(info.serial);
+ndk::ScopedAStatus RadioConfigResponse::setNumOfLiveModemsResponse(
+        const RadioResponseInfo& /* info */) {
     return ndk::ScopedAStatus::ok();
 }
 
 ndk::ScopedAStatus RadioConfigResponse::getHalDeviceCapabilitiesResponse(
         const RadioResponseInfo& info, bool modemReducedFeatures) {
-    rspInfo = info;
     modemReducedFeatureSet1 = modemReducedFeatures;
     parent_config.notify(info.serial);
     return ndk::ScopedAStatus::ok();
