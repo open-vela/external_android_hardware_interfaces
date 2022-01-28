@@ -159,15 +159,14 @@ oneway interface IRadioData {
             in long completionDurationMillis);
 
     /**
-     * Set an APN to initial attach network or clear the existing initial attach APN.
+     * Set an APN to initial attach network.
      *
      * @param serial Serial number of request.
-     * @param dataProfileInfo Data profile containing APN settings or null to clear the existing
-     *        initial attach APN.
+     * @param dataProfileInfo data profile containing APN settings
      *
      * Response function is IRadioDataResponse.setInitialAttachApnResponse()
      */
-    void setInitialAttachApn(in int serial, in @nullable DataProfileInfo dataProfileInfo);
+    void setInitialAttachApn(in int serial, in DataProfileInfo dataProfileInfo);
 
     /**
      * Set response functions for data radio requests and indications.
