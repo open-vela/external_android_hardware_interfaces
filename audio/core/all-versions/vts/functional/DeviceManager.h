@@ -22,21 +22,19 @@
 
 #include <android-base/logging.h>
 #include <hwbinder/IPCThreadState.h>
-#include <system/audio.h>
 
 // clang-format off
 #include PATH(android/hardware/audio/FILE_VERSION/IDevice.h)
 #include PATH(android/hardware/audio/FILE_VERSION/IDevicesFactory.h)
 #include PATH(android/hardware/audio/FILE_VERSION/IPrimaryDevice.h)
-#include PATH(android/hardware/audio/CORE_TYPES_FILE_VERSION/types.h)
-#include PATH(android/hardware/audio/common/COMMON_TYPES_FILE_VERSION/types.h)
+#include PATH(android/hardware/audio/FILE_VERSION/types.h)
+#include PATH(android/hardware/audio/common/FILE_VERSION/types.h)
 // clang-format on
 
 #include "utility/ReturnIn.h"
 
 using ::android::sp;
-using ::android::hardware::audio::CORE_TYPES_CPP_VERSION::Result;
-using namespace ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION;
+using namespace ::android::hardware::audio::common::CPP_VERSION;
 using namespace ::android::hardware::audio::common::test::utility;
 using namespace ::android::hardware::audio::CPP_VERSION;
 
@@ -106,30 +104,21 @@ class DeviceManager : public InterfaceManager<DeviceManager, FactoryAndDevice, I
     static sp<IDevice> createInterfaceInstance(const FactoryAndDevice& factoryAndDevice) {
         auto [factoryName, name] = factoryAndDevice;
         sp<IDevicesFactory> factory = DevicesFactoryManager::getInstance().get(factoryName);
-        return openDevice(factory, name);
+        return name == kPrimaryDevice ? openPrimaryDevice(factory) : openDevice(factory, name);
     }
     using InterfaceManager::reset;
 
     static constexpr const char* kPrimaryDevice = "primary";
 
     sp<IDevice> get(const std::string& factoryName, const std::string& name) {
-        if (name == kPrimaryDevice) {
-            (void)getPrimary(factoryName);  // for initializing primaryDevice if needed.
-        }
         return InterfaceManager::get(std::make_tuple(factoryName, name));
     }
     sp<IPrimaryDevice> getPrimary(const std::string& factoryName) {
-        if (primaryDevice == nullptr) {
-            sp<IDevicesFactory> factory = DevicesFactoryManager::getInstance().get(factoryName);
-            primaryDevice = openPrimaryDevice(factory);
-        }
-        return primaryDevice;
+        sp<IDevice> device = get(factoryName, kPrimaryDevice);
+        return device != nullptr ? IPrimaryDevice::castFrom(device) : nullptr;
     }
     bool reset(const std::string& factoryName, const std::string& name)
             __attribute__((warn_unused_result)) {
-        if (name == kPrimaryDevice) {
-            primaryDevice.clear();
-        }
 #if MAJOR_VERSION <= 5
         return InterfaceManager::reset(std::make_tuple(factoryName, name), true);
 #elif MAJOR_VERSION >= 6
@@ -151,75 +140,35 @@ class DeviceManager : public InterfaceManager<DeviceManager, FactoryAndDevice, I
   private:
     static sp<IDevice> openDevice(const sp<IDevicesFactory>& factory, const std::string& name) {
         if (factory == nullptr) return nullptr;
-        Result result;
         sp<IDevice> device;
-#if MAJOR_VERSION == 2
-        IDevicesFactory::Device dev = IDevicesFactory::IDevicesFactory::Device(-1);
-        if (name == AUDIO_HARDWARE_MODULE_ID_PRIMARY) {
-            dev = IDevicesFactory::Device::PRIMARY;
-        } else if (name == AUDIO_HARDWARE_MODULE_ID_A2DP) {
-            dev = IDevicesFactory::Device::A2DP;
-        } else if (name == AUDIO_HARDWARE_MODULE_ID_USB) {
-            dev = IDevicesFactory::Device::USB;
-        } else if (name == AUDIO_HARDWARE_MODULE_ID_REMOTE_SUBMIX) {
-            dev = IDevicesFactory::Device::R_SUBMIX;
-        } else if (name == AUDIO_HARDWARE_MODULE_ID_STUB) {
-            dev = IDevicesFactory::Device::STUB;
-        }
-        auto ret = factory->openDevice(dev, returnIn(result, device));
-#elif MAJOR_VERSION >= 4 && (MAJOR_VERSION < 7 || (MAJOR_VERSION == 7 && MINOR_VERSION == 0))
+#if MAJOR_VERSION >= 4
+        Result result;
         auto ret = factory->openDevice(name, returnIn(result, device));
-#elif MAJOR_VERSION == 7 && MINOR_VERSION == 1
-        auto ret = factory->openDevice_7_1(name, returnIn(result, device));
-#endif
         if (!ret.isOk() || result != Result::OK || device == nullptr) {
             ALOGW("Device %s can not be opened, transaction: %s, result %d, device %p",
                   name.c_str(), ret.description().c_str(), result, device.get());
             return nullptr;
         }
+#else
+        (void)name;
+#endif
         return device;
     }
 
-    static sp<IPrimaryDevice> openPrimaryDevice(const sp<IDevicesFactory>& factory) {
-        if (factory == nullptr) return {};
+    static sp<IDevice> openPrimaryDevice(const sp<IDevicesFactory>& factory) {
+        if (factory == nullptr) return nullptr;
         Result result;
         sp<IDevice> device;
-        sp<IPrimaryDevice> primaryDevice;
 #if MAJOR_VERSION == 2
         auto ret = factory->openDevice(IDevicesFactory::Device::PRIMARY, returnIn(result, device));
-        if (ret.isOk() && result == Result::OK && device != nullptr) {
-            primaryDevice = IPrimaryDevice::castFrom(device);
-        }
-#elif MAJOR_VERSION >= 4 && (MAJOR_VERSION < 7 || (MAJOR_VERSION == 7 && MINOR_VERSION == 0))
+#elif MAJOR_VERSION >= 4
         auto ret = factory->openPrimaryDevice(returnIn(result, device));
-        if (ret.isOk() && result == Result::OK && device != nullptr) {
-            primaryDevice = IPrimaryDevice::castFrom(device);
-        }
-#elif MAJOR_VERSION == 7 && MINOR_VERSION == 1
-        auto ret = factory->openPrimaryDevice_7_1(returnIn(result, primaryDevice));
-        if (ret.isOk() && result == Result::OK && primaryDevice != nullptr) {
-            auto getDeviceRet = primaryDevice->getDevice();
-            if (getDeviceRet.isOk()) {
-                device = getDeviceRet;
-            } else {
-                primaryDevice.clear();
-                ALOGW("Primary device can not downcast, transaction: %s, primary %p",
-                      getDeviceRet.description().c_str(), primaryDevice.get());
-                return {};
-            }
-        }
 #endif
         if (!ret.isOk() || result != Result::OK || device == nullptr) {
             ALOGW("Primary device can not be opened, transaction: %s, result %d, device %p",
                   ret.description().c_str(), result, device.get());
-            return {};
+            return nullptr;
         }
-        return primaryDevice;
+        return device;
     }
-
-  private:
-    // There can only be one primary device across all HAL modules.
-    // A reference to a complete interface is used because in V7.1 IDevice can not
-    // be upcasted to IPrimaryDevice.
-    sp<IPrimaryDevice> primaryDevice;
 };

@@ -39,8 +39,4 @@ enum WifiTechnology {
      * For 802.11ax
      */
     HE = 4,
-    /**
-     * For 802.11be
-     */
-    EHT = 5,
 }
