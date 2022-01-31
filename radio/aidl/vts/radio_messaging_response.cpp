@@ -44,6 +44,13 @@ ndk::ScopedAStatus RadioMessagingResponse::acknowledgeRequest(int32_t /*serial*/
     return ndk::ScopedAStatus::ok();
 }
 
+ndk::ScopedAStatus RadioMessagingResponse::cancelPendingUssdResponse(
+        const RadioResponseInfo& info) {
+    rspInfo = info;
+    parent_messaging.notify(info.serial);
+    return ndk::ScopedAStatus::ok();
+}
+
 ndk::ScopedAStatus RadioMessagingResponse::deleteSmsOnRuimResponse(const RadioResponseInfo& info) {
     rspInfo = info;
     parent_messaging.notify(info.serial);
@@ -119,6 +126,12 @@ ndk::ScopedAStatus RadioMessagingResponse::sendSmsResponse(const RadioResponseIn
                                                            const SendSmsResult& sms) {
     rspInfo = info;
     sendSmsResult = sms;
+    parent_messaging.notify(info.serial);
+    return ndk::ScopedAStatus::ok();
+}
+
+ndk::ScopedAStatus RadioMessagingResponse::sendUssdResponse(const RadioResponseInfo& info) {
+    rspInfo = info;
     parent_messaging.notify(info.serial);
     return ndk::ScopedAStatus::ok();
 }

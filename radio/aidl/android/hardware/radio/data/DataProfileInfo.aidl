@@ -16,7 +16,9 @@
 
 package android.hardware.radio.data;
 
+import android.hardware.radio.RadioAccessFamily;
 import android.hardware.radio.data.ApnAuthType;
+import android.hardware.radio.data.ApnTypes;
 import android.hardware.radio.data.PdpProtocolType;
 import android.hardware.radio.data.TrafficDescriptor;
 
@@ -34,8 +36,8 @@ parcelable DataProfileInfo {
     const int ID_INVALID = 0xFFFFFFFF;
 
     const int TYPE_COMMON = 0;
-    const int TYPE_3GPP = 1;
-    const int TYPE_3GPP2 = 2;
+    const int TYPE_THREE_GPP = 1;
+    const int TYPE_THREE_GPP2 = 2;
 
     /**
      * ID of the data profile.
@@ -128,5 +130,5 @@ parcelable DataProfileInfo {
      * it does not specify the end point to be used for the data call. The end point is specified by
      * apn; apn must be used as the end point if one is not specified through URSP rules.
      */
-    TrafficDescriptor trafficDescriptor;
+    @nullable TrafficDescriptor trafficDescriptor;
 }

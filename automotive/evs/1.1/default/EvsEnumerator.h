@@ -17,41 +17,56 @@
 #ifndef ANDROID_HARDWARE_AUTOMOTIVE_EVS_V1_1_EVSCAMERAENUMERATOR_H
 #define ANDROID_HARDWARE_AUTOMOTIVE_EVS_V1_1_EVSCAMERAENUMERATOR_H
 
-#include "ConfigManager.h"
-
-#include <android/frameworks/automotive/display/1.0/IAutomotiveDisplayProxyService.h>
+#include <android/hardware/automotive/evs/1.1/IEvsEnumerator.h>
 #include <android/hardware/automotive/evs/1.1/IEvsCamera.h>
 #include <android/hardware/automotive/evs/1.1/IEvsDisplay.h>
-#include <android/hardware/automotive/evs/1.1/IEvsEnumerator.h>
+#include <android/frameworks/automotive/display/1.0/IAutomotiveDisplayProxyService.h>
 #include <android/hardware/automotive/evs/1.1/IEvsUltrasonicsArray.h>
 
 #include <list>
 
-namespace android::hardware::automotive::evs::V1_1::implementation {
+#include "ConfigManager.h"
 
-namespace evs_v1_0 = ::android::hardware::automotive::evs::V1_0;
+using ::android::hardware::automotive::evs::V1_0::EvsResult;
+using ::android::hardware::automotive::evs::V1_0::DisplayState;
+using IEvsCamera_1_0 = ::android::hardware::automotive::evs::V1_0::IEvsCamera;
+using IEvsCamera_1_1 = ::android::hardware::automotive::evs::V1_1::IEvsCamera;
+using CameraDesc_1_0 = ::android::hardware::automotive::evs::V1_0::CameraDesc;
+using CameraDesc_1_1 = ::android::hardware::automotive::evs::V1_1::CameraDesc;
+using IEvsDisplay_1_0  = ::android::hardware::automotive::evs::V1_0::IEvsDisplay;
+using IEvsDisplay_1_1  = ::android::hardware::automotive::evs::V1_1::IEvsDisplay;
+using android::frameworks::automotive::display::V1_0::IAutomotiveDisplayProxyService;
 
-class EvsCamera;            // from EvsCamera.h
-class EvsDisplay;           // from EvsDisplay.h
+namespace android {
+namespace hardware {
+namespace automotive {
+namespace evs {
+namespace V1_1 {
+namespace implementation {
+
+
+class EvsCamera;    // from EvsCamera.h
+class EvsDisplay;   // from EvsDisplay.h
 class EvsUltrasonicsArray;  // from EvsUltrasonicsArray.h
 
+
 class EvsEnumerator : public IEvsEnumerator {
-  public:
+public:
     // Methods from ::android::hardware::automotive::evs::V1_0::IEvsEnumerator follow.
-    Return<void> getCameraList(getCameraList_cb _hidl_cb) override;
-    Return<sp<evs_v1_0::IEvsCamera>> openCamera(const hidl_string& cameraId) override;
-    Return<void> closeCamera(const ::android::sp<evs_v1_0::IEvsCamera>& carCamera) override;
-    Return<sp<evs_v1_0::IEvsDisplay>> openDisplay() override;
-    Return<void> closeDisplay(const ::android::sp<evs_v1_0::IEvsDisplay>& display) override;
-    Return<V1_0::DisplayState> getDisplayState() override;
+    Return<void>                getCameraList(getCameraList_cb _hidl_cb)  override;
+    Return<sp<IEvsCamera_1_0>>  openCamera(const hidl_string& cameraId) override;
+    Return<void>                closeCamera(const ::android::sp<IEvsCamera_1_0>& carCamera)  override;
+    Return<sp<IEvsDisplay_1_0>> openDisplay()  override;
+    Return<void>                closeDisplay(const ::android::sp<IEvsDisplay_1_0>& display)  override;
+    Return<DisplayState>        getDisplayState()  override;
 
     // Methods from ::android::hardware::automotive::evs::V1_1::IEvsEnumerator follow.
-    Return<void> getCameraList_1_1(getCameraList_1_1_cb _hidl_cb) override;
-    Return<sp<IEvsCamera>> openCamera_1_1(const hidl_string& cameraId,
-                                          const Stream& streamCfg) override;
+    Return<void> getCameraList_1_1(getCameraList_1_1_cb _hidl_cb)  override;
+    Return<sp<IEvsCamera_1_1>>  openCamera_1_1(const hidl_string& cameraId,
+                                               const Stream& streamCfg) override;
     Return<bool> isHardware() override { return true; }
-    Return<void> getDisplayIdList(getDisplayIdList_cb _list_cb) override;
-    Return<sp<IEvsDisplay>> openDisplay_1_1(uint8_t port) override;
+    Return<void>                getDisplayIdList(getDisplayIdList_cb _list_cb) override;
+    Return<sp<IEvsDisplay_1_1>> openDisplay_1_1(uint8_t port) override;
     Return<void> getUltrasonicsArrayList(getUltrasonicsArrayList_cb _hidl_cb) override;
     Return<sp<IEvsUltrasonicsArray>> openUltrasonicsArray(
             const hidl_string& ultrasonicsArrayId) override;
@@ -59,40 +74,49 @@ class EvsEnumerator : public IEvsEnumerator {
             const ::android::sp<IEvsUltrasonicsArray>& evsUltrasonicsArray) override;
 
     // Implementation details
-    EvsEnumerator(sp<frameworks::automotive::display::V1_0::IAutomotiveDisplayProxyService>&
-                          windowService);
+    EvsEnumerator(sp<IAutomotiveDisplayProxyService> windowService = nullptr);
 
-  private:
+private:
     // NOTE:  All members values are static so that all clients operate on the same state
     //        That is to say, this is effectively a singleton despite the fact that HIDL
     //        constructs a new instance for each client.
     struct CameraRecord {
-        CameraDesc desc;
-        wp<EvsCamera> activeInstance;
+        CameraDesc_1_1      desc;
+        wp<EvsCamera>       activeInstance;
 
-        CameraRecord(const char* cameraId) : desc() { desc.v1.cameraId = cameraId; }
+        CameraRecord(const char *cameraId) : desc() { desc.v1.cameraId = cameraId; }
     };
 
     struct UltrasonicsArrayRecord {
         UltrasonicsArrayDesc desc;
         wp<EvsUltrasonicsArray> activeInstance;
 
-        UltrasonicsArrayRecord(const UltrasonicsArrayDesc& arrayDesc) : desc(arrayDesc){};
+        UltrasonicsArrayRecord(const UltrasonicsArrayDesc& arrayDesc) : desc(arrayDesc) {};
     };
 
     static CameraRecord* findCameraById(const std::string& cameraId);
-    static std::list<CameraRecord> sCameraList;
+
+    static std::list<CameraRecord>   sCameraList;
+
     static UltrasonicsArrayRecord* findUltrasonicsArrayById(const std::string& ultrasonicsArrayId);
+
     static std::list<UltrasonicsArrayRecord> sUltrasonicsArrayRecordList;
 
-    static wp<EvsDisplay> sActiveDisplay;  // Weak pointer. Object destructs if client dies.
-    static uint64_t sInternalDisplayId;
-    static sp<frameworks::automotive::display::V1_0::IAutomotiveDisplayProxyService>
-            sDisplayProxyService;
-    static std::unordered_map<uint8_t, uint64_t> sDisplayPortList;
-    static std::unique_ptr<ConfigManager> sConfigManager;
+    // Weak pointer. Object destructs if client dies.
+    static wp<EvsDisplay>            sActiveDisplay;
+
+    static unique_ptr<ConfigManager> sConfigManager;
+
+    static sp<IAutomotiveDisplayProxyService> sDisplayProxyService;
+    static std::unordered_map<uint8_t,
+                              uint64_t> sDisplayPortList;
 };
 
-}  // namespace android::hardware::automotive::evs::V1_1::implementation
+} // namespace implementation
+} // namespace V1_1
+} // namespace evs
+} // namespace automotive
+} // namespace hardware
+} // namespace android
 
 #endif  // ANDROID_HARDWARE_AUTOMOTIVE_EVS_V1_1_EVSCAMERAENUMERATOR_H

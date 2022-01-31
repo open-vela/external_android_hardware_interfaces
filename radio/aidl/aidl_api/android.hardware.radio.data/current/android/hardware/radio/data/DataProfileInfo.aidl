@@ -53,7 +53,7 @@ parcelable DataProfileInfo {
   boolean preferred;
   boolean persistent;
   boolean alwaysOn;
-  android.hardware.radio.data.TrafficDescriptor trafficDescriptor;
+  @nullable android.hardware.radio.data.TrafficDescriptor trafficDescriptor;
   const int ID_DEFAULT = 0;
   const int ID_TETHERED = 1;
   const int ID_IMS = 2;
@@ -62,6 +62,6 @@ parcelable DataProfileInfo {
   const int ID_OEM_BASE = 1000;
   const int ID_INVALID = -1;
   const int TYPE_COMMON = 0;
-  const int TYPE_3GPP = 1;
-  const int TYPE_3GPP2 = 2;
+  const int TYPE_THREE_GPP = 1;
+  const int TYPE_THREE_GPP2 = 2;
 }

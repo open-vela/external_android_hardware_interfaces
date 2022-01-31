@@ -16,6 +16,8 @@
 
 package android.hardware.radio.modem;
 
+import android.hardware.radio.RadioAccessFamily;
+
 @VintfStability
 parcelable RadioCapability {
     /**
