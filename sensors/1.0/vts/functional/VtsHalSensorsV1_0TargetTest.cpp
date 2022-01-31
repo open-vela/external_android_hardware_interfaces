@@ -39,12 +39,12 @@ class SensorsHidlTest : public SensorsHidlTestBase<SensorType, Event, SensorInfo
   public:
     virtual void SetUp() override {
         mEnvironment = new SensorsHidlEnvironmentV1_0(GetParam());
-        mEnvironment->SetUp();
+        mEnvironment->HidlSetUp();
         // Ensure that we have a valid environment before performing tests
         ASSERT_NE(S(), nullptr);
     }
 
-    virtual void TearDown() override { mEnvironment->TearDown(); }
+    virtual void TearDown() override { mEnvironment->HidlTearDown(); }
 
   protected:
     SensorInfo defaultSensorByType(SensorType type) override;
@@ -81,7 +81,7 @@ class SensorsHidlTest : public SensorsHidlTestBase<SensorType, Event, SensorInfo
 
     inline sp<ISensors>& S() { return mEnvironment->sensors; }
 
-    SensorsVtsEnvironmentBase<Event>* getEnvironment() override { return mEnvironment; }
+    SensorsHidlEnvironmentBase<Event>* getEnvironment() override { return mEnvironment; }
 
   private:
     // Test environment for sensors HAL.
