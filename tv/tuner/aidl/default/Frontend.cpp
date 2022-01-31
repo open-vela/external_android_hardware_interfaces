@@ -393,13 +393,6 @@ void Frontend::scanThreadLoop() {
 
     {
         FrontendScanMessage msg;
-        msg.set<FrontendScanMessage::Tag::isLocked>(false);
-        mCallback->onScanMessage(FrontendScanMessageType::LOCKED, msg);
-        mIsLocked = false;
-    }
-
-    {
-        FrontendScanMessage msg;
         msg.set<FrontendScanMessage::Tag::isLocked>(true);
         mCallback->onScanMessage(FrontendScanMessageType::LOCKED, msg);
         mIsLocked = true;
