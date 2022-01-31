@@ -9,15 +9,14 @@ package {
 
 aidl_interface {
     name: "android.hardware.neuralnetworks",
-    host_supported: true,
     vendor_available: true,
     srcs: [
         "android/hardware/neuralnetworks/*.aidl",
     ],
     stability: "vintf",
     imports: [
-        "android.hardware.common-V2",
-        "android.hardware.graphics.common-V3",
+        "android.hardware.common",
+        "android.hardware.graphics.common",
     ],
     backend: {
         java: {

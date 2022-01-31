@@ -25,7 +25,6 @@
 #include <cppbor_parse.h>
 #include <cutils/properties.h>
 #include <gmock/gmock.h>
-#include <openssl/evp.h>
 #include <openssl/mem.h>
 #include <remote_prov/remote_prov_utils.h>
 
@@ -78,18 +77,12 @@ bool KeyCharacteristicsBasicallyValid(SecurityLevel secLevel,
 
     std::unordered_set<SecurityLevel> levels_seen;
     for (auto& entry : key_characteristics) {
-        if (entry.authorizations.empty()) {
-            GTEST_LOG_(ERROR) << "empty authorizations for " << entry.securityLevel;
-            return false;
-        }
+        if (entry.authorizations.empty()) return false;
 
         // Just ignore the SecurityLevel::KEYSTORE as the KM won't do any enforcement on this.
         if (entry.securityLevel == SecurityLevel::KEYSTORE) continue;
 
-        if (levels_seen.find(entry.securityLevel) != levels_seen.end()) {
-            GTEST_LOG_(ERROR) << "duplicate authorizations for " << entry.securityLevel;
-            return false;
-        }
+        if (levels_seen.find(entry.securityLevel) != levels_seen.end()) return false;
         levels_seen.insert(entry.securityLevel);
 
         // Generally, we should only have one entry, at the same security level as the KM
@@ -99,10 +92,7 @@ bool KeyCharacteristicsBasicallyValid(SecurityLevel secLevel,
                                        (secLevel == SecurityLevel::STRONGBOX &&
                                         entry.securityLevel == SecurityLevel::TRUSTED_ENVIRONMENT);
 
-        if (!isExpectedSecurityLevel) {
-            GTEST_LOG_(ERROR) << "Unexpected security level " << entry.securityLevel;
-            return false;
-        }
+        if (!isExpectedSecurityLevel) return false;
     }
     return true;
 }
@@ -126,16 +116,6 @@ ASN1_OCTET_STRING* get_attestation_record(X509* certificate) {
     ASN1_OCTET_STRING* attest_rec = X509_EXTENSION_get_data(attest_rec_ext);
     EXPECT_TRUE(!!attest_rec) << "Attestation extension contained no data";
     return attest_rec;
-}
-
-void check_attestation_version(uint32_t attestation_version, int32_t aidl_version) {
-    // Version numbers in attestation extensions should be a multiple of 100.
-    EXPECT_EQ(attestation_version % 100, 0);
-
-    // The multiplier should never be higher than the AIDL version, but can be less
-    // (for example, if the implementation is from an earlier version but the HAL service
-    // uses the default libraries and so reports the current AIDL version).
-    EXPECT_TRUE((attestation_version / 100) <= aidl_version);
 }
 
 bool avb_verification_enabled() {
@@ -207,21 +187,6 @@ uint32_t KeyMintAidlTestBase::boot_patch_level() {
     return boot_patch_level(key_characteristics_);
 }
 
-bool KeyMintAidlTestBase::Curve25519Supported() {
-    // Strongbox never supports curve 25519.
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        return false;
-    }
-
-    // Curve 25519 was included in version 2 of the KeyMint interface.
-    int32_t version = 0;
-    auto status = keymint_->getInterfaceVersion(&version);
-    if (!status.isOk()) {
-        ADD_FAILURE() << "Failed to determine interface version";
-    }
-    return version >= 2;
-}
-
 ErrorCode KeyMintAidlTestBase::GetReturnErrorCode(const Status& result) {
     if (result.isOk()) return ErrorCode::OK;
 
@@ -247,15 +212,6 @@ void KeyMintAidlTestBase::InitializeKeyMint(std::shared_ptr<IKeyMintDevice> keyM
     os_version_ = getOsVersion();
     os_patch_level_ = getOsPatchlevel();
     vendor_patch_level_ = getVendorPatchlevel();
-}
-
-int32_t KeyMintAidlTestBase::AidlVersion() {
-    int32_t version = 0;
-    auto status = keymint_->getInterfaceVersion(&version);
-    if (!status.isOk()) {
-        ADD_FAILURE() << "Failed to determine interface version";
-    }
-    return version;
 }
 
 void KeyMintAidlTestBase::SetUp() {
@@ -553,18 +509,10 @@ ErrorCode KeyMintAidlTestBase::Update(const string& input, string* output) {
     Status result;
     if (!output) return ErrorCode::UNEXPECTED_NULL_POINTER;
 
-    EXPECT_NE(op_, nullptr);
-    if (!op_) return ErrorCode::UNEXPECTED_NULL_POINTER;
-
     std::vector<uint8_t> o_put;
     result = op_->update(vector<uint8_t>(input.begin(), input.end()), {}, {}, &o_put);
 
-    if (result.isOk()) {
-        output->append(o_put.begin(), o_put.end());
-    } else {
-        // Failure always terminates the operation.
-        op_ = {};
-    }
+    if (result.isOk()) output->append(o_put.begin(), o_put.end());
 
     return GetReturnErrorCode(result);
 }
@@ -761,19 +709,6 @@ void KeyMintAidlTestBase::LocalVerifyMessage(const string& message, const string
 
     if (digest == Digest::NONE) {
         switch (EVP_PKEY_id(pub_key.get())) {
-            case EVP_PKEY_ED25519: {
-                ASSERT_EQ(64, signature.size());
-                uint8_t pub_keydata[32];
-                size_t pub_len = sizeof(pub_keydata);
-                ASSERT_EQ(1, EVP_PKEY_get_raw_public_key(pub_key.get(), pub_keydata, &pub_len));
-                ASSERT_EQ(sizeof(pub_keydata), pub_len);
-                ASSERT_EQ(1, ED25519_verify(reinterpret_cast<const uint8_t*>(message.data()),
-                                            message.size(),
-                                            reinterpret_cast<const uint8_t*>(signature.data()),
-                                            pub_keydata));
-                break;
-            }
-
             case EVP_PKEY_EC: {
                 vector<uint8_t> data((EVP_PKEY_bits(pub_key.get()) + 7) / 8);
                 size_t data_size = std::min(data.size(), message.size());
@@ -846,7 +781,6 @@ void KeyMintAidlTestBase::LocalVerifyMessage(const string& message, const string
         if (padding == PaddingMode::RSA_PSS) {
             EXPECT_GT(EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING), 0);
             EXPECT_GT(EVP_PKEY_CTX_set_rsa_pss_saltlen(pkey_ctx, EVP_MD_size(md)), 0);
-            EXPECT_GT(EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, md), 0);
         }
 
         ASSERT_EQ(1, EVP_DigestVerifyUpdate(&digest_ctx,
@@ -1124,8 +1058,6 @@ vector<uint32_t> KeyMintAidlTestBase::InvalidKeySizes(Algorithm algorithm) {
         }
     } else {
         switch (algorithm) {
-            case Algorithm::AES:
-                return {64, 96, 131, 512};
             case Algorithm::TRIPLE_DES:
                 return {56};
             default:
@@ -1200,31 +1132,16 @@ vector<PaddingMode> KeyMintAidlTestBase::InvalidPaddingModes(Algorithm algorithm
 vector<EcCurve> KeyMintAidlTestBase::ValidCurves() {
     if (securityLevel_ == SecurityLevel::STRONGBOX) {
         return {EcCurve::P_256};
-    } else if (Curve25519Supported()) {
-        return {EcCurve::P_224, EcCurve::P_256, EcCurve::P_384, EcCurve::P_521,
-                EcCurve::CURVE_25519};
     } else {
-        return {
-                EcCurve::P_224,
-                EcCurve::P_256,
-                EcCurve::P_384,
-                EcCurve::P_521,
-        };
+        return {EcCurve::P_224, EcCurve::P_256, EcCurve::P_384, EcCurve::P_521};
     }
 }
 
 vector<EcCurve> KeyMintAidlTestBase::InvalidCurves() {
     if (SecLevel() == SecurityLevel::STRONGBOX) {
-        // Curve 25519 is not supported, either because:
-        // - KeyMint v1: it's an unknown enum value
-        // - KeyMint v2+: it's not supported by StrongBox.
-        return {EcCurve::P_224, EcCurve::P_384, EcCurve::P_521, EcCurve::CURVE_25519};
+        return {EcCurve::P_224, EcCurve::P_384, EcCurve::P_521};
     } else {
-        if (Curve25519Supported()) {
-            return {};
-        } else {
-            return {EcCurve::CURVE_25519};
-        }
+        return {};
     }
 }
 
@@ -1376,14 +1293,12 @@ void verify_subject_and_serial(const Certificate& certificate,  //
     verify_subject(cert.get(), subject, self_signed);
 }
 
-bool verify_attestation_record(int32_t aidl_version,                   //
-                               const string& challenge,                //
+bool verify_attestation_record(const string& challenge,                //
                                const string& app_id,                   //
                                AuthorizationSet expected_sw_enforced,  //
                                AuthorizationSet expected_hw_enforced,  //
                                SecurityLevel security_level,
-                               const vector<uint8_t>& attestation_cert,
-                               vector<uint8_t>* unique_id) {
+                               const vector<uint8_t>& attestation_cert) {
     X509_Ptr cert(parse_cert_blob(attestation_cert));
     EXPECT_TRUE(!!cert.get());
     if (!cert.get()) return false;
@@ -1415,7 +1330,7 @@ bool verify_attestation_record(int32_t aidl_version,                   //
     EXPECT_EQ(ErrorCode::OK, error);
     if (error != ErrorCode::OK) return false;
 
-    check_attestation_version(att_attestation_version, aidl_version);
+    EXPECT_EQ(att_attestation_version, 100U);
     vector<uint8_t> appId(app_id.begin(), app_id.end());
 
     // check challenge and app id only if we expects a non-fake certificate
@@ -1426,7 +1341,7 @@ bool verify_attestation_record(int32_t aidl_version,                   //
         expected_sw_enforced.push_back(TAG_ATTESTATION_APPLICATION_ID, appId);
     }
 
-    check_attestation_version(att_keymint_version, aidl_version);
+    EXPECT_EQ(att_keymint_version, 100U);
     EXPECT_EQ(security_level, att_keymint_security_level);
     EXPECT_EQ(security_level, att_attestation_security_level);
 
@@ -1441,16 +1356,11 @@ bool verify_attestation_record(int32_t aidl_version,                   //
                 att_hw_enforced[i].tag == TAG_VENDOR_PATCHLEVEL) {
                 std::string date =
                         std::to_string(att_hw_enforced[i].value.get<KeyParameterValue::integer>());
-
                 // strptime seems to require delimiters, but the tag value will
                 // be YYYYMMDD
-                if (date.size() != 8) {
-                    ADD_FAILURE() << "Tag " << att_hw_enforced[i].tag
-                                  << " with invalid format (not YYYYMMDD): " << date;
-                    return false;
-                }
                 date.insert(6, "-");
                 date.insert(4, "-");
+                EXPECT_EQ(date.size(), 10);
                 struct tm time;
                 strptime(date.c_str(), "%Y-%m-%d", &time);
 
@@ -1547,10 +1457,6 @@ bool verify_attestation_record(int32_t aidl_version,                   //
     att_hw_enforced.Sort();
     expected_hw_enforced.Sort();
     EXPECT_EQ(filtered_tags(expected_hw_enforced), filtered_tags(att_hw_enforced));
-
-    if (unique_id != nullptr) {
-        *unique_id = att_unique_id;
-    }
 
     return true;
 }
