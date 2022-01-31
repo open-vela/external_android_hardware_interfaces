@@ -36,5 +36,6 @@ package android.hardware.radio.sim;
 parcelable CarrierRestrictions {
   android.hardware.radio.sim.Carrier[] allowedCarriers;
   android.hardware.radio.sim.Carrier[] excludedCarriers;
+  boolean priority;
   boolean allowedCarriersPrioritized;
 }
