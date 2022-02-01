@@ -56,8 +56,6 @@ class BluetoothAudioProvider : public IBluetoothAudioProvider {
   Return<void> updateAudioConfiguration(
       const AudioConfiguration& audioConfig) override;
 
-  Return<void> setLowLatencyModeAllowed(bool allowed) override;
-
  protected:
   sp<BluetoothAudioDeathRecipient> death_recipient_;
 

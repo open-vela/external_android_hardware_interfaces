@@ -92,6 +92,12 @@ class SupplicantStaNetworkCallback : public BnSupplicantStaNetworkCallback {
         TransitionDisableIndication /* ind */) override {
         return ndk::ScopedAStatus::ok();
     }
+    ::ndk::ScopedAStatus onServerCertificateAvailable(
+            int32_t /* depth */, const std::vector<uint8_t>& /* subject */,
+            const std::vector<uint8_t>& /* certHash */,
+            const std::vector<uint8_t>& /* certBlob */) override {
+        return ndk::ScopedAStatus::ok();
+    }
 };
 
 class SupplicantStaNetworkAidlTest
@@ -99,14 +105,15 @@ class SupplicantStaNetworkAidlTest
    public:
     void SetUp() override {
         initializeService();
-        supplicant_ = getSupplicant(GetParam().c_str());
+        supplicant_ = ISupplicant::fromBinder(ndk::SpAIBinder(
+            AServiceManager_waitForService(GetParam().c_str())));
         ASSERT_NE(supplicant_, nullptr);
         ASSERT_TRUE(supplicant_
                         ->setDebugParams(DebugLevel::EXCESSIVE,
                                          true,  // show timestamps
                                          true)
                         .isOk());
-        EXPECT_TRUE(supplicant_->getStaInterface(getStaIfaceName(), &sta_iface_)
+        EXPECT_TRUE(supplicant_->addStaInterface(getStaIfaceName(), &sta_iface_)
                         .isOk());
         ASSERT_NE(sta_iface_, nullptr);
         EXPECT_TRUE(sta_iface_->addNetwork(&sta_network_).isOk());
@@ -114,7 +121,7 @@ class SupplicantStaNetworkAidlTest
     }
 
     void TearDown() override {
-        stopSupplicantService();
+        stopSupplicant();
         startWifiFramework();
     }
 
@@ -775,6 +782,14 @@ TEST_P(SupplicantStaNetworkAidlTest, GetWpsNfcConfigurationToken) {
     EXPECT_TRUE(
         sta_network_->getWpsNfcConfigurationToken(&retrievedToken).isOk());
     EXPECT_NE(retrievedToken.size(), 0);
+}
+
+/*
+ * SetRoamingConsortiumSelection
+ */
+TEST_P(SupplicantStaNetworkAidlTest, SetRoamingConsortiumSelection) {
+    const std::vector<uint8_t> testSelection = std::vector<uint8_t>({0x11, 0x21, 0x33, 0x44});
+    EXPECT_TRUE(sta_network_->setRoamingConsortiumSelection(testSelection).isOk());
 }
 
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(SupplicantStaNetworkAidlTest);
