@@ -17,9 +17,7 @@
 #ifndef android_hardware_audio_Hidl_Utils_H_
 #define android_hardware_audio_Hidl_Utils_H_
 
-// clang-format off
-#include PATH(android/hardware/audio/common/COMMON_TYPES_FILE_VERSION/types.h)
-// clang-format on
+#include PATH(android/hardware/audio/common/FILE_VERSION/types.h)
 
 #include <memory>
 #include <string>
@@ -31,11 +29,11 @@ namespace android {
 namespace hardware {
 namespace audio {
 namespace common {
-namespace COMMON_TYPES_CPP_VERSION {
+namespace CPP_VERSION {
 namespace implementation {
 
 using ::android::hardware::hidl_vec;
-using namespace ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION;
+using namespace ::android::hardware::audio::common::CPP_VERSION;
 
 struct HidlUtils {
     static status_t audioConfigFromHal(const audio_config_t& halConfig, bool isInput,
@@ -269,7 +267,7 @@ status_t HidlUtils::deviceAddressFromHalImpl(audio_devices_t halDeviceType,
 #endif  // MAJOR_VERSION <= 6
 
 }  // namespace implementation
-}  // namespace COMMON_TYPES_CPP_VERSION
+}  // namespace CPP_VERSION
 }  // namespace common
 }  // namespace audio
 }  // namespace hardware
