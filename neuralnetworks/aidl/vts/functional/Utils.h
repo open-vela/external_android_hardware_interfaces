@@ -18,7 +18,6 @@
 #define ANDROID_HARDWARE_NEURALNETWORKS_AIDL_UTILS_H
 
 #include <android-base/logging.h>
-#include <android/hardware_buffer.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -110,6 +109,8 @@ class TestBlobAHWB : public TestMemoryBase {
 };
 
 enum class MemoryType { ASHMEM, BLOB_AHWB, DEVICE };
+
+std::string toString(MemoryType type);
 
 // Manages the lifetime of memory resources used in an execution.
 class ExecutionContext {

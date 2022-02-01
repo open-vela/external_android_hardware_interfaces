@@ -20,6 +20,7 @@
 #include <aidl/android/hardware/security/keymint/IRemotelyProvisionedComponent.h>
 #include <aidl/android/hardware/security/keymint/SecurityLevel.h>
 #include <android/binder_manager.h>
+#include <binder/IServiceManager.h>
 #include <cppbor_parse.h>
 #include <gmock/gmock.h>
 #include <keymaster/cppcose/cppcose.h>
@@ -29,6 +30,7 @@
 #include <openssl/ec_key.h>
 #include <openssl/x509.h>
 #include <remote_prov/remote_prov_utils.h>
+#include <set>
 #include <vector>
 
 #include "KeyMintAidlTestBase.h"
@@ -40,6 +42,8 @@ using ::std::vector;
 
 namespace {
 
+constexpr int32_t VERSION_WITH_UNIQUE_ID_SUPPORT = 2;
+
 #define INSTANTIATE_REM_PROV_AIDL_TEST(name)                                         \
     GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(name);                             \
     INSTANTIATE_TEST_SUITE_P(                                                        \
@@ -47,6 +51,7 @@ namespace {
             testing::ValuesIn(VtsRemotelyProvisionedComponentTests::build_params()), \
             ::android::PrintInstanceNameToString)
 
+using ::android::sp;
 using bytevec = std::vector<uint8_t>;
 using testing::MatchesRegex;
 using namespace remote_prov;
@@ -175,6 +180,67 @@ class VtsRemotelyProvisionedComponentTests : public testing::TestWithParam<std::
     std::shared_ptr<IRemotelyProvisionedComponent> provisionable_;
 };
 
+/**
+ * Verify that every implementation reports a different unique id.
+ */
+TEST(NonParameterizedTests, eachRpcHasAUniqueId) {
+    std::set<std::string> uniqueIds;
+    for (auto hal : ::android::getAidlHalInstanceNames(IRemotelyProvisionedComponent::descriptor)) {
+        ASSERT_TRUE(AServiceManager_isDeclared(hal.c_str()));
+        ::ndk::SpAIBinder binder(AServiceManager_waitForService(hal.c_str()));
+        std::shared_ptr<IRemotelyProvisionedComponent> rpc =
+                IRemotelyProvisionedComponent::fromBinder(binder);
+        ASSERT_NE(rpc, nullptr);
+
+        RpcHardwareInfo hwInfo;
+        ASSERT_TRUE(rpc->getHardwareInfo(&hwInfo).isOk());
+
+        int32_t version;
+        ASSERT_TRUE(rpc->getInterfaceVersion(&version).isOk());
+        if (version >= VERSION_WITH_UNIQUE_ID_SUPPORT) {
+            ASSERT_TRUE(hwInfo.uniqueId);
+            auto [_, wasInserted] = uniqueIds.insert(*hwInfo.uniqueId);
+            EXPECT_TRUE(wasInserted);
+        } else {
+            ASSERT_FALSE(hwInfo.uniqueId);
+        }
+    }
+}
+
+using GetHardwareInfoTests = VtsRemotelyProvisionedComponentTests;
+
+INSTANTIATE_REM_PROV_AIDL_TEST(GetHardwareInfoTests);
+
+/**
+ * Verify that a valid curve is reported by the implementation.
+ */
+TEST_P(GetHardwareInfoTests, supportsValidCurve) {
+    RpcHardwareInfo hwInfo;
+    ASSERT_TRUE(provisionable_->getHardwareInfo(&hwInfo).isOk());
+
+    const std::set<int> validCurves = {RpcHardwareInfo::CURVE_P256, RpcHardwareInfo::CURVE_25519};
+    ASSERT_EQ(validCurves.count(hwInfo.supportedEekCurve), 1)
+            << "Invalid curve: " << hwInfo.supportedEekCurve;
+}
+
+/**
+ * Verify that the unique id is within the length limits as described in RpcHardwareInfo.aidl.
+ */
+TEST_P(GetHardwareInfoTests, uniqueId) {
+    int32_t version;
+    ASSERT_TRUE(provisionable_->getInterfaceVersion(&version).isOk());
+
+    if (version < VERSION_WITH_UNIQUE_ID_SUPPORT) {
+        return;
+    }
+
+    RpcHardwareInfo hwInfo;
+    ASSERT_TRUE(provisionable_->getHardwareInfo(&hwInfo).isOk());
+    ASSERT_TRUE(hwInfo.uniqueId);
+    EXPECT_GE(hwInfo.uniqueId->size(), 1);
+    EXPECT_LE(hwInfo.uniqueId->size(), 32);
+}
+
 using GenerateKeyTests = VtsRemotelyProvisionedComponentTests;
 
 INSTANTIATE_REM_PROV_AIDL_TEST(GenerateKeyTests);
@@ -222,7 +288,7 @@ TEST_P(GenerateKeyTests, generateAndUseEcdsaP256Key_prodMode) {
     // Generate an ECDSA key that is attested by the generated P256 keypair.
     AuthorizationSet keyDesc = AuthorizationSetBuilder()
                                        .Authorization(TAG_NO_AUTH_REQUIRED)
-                                       .EcdsaSigningKey(256)
+                                       .EcdsaSigningKey(EcCurve::P_256)
                                        .AttestationChallenge("foo")
                                        .AttestationApplicationId("bar")
                                        .Digest(Digest::NONE)
@@ -236,9 +302,11 @@ TEST_P(GenerateKeyTests, generateAndUseEcdsaP256Key_prodMode) {
     vector<Certificate> attested_key_cert_chain = std::move(creationResult.certificateChain);
     EXPECT_EQ(attested_key_cert_chain.size(), 1);
 
+    int32_t aidl_version = 0;
+    ASSERT_TRUE(keyMint->getInterfaceVersion(&aidl_version).isOk());
     AuthorizationSet hw_enforced = HwEnforcedAuthorizations(attested_key_characteristics);
     AuthorizationSet sw_enforced = SwEnforcedAuthorizations(attested_key_characteristics);
-    EXPECT_TRUE(verify_attestation_record("foo", "bar", sw_enforced, hw_enforced,
+    EXPECT_TRUE(verify_attestation_record(aidl_version, "foo", "bar", sw_enforced, hw_enforced,
                                           info.securityLevel,
                                           attested_key_cert_chain[0].encodedCertificate));
 
