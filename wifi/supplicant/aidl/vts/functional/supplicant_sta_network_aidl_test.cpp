@@ -105,14 +105,15 @@ class SupplicantStaNetworkAidlTest
    public:
     void SetUp() override {
         initializeService();
-        supplicant_ = getSupplicant(GetParam().c_str());
+        supplicant_ = ISupplicant::fromBinder(ndk::SpAIBinder(
+            AServiceManager_waitForService(GetParam().c_str())));
         ASSERT_NE(supplicant_, nullptr);
         ASSERT_TRUE(supplicant_
                         ->setDebugParams(DebugLevel::EXCESSIVE,
                                          true,  // show timestamps
                                          true)
                         .isOk());
-        EXPECT_TRUE(supplicant_->getStaInterface(getStaIfaceName(), &sta_iface_)
+        EXPECT_TRUE(supplicant_->addStaInterface(getStaIfaceName(), &sta_iface_)
                         .isOk());
         ASSERT_NE(sta_iface_, nullptr);
         EXPECT_TRUE(sta_iface_->addNetwork(&sta_network_).isOk());
@@ -120,7 +121,7 @@ class SupplicantStaNetworkAidlTest
     }
 
     void TearDown() override {
-        stopSupplicantService();
+        stopSupplicant();
         startWifiFramework();
     }
 
