@@ -24,7 +24,6 @@ import android.hardware.graphics.common.HardwareBufferDescription;
  *
  * @note This is different from the public HardwareBuffer.
  * @sa +ndk libnativewindow#AHardwareBuffer
- * @hide
  */
 @VintfStability
 parcelable HardwareBuffer {
