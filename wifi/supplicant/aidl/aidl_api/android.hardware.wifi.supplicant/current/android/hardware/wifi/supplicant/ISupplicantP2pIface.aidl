@@ -37,7 +37,7 @@ interface ISupplicantP2pIface {
   void addBonjourService(in byte[] query, in byte[] response);
   void addGroup(in boolean persistent, in int persistentNetworkId);
   void addGroupWithConfig(in byte[] ssid, in String pskPassphrase, in boolean persistent, in int freq, in byte[] peerAddress, in boolean joinExistingGroup);
-  @PropagateAllowBlocking android.hardware.wifi.supplicant.ISupplicantP2pNetwork addNetwork();
+  android.hardware.wifi.supplicant.ISupplicantP2pNetwork addNetwork();
   void addUpnpService(in int version, in String serviceName);
   void cancelConnect();
   void cancelServiceDiscovery(in long identifier);
@@ -54,7 +54,7 @@ interface ISupplicantP2pIface {
   boolean getEdmg();
   android.hardware.wifi.supplicant.P2pGroupCapabilityMask getGroupCapability(in byte[] peerAddress);
   String getName();
-  @PropagateAllowBlocking android.hardware.wifi.supplicant.ISupplicantP2pNetwork getNetwork(in int id);
+  android.hardware.wifi.supplicant.ISupplicantP2pNetwork getNetwork(in int id);
   byte[] getSsid(in byte[] peerAddress);
   android.hardware.wifi.supplicant.IfaceType getType();
   void invite(in String groupIfName, in byte[] goDeviceAddress, in byte[] peerAddress);
@@ -81,7 +81,6 @@ interface ISupplicantP2pIface {
   void setSsidPostfix(in byte[] postfix);
   void setWfdDeviceInfo(in byte[] info);
   void setWfdR2DeviceInfo(in byte[] info);
-  void removeClient(in byte[] peerAddress, in boolean isLegacyClient);
   void setWpsConfigMethods(in android.hardware.wifi.supplicant.WpsConfigMethods configMethods);
   void setWpsDeviceName(in String name);
   void setWpsDeviceType(in byte[] type);
@@ -93,6 +92,4 @@ interface ISupplicantP2pIface {
   String startWpsPinDisplay(in String groupIfName, in byte[] bssid);
   void startWpsPinKeypad(in String groupIfName, in String pin);
   void stopFind();
-  void findOnSocialChannels(in int timeoutInSec);
-  void findOnSpecificFrequency(in int freqInHz, in int timeoutInSec);
 }
