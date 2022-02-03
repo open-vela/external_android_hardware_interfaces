@@ -28,7 +28,6 @@ import android.hardware.wifi.supplicant.ISupplicantStaIfaceCallback;
 import android.hardware.wifi.supplicant.ISupplicantStaNetwork;
 import android.hardware.wifi.supplicant.IfaceType;
 import android.hardware.wifi.supplicant.KeyMgmtMask;
-import android.hardware.wifi.supplicant.QosPolicyStatus;
 import android.hardware.wifi.supplicant.RxFilterType;
 import android.hardware.wifi.supplicant.WpaDriverCapabilitiesMask;
 import android.hardware.wifi.supplicant.WpsConfigMethods;
@@ -87,7 +86,7 @@ interface ISupplicantStaIface {
      *         |SupplicantStatusCode.FAILURE_UNKNOWN|,
      *         |SupplicantStatusCode.FAILURE_IFACE_INVALID|
      */
-    @PropagateAllowBlocking ISupplicantStaNetwork addNetwork();
+    ISupplicantStaNetwork addNetwork();
 
     /**
      * Send driver command to add the specified RX filter.
@@ -232,7 +231,7 @@ interface ISupplicantStaIface {
      *         |SupplicantStatusCode.FAILURE_IFACE_INVALID|,
      *         |SupplicantStatusCode.FAILURE_NETWORK_UNKNOWN|
      */
-    @PropagateAllowBlocking ISupplicantStaNetwork getNetwork(in int id);
+    ISupplicantStaNetwork getNetwork(in int id);
 
     /**
      * Retrieves the type of the network interface.
@@ -376,37 +375,6 @@ interface ISupplicantStaIface {
      *         |SupplicantStatusCode.FAILURE_IFACE_INVALID|
      */
     void registerCallback(in ISupplicantStaIfaceCallback callback);
-
-    /**
-     * Enable/disable QoS policy feature.
-     * @param enable true to enable, false to disable.
-     * @throws ServiceSpecificException with one of the following values:
-     *         |SupplicantStatusCode.FAILURE_UNKNOWN|
-     */
-    void setQosPolicyFeatureEnabled(in boolean enable);
-
-    /**
-     * Send a DSCP policy response to the AP. If a DSCP request is ongoing,
-     * sends a solicited (uses the ongoing DSCP request as dialog token) DSCP
-     * response. Otherwise, sends an unsolicited DSCP response.
-     *
-     * @param morePolicies Flag to indicate more QoS policies can be accommodated.
-     * @param qosPolicyStatusList QoS policy status info for each QoS policy id.
-     * @throws ServiceSpecificException with one of the following values:
-     *         |SupplicantStatusCode.FAILURE_ARGS_INVALID|,
-     *         |SupplicantStatusCode.FAILURE_UNKNOWN|,
-     *         |SupplicantStatusCode.FAILURE_UNSUPPORTED|
-     */
-    void sendQosPolicyResponse(in boolean morePolicies, in QosPolicyStatus[] qosPolicyStatusList);
-
-    /**
-     * Indicate removal of all active QoS policies configured by the AP.
-     *
-     * @throws ServiceSpecificException with one of the following values:
-     *         |SupplicantStatusCode.FAILURE_UNKNOWN|,
-     *         |SupplicantStatusCode.FAILURE_UNSUPPORTED|
-     */
-    void removeAllQosPolicies();
 
     /**
      * Remove a DPP peer URI.

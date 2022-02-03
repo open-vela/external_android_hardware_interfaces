@@ -34,11 +34,11 @@
 package android.hardware.wifi.supplicant;
 @VintfStability
 interface ISupplicant {
-  @PropagateAllowBlocking android.hardware.wifi.supplicant.ISupplicantP2pIface addP2pInterface(in String ifName);
-  @PropagateAllowBlocking android.hardware.wifi.supplicant.ISupplicantStaIface addStaInterface(in String ifName);
+  android.hardware.wifi.supplicant.ISupplicantP2pIface addP2pInterface(in String ifName);
+  android.hardware.wifi.supplicant.ISupplicantStaIface addStaInterface(in String ifName);
   android.hardware.wifi.supplicant.DebugLevel getDebugLevel();
-  @PropagateAllowBlocking android.hardware.wifi.supplicant.ISupplicantP2pIface getP2pInterface(in String ifName);
-  @PropagateAllowBlocking android.hardware.wifi.supplicant.ISupplicantStaIface getStaInterface(in String ifName);
+  android.hardware.wifi.supplicant.ISupplicantP2pIface getP2pInterface(in String ifName);
+  android.hardware.wifi.supplicant.ISupplicantStaIface getStaInterface(in String ifName);
   boolean isDebugShowKeysEnabled();
   boolean isDebugShowTimestampEnabled();
   android.hardware.wifi.supplicant.IfaceInfo[] listInterfaces();

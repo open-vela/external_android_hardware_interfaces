@@ -59,8 +59,7 @@ TEST_P(DualMonoModeAccessorHidlTest, DualMonoModeTest) {
     testAccessors<OPTIONAL>(&OutputStreamTest::getStream, "dual mono mode",
                             Initial{DualMonoMode::OFF},
                             {DualMonoMode::LR, DualMonoMode::LL, DualMonoMode::RR},
-                            &::android::hardware::audio::CPP_VERSION::IStreamOut::setDualMonoMode,
-                            &::android::hardware::audio::CPP_VERSION::IStreamOut::getDualMonoMode);
+                            &IStreamOut::setDualMonoMode, &IStreamOut::getDualMonoMode);
 }
 
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(DualMonoModeAccessorHidlTest);
@@ -74,8 +73,7 @@ TEST_P(AudioDescriptionMixLevelHidlTest, AudioDescriptionMixLevelTest) {
     testAccessors<OPTIONAL>(
             &OutputStreamTest::getStream, "audio description mix level",
             Initial{-std::numeric_limits<float>::infinity()}, {-48.0f, -1.0f, 0.0f, 1.0f, 48.0f},
-            &::android::hardware::audio::CPP_VERSION::IStreamOut::setAudioDescriptionMixLevel,
-            &::android::hardware::audio::CPP_VERSION::IStreamOut::getAudioDescriptionMixLevel,
+            &IStreamOut::setAudioDescriptionMixLevel, &IStreamOut::getAudioDescriptionMixLevel,
             {48.5f, 1000.0f, std::numeric_limits<float>::infinity()});
 }
 
@@ -107,8 +105,7 @@ TEST_P(PlaybackRateParametersHidlTest, PlaybackRateParametersTest) {
              PlaybackRate{0.5f, 0.5f, TimestretchMode::VOICE, TimestretchFallbackMode::MUTE},
              PlaybackRate{1000.0f, 1000.0f, TimestretchMode::VOICE, TimestretchFallbackMode::MUTE},
              PlaybackRate{1.0f, 1.0f, TimestretchMode::VOICE, TimestretchFallbackMode::FAIL}},
-            &::android::hardware::audio::CPP_VERSION::IStreamOut::setPlaybackRateParameters,
-            &::android::hardware::audio::CPP_VERSION::IStreamOut::getPlaybackRateParameters,
+            &IStreamOut::setPlaybackRateParameters, &IStreamOut::getPlaybackRateParameters,
             {PlaybackRate{1000.0f, 1000.0f, TimestretchMode::DEFAULT,
                           TimestretchFallbackMode::FAIL},
              PlaybackRate{1000.0f, 1000.0f, TimestretchMode::VOICE,

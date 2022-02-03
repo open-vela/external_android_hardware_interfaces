@@ -41,10 +41,7 @@ namespace audio {
 namespace CPP_VERSION {
 namespace implementation {
 
-using ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION::implementation::HidlUtils;
-namespace util {
-using namespace ::android::hardware::audio::CORE_TYPES_CPP_VERSION::implementation::util;
-}
+using ::android::hardware::audio::common::CPP_VERSION::implementation::HidlUtils;
 
 Device::Device(audio_hw_device_t* device) : mIsClosed(false), mDevice(device) {}
 
@@ -87,7 +84,7 @@ Return<Result> Device::setMasterVolume(float volume) {
     if (mDevice->set_master_volume == NULL) {
         return Result::NOT_SUPPORTED;
     }
-    if (!util::isGainNormalized(volume)) {
+    if (!isGainNormalized(volume)) {
         ALOGW("Can not set a master volume (%f) outside [0,1]", volume);
         return Result::INVALID_ARGUMENTS;
     }
@@ -153,7 +150,7 @@ Return<void> Device::getInputBufferSize(const AudioConfig& config, getInputBuffe
     return Void();
 }
 
-std::tuple<Result, sp<IStreamOut>> Device::openOutputStreamCore(int32_t ioHandle,
+std::tuple<Result, sp<IStreamOut>> Device::openOutputStreamImpl(int32_t ioHandle,
                                                                 const DeviceAddress& device,
                                                                 const AudioConfig& config,
                                                                 const AudioOutputFlags& flags,
@@ -190,7 +187,7 @@ std::tuple<Result, sp<IStreamOut>> Device::openOutputStreamCore(int32_t ioHandle
     return {analyzeStatus("open_output_stream", status, {EINVAL} /*ignore*/), streamOut};
 }
 
-std::tuple<Result, sp<IStreamIn>> Device::openInputStreamCore(
+std::tuple<Result, sp<IStreamIn>> Device::openInputStreamImpl(
         int32_t ioHandle, const DeviceAddress& device, const AudioConfig& config,
         const AudioInputFlags& flags, AudioSource source, AudioConfig* suggestedConfig) {
     audio_config_t halConfig;
@@ -233,7 +230,7 @@ Return<void> Device::openOutputStream(int32_t ioHandle, const DeviceAddress& dev
                                       openOutputStream_cb _hidl_cb) {
     AudioConfig suggestedConfig;
     auto [result, streamOut] =
-            openOutputStreamCore(ioHandle, device, config, flags, &suggestedConfig);
+        openOutputStreamImpl(ioHandle, device, config, flags, &suggestedConfig);
     _hidl_cb(result, streamOut, suggestedConfig);
     return Void();
 }
@@ -243,36 +240,12 @@ Return<void> Device::openInputStream(int32_t ioHandle, const DeviceAddress& devi
                                      AudioSource source, openInputStream_cb _hidl_cb) {
     AudioConfig suggestedConfig;
     auto [result, streamIn] =
-            openInputStreamCore(ioHandle, device, config, flags, source, &suggestedConfig);
+        openInputStreamImpl(ioHandle, device, config, flags, source, &suggestedConfig);
     _hidl_cb(result, streamIn, suggestedConfig);
     return Void();
 }
 
 #elif MAJOR_VERSION >= 4
-std::tuple<Result, sp<IStreamOut>, AudioConfig> Device::openOutputStreamImpl(
-        int32_t ioHandle, const DeviceAddress& device, const AudioConfig& config,
-        const SourceMetadata& sourceMetadata,
-#if MAJOR_VERSION <= 6
-        AudioOutputFlags flags) {
-    if (status_t status = CoreUtils::sourceMetadataToHal(sourceMetadata, nullptr);
-        status != NO_ERROR) {
-#else
-        const AudioOutputFlags& flags) {
-    if (status_t status = CoreUtils::sourceMetadataToHalV7(sourceMetadata,
-                                                           false /*ignoreNonVendorTags*/, nullptr);
-        status != NO_ERROR) {
-#endif
-        return {analyzeStatus("sourceMetadataToHal", status), nullptr, {}};
-    }
-    AudioConfig suggestedConfig;
-    auto [result, streamOut] =
-            openOutputStreamCore(ioHandle, device, config, flags, &suggestedConfig);
-    if (streamOut) {
-        streamOut->updateSourceMetadata(sourceMetadata);
-    }
-    return {result, streamOut, suggestedConfig};
-}
-
 Return<void> Device::openOutputStream(int32_t ioHandle, const DeviceAddress& device,
                                       const AudioConfig& config,
 #if MAJOR_VERSION <= 6
@@ -282,44 +255,25 @@ Return<void> Device::openOutputStream(int32_t ioHandle, const DeviceAddress& dev
 #endif
                                       const SourceMetadata& sourceMetadata,
                                       openOutputStream_cb _hidl_cb) {
-    auto [result, streamOut, suggestedConfig] =
-            openOutputStreamImpl(ioHandle, device, config, sourceMetadata, flags);
-    _hidl_cb(result, streamOut, suggestedConfig);
-    return Void();
-}
-
-std::tuple<Result, sp<IStreamIn>, AudioConfig> Device::openInputStreamImpl(
-        int32_t ioHandle, const DeviceAddress& device, const AudioConfig& config,
 #if MAJOR_VERSION <= 6
-        AudioInputFlags flags,
+    if (status_t status = CoreUtils::sourceMetadataToHal(sourceMetadata, nullptr);
+        status != NO_ERROR) {
 #else
-        const AudioInputFlags& flags,
-#endif
-        const SinkMetadata& sinkMetadata) {
-    if (sinkMetadata.tracks.size() == 0) {
-        // This should never happen, the framework must not create as stream
-        // if there is no client
-        ALOGE("openInputStream called without tracks connected");
-        return {Result::INVALID_ARGUMENTS, nullptr, AudioConfig{}};
-    }
-#if MAJOR_VERSION <= 6
-    if (status_t status = CoreUtils::sinkMetadataToHal(sinkMetadata, nullptr); status != NO_ERROR) {
-#else
-    if (status_t status = CoreUtils::sinkMetadataToHalV7(sinkMetadata,
-                                                         false /*ignoreNonVendorTags*/, nullptr);
+    if (status_t status = CoreUtils::sourceMetadataToHalV7(sourceMetadata,
+                                                           false /*ignoreNonVendorTags*/, nullptr);
         status != NO_ERROR) {
 #endif
-        return {analyzeStatus("sinkMetadataToHal", status), nullptr, AudioConfig{}};
+        _hidl_cb(analyzeStatus("sourceMetadataToHal", status), nullptr, AudioConfig{});
+        return Void();
     }
-    // Pick the first one as the main.
-    AudioSource source = sinkMetadata.tracks[0].source;
     AudioConfig suggestedConfig;
-    auto [result, streamIn] =
-            openInputStreamCore(ioHandle, device, config, flags, source, &suggestedConfig);
-    if (streamIn) {
-        streamIn->updateSinkMetadata(sinkMetadata);
+    auto [result, streamOut] =
+        openOutputStreamImpl(ioHandle, device, config, flags, &suggestedConfig);
+    if (streamOut) {
+        streamOut->updateSourceMetadata(sourceMetadata);
     }
-    return {result, streamIn, suggestedConfig};
+    _hidl_cb(result, streamOut, suggestedConfig);
+    return Void();
 }
 
 Return<void> Device::openInputStream(int32_t ioHandle, const DeviceAddress& device,
@@ -331,34 +285,35 @@ Return<void> Device::openInputStream(int32_t ioHandle, const DeviceAddress& devi
 #endif
                                      const SinkMetadata& sinkMetadata,
                                      openInputStream_cb _hidl_cb) {
-    auto [result, streamIn, suggestedConfig] =
-            openInputStreamImpl(ioHandle, device, config, flags, sinkMetadata);
+    if (sinkMetadata.tracks.size() == 0) {
+        // This should never happen, the framework must not create as stream
+        // if there is no client
+        ALOGE("openInputStream called without tracks connected");
+        _hidl_cb(Result::INVALID_ARGUMENTS, nullptr, AudioConfig{});
+        return Void();
+    }
+#if MAJOR_VERSION <= 6
+    if (status_t status = CoreUtils::sinkMetadataToHal(sinkMetadata, nullptr); status != NO_ERROR) {
+#else
+    if (status_t status = CoreUtils::sinkMetadataToHalV7(sinkMetadata,
+                                                         false /*ignoreNonVendorTags*/, nullptr);
+        status != NO_ERROR) {
+#endif
+        _hidl_cb(analyzeStatus("sinkMetadataToHal", status), nullptr, AudioConfig{});
+        return Void();
+    }
+    // Pick the first one as the main.
+    AudioSource source = sinkMetadata.tracks[0].source;
+    AudioConfig suggestedConfig;
+    auto [result, streamIn] =
+        openInputStreamImpl(ioHandle, device, config, flags, source, &suggestedConfig);
+    if (streamIn) {
+        streamIn->updateSinkMetadata(sinkMetadata);
+    }
     _hidl_cb(result, streamIn, suggestedConfig);
     return Void();
 }
 #endif /* MAJOR_VERSION */
-
-#if MAJOR_VERSION == 7 && MINOR_VERSION == 1
-Return<void> Device::openOutputStream_7_1(int32_t ioHandle, const DeviceAddress& device,
-                                          const AudioConfig& config, const AudioOutputFlags& flags,
-                                          const SourceMetadata& sourceMetadata,
-                                          openOutputStream_7_1_cb _hidl_cb) {
-    auto [result, streamOut, suggestedConfig] =
-            openOutputStreamImpl(ioHandle, device, config, sourceMetadata, flags);
-    _hidl_cb(result, streamOut, suggestedConfig);
-    return Void();
-}
-
-Return<void> Device::openInputStream_7_1(int32_t ioHandle, const DeviceAddress& device,
-                                         const AudioConfig& config, const AudioInputFlags& flags,
-                                         const SinkMetadata& sinkMetadata,
-                                         openInputStream_7_1_cb _hidl_cb) {
-    auto [result, streamIn, suggestedConfig] =
-            openInputStreamImpl(ioHandle, device, config, flags, sinkMetadata);
-    _hidl_cb(result, streamIn, suggestedConfig);
-    return Void();
-}
-#endif  // V7.1
 
 Return<bool> Device::supportsAudioPatches() {
     return version() >= AUDIO_DEVICE_API_VERSION_3_0;
@@ -614,21 +569,6 @@ Return<void> Device::updateAudioPatch(int32_t previousPatch,
     return Void();
 }
 
-#endif
-
-#if MAJOR_VERSION == 7 && MINOR_VERSION == 1
-Return<Result> Device::setConnectedState_7_1(const AudioPort& devicePort, bool connected) {
-    if (version() >= AUDIO_DEVICE_API_VERSION_3_2 &&
-        mDevice->set_device_connected_state_v7 != nullptr) {
-        audio_port_v7 halPort;
-        if (status_t status = HidlUtils::audioPortToHal(devicePort, &halPort); status != NO_ERROR) {
-            return analyzeStatus("audioPortToHal", status);
-        }
-        return analyzeStatus("set_device_connected_state_v7",
-                             mDevice->set_device_connected_state_v7(mDevice, &halPort, connected));
-    }
-    return Result::NOT_SUPPORTED;
-}
 #endif
 
 }  // namespace implementation
