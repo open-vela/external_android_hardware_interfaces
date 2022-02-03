@@ -21,7 +21,7 @@ import android.hardware.sensors.SensorType;
 @VintfStability
 parcelable SensorInfo {
     /**
-     * Handle that identifies this sensors. This handle is used to reference
+     * handle that identifies this sensors. This handle is used to reference
      * this sensor throughout the HAL API.
      */
     int sensorHandle;
@@ -33,25 +33,25 @@ parcelable SensorInfo {
     String name;
 
     /**
-     * Vendor of the hardware part.
+     * vendor of the hardware part
      */
     String vendor;
 
     /**
-     * Version of the hardware part + driver, used for informational purposes.
-     * The value of this field must increase when the driver is updated in a
-     * way that changes the output of this sensor. This is important for fused
-     * sensors when the fusion algorithm is updated.
+     * version of the hardware part + driver. The value of this field
+     * must increase when the driver is updated in a way that changes the
+     * output of this sensor. This is important for fused sensors when the
+     * fusion algorithm is updated.
      */
     int version;
 
     /**
-     * This sensor's type.
+     * this sensor's type.
      */
     SensorType type;
 
     /**
-     * Type of this sensor as a string.
+     * type of this sensor as a string.
      *
      * When defining an OEM specific sensor or sensor manufacturer specific
      * sensor, use your reserve domain name as a prefix.
@@ -63,22 +63,22 @@ parcelable SensorInfo {
     String typeAsString;
 
     /**
-     * Maximum range of this sensor's value in SI units
+     * maximum range of this sensor's value in SI units
      */
     float maxRange;
 
     /**
-     * Smallest difference between two values reported by this sensor
+     * smallest difference between two values reported by this sensor
      */
     float resolution;
 
     /**
-     * Rough estimate of this sensor's power consumption in mA
+     * rough estimate of this sensor's power consumption in mA
      */
     float power;
 
     /**
-     * This value depends on the reporting mode:
+     * this value depends on the reporting mode:
      *
      *   continuous: minimum sample period allowed in microseconds
      *   on-change : 0
@@ -88,7 +88,7 @@ parcelable SensorInfo {
     int minDelayUs;
 
     /**
-     * Number of events reserved for this sensor in the batch mode FIFO.
+     * number of events reserved for this sensor in the batch mode FIFO.
      * If there is a dedicated FIFO for this sensor, then this is the
      * size of this FIFO. If the FIFO is shared with other sensors,
      * this is the size reserved for that sensor and it can be zero.
@@ -96,14 +96,14 @@ parcelable SensorInfo {
     int fifoReservedEventCount;
 
     /**
-     * Maximum number of events of this sensor that could be batched.
+     * maximum number of events of this sensor that could be batched.
      * This is especially relevant when the FIFO is shared between
      * several sensors; this value is then set to the size of that FIFO.
      */
     int fifoMaxEventCount;
 
     /**
-     * Permission required to see this sensor, register to it and receive data.
+     * permission required to see this sensor, register to it and receive data.
      * Set to "" if no permission is required. Some sensor types like the
      * heart rate monitor have a mandatory require_permission.
      * For sensors that always require a specific permission, like the heart
