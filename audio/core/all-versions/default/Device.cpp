@@ -348,16 +348,6 @@ Return<void> Device::openOutputStream_7_1(int32_t ioHandle, const DeviceAddress&
     _hidl_cb(result, streamOut, suggestedConfig);
     return Void();
 }
-
-Return<void> Device::openInputStream_7_1(int32_t ioHandle, const DeviceAddress& device,
-                                         const AudioConfig& config, const AudioInputFlags& flags,
-                                         const SinkMetadata& sinkMetadata,
-                                         openInputStream_7_1_cb _hidl_cb) {
-    auto [result, streamIn, suggestedConfig] =
-            openInputStreamImpl(ioHandle, device, config, flags, sinkMetadata);
-    _hidl_cb(result, streamIn, suggestedConfig);
-    return Void();
-}
 #endif  // V7.1
 
 Return<bool> Device::supportsAudioPatches() {
@@ -614,6 +604,21 @@ Return<void> Device::updateAudioPatch(int32_t previousPatch,
     return Void();
 }
 
+#endif
+
+#if MAJOR_VERSION == 7 && MINOR_VERSION == 1
+Return<Result> Device::setConnectedState_7_1(const AudioPort& devicePort, bool connected) {
+    if (version() >= AUDIO_DEVICE_API_VERSION_3_2 &&
+        mDevice->set_device_connected_state_v7 != nullptr) {
+        audio_port_v7 halPort;
+        if (status_t status = HidlUtils::audioPortToHal(devicePort, &halPort); status != NO_ERROR) {
+            return analyzeStatus("audioPortToHal", status);
+        }
+        return analyzeStatus("set_device_connected_state_v7",
+                             mDevice->set_device_connected_state_v7(mDevice, &halPort, connected));
+    }
+    return Result::NOT_SUPPORTED;
+}
 #endif
 
 }  // namespace implementation
