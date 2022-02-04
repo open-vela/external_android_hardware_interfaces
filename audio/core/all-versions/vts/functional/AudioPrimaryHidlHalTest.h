@@ -1010,7 +1010,6 @@ class StreamWriter : public StreamWorker<StreamWriter> {
 
 class OutputStreamTest
     : public OpenStreamTest<::android::hardware::audio::CPP_VERSION::IStreamOut> {
-  protected:
     void SetUp() override {
         ASSERT_NO_FATAL_FAILURE(OpenStreamTest::SetUp());  // setup base
 #if MAJOR_VERSION <= 6
@@ -1036,6 +1035,7 @@ class OutputStreamTest
     }
 #if MAJOR_VERSION >= 4 && MAJOR_VERSION <= 6
 
+  protected:
     const SourceMetadata initMetadata = {
         { { AudioUsage::MEDIA,
             AudioContentType::MUSIC,
