@@ -47,5 +47,4 @@ parcelable Stream {
   int groupId;
   android.hardware.camera.metadata.SensorPixelMode[] sensorPixelModesUsed;
   android.hardware.camera.metadata.RequestAvailableDynamicRangeProfilesMap dynamicRangeProfile;
-  android.hardware.camera.metadata.ScalerAvailableStreamUseCases useCase;
 }

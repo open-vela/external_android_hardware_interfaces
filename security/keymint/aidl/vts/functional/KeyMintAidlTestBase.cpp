@@ -1228,14 +1228,6 @@ vector<EcCurve> KeyMintAidlTestBase::InvalidCurves() {
     }
 }
 
-vector<uint64_t> KeyMintAidlTestBase::ValidExponents() {
-    if (SecLevel() == SecurityLevel::STRONGBOX) {
-        return {65537};
-    } else {
-        return {3, 65537};
-    }
-}
-
 vector<Digest> KeyMintAidlTestBase::ValidDigests(bool withNone, bool withMD5) {
     switch (SecLevel()) {
         case SecurityLevel::SOFTWARE:
