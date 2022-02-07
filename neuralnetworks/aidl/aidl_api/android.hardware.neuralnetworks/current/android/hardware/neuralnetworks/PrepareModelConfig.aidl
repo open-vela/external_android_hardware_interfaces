@@ -39,8 +39,7 @@ parcelable PrepareModelConfig {
   long deadlineNs;
   ParcelFileDescriptor[] modelCache;
   ParcelFileDescriptor[] dataCache;
-  byte[32] cacheToken;
+  byte[] cacheToken;
   android.hardware.neuralnetworks.TokenValuePair[] compilationHints;
   android.hardware.neuralnetworks.ExtensionNameAndPrefix[] extensionNameToPrefix;
-  const int BYTE_SIZE_OF_CACHE_TOKEN = 32;
 }
