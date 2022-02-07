@@ -16,28 +16,22 @@
 
 package android.hardware.bluetooth.audio;
 
+import android.hardware.bluetooth.audio.BroadcastConfiguration;
 import android.hardware.bluetooth.audio.CodecType;
-import android.hardware.bluetooth.audio.LeAudioCodecConfiguration;
+import android.hardware.bluetooth.audio.LeAudioMode;
+import android.hardware.bluetooth.audio.UnicastConfiguration;
 
 @VintfStability
 parcelable LeAudioConfiguration {
     @VintfStability
-    parcelable StreamMap {
-        /*
-         * The connection handle used for a unicast group.
-         * Range: 0x0000 to 0xEFFF
-         */
-        char streamHandle;
-        /*
-         * Audio channel allocation is  a bit field, each enabled bit means that given audio
-         * direction, i.e. "left", or "right" is used. Ordering of audio channels comes from the
-         * least significant bit to the most significant bit. The valus follows the Bluetooth SIG
-         * Audio Location assigned number.
-         */
-        int audioChannelAllocation;
+    union LeAudioModeConfig {
+        UnicastConfiguration unicastConfig;
+        BroadcastConfiguration broadcastConfig;
     }
+    /*
+     * The mode of the LE audio
+     */
+    LeAudioMode mode;
+    LeAudioModeConfig modeConfig;
     CodecType codecType;
-    StreamMap[] streamMap;
-    int peerDelayUs;
-    LeAudioCodecConfiguration leAudioCodecConfig;
 }
