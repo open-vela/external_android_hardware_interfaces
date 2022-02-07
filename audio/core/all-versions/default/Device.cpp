@@ -30,8 +30,6 @@
 #include <algorithm>
 
 #include <android/log.h>
-#include <mediautils/MemoryLeakTrackUtil.h>
-#include <memunreachable/memunreachable.h>
 
 #include <HidlUtils.h>
 
@@ -503,32 +501,9 @@ Return<void> Device::debugDump(const hidl_handle& fd) {
 }
 #endif
 
-Return<void> Device::debug(const hidl_handle& fd, const hidl_vec<hidl_string>& options) {
+Return<void> Device::debug(const hidl_handle& fd, const hidl_vec<hidl_string>& /* options */) {
     if (fd.getNativeHandle() != nullptr && fd->numFds == 1) {
-        const int fd0 = fd->data[0];
-        bool dumpMem = false;
-        bool unreachableMemory = false;
-        for (const auto& option : options) {
-            if (option == "-m") {
-                dumpMem = true;
-            } else if (option == "--unreachable") {
-                unreachableMemory = true;
-            }
-        }
-
-        if (dumpMem) {
-            dprintf(fd0, "\nDumping memory:\n");
-            std::string s = dumpMemoryAddresses(100 /* limit */);
-            write(fd0, s.c_str(), s.size());
-        }
-        if (unreachableMemory) {
-            dprintf(fd0, "\nDumping unreachable memory:\n");
-            // TODO - should limit be an argument parameter?
-            std::string s = GetUnreachableMemoryString(true /* contents */, 100 /* limit */);
-            write(fd0, s.c_str(), s.size());
-        }
-
-        analyzeStatus("dump", mDevice->dump(mDevice, fd0));
+        analyzeStatus("dump", mDevice->dump(mDevice, fd->data[0]));
     }
     return Void();
 }
@@ -614,21 +589,6 @@ Return<void> Device::updateAudioPatch(int32_t previousPatch,
     return Void();
 }
 
-#endif
-
-#if MAJOR_VERSION == 7 && MINOR_VERSION == 1
-Return<Result> Device::setConnectedState_7_1(const AudioPort& devicePort, bool connected) {
-    if (version() >= AUDIO_DEVICE_API_VERSION_3_2 &&
-        mDevice->set_device_connected_state_v7 != nullptr) {
-        audio_port_v7 halPort;
-        if (status_t status = HidlUtils::audioPortToHal(devicePort, &halPort); status != NO_ERROR) {
-            return analyzeStatus("audioPortToHal", status);
-        }
-        return analyzeStatus("set_device_connected_state_v7",
-                             mDevice->set_device_connected_state_v7(mDevice, &halPort, connected));
-    }
-    return Result::NOT_SUPPORTED;
-}
 #endif
 
 }  // namespace implementation

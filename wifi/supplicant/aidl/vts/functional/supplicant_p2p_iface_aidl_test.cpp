@@ -159,18 +159,13 @@ class SupplicantP2pIfaceCallback : public BnSupplicantP2pIfaceCallback {
         const std::vector<uint8_t>& /* p2pDeviceAddress */) override {
         return ndk::ScopedAStatus::ok();
     }
-    ::ndk::ScopedAStatus onGroupFrequencyChanged(const std::string& /* groupIfname */,
-                                                 int32_t /* frequency */) override {
-        return ndk::ScopedAStatus::ok();
-    }
 };
 
 class SupplicantP2pIfaceAidlTest : public testing::TestWithParam<std::string> {
    public:
     void SetUp() override {
         initializeService();
-        supplicant_ = ISupplicant::fromBinder(ndk::SpAIBinder(
-            AServiceManager_waitForService(GetParam().c_str())));
+        supplicant_ = getSupplicant(GetParam().c_str());
         ASSERT_NE(supplicant_, nullptr);
         ASSERT_TRUE(supplicant_
                         ->setDebugParams(DebugLevel::EXCESSIVE,
@@ -184,13 +179,13 @@ class SupplicantP2pIfaceAidlTest : public testing::TestWithParam<std::string> {
             GTEST_SKIP() << "Wi-Fi Direct is not supported, skip this test.";
         }
 
-        EXPECT_TRUE(supplicant_->addP2pInterface(getP2pIfaceName(), &p2p_iface_)
+        EXPECT_TRUE(supplicant_->getP2pInterface(getP2pIfaceName(), &p2p_iface_)
                         .isOk());
         ASSERT_NE(p2p_iface_, nullptr);
     }
 
     void TearDown() override {
-        stopSupplicant();
+        stopSupplicantService();
         startWifiFramework();
     }
 
@@ -478,20 +473,6 @@ TEST_P(SupplicantP2pIfaceAidlTest, AddGroupWithConfig_FailureInvalidFrequency) {
  */
 TEST_P(SupplicantP2pIfaceAidlTest, Find) {
     EXPECT_TRUE(p2p_iface_->find(kTestFindTimeout).isOk());
-}
-
-/*
- * FindSocialChannelsOnly
- */
-TEST_P(SupplicantP2pIfaceAidlTest, FindSocialChannelsOnly) {
-    EXPECT_TRUE(p2p_iface_->findOnSocialChannels(kTestFindTimeout).isOk());
-}
-
-/*
- * FindSpecificFrequency
- */
-TEST_P(SupplicantP2pIfaceAidlTest, FindSpecificFrequency) {
-    EXPECT_TRUE(p2p_iface_->findOnSpecificFrequency(2412, kTestFindTimeout).isOk());
 }
 
 /*

@@ -41,10 +41,7 @@ interface IHostapdCallback {
      * Invoked when an asynchronous failure is encountered in one of the access
      * points added via |IHostapd.addAccessPoint|.
      *
-     * @param ifaceName Name of the interface which was added via
-     *                  |IHostapd.addAccessPoint|.
-     * @param instanceName Name of the AP instance which is associated with
-     *                     the interface.
+     * @param ifaceName Name of the interface.
      */
-    oneway void onFailure(in String ifaceName, in String instanceName);
+    oneway void onFailure(in String ifaceName);
 }
