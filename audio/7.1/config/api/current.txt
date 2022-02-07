@@ -62,6 +62,8 @@ package android.audio.policy.configuration.V7_1 {
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioChannelMask AUDIO_CHANNEL_OUT_7POINT1;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioChannelMask AUDIO_CHANNEL_OUT_7POINT1POINT2;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioChannelMask AUDIO_CHANNEL_OUT_7POINT1POINT4;
+    enum_constant public static final android.audio.policy.configuration.V7_1.AudioChannelMask AUDIO_CHANNEL_OUT_9POINT1POINT4;
+    enum_constant public static final android.audio.policy.configuration.V7_1.AudioChannelMask AUDIO_CHANNEL_OUT_9POINT1POINT6;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioChannelMask AUDIO_CHANNEL_OUT_HAPTIC_AB;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioChannelMask AUDIO_CHANNEL_OUT_MONO;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioChannelMask AUDIO_CHANNEL_OUT_MONO_HAPTIC_A;
@@ -84,6 +86,7 @@ package android.audio.policy.configuration.V7_1 {
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioContentType AUDIO_CONTENT_TYPE_MUSIC;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioContentType AUDIO_CONTENT_TYPE_SONIFICATION;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioContentType AUDIO_CONTENT_TYPE_SPEECH;
+    enum_constant public static final android.audio.policy.configuration.V7_1.AudioContentType AUDIO_CONTENT_TYPE_ULTRASOUND;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioContentType AUDIO_CONTENT_TYPE_UNKNOWN;
   }
 
@@ -125,6 +128,7 @@ package android.audio.policy.configuration.V7_1 {
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioDevice AUDIO_DEVICE_OUT_ANLG_DOCK_HEADSET;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioDevice AUDIO_DEVICE_OUT_AUX_DIGITAL;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioDevice AUDIO_DEVICE_OUT_AUX_LINE;
+    enum_constant public static final android.audio.policy.configuration.V7_1.AudioDevice AUDIO_DEVICE_OUT_BLE_BROADCAST;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioDevice AUDIO_DEVICE_OUT_BLE_HEADSET;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioDevice AUDIO_DEVICE_OUT_BLE_SPEAKER;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioDevice AUDIO_DEVICE_OUT_BLUETOOTH_A2DP;
@@ -270,6 +274,7 @@ package android.audio.policy.configuration.V7_1 {
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_INPUT_FLAG_MMAP_NOIRQ;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_INPUT_FLAG_RAW;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_INPUT_FLAG_SYNC;
+    enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_INPUT_FLAG_ULTRASOUND;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_INPUT_FLAG_VOIP_TX;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_OUTPUT_FLAG_COMPRESS_OFFLOAD;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_OUTPUT_FLAG_DEEP_BUFFER;
@@ -284,8 +289,10 @@ package android.audio.policy.configuration.V7_1 {
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_OUTPUT_FLAG_NON_BLOCKING;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_OUTPUT_FLAG_PRIMARY;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_OUTPUT_FLAG_RAW;
+    enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_OUTPUT_FLAG_SPATIALIZER;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_OUTPUT_FLAG_SYNC;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_OUTPUT_FLAG_TTS;
+    enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_OUTPUT_FLAG_ULTRASOUND;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioInOutFlag AUDIO_OUTPUT_FLAG_VOIP_RX;
   }
 
@@ -310,6 +317,7 @@ package android.audio.policy.configuration.V7_1 {
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioSource AUDIO_SOURCE_HOTWORD;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioSource AUDIO_SOURCE_MIC;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioSource AUDIO_SOURCE_REMOTE_SUBMIX;
+    enum_constant public static final android.audio.policy.configuration.V7_1.AudioSource AUDIO_SOURCE_ULTRASOUND;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioSource AUDIO_SOURCE_UNPROCESSED;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioSource AUDIO_SOURCE_VOICE_CALL;
     enum_constant public static final android.audio.policy.configuration.V7_1.AudioSource AUDIO_SOURCE_VOICE_COMMUNICATION;
@@ -458,6 +466,7 @@ package android.audio.policy.configuration.V7_1 {
     method @Nullable public String getName();
     method @Nullable public java.util.List<android.audio.policy.configuration.V7_1.AudioUsage> getPreferredUsage();
     method @Nullable public java.util.List<android.audio.policy.configuration.V7_1.Profile> getProfile();
+    method @Nullable public long getRecommendedMuteDurationMs();
     method @Nullable public android.audio.policy.configuration.V7_1.Role getRole();
     method public void setFlags(@Nullable java.util.List<android.audio.policy.configuration.V7_1.AudioInOutFlag>);
     method public void setGains(@Nullable android.audio.policy.configuration.V7_1.Gains);
@@ -465,6 +474,7 @@ package android.audio.policy.configuration.V7_1 {
     method public void setMaxOpenCount(@Nullable long);
     method public void setName(@Nullable String);
     method public void setPreferredUsage(@Nullable java.util.List<android.audio.policy.configuration.V7_1.AudioUsage>);
+    method public void setRecommendedMuteDurationMs(@Nullable long);
     method public void setRole(@Nullable android.audio.policy.configuration.V7_1.Role);
   }
 
