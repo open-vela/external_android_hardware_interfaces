@@ -15,24 +15,24 @@
  */
 
 #if MAJOR_VERSION >= 7
-#include PATH(APM_XSD_ENUMS_H_FILENAME)
+#include <android_audio_policy_configuration_V7_0-enums.h>
 #endif
 #include <HidlUtils.h>
 #include <log/log.h>
 
 #include "util/CoreUtils.h"
 
-using ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION::implementation::HidlUtils;
+using ::android::hardware::audio::common::CPP_VERSION::implementation::HidlUtils;
 #if MAJOR_VERSION >= 7
 namespace xsd {
-using namespace ::android::audio::policy::configuration::CPP_VERSION;
+using namespace ::android::audio::policy::configuration::V7_0;
 }
 #endif
 
 namespace android {
 namespace hardware {
 namespace audio {
-namespace CORE_TYPES_CPP_VERSION {
+namespace CPP_VERSION {
 namespace implementation {
 
 #define CONVERT_CHECKED(expr, result)                   \
@@ -389,7 +389,7 @@ status_t CoreUtils::sourceMetadataToHalV7(const SourceMetadata& sourceMetadata,
 
 #if MAJOR_VERSION >= 7
 namespace xsd {
-using namespace ::android::audio::policy::configuration::CPP_VERSION;
+using namespace ::android::audio::policy::configuration::V7_0;
 }
 
 status_t CoreUtils::audioInputFlagsFromHal(audio_input_flags_t halFlagMask,
@@ -470,7 +470,7 @@ status_t CoreUtils::audioOutputFlagsToHal(const AudioOutputFlags& flags,
 #endif
 
 }  // namespace implementation
-}  // namespace CORE_TYPES_CPP_VERSION
+}  // namespace CPP_VERSION
 }  // namespace audio
 }  // namespace hardware
 }  // namespace android
