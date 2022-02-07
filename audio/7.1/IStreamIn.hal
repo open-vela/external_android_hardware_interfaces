@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2020 The Android Open Source Project
+ * Copyright (C) 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,23 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package android.hardware.light;
 
-/**
- * These light IDs correspond to logical lights, not physical.
- * So for example, if your INDICATOR light is in line with your
- * BUTTONS, it might make sense to also light the INDICATOR
- * light to a reasonable color when the BUTTONS are lit.
- */
-@VintfStability
-enum LightType {
-    BACKLIGHT = 0,
-    KEYBOARD = 1,
-    BUTTONS = 2,
-    BATTERY = 3,
-    NOTIFICATIONS = 4,
-    ATTENTION = 5,
-    BLUETOOTH = 6,
-    WIFI = 7,
-    MICROPHONE = 8,
-}
+package android.hardware.audio@7.1;
+
+import @7.0::IStreamIn;
+
+interface IStreamIn extends @7.0::IStreamIn {
+};

@@ -17,17 +17,23 @@
 package android.hardware.uwb.fira_android;
 
 /**
- * Android specific vendor command OIDs should be defined here.
+ * Android specific vendor app config values set/expected in UCI command:
+ * GID: 0001b (UWB Session config Group)
+ * OID: 000011b (SESSION_SET_APP_CONFIG_CMD)
+ * OID: 000100b (SESSION_GET_APP_CONFIG_CMD)
  *
+ * Note: Refer to Table 34 of the UCI specification for the other values
+ * expected in this command.
  */
 @VintfStability
-@Backing(type="byte")
-enum UwbVendorGidAndroidOids {
-    // Used by the command and response to get UWB power related stats.
-    // Supported only if the UwbVendorCapabilityTlvTypes.SUPPORTED_POWER_STATS_QUERY
-    // set to 1.
-    ANDROID_GET_POWER_STATS = 0x0,
-    // Used to set the current regulatory country code (determined usinag
-    // SIM or hardcoded by OEM).
-    ANDROID_SET_COUNTRY_CODE = 0x1,
+@Backing(type="int")
+enum UwbVendorSessionAppConfigTlvValues {
+    /**
+     * Added in vendor version 0.
+     * Supported only if the UwbVendorCapabilityTlvTypes
+     * .SUPPORTED_AOA_RESULT_REQ_ANTENNA_INTERLEAVING set to 1.
+     * Set AOA_RESULT_REQ (Config ID - 0x0D) to this value to turn on antenna
+     * interleaving feature.
+     */
+    AOA_RESULT_REQ_ANTENNA_INTERLEAVING = 0xF0,
 }
