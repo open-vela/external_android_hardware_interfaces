@@ -159,6 +159,10 @@ class SupplicantP2pIfaceCallback : public BnSupplicantP2pIfaceCallback {
         const std::vector<uint8_t>& /* p2pDeviceAddress */) override {
         return ndk::ScopedAStatus::ok();
     }
+    ::ndk::ScopedAStatus onGroupFrequencyChanged(const std::string& /* groupIfname */,
+                                                 int32_t /* frequency */) override {
+        return ndk::ScopedAStatus::ok();
+    }
 };
 
 class SupplicantP2pIfaceAidlTest : public testing::TestWithParam<std::string> {
@@ -473,6 +477,20 @@ TEST_P(SupplicantP2pIfaceAidlTest, AddGroupWithConfig_FailureInvalidFrequency) {
  */
 TEST_P(SupplicantP2pIfaceAidlTest, Find) {
     EXPECT_TRUE(p2p_iface_->find(kTestFindTimeout).isOk());
+}
+
+/*
+ * FindSocialChannelsOnly
+ */
+TEST_P(SupplicantP2pIfaceAidlTest, FindSocialChannelsOnly) {
+    EXPECT_TRUE(p2p_iface_->findOnSocialChannels(kTestFindTimeout).isOk());
+}
+
+/*
+ * FindSpecificFrequency
+ */
+TEST_P(SupplicantP2pIfaceAidlTest, FindSpecificFrequency) {
+    EXPECT_TRUE(p2p_iface_->findOnSpecificFrequency(2412, kTestFindTimeout).isOk());
 }
 
 /*
