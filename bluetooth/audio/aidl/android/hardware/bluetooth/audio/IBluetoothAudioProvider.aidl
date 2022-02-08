@@ -82,12 +82,4 @@ interface IBluetoothAudioProvider {
      *    encoding.
      */
     void updateAudioConfiguration(in AudioConfiguration audioConfig);
-
-    /**
-     * Called when the supported latency mode is updated.
-     *
-     * @param allowed If the peripheral devices can't keep up with low latency
-     * mode, the API will be called with supported is false.
-     */
-    void setLowLatencyModeAllowed(in boolean allowed);
 }
