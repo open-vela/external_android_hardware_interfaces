@@ -191,27 +191,32 @@ class SupplicantStaIfaceCallback : public BnSupplicantStaIfaceCallback {
     ::ndk::ScopedAStatus onWpsEventSuccess() override {
         return ndk::ScopedAStatus::ok();
     }
+    ::ndk::ScopedAStatus onQosPolicyReset() override { return ndk::ScopedAStatus::ok(); }
+    ::ndk::ScopedAStatus onQosPolicyRequest(
+            const std::vector<::aidl::android::hardware::wifi::supplicant ::
+                                      QosPolicyData /* qosPolicyData */>&) override {
+        return ndk::ScopedAStatus::ok();
+    }
 };
 
 class SupplicantStaIfaceAidlTest : public testing::TestWithParam<std::string> {
    public:
     void SetUp() override {
         initializeService();
-        supplicant_ = ISupplicant::fromBinder(ndk::SpAIBinder(
-            AServiceManager_waitForService(GetParam().c_str())));
+        supplicant_ = getSupplicant(GetParam().c_str());
         ASSERT_NE(supplicant_, nullptr);
         ASSERT_TRUE(supplicant_
                         ->setDebugParams(DebugLevel::EXCESSIVE,
                                          true,  // show timestamps
                                          true)
                         .isOk());
-        EXPECT_TRUE(supplicant_->addStaInterface(getStaIfaceName(), &sta_iface_)
+        EXPECT_TRUE(supplicant_->getStaInterface(getStaIfaceName(), &sta_iface_)
                         .isOk());
         ASSERT_NE(sta_iface_, nullptr);
     }
 
     void TearDown() override {
-        stopSupplicant();
+        stopSupplicantService();
         startWifiFramework();
     }
 
