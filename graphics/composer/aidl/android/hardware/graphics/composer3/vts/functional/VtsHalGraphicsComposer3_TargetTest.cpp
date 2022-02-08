@@ -984,6 +984,7 @@ class GraphicsComposerAidlCommandTest : public GraphicsComposerAidlTest {
         const auto errors = mReader.takeErrors();
         ASSERT_TRUE(mReader.takeErrors().empty());
         ASSERT_TRUE(mReader.takeChangedCompositionTypes(getPrimaryDisplayId()).empty());
+        ASSERT_TRUE(mReader.takeBufferAheadResultLayers(getPrimaryDisplayId()).empty());
 
         ASSERT_NO_FATAL_FAILURE(GraphicsComposerAidlTest::TearDown());
     }
