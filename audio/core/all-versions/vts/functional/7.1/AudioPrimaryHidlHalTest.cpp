@@ -47,7 +47,6 @@ TEST_P(AudioHidlDeviceTest, SetConnectedState_7_1) {
     // initial state. To workaround this, destroy the HAL at the end of this test.
     ASSERT_TRUE(resetDevice());
 }
-
 class LatencyModeOutputStreamTest : public OutputStreamTest {
   protected:
     void SetUp() override {
@@ -96,8 +95,3 @@ TEST_P(LatencyModeOutputStreamTest, SetLatencyModeCallback) {
     EXPECT_OK(stream->setLatencyModeCallback(new MockOutLatencyModeCallback));
     EXPECT_OK(stream->setLatencyModeCallback(nullptr));
 }
-
-INSTANTIATE_TEST_CASE_P(LatencyModeOutputStream, LatencyModeOutputStreamTest,
-                        ::testing::ValuesIn(getOutputDeviceSingleConfigParameters()),
-                        &DeviceConfigParameterToString);
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(LatencyModeOutputStreamTest);
