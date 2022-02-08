@@ -1,1 +1,0 @@
-This HAL is deprecated. Do not use this HAL. Use IInputProcessor instead, located in `hardware/interfaces/input/processor`.
