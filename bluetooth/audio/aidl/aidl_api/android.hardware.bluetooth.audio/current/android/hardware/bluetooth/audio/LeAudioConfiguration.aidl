@@ -34,13 +34,12 @@
 package android.hardware.bluetooth.audio;
 @VintfStability
 parcelable LeAudioConfiguration {
+  android.hardware.bluetooth.audio.LeAudioMode mode;
+  android.hardware.bluetooth.audio.LeAudioConfiguration.LeAudioModeConfig modeConfig;
   android.hardware.bluetooth.audio.CodecType codecType;
-  android.hardware.bluetooth.audio.LeAudioConfiguration.StreamMap[] streamMap;
-  int peerDelayUs;
-  android.hardware.bluetooth.audio.LeAudioCodecConfiguration leAudioCodecConfig;
   @VintfStability
-  parcelable StreamMap {
-    char streamHandle;
-    int audioChannelAllocation;
+  union LeAudioModeConfig {
+    android.hardware.bluetooth.audio.UnicastConfiguration unicastConfig;
+    android.hardware.bluetooth.audio.BroadcastConfiguration broadcastConfig;
   }
 }

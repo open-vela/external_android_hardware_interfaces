@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright 2021 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,12 @@
  * limitations under the License.
  */
 
-package {
-    default_applicable_licenses: ["Android-Apache-2.0"],
-}
+package android.hardware.bluetooth.audio;
 
-cc_test {
-    name: "VehicleHalDefaultConfigTest",
-    vendor: true,
-    defaults: ["VehicleHalDefaults"],
-    srcs: ["*.cpp"],
-    static_libs: [
-        "VehicleHalUtilsVendor",
-        "libgtest",
-    ],
-    header_libs: [
-        "VehicleHalDefaultConfig",
-    ],
-    test_suites: ["device-tests"],
+@VintfStability
+@Backing(type="byte")
+enum LeAudioMode {
+    UNKNOWN,
+    UNICAST,
+    BROADCAST,
 }

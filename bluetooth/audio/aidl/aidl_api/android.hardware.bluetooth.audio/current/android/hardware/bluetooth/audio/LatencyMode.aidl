@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 The Android Open Source Project
+ * Copyright 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,8 +31,10 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.automotive.audiocontrol;
-@VintfStability
-interface IAudioGainCallback {
-  oneway void onAudioDeviceGainsChanged(in android.hardware.automotive.audiocontrol.Reasons[] reasons, in android.hardware.automotive.audiocontrol.AudioGainConfigInfo[] gains);
+package android.hardware.bluetooth.audio;
+@Backing(type="int") @VintfStability
+enum LatencyMode {
+  UNKNOWN = 0,
+  LOW_LATENCY = 1,
+  FREE = 2,
 }
