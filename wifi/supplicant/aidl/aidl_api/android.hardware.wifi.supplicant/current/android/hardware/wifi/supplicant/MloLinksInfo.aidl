@@ -31,11 +31,8 @@
 // with such a backward incompatible change, it has a high risk of breaking
 // later when a module using the interface is updated, e.g., Mainline modules.
 
-package android.hardware.drm;
+package android.hardware.wifi.supplicant;
 @VintfStability
-parcelable CryptoSchemes {
-  List<android.hardware.drm.Uuid> uuids;
-  android.hardware.drm.SecurityLevel minLevel;
-  android.hardware.drm.SecurityLevel maxLevel;
-  List<String> mimeTypes;
+parcelable MloLinksInfo {
+  android.hardware.wifi.supplicant.MloLink[] links;
 }
