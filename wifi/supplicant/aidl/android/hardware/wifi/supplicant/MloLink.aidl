@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright (C) 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,26 +14,20 @@
  * limitations under the License.
  */
 
-package android.hardware.drm;
+package android.hardware.wifi.supplicant;
 
 /**
- * SharedBuffer describes a decrypt buffer which is defined by a bufferId, an
- * offset and a size.  The offset is relative to the shared memory base for the
- * memory region identified by bufferId, which is established by
- * setSharedMemoryBase().
+ * Multi-Link Operation (MLO) Link IEEE Std 802.11-be.
+ * The information for MLO link needed by 802.11be standard.
  */
 @VintfStability
-parcelable SharedBuffer {
+parcelable MloLink {
     /**
-     * The unique buffer identifier
+     * Link ID
      */
-    int bufferId;
+    byte linkId;
     /**
-     * The offset from the shared memory base
+     * STA Link MAC Address
      */
-    long offset;
-    /**
-     * The size of the shared buffer in bytes
-     */
-    long size;
+    byte[/* 6 */] staLinkMacAddress;
 }

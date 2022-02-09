@@ -33,7 +33,8 @@
 
 package android.hardware.drm;
 @VintfStability
-union DestinationBuffer {
+parcelable DestinationBuffer {
+  android.hardware.drm.BufferType type;
   android.hardware.drm.SharedBuffer nonsecureMemory;
   android.hardware.common.NativeHandle secureMemory;
 }

@@ -37,5 +37,4 @@ parcelable SharedBuffer {
   int bufferId;
   long offset;
   long size;
-  android.hardware.common.NativeHandle handle;
 }

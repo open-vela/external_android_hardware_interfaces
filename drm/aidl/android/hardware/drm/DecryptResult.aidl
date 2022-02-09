@@ -17,23 +17,17 @@
 package android.hardware.drm;
 
 /**
- * SharedBuffer describes a decrypt buffer which is defined by a bufferId, an
- * offset and a size.  The offset is relative to the shared memory base for the
- * memory region identified by bufferId, which is established by
- * setSharedMemoryBase().
+ * The DecryptResult parcelable contains the result of
+ * ICryptoPlugin decrypt method.
  */
 @VintfStability
-parcelable SharedBuffer {
+parcelable DecryptResult {
+    /** The number of decrypted bytes. */
+    int bytesWritten;
+
     /**
-     * The unique buffer identifier
+     * Vendor-specific error message if provided by the vendor's
+     * crypto HAL.
      */
-    int bufferId;
-    /**
-     * The offset from the shared memory base
-     */
-    long offset;
-    /**
-     * The size of the shared buffer in bytes
-     */
-    long size;
+    String detailedError;
 }

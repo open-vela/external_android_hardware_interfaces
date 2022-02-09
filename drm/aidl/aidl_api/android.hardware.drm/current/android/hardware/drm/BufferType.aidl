@@ -32,12 +32,8 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.drm;
-@VintfStability
-interface ICryptoPlugin {
-  android.hardware.drm.DecryptResult decrypt(in boolean secure, in byte[] keyId, in byte[] iv, in android.hardware.drm.Mode mode, in android.hardware.drm.Pattern pattern, in android.hardware.drm.SubSample[] subSamples, in android.hardware.drm.SharedBuffer source, in long offset, in android.hardware.drm.DestinationBuffer destination);
-  List<android.hardware.drm.LogMessage> getLogMessages();
-  void notifyResolution(in int width, in int height);
-  boolean requiresSecureDecoderComponent(in String mime);
-  void setMediaDrmSession(in byte[] sessionId);
-  void setSharedBufferBase(in android.hardware.common.Ashmem base, in int bufferId);
+@Backing(type="int") @VintfStability
+enum BufferType {
+  SHARED_MEMORY = 0,
+  NATIVE_HANDLE = 1,
 }
