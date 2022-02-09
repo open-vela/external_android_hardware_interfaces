@@ -51,12 +51,6 @@ class LeAudioSoftwareInputAudioProvider : public LeAudioSoftwareAudioProvider {
   LeAudioSoftwareInputAudioProvider();
 };
 
-class LeAudioSoftwareBroadcastAudioProvider
-    : public LeAudioSoftwareAudioProvider {
- public:
-  LeAudioSoftwareBroadcastAudioProvider();
-};
-
 }  // namespace audio
 }  // namespace bluetooth
 }  // namespace hardware
