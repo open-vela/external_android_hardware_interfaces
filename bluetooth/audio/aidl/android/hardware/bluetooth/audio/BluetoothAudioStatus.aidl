@@ -23,6 +23,5 @@ enum BluetoothAudioStatus {
     SUCCESS = 1,
     UNSUPPORTED_CODEC_CONFIGURATION = 2,
     // General failure
-    FAILURE = 3,
-    RECONFIGURATION = 4,
+    FAILURE = 3
 }
