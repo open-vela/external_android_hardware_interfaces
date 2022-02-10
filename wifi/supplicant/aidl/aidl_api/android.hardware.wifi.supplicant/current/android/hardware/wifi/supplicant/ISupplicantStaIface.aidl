@@ -45,6 +45,7 @@ interface ISupplicantStaIface {
   void filsHlpFlushRequest();
   android.hardware.wifi.supplicant.DppResponderBootstrapInfo generateDppBootstrapInfoForResponder(in byte[] macAddress, in String deviceInfo, in android.hardware.wifi.supplicant.DppCurve curve);
   android.hardware.wifi.supplicant.ConnectionCapabilities getConnectionCapabilities();
+  android.hardware.wifi.supplicant.MloLinksInfo getConnectionMloLinksInfo();
   android.hardware.wifi.supplicant.KeyMgmtMask getKeyMgmtCapabilities();
   byte[] getMacAddress();
   String getName();
@@ -61,6 +62,9 @@ interface ISupplicantStaIface {
   void reassociate();
   void reconnect();
   void registerCallback(in android.hardware.wifi.supplicant.ISupplicantStaIfaceCallback callback);
+  void setQosPolicyFeatureEnabled(in boolean enable);
+  void sendQosPolicyResponse(in boolean morePolicies, in android.hardware.wifi.supplicant.QosPolicyStatus[] qosPolicyStatusList);
+  void removeAllQosPolicies();
   void removeDppUri(in int id);
   void removeExtRadioWork(in int id);
   void removeNetwork(in int id);
