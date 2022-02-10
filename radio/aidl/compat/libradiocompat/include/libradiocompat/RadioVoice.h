@@ -23,6 +23,8 @@ namespace android::hardware::radio::compat {
 
 class RadioVoice : public RadioCompatBase,
                    public aidl::android::hardware::radio::voice::BnRadioVoice {
+    std::shared_ptr<::aidl::android::hardware::radio::voice::IRadioVoiceResponse> respond();
+
     ::ndk::ScopedAStatus acceptCall(int32_t serial) override;
     ::ndk::ScopedAStatus cancelPendingUssd(int32_t serial) override;
     ::ndk::ScopedAStatus conference(int32_t serial) override;
@@ -77,9 +79,6 @@ class RadioVoice : public RadioCompatBase,
     ::ndk::ScopedAStatus startDtmf(int32_t serial, const std::string& s) override;
     ::ndk::ScopedAStatus stopDtmf(int32_t serial) override;
     ::ndk::ScopedAStatus switchWaitingOrHoldingAndActive(int32_t serial) override;
-
-  protected:
-    std::shared_ptr<::aidl::android::hardware::radio::voice::IRadioVoiceResponse> respond();
 
   public:
     using RadioCompatBase::RadioCompatBase;
