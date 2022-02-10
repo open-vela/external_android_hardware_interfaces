@@ -17,9 +17,7 @@
 #ifndef ANDROID_HARDWARE_AUDIO_STREAMIN_H
 #define ANDROID_HARDWARE_AUDIO_STREAMIN_H
 
-// clang-format off
-#include PATH(android/hardware/audio/CORE_TYPES_FILE_VERSION/IStreamIn.h)
-// clang-format on
+#include PATH(android/hardware/audio/FILE_VERSION/IStreamIn.h)
 
 #include "Device.h"
 #include "Stream.h"
