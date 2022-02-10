@@ -14,23 +14,32 @@
  * limitations under the License.
  */
 
-package android.hardware.wifi.supplicant;
+package android.hardware.drm;
 
-/**
- * connection keys that are used for DPP network connection.
- */
+import android.hardware.drm.SecurityLevel;
+import android.hardware.drm.Uuid;
+
 @VintfStability
-parcelable DppConnectionKeys {
+parcelable CryptoSchemes {
+
     /**
-     * DPP Connector (signedConnector)
+     * Supported crypto schemes
      */
-    byte[] connector;
+    List<Uuid> uuids;
+
     /**
-     * C-sign-key (Configurator public key)
+     * Minimum supported security level (inclusive)
      */
-    byte[] cSign;
+    SecurityLevel minLevel;
+
     /**
-     * DPP net access key (own private key)
+     * Maximum supported security level (inclusive)
      */
-    byte[] netAccessKey;
+    SecurityLevel maxLevel;
+
+    /**
+     * Supported mime types
+     */
+    List<String> mimeTypes;
+
 }
