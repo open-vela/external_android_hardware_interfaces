@@ -27,9 +27,7 @@ package android.hardware.security.keymint;
 @VintfStability
 parcelable DeviceInfo {
     /**
-     * DeviceInfo is a CBOR Map structure described by the following CDDL. DeviceInfo must be
-     * canonicalized according to the specification in RFC 7049. The ordering presented here is
-     * non-canonical to group similar entries semantically.
+     * DeviceInfo is a CBOR Map structure described by the following CDDL.
      *
      *     DeviceInfo = {
      *         "brand" : tstr,
@@ -40,9 +38,7 @@ parcelable DeviceInfo {
      *         "vb_state" : "green" / "yellow" / "orange",    // Taken from the AVB values
      *         "bootloader_state" : "locked" / "unlocked",    // Taken from the AVB values
      *         "vbmeta_digest": bstr,                         // Taken from the AVB values
-     *         ? "os_version" : tstr,                         // Same as
-     *                                                        // android.os.Build.VERSION.release
-     *                                                        // Not optional for TEE.
+     *         "os_version" : tstr,                      // Same as android.os.Build.VERSION.release
      *         "system_patch_level" : uint,                   // YYYYMMDD
      *         "boot_patch_level" : uint,                     // YYYYMMDD
      *         "vendor_patch_level" : uint,                   // YYYYMMDD
