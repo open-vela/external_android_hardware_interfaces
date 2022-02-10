@@ -72,7 +72,7 @@ void createPreparedModel(const std::shared_ptr<IDevice>& device, const Model& mo
                                                 kNoDeadline,
                                                 {},
                                                 {},
-                                                kEmptyCacheTokenArray,
+                                                kEmptyCacheToken,
                                                 {},
                                                 {}},
                                                preparedModelCallback);
