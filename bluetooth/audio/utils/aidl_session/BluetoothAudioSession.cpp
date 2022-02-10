@@ -94,6 +94,8 @@ const AudioConfiguration BluetoothAudioSession::GetAudioConfig() {
       case SessionType::LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH:
       case SessionType::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH:
         return AudioConfiguration(LeAudioConfiguration{});
+      case SessionType::LE_AUDIO_BROADCAST_HARDWARE_OFFLOAD_ENCODING_DATAPATH:
+        return AudioConfiguration(LeAudioBroadcastConfiguration{});
       default:
         return AudioConfiguration(PcmConfiguration{});
     }
@@ -137,6 +139,8 @@ bool BluetoothAudioSession::IsSessionReady() {
            SessionType::LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH ||
        session_type_ ==
            SessionType::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH ||
+       session_type_ ==
+           SessionType::LE_AUDIO_BROADCAST_HARDWARE_OFFLOAD_ENCODING_DATAPATH ||
        (data_mq_ != nullptr && data_mq_->isValid()));
   return stack_iface_ != nullptr && is_mq_valid && audio_config_ != nullptr;
 }
@@ -259,7 +263,9 @@ bool BluetoothAudioSession::UpdateAudioConfig(
       (session_type_ == SessionType::A2DP_SOFTWARE_ENCODING_DATAPATH ||
        session_type_ == SessionType::HEARING_AID_SOFTWARE_ENCODING_DATAPATH ||
        session_type_ == SessionType::LE_AUDIO_SOFTWARE_DECODING_DATAPATH ||
-       session_type_ == SessionType::LE_AUDIO_SOFTWARE_ENCODING_DATAPATH);
+       session_type_ == SessionType::LE_AUDIO_SOFTWARE_ENCODING_DATAPATH ||
+       session_type_ ==
+           SessionType::LE_AUDIO_BROADCAST_SOFTWARE_ENCODING_DATAPATH);
   bool is_offload_a2dp_session =
       (session_type_ == SessionType::A2DP_HARDWARE_OFFLOAD_ENCODING_DATAPATH);
   bool is_offload_le_audio_session =
@@ -502,6 +508,36 @@ void BluetoothAudioSession::UpdateSinkMetadata(
   }
 
   auto hal_retval = stack_iface_->updateSinkMetadata(hal_sink_metadata);
+  if (!hal_retval.isOk()) {
+    LOG(WARNING) << __func__ << " - IBluetoothAudioPort SessionType="
+                 << toString(session_type_) << " failed";
+  }
+}
+
+void BluetoothAudioSession::SetLatencyMode(LatencyMode latency_mode) {
+  std::lock_guard<std::recursive_mutex> guard(mutex_);
+  if (!IsSessionReady()) {
+    LOG(DEBUG) << __func__ << " - SessionType=" << toString(session_type_)
+               << " has NO session";
+    return;
+  }
+
+  auto hal_retval = stack_iface_->setLatencyMode(latency_mode);
+  if (!hal_retval.isOk()) {
+    LOG(WARNING) << __func__ << " - IBluetoothAudioPort SessionType="
+                 << toString(session_type_) << " failed";
+  }
+}
+
+void BluetoothAudioSession::SetCodecType(CodecType codec_type) {
+  std::lock_guard<std::recursive_mutex> guard(mutex_);
+  if (!IsSessionReady()) {
+    LOG(DEBUG) << __func__ << " - SessionType=" << toString(session_type_)
+               << " has NO session";
+    return;
+  }
+
+  auto hal_retval = stack_iface_->setCodecType(codec_type);
   if (!hal_retval.isOk()) {
     LOG(WARNING) << __func__ << " - IBluetoothAudioPort SessionType="
                  << toString(session_type_) << " failed";

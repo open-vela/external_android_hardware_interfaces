@@ -422,7 +422,7 @@ class CertificateRequestTest : public VtsRemotelyProvisionedComponentTests {
         ASSERT_TRUE(deviceInfoMap) << "Failed to parse deviceInfo: " << deviceInfoErrMsg;
         ASSERT_TRUE(deviceInfoMap->asMap());
 
-        checkDeviceInfo(deviceInfoMap->asMap());
+        checkDeviceInfo(deviceInfoMap->asMap(), deviceInfo.deviceInfo);
 
         auto& signingKey = bccContents->back().pubKey;
         auto macKey = verifyAndParseCoseSign1(signedMac->asArray(), signingKey,
@@ -466,7 +466,7 @@ class CertificateRequestTest : public VtsRemotelyProvisionedComponentTests {
         }
     }
 
-    void checkDeviceInfo(const cppbor::Map* deviceInfo) {
+    void checkDeviceInfo(const cppbor::Map* deviceInfo, bytevec deviceInfoBytes) {
         const auto& version = deviceInfo->get("version");
         ASSERT_TRUE(version);
         ASSERT_TRUE(version->asUint());
@@ -492,7 +492,6 @@ class CertificateRequestTest : public VtsRemotelyProvisionedComponentTests {
                 ASSERT_NE(allowList.find(deviceInfo->get("bootloader_state")->asTstr()->value()),
                           allowList.end());
                 checkType(deviceInfo, cppbor::BSTR, "vbmeta_digest");
-                checkType(deviceInfo, cppbor::TSTR, "os_version");
                 checkType(deviceInfo, cppbor::UINT, "system_patch_level");
                 checkType(deviceInfo, cppbor::UINT, "boot_patch_level");
                 checkType(deviceInfo, cppbor::UINT, "vendor_patch_level");
@@ -502,6 +501,9 @@ class CertificateRequestTest : public VtsRemotelyProvisionedComponentTests {
                 allowList = getAllowedSecurityLevels();
                 ASSERT_NE(allowList.find(deviceInfo->get("security_level")->asTstr()->value()),
                           allowList.end());
+                if (deviceInfo->get("security_level")->asTstr()->value() == "tee") {
+                    checkType(deviceInfo, cppbor::TSTR, "os_version");
+                }
                 break;
             case 1:
                 checkType(deviceInfo, cppbor::TSTR, "security_level");
@@ -518,6 +520,8 @@ class CertificateRequestTest : public VtsRemotelyProvisionedComponentTests {
             default:
                 FAIL() << "Unrecognized version: " << version->asUint()->value();
         }
+        ASSERT_EQ(deviceInfo->clone()->asMap()->canonicalize().encode(), deviceInfoBytes)
+                << "DeviceInfo ordering is non-canonical.";
     }
 
     bytevec eekId_;
