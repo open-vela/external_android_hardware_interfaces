@@ -142,9 +142,7 @@ interface IFrontend {
      * Request Hardware information about the frontend.
      *
      * The client may use this to collect vendor specific hardware information, e.g. RF
-     * chip version, Demod chip version, detailed status of dvbs blind scan, etc. The
-     * client shouldn’t parse things or rely on any format or change their behavior
-     * based on results.
+     * chip version, Demod chip version, detailed status of dvbs blind scan, etc.
      *
      * @return the frontend hardware information.
      */
