@@ -16,7 +16,7 @@
 
 package android.hardware.wifi.hostapd;
 
-import android.hardware.wifi.hostapd.ChannelBandwidth;
+import android.hardware.wifi.hostapd.Bandwidth;
 import android.hardware.wifi.hostapd.Generation;
 
 /**
@@ -44,9 +44,9 @@ parcelable ApInfo {
     int freqMhz;
 
     /**
-     * The operational channel bandwidth of the AP.
+     * The operational bandwidth of the AP.
      */
-    ChannelBandwidth channelBandwidth;
+    Bandwidth bandwidth;
 
     /**
      * The operational mode of the AP (e.g. 11ac, 11ax).
