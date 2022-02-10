@@ -34,7 +34,7 @@ void TestLayer::write(ComposerClientWriter& writer) {
     writer.setLayerTransform(mDisplay, mLayer, mTransform);
     writer.setLayerPlaneAlpha(mDisplay, mLayer, mAlpha);
     writer.setLayerBlendMode(mDisplay, mLayer, mBlendMode);
-    writer.setLayerBrightness(mDisplay, mLayer, mBrightness);
+    writer.setLayerWhitePointNits(mDisplay, mLayer, mWhitePointNits);
 }
 
 std::string ReadbackHelper::getColorModeString(ColorMode mode) {
