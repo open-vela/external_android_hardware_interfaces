@@ -187,6 +187,14 @@
             <regex-instance>[^/]+/[0-9]+</regex-instance>
         </interface>
     </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.camera.provider</name>
+        <version>1</version>
+        <interface>
+            <name>ICameraProvider</name>
+            <regex-instance>[^/]+/[0-9]+</regex-instance>
+        </interface>
+    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.cas</name>
         <version>1.1-2</version>
@@ -300,7 +308,10 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="hidl" optional="false">
+    <!-- Either the AIDL or the HIDL composer HAL must exist on the device.
+         If the HIDL composer HAL exists, it must be at least version 2.1.
+         See DeviceManifestTest.ComposerHal -->
+    <hal format="hidl" optional="true">
         <name>android.hardware.graphics.composer</name>
         <version>2.1-4</version>
         <interface>
@@ -374,14 +385,6 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="hidl" optional="true">
-        <name>android.hardware.input.classifier</name>
-        <version>1.0</version>
-        <interface>
-            <name>IInputClassifier</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.input.processor</name>
         <version>1</version>
@@ -435,7 +438,7 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.light</name>
-        <version>1</version>
+        <version>2</version>
         <interface>
             <name>ILights</name>
             <instance>default</instance>
@@ -830,11 +833,27 @@
             <instance>default</instance>
         </interface>
     </hal>
+    <hal format="hidl" optional="true">
+        <name>android.hardware.wifi.hostapd</name>
+        <version>1.0-3</version>
+        <interface>
+            <name>IHostapd</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.wifi.hostapd</name>
         <version>1</version>
         <interface>
             <name>IHostapd</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="hidl" optional="true">
+        <name>android.hardware.wifi.supplicant</name>
+        <version>1.2-4</version>
+        <interface>
+            <name>ISupplicant</name>
             <instance>default</instance>
         </interface>
     </hal>
