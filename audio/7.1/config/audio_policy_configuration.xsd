@@ -226,7 +226,6 @@
                              </xs:documentation>
                         </xs:annotation>
                     </xs:attribute>
-                    <xs:attribute name="recommendedMuteDurationMs" type="xs:unsignedInt"/>
                 </xs:complexType>
                 <xs:unique name="mixPortProfileUniqueness">
                     <xs:selector xpath="profile"/>
