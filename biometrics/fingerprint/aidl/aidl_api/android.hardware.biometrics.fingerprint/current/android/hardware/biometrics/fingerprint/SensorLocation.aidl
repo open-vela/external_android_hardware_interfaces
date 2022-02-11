@@ -38,4 +38,5 @@ parcelable SensorLocation {
   int sensorLocationX;
   int sensorLocationY;
   int sensorRadius;
+  String display = "";
 }
