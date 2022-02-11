@@ -41,4 +41,5 @@ interface IBluetoothAudioPort {
   void updateSourceMetadata(in android.hardware.audio.common.SourceMetadata sourceMetadata);
   void updateSinkMetadata(in android.hardware.audio.common.SinkMetadata sinkMetadata);
   void setLatencyMode(in android.hardware.bluetooth.audio.LatencyMode latencyMode);
+  void setCodecType(in android.hardware.bluetooth.audio.CodecType codecType);
 }
