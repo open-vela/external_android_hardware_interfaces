@@ -26,9 +26,6 @@ package {
 cc_test {
     name: "VtsHalKeymasterV3_0TargetTest",
     defaults: ["VtsHalTargetTestDefaults"],
-    tidy_timeout_srcs: [
-        "keymaster_hidl_hal_test.cpp",
-    ],
     srcs: [
         "authorization_set.cpp",
         "attestation_record.cpp",
@@ -41,11 +38,5 @@ cc_test {
         "libcrypto_static",
         "libsoftkeymasterdevice",
     ],
-    test_suites: [
-        "general-tests",
-        "vts",
-    ],
-    sanitize: {
-        cfi: false,
-    },
+    test_suites: ["general-tests", "vts"],
 }
