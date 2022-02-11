@@ -14,5 +14,9 @@
  * limitations under the License.
  */
 
-// pull in all the <= 7.0 tests
-#include "7.0/AudioPrimaryHidlHalTest.cpp"
+package android.hardware.audio@7.1;
+
+import @7.0::IStreamIn;
+
+interface IStreamIn extends @7.0::IStreamIn {
+};
