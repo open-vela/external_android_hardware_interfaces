@@ -60,14 +60,6 @@
             <regex-instance>.*</regex-instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.automotive.evs</name>
-        <interface>
-            <name>IEvsEnumerator</name>
-            <instance>default</instance>
-            <regex-instance>[a-z]+/[0-9]+</regex-instance>
-        </interface>
-    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.automotive.evs</name>
         <version>1.0-1</version>
@@ -85,11 +77,12 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.automotive.vehicle</name>
+    <hal format="hidl" optional="true">
+        <name>android.hardware.automotive.sv</name>
+        <version>1.0</version>
         <interface>
-            <name>IVehicle</name>
-            <regex-instance>.*</regex-instance>
+            <name>ISurroundViewService</name>
+            <instance>default</instance>
         </interface>
     </hal>
     <hal format="hidl" optional="true">
@@ -97,7 +90,7 @@
         <version>2.0</version>
         <interface>
             <name>IVehicle</name>
-            <regex-instance>.*</regex-instance>
+            <instance>default</instance>
         </interface>
     </hal>
     <hal format="hidl" optional="true">
@@ -110,7 +103,6 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.biometrics.face</name>
-        <version>2</version>
         <interface>
             <name>IFace</name>
             <instance>default</instance>
@@ -126,7 +118,6 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.biometrics.fingerprint</name>
-        <version>2</version>
         <interface>
             <name>IFingerprint</name>
             <instance>default</instance>
@@ -179,14 +170,6 @@
             <regex-instance>[^/]+/[0-9]+</regex-instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.camera.provider</name>
-        <version>1</version>
-        <interface>
-            <name>ICameraProvider</name>
-            <regex-instance>[^/]+/[0-9]+</regex-instance>
-        </interface>
-    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.cas</name>
         <version>1.1-2</version>
@@ -203,19 +186,12 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
+    <hal format="hidl" optional="true">
         <name>android.hardware.contexthub</name>
+        <version>1.2</version>
         <interface>
-            <name>IContextHub</name>
+            <name>IContexthub</name>
             <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.drm</name>
-        <version>1</version>
-        <interface>
-            <name>IDrmFactory</name>
-            <regex-instance>.*</regex-instance>
         </interface>
     </hal>
     <hal format="hidl" optional="true">
@@ -255,25 +231,8 @@
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.gnss</name>
-        <version>2</version>
         <interface>
             <name>IGnss</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.gnss.visibility_control</name>
-        <version>1</version>
-        <interface>
-            <name>IGnssVisibilityControl</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.gnss.measurement_corrections</name>
-        <version>1</version>
-        <interface>
-            <name>IMeasurementCorrectionsInterface</name>
             <instance>default</instance>
         </interface>
     </hal>
@@ -288,28 +247,9 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.graphics.allocator</name>
-        <version>1</version>
-        <interface>
-            <name>IAllocator</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <!-- Either the AIDL or the HIDL composer HAL must exist on the device.
-         If the HIDL composer HAL exists, it must be at least version 2.1.
-         See DeviceManifestTest.ComposerHal -->
-    <hal format="hidl" optional="true">
+    <hal format="hidl" optional="false">
         <name>android.hardware.graphics.composer</name>
         <version>2.1-4</version>
-        <interface>
-            <name>IComposer</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.graphics.composer3</name>
-        <version>1</version>
         <interface>
             <name>IComposer</name>
             <instance>default</instance>
@@ -351,13 +291,6 @@
         </interface>
     </hal>
     <hal format="aidl" optional="true">
-        <name>android.hardware.net.nlinterceptor</name>
-        <interface>
-            <name>IInterceptor</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
         <name>android.hardware.oemlock</name>
         <version>1</version>
         <interface>
@@ -373,11 +306,11 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.input.processor</name>
-        <version>1</version>
+    <hal format="hidl" optional="true">
+        <name>android.hardware.input.classifier</name>
+        <version>1.0</version>
         <interface>
-            <name>IInputProcessor</name>
+            <name>IInputClassifier</name>
             <instance>default</instance>
         </interface>
     </hal>
@@ -421,12 +354,11 @@
         <interface>
             <name>IRemotelyProvisionedComponent</name>
             <instance>default</instance>
-            <instance>strongbox</instance>
         </interface>
     </hal>
     <hal format="aidl" optional="true">
         <name>android.hardware.light</name>
-        <version>2</version>
+        <version>1</version>
         <interface>
             <name>ILights</name>
             <instance>default</instance>
@@ -502,7 +434,7 @@
     </hal>
     <hal format="aidl" optional="false">
         <name>android.hardware.power</name>
-        <version>2-3</version>
+        <version>1-2</version>
         <interface>
             <name>IPower</name>
             <instance>default</instance>
@@ -512,14 +444,6 @@
         <name>android.hardware.power.stats</name>
         <interface>
             <name>IPowerStats</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.radio.config</name>
-        <version>1</version>
-        <interface>
-            <name>IRadioConfig</name>
             <instance>default</instance>
         </interface>
     </hal>
@@ -585,10 +509,47 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.radio</name>
+        <version>1.6</version>
+        <interface>
+            <name>IRadio</name>
+            <instance>slot1</instance>
+            <instance>slot2</instance>
+            <instance>slot3</instance>
+        </interface>
+    </hal>
+    <hal format="hidl" optional="true">
+        <name>android.hardware.radio</name>
         <version>1.2</version>
         <interface>
             <name>ISap</name>
             <instance>slot1</instance>
+        </interface>
+    </hal>
+    <hal format="hidl" optional="true">
+        <name>android.hardware.radio.config</name>
+        <!--
+        See compatibility_matrix.4.xml on versioning of radio config HAL.
+        -->
+        <version>1.1</version>
+        <interface>
+            <name>IRadioConfig</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="aidl" optional="true">
+        <name>android.hardware.radio.config</name>
+        <version>1</version>
+        <interface>
+            <name>IRadioConfig</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="hidl" optional="true">
+        <name>android.hardware.radio.config</name>
+        <version>1.3</version>
+        <interface>
+            <name>IRadioConfig</name>
+            <instance>default</instance>
         </interface>
     </hal>
     <hal format="hidl" optional="true">
@@ -633,13 +594,6 @@
             <instance>strongbox</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.sensors</name>
-        <interface>
-            <name>ISensors</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.sensors</name>
         <version>1.0</version>
@@ -656,14 +610,6 @@
             <name>ISoundTriggerHw</name>
             <instance>default</instance>
         </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-         <name>android.hardware.soundtrigger3</name>
-         <version>1</version>
-         <interface>
-             <name>ISoundTriggerHw</name>
-             <instance>default</instance>
-         </interface>
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.tetheroffload.config</name>
@@ -713,24 +659,9 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.tv.tuner</name>
-        <version>1</version>
-        <interface>
-            <name>ITuner</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.usb</name>
         <version>1.0-3</version>
-        <interface>
-            <name>IUsb</name>
-            <instance>default</instance>
-        </interface>
-    </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.usb</name>
         <interface>
             <name>IUsb</name>
             <instance>default</instance>
@@ -778,17 +709,17 @@
     </hal>
     <hal format="hidl" optional="true">
         <name>android.hardware.wifi</name>
-        <version>1.3-6</version>
+        <version>1.3-5</version>
         <interface>
             <name>IWifi</name>
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="aidl" optional="true">
-        <name>android.hardware.uwb</name>
-        <version>1</version>
+    <hal format="hidl" optional="true">
+        <name>android.hardware.wifi.hostapd</name>
+        <version>1.0-3</version>
         <interface>
-            <name>IUwb</name>
+            <name>IHostapd</name>
             <instance>default</instance>
         </interface>
     </hal>
@@ -797,6 +728,14 @@
         <version>1</version>
         <interface>
             <name>IHostapd</name>
+            <instance>default</instance>
+        </interface>
+    </hal>
+    <hal format="hidl" optional="true">
+        <name>android.hardware.wifi.supplicant</name>
+        <version>1.2-4</version>
+        <interface>
+            <name>ISupplicant</name>
             <instance>default</instance>
         </interface>
     </hal>
