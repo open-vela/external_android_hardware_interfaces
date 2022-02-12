@@ -58,6 +58,7 @@ using ::android::base::unexpected;
 using ::testing::ContainerEq;
 using ::testing::ContainsRegex;
 using ::testing::Eq;
+using ::testing::IsSubsetOf;
 using ::testing::WhenSortedBy;
 
 constexpr int INVALID_PROP_ID = 0;
@@ -634,15 +635,15 @@ std::vector<SetSpecialValueTestCase> setSpecialValueTestCases() {
                     .expectedValuesToGet =
                             {
                                     VehiclePropValue{
+                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
+                                            .value.int32Values = {toInt(
+                                                    VehicleApPowerStateReport::DEEP_SLEEP_EXIT)},
+                                    },
+                                    VehiclePropValue{
                                             .prop = toInt(VehicleProperty::AP_POWER_STATE_REQ),
                                             .status = VehiclePropertyStatus::AVAILABLE,
                                             .value.int32Values = {toInt(VehicleApPowerStateReq::ON),
                                                                   0},
-                                    },
-                                    VehiclePropValue{
-                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
-                                            .value.int32Values = {toInt(
-                                                    VehicleApPowerStateReport::DEEP_SLEEP_EXIT)},
                                     },
                             },
             },
@@ -659,15 +660,15 @@ std::vector<SetSpecialValueTestCase> setSpecialValueTestCases() {
                     .expectedValuesToGet =
                             {
                                     VehiclePropValue{
+                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
+                                            .value.int32Values = {toInt(
+                                                    VehicleApPowerStateReport::HIBERNATION_EXIT)},
+                                    },
+                                    VehiclePropValue{
                                             .prop = toInt(VehicleProperty::AP_POWER_STATE_REQ),
                                             .status = VehiclePropertyStatus::AVAILABLE,
                                             .value.int32Values = {toInt(VehicleApPowerStateReq::ON),
                                                                   0},
-                                    },
-                                    VehiclePropValue{
-                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
-                                            .value.int32Values = {toInt(
-                                                    VehicleApPowerStateReport::HIBERNATION_EXIT)},
                                     },
                             },
             },
@@ -684,15 +685,15 @@ std::vector<SetSpecialValueTestCase> setSpecialValueTestCases() {
                     .expectedValuesToGet =
                             {
                                     VehiclePropValue{
+                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
+                                            .value.int32Values = {toInt(
+                                                    VehicleApPowerStateReport::SHUTDOWN_CANCELLED)},
+                                    },
+                                    VehiclePropValue{
                                             .prop = toInt(VehicleProperty::AP_POWER_STATE_REQ),
                                             .status = VehiclePropertyStatus::AVAILABLE,
                                             .value.int32Values = {toInt(VehicleApPowerStateReq::ON),
                                                                   0},
-                                    },
-                                    VehiclePropValue{
-                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
-                                            .value.int32Values = {toInt(
-                                                    VehicleApPowerStateReport::SHUTDOWN_CANCELLED)},
                                     },
                             },
             },
@@ -709,15 +710,15 @@ std::vector<SetSpecialValueTestCase> setSpecialValueTestCases() {
                     .expectedValuesToGet =
                             {
                                     VehiclePropValue{
+                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
+                                            .value.int32Values = {toInt(
+                                                    VehicleApPowerStateReport::WAIT_FOR_VHAL)},
+                                    },
+                                    VehiclePropValue{
                                             .prop = toInt(VehicleProperty::AP_POWER_STATE_REQ),
                                             .status = VehiclePropertyStatus::AVAILABLE,
                                             .value.int32Values = {toInt(VehicleApPowerStateReq::ON),
                                                                   0},
-                                    },
-                                    VehiclePropValue{
-                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
-                                            .value.int32Values = {toInt(
-                                                    VehicleApPowerStateReport::WAIT_FOR_VHAL)},
                                     },
                             },
             },
@@ -734,15 +735,15 @@ std::vector<SetSpecialValueTestCase> setSpecialValueTestCases() {
                     .expectedValuesToGet =
                             {
                                     VehiclePropValue{
+                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
+                                            .value.int32Values = {toInt(
+                                                    VehicleApPowerStateReport::DEEP_SLEEP_ENTRY)},
+                                    },
+                                    VehiclePropValue{
                                             .prop = toInt(VehicleProperty::AP_POWER_STATE_REQ),
                                             .status = VehiclePropertyStatus::AVAILABLE,
                                             .value.int32Values =
                                                     {toInt(VehicleApPowerStateReq::FINISHED), 0},
-                                    },
-                                    VehiclePropValue{
-                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
-                                            .value.int32Values = {toInt(
-                                                    VehicleApPowerStateReport::DEEP_SLEEP_ENTRY)},
                                     },
                             },
             },
@@ -759,15 +760,15 @@ std::vector<SetSpecialValueTestCase> setSpecialValueTestCases() {
                     .expectedValuesToGet =
                             {
                                     VehiclePropValue{
+                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
+                                            .value.int32Values = {toInt(
+                                                    VehicleApPowerStateReport::HIBERNATION_ENTRY)},
+                                    },
+                                    VehiclePropValue{
                                             .prop = toInt(VehicleProperty::AP_POWER_STATE_REQ),
                                             .status = VehiclePropertyStatus::AVAILABLE,
                                             .value.int32Values =
                                                     {toInt(VehicleApPowerStateReq::FINISHED), 0},
-                                    },
-                                    VehiclePropValue{
-                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
-                                            .value.int32Values = {toInt(
-                                                    VehicleApPowerStateReport::HIBERNATION_ENTRY)},
                                     },
                             },
             },
@@ -784,15 +785,15 @@ std::vector<SetSpecialValueTestCase> setSpecialValueTestCases() {
                     .expectedValuesToGet =
                             {
                                     VehiclePropValue{
+                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
+                                            .value.int32Values = {toInt(
+                                                    VehicleApPowerStateReport::SHUTDOWN_START)},
+                                    },
+                                    VehiclePropValue{
                                             .prop = toInt(VehicleProperty::AP_POWER_STATE_REQ),
                                             .status = VehiclePropertyStatus::AVAILABLE,
                                             .value.int32Values =
                                                     {toInt(VehicleApPowerStateReq::FINISHED), 0},
-                                    },
-                                    VehiclePropValue{
-                                            .prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
-                                            .value.int32Values = {toInt(
-                                                    VehicleApPowerStateReport::SHUTDOWN_START)},
                                     },
                             },
             },
@@ -914,7 +915,7 @@ TEST_P(FakeVehicleHardwareSpecialValuesTest, testSetSpecialProperties) {
     // Some of the updated properties might be the same as default config, thus not causing
     // a property change event. So the changed properties should be a subset of all the updated
     // properties.
-    ASSERT_THAT(getChangedProperties(), WhenSortedBy(mPropValueCmp, Eq(gotValues)));
+    ASSERT_THAT(getChangedProperties(), WhenSortedBy(mPropValueCmp, IsSubsetOf(gotValues)));
 }
 
 INSTANTIATE_TEST_SUITE_P(

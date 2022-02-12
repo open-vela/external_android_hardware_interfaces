@@ -754,7 +754,8 @@ const std::vector<ConfigDeclaration> kVehicleProperties = {
         {.config = {.prop = toInt(VehicleProperty::AP_POWER_STATE_REQ),
                     .access = VehiclePropertyAccess::READ,
                     .changeMode = VehiclePropertyChangeMode::ON_CHANGE,
-                    .configArray = {3}}},
+                    .configArray = {3}},
+         .initialValue = {.int32Values = {toInt(VehicleApPowerStateReq::ON), 0}}},
 
         {.config = {.prop = toInt(VehicleProperty::AP_POWER_STATE_REPORT),
                     .access = VehiclePropertyAccess::READ_WRITE,
