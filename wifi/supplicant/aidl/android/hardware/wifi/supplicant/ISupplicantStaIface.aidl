@@ -28,8 +28,6 @@ import android.hardware.wifi.supplicant.ISupplicantStaIfaceCallback;
 import android.hardware.wifi.supplicant.ISupplicantStaNetwork;
 import android.hardware.wifi.supplicant.IfaceType;
 import android.hardware.wifi.supplicant.KeyMgmtMask;
-import android.hardware.wifi.supplicant.MloLinksInfo;
-import android.hardware.wifi.supplicant.QosPolicyStatus;
 import android.hardware.wifi.supplicant.RxFilterType;
 import android.hardware.wifi.supplicant.WpaDriverCapabilitiesMask;
 import android.hardware.wifi.supplicant.WpsConfigMethods;
@@ -180,24 +178,6 @@ interface ISupplicantStaIface {
             in byte[] macAddress, in String deviceInfo, in DppCurve curve);
 
     /**
-     * To Onboard / Configure self with DPP credentials.
-     *
-     * This is used to generate DppConnectionKeys for self. Thus a configurator
-     * can use the credentials to connect to an AP which it has configured for
-     * DPP AKM. This should be called before initiating first DPP connection
-     * on Configurator side. This API generates onDppSuccessConfigReceived()
-     * callback event asynchronously with DppConnectionKeys.
-     *
-     * @param ssid Network SSID configured profile
-     * @param privEcKey Private EC keys for this profile which was used to
-     *        configure other enrollee in network.
-     * @throws ServiceSpecificException with one of the following values:
-     *         |SupplicantStatusCode.FAILURE_UNKNOWN|
-     *         |SupplicantStatusCode.FAILURE_UNSUPPORTED|
-     */
-    void generateSelfDppConfiguration(in String ssid, in byte[] privEcKey);
-
-    /**
      * Get Connection capabilities
      *
      * @return Connection capabilities.
@@ -205,15 +185,6 @@ interface ISupplicantStaIface {
      *         |SupplicantStatusCode.FAILURE_UNKNOWN|
      */
     ConnectionCapabilities getConnectionCapabilities();
-
-    /**
-     * Get Connection MLO links Info
-     *
-     * @return Connection MLO Links Info.
-     * @throws ServiceSpecificException with one of the following values:
-     *         |SupplicantStatusCode.FAILURE_UNKNOWN|
-     */
-    MloLinksInfo getConnectionMloLinksInfo();
 
     /**
      * Get Key management capabilities of the device
@@ -404,37 +375,6 @@ interface ISupplicantStaIface {
      *         |SupplicantStatusCode.FAILURE_IFACE_INVALID|
      */
     void registerCallback(in ISupplicantStaIfaceCallback callback);
-
-    /**
-     * Enable/disable QoS policy feature.
-     * @param enable true to enable, false to disable.
-     * @throws ServiceSpecificException with one of the following values:
-     *         |SupplicantStatusCode.FAILURE_UNKNOWN|
-     */
-    void setQosPolicyFeatureEnabled(in boolean enable);
-
-    /**
-     * Send a DSCP policy response to the AP. If a DSCP request is ongoing,
-     * sends a solicited (uses the ongoing DSCP request as dialog token) DSCP
-     * response. Otherwise, sends an unsolicited DSCP response.
-     *
-     * @param morePolicies Flag to indicate more QoS policies can be accommodated.
-     * @param qosPolicyStatusList QoS policy status info for each QoS policy id.
-     * @throws ServiceSpecificException with one of the following values:
-     *         |SupplicantStatusCode.FAILURE_ARGS_INVALID|,
-     *         |SupplicantStatusCode.FAILURE_UNKNOWN|,
-     *         |SupplicantStatusCode.FAILURE_UNSUPPORTED|
-     */
-    void sendQosPolicyResponse(in boolean morePolicies, in QosPolicyStatus[] qosPolicyStatusList);
-
-    /**
-     * Indicate removal of all active QoS policies configured by the AP.
-     *
-     * @throws ServiceSpecificException with one of the following values:
-     *         |SupplicantStatusCode.FAILURE_UNKNOWN|,
-     *         |SupplicantStatusCode.FAILURE_UNSUPPORTED|
-     */
-    void removeAllQosPolicies();
 
     /**
      * Remove a DPP peer URI.
@@ -648,27 +588,20 @@ interface ISupplicantStaIface {
      *
      * @param peerBootstrapId Peer device's URI ID.
      * @param ownBootstrapId Local device's URI ID (0 for none, optional).
-     * @param ssid Network SSID to send to peer (SAE/PSK/DPP mode).
+     * @param ssid Network SSID to send to peer (SAE/PSK mode).
      * @param password Network password to send to peer (SAE/PSK mode).
      * @param psk Network PSK to send to peer (PSK mode only). Either password or psk should be set.
      * @param netRole Role to configure the peer, |DppNetRole.DPP_NET_ROLE_STA| or
      *        |DppNetRole.DPP_NET_ROLE_AP|.
      * @param securityAkm Security AKM to use (See DppAkm).
-     * @param privEcKey Private EC keys for this profile which was used to
-     *        configure other enrollee in network. This param is valid only for DPP AKM.
-     *        This param is set to Null by configurator to indicate first DPP-AKM based
-     *        configuration to an Enrollee. non-Null value indicates configurator had
-     *        previously configured an enrollee.
-     * @return Return the Private EC key when securityAkm is DPP and privEcKey was Null.
-     *         Otherwise return Null.
      * @throws ServiceSpecificException with one of the following values:
      *         |SupplicantStatusCode.FAILURE_ARGS_INVALID|,
      *         |SupplicantStatusCode.FAILURE_UNKNOWN|,
      *         |SupplicantStatusCode.FAILURE_NETWORK_INVALID|
      */
-    byte[] startDppConfiguratorInitiator(in int peerBootstrapId, in int ownBootstrapId,
+    void startDppConfiguratorInitiator(in int peerBootstrapId, in int ownBootstrapId,
             in String ssid, in String password, in String psk, in DppNetRole netRole,
-            in DppAkm securityAkm, in byte[] privEcKey);
+            in DppAkm securityAkm);
 
     /**
      * Start DPP in Enrollee-Initiator mode.
