@@ -29,14 +29,14 @@ import android.hardware.wifi.supplicant.TransitionDisableIndication;
  * corresponding |ISupplicantStaNetwork.registerCallback| method.
  */
 @VintfStability
-oneway interface ISupplicantStaNetworkCallback {
+interface ISupplicantStaNetworkCallback {
     /**
      * Used to request EAP Identity for this particular network.
      *
      * The response for the request must be sent using the corresponding
      * |ISupplicantNetwork.sendNetworkEapIdentityResponse| call.
      */
-    void onNetworkEapIdentityRequest();
+    oneway void onNetworkEapIdentityRequest();
 
     /**
      * Used to request EAP GSM SIM authentication for this particular network.
@@ -46,7 +46,7 @@ oneway interface ISupplicantStaNetworkCallback {
      *
      * @param params Params associated with the request.
      */
-    void onNetworkEapSimGsmAuthRequest(in NetworkRequestEapSimGsmAuthParams params);
+    oneway void onNetworkEapSimGsmAuthRequest(in NetworkRequestEapSimGsmAuthParams params);
 
     /**
      * Used to request EAP UMTS SIM authentication for this particular network.
@@ -56,19 +56,10 @@ oneway interface ISupplicantStaNetworkCallback {
      *
      * @param params Params associated with the request.
      */
-    void onNetworkEapSimUmtsAuthRequest(in NetworkRequestEapSimUmtsAuthParams params);
+    oneway void onNetworkEapSimUmtsAuthRequest(in NetworkRequestEapSimUmtsAuthParams params);
 
     /**
      * Used to notify WPA3 transition disable.
      */
-    void onTransitionDisable(in TransitionDisableIndication ind);
-
-    /**
-     * Used to notify EAP certificate event.
-     *
-     * On receiving a server certifidate from TLS handshake, send this certificate
-     * to the framework for Trust On First Use.
-     */
-    void onServerCertificateAvailable(
-            in int depth, in byte[] subject, in byte[] certHash, in byte[] certBlob);
+    oneway void onTransitionDisable(in TransitionDisableIndication ind);
 }
