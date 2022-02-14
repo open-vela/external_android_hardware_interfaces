@@ -21,11 +21,13 @@ import android.hardware.wifi.supplicant.AssociationRejectionData;
 import android.hardware.wifi.supplicant.BssTmData;
 import android.hardware.wifi.supplicant.BssidChangeReason;
 import android.hardware.wifi.supplicant.DppAkm;
+import android.hardware.wifi.supplicant.DppConnectionKeys;
 import android.hardware.wifi.supplicant.DppEventType;
 import android.hardware.wifi.supplicant.DppFailureCode;
 import android.hardware.wifi.supplicant.DppProgressCode;
 import android.hardware.wifi.supplicant.Hs20AnqpData;
 import android.hardware.wifi.supplicant.OsuMethod;
+import android.hardware.wifi.supplicant.QosPolicyData;
 import android.hardware.wifi.supplicant.StaIfaceCallbackState;
 import android.hardware.wifi.supplicant.StaIfaceReasonCode;
 import android.hardware.wifi.supplicant.WpsConfigError;
@@ -127,10 +129,12 @@ interface ISupplicantStaIfaceCallback {
     oneway void onDppSuccess(in DppEventType event);
 
     /**
-     * Indicates DPP configuration received success event (Enrolee mode).
+     * Indicates DPP configuration received success event in Enrolee mode.
+     * This is also triggered when Configurator generates credentials for itself
+     * using generateSelfDppConfiguration() API
      */
-    oneway void onDppSuccessConfigReceived(
-            in byte[] ssid, in String password, in byte[] psk, in DppAkm securityAkm);
+    oneway void onDppSuccessConfigReceived(in byte[] ssid, in String password, in byte[] psk,
+            in DppAkm securityAkm, in DppConnectionKeys dppConnectionKeys);
 
     /**
      * Indicates DPP configuration sent success event (Configurator mode).
@@ -275,4 +279,17 @@ interface ISupplicantStaIfaceCallback {
      * Used to indicate the success of a WPS connection attempt.
      */
     oneway void onWpsEventSuccess();
+
+    /**
+     * Used to indicate that the AP has cleared all DSCP requests
+     * associated with this device.
+     */
+    oneway void onQosPolicyReset();
+
+    /**
+     * Used to indicate a DSCP request was received from the AP.
+     *
+     * @param qosPolicyData QoS policies info requested by the AP.
+     */
+    oneway void onQosPolicyRequest(in QosPolicyData[] qosPolicyData);
 }
