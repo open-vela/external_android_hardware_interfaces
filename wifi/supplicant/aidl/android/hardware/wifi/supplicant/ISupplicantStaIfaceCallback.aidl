@@ -42,7 +42,7 @@ import android.hardware.wifi.supplicant.WpsErrorIndication;
  * corresponding |ISupplicantStaIface.registerCallback| method.
  */
 @VintfStability
-oneway interface ISupplicantStaIfaceCallback {
+interface ISupplicantStaIfaceCallback {
     /**
      * Used to indicate the result of ANQP (either for IEEE 802.11u Interworking
      * or Hotspot 2.0) query.
@@ -53,7 +53,7 @@ oneway interface ISupplicantStaIfaceCallback {
      * @param hs20Data ANQP data fetched from the Hotspot 2.0 access point.
      *        All the fields in this struct must be empty if the query failed.
      */
-    void onAnqpQueryDone(in byte[] bssid, in AnqpData data, in Hs20AnqpData hs20Data);
+    oneway void onAnqpQueryDone(in byte[] bssid, in AnqpData data, in Hs20AnqpData hs20Data);
 
     /**
      * Used to indicate an association rejection received from the AP
@@ -61,14 +61,14 @@ oneway interface ISupplicantStaIfaceCallback {
      *
      * @param assocRejectData Association Rejection related information.
      */
-    void onAssociationRejected(in AssociationRejectionData assocRejectData);
+    oneway void onAssociationRejected(in AssociationRejectionData assocRejectData);
 
     /**
      * Used to indicate the timeout of authentication to an AP.
      *
      * @param bssid BSSID of the corresponding AP.
      */
-    void onAuthenticationTimeout(in byte[] bssid);
+    oneway void onAuthenticationTimeout(in byte[] bssid);
 
     /**
      * Indicates BTM request frame handling status.
@@ -76,7 +76,7 @@ oneway interface ISupplicantStaIfaceCallback {
      * @param tmData Data retrieved from received BSS transition management
      * request frame.
      */
-    void onBssTmHandlingDone(in BssTmData tmData);
+    oneway void onBssTmHandlingDone(in BssTmData tmData);
 
     /**
      * Used to indicate the change of active bssid.
@@ -86,7 +86,7 @@ oneway interface ISupplicantStaIfaceCallback {
      * @param reason Reason why the bssid changed.
      * @param bssid BSSID of the corresponding AP.
      */
-    void onBssidChanged(in BssidChangeReason reason, in byte[] bssid);
+    oneway void onBssidChanged(in BssidChangeReason reason, in byte[] bssid);
 
     /**
      * Used to indicate the disconnection from the currently connected
@@ -98,7 +98,7 @@ oneway interface ISupplicantStaIfaceCallback {
      * @param reasonCode 802.11 code to indicate the disconnect reason
      *        from access point. Refer to section 8.4.1.7 of IEEE802.11 spec.
      */
-    void onDisconnected(
+    oneway void onDisconnected(
             in byte[] bssid, in boolean locallyGenerated, in StaIfaceReasonCode reasonCode);
 
     /**
@@ -115,31 +115,31 @@ oneway interface ISupplicantStaIfaceCallback {
      * bandList: A list of band parameters that are supported by the Enrollee expressed as the
      *     Operating Class.
      */
-    void onDppFailure(
+    oneway void onDppFailure(
             in DppFailureCode code, in String ssid, in String channelList, in char[] bandList);
 
     /**
      * Indicates a DPP progress event.
      */
-    void onDppProgress(in DppProgressCode code);
+    oneway void onDppProgress(in DppProgressCode code);
 
     /**
      * Indicates a DPP success event.
      */
-    void onDppSuccess(in DppEventType event);
+    oneway void onDppSuccess(in DppEventType event);
 
     /**
      * Indicates DPP configuration received success event in Enrolee mode.
      * This is also triggered when Configurator generates credentials for itself
      * using generateSelfDppConfiguration() API
      */
-    void onDppSuccessConfigReceived(in byte[] ssid, in String password, in byte[] psk,
+    oneway void onDppSuccessConfigReceived(in byte[] ssid, in String password, in byte[] psk,
             in DppAkm securityAkm, in DppConnectionKeys dppConnectionKeys);
 
     /**
      * Indicates DPP configuration sent success event (Configurator mode).
      */
-    void onDppSuccessConfigSent();
+    oneway void onDppSuccessConfigSent();
 
     /**
      * Indicates an EAP authentication failure.
@@ -147,21 +147,21 @@ oneway interface ISupplicantStaIfaceCallback {
      *        Either standard error code (enum EapErrorCode) or
      *        private error code defined by network provider.
      */
-    void onEapFailure(in int errorCode);
+    oneway void onEapFailure(in int errorCode);
 
     /**
      * Used to indicate that the external radio work can start now.
      *
      * @param id Identifier generated for the radio work request.
      */
-    void onExtRadioWorkStart(in int id);
+    oneway void onExtRadioWorkStart(in int id);
 
     /**
      * Used to indicate that the external radio work request has timed out.
      *
      * @param id Identifier generated for the radio work request.
      */
-    void onExtRadioWorkTimeout(in int id);
+    oneway void onExtRadioWorkTimeout(in int id);
 
     /**
      * Used to indicate a Hotspot 2.0 imminent deauth notice.
@@ -172,7 +172,7 @@ oneway interface ISupplicantStaIfaceCallback {
      * @param reAuthDelayInSec Delay before reauthenticating.
      * @param url URL of the server.
      */
-    void onHs20DeauthImminentNotice(
+    oneway void onHs20DeauthImminentNotice(
             in byte[] bssid, in int reasonCode, in int reAuthDelayInSec, in String url);
 
     /**
@@ -183,7 +183,7 @@ oneway interface ISupplicantStaIfaceCallback {
      * @param data Icon data fetched from the access point.
      *        Must be empty if the query failed.
      */
-    void onHs20IconQueryDone(in byte[] bssid, in String fileName, in byte[] data);
+    oneway void onHs20IconQueryDone(in byte[] bssid, in String fileName, in byte[] data);
 
     /**
      * Used to indicate a Hotspot 2.0 subscription remediation event.
@@ -192,7 +192,8 @@ oneway interface ISupplicantStaIfaceCallback {
      * @param osuMethod OSU method.
      * @param url URL of the server.
      */
-    void onHs20SubscriptionRemediation(in byte[] bssid, in OsuMethod osuMethod, in String url);
+    oneway void onHs20SubscriptionRemediation(
+            in byte[] bssid, in OsuMethod osuMethod, in String url);
 
     /**
      * Used to indicate a Hotspot 2.0 terms and conditions acceptance is requested from the user
@@ -201,14 +202,15 @@ oneway interface ISupplicantStaIfaceCallback {
      * @param bssid BSSID of the access point.
      * @param url URL of the T&C server.
      */
-    void onHs20TermsAndConditionsAcceptanceRequestedNotification(in byte[] bssid, in String url);
+    oneway void onHs20TermsAndConditionsAcceptanceRequestedNotification(
+            in byte[] bssid, in String url);
 
     /**
      * Used to indicate that a new network has been added.
      *
      * @param id Network ID allocated to the corresponding network.
      */
-    void onNetworkAdded(in int id);
+    oneway void onNetworkAdded(in int id);
 
     /**
      * Used to indicate that the supplicant failed to find a network in scan result
@@ -217,14 +219,14 @@ oneway interface ISupplicantStaIfaceCallback {
      *
      * @param ssid network name supplicant tried to connect.
      */
-    void onNetworkNotFound(in byte[] ssid);
+    oneway void onNetworkNotFound(in byte[] ssid);
 
     /**
      * Used to indicate that a network has been removed.
      *
      * @param id Network ID allocated to the corresponding network.
      */
-    void onNetworkRemoved(in int id);
+    oneway void onNetworkRemoved(in int id);
 
     /**
      * Indicates pairwise master key (PMK) cache added event.
@@ -233,7 +235,7 @@ oneway interface ISupplicantStaIfaceCallback {
      * @param serializedEntry is serialized PMK cache entry, the content is
      *              opaque for the framework and depends on the native implementation.
      */
-    void onPmkCacheAdded(in long expirationTimeInSec, in byte[] serializedEntry);
+    oneway void onPmkCacheAdded(in long expirationTimeInSec, in byte[] serializedEntry);
 
     /**
      * Used to indicate a state change event on this particular iface. If this
@@ -254,7 +256,7 @@ oneway interface ISupplicantStaIfaceCallback {
      *        to a particular network.
      * @param filsHlpSent If FILS HLP IEs were included in this association.
      */
-    void onStateChanged(in StaIfaceCallbackState newState, in byte[] bssid, in int id,
+    oneway void onStateChanged(in StaIfaceCallbackState newState, in byte[] bssid, in int id,
             in byte[] ssid, in boolean filsHlpSent);
 
     /**
@@ -265,29 +267,29 @@ oneway interface ISupplicantStaIfaceCallback {
      * @param configError Configuration error code.
      * @param errorInd Error indication code.
      */
-    void onWpsEventFail(
+    oneway void onWpsEventFail(
             in byte[] bssid, in WpsConfigError configError, in WpsErrorIndication errorInd);
 
     /**
      * Used to indicate the overlap of a WPS PBC connection attempt.
      */
-    void onWpsEventPbcOverlap();
+    oneway void onWpsEventPbcOverlap();
 
     /**
      * Used to indicate the success of a WPS connection attempt.
      */
-    void onWpsEventSuccess();
+    oneway void onWpsEventSuccess();
 
     /**
      * Used to indicate that the AP has cleared all DSCP requests
      * associated with this device.
      */
-    void onQosPolicyReset();
+    oneway void onQosPolicyReset();
 
     /**
      * Used to indicate a DSCP request was received from the AP.
      *
      * @param qosPolicyData QoS policies info requested by the AP.
      */
-    void onQosPolicyRequest(in QosPolicyData[] qosPolicyData);
+    oneway void onQosPolicyRequest(in QosPolicyData[] qosPolicyData);
 }
