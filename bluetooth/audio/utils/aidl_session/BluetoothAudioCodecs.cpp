@@ -307,9 +307,7 @@ bool BluetoothAudioCodecs::IsOffloadLeAudioConfigurationValid(
   if (session_type !=
           SessionType::LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH &&
       session_type !=
-          SessionType::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH &&
-      session_type !=
-          SessionType::LE_AUDIO_BROADCAST_HARDWARE_OFFLOAD_ENCODING_DATAPATH) {
+          SessionType::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH) {
     return false;
   }
   return true;
@@ -453,9 +451,7 @@ BluetoothAudioCodecs::GetLeAudioOffloadCodecCapabilities(
   if (session_type !=
           SessionType::LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH &&
       session_type !=
-          SessionType::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH &&
-      session_type !=
-          SessionType::LE_AUDIO_BROADCAST_HARDWARE_OFFLOAD_ENCODING_DATAPATH) {
+          SessionType::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH) {
     return std::vector<LeAudioCodecCapabilitiesSetting>(0);
   }
 

@@ -1058,9 +1058,6 @@ class GraphicsBlendModeCompositionTest
   public:
     void SetUp() override {
         SetUpBase(std::get<0>(GetParam()));
-        // TODO(b/219590743) we should remove the below SRGB color mode
-        // once we have the BlendMode test fix for all the versions of the ColorMode
-        mTestColorModes = {ColorMode::SRGB};
         mBackgroundColor = BLACK;
         mTopLayerColor = RED;
     }
@@ -1138,8 +1135,8 @@ class GraphicsBlendModeCompositionTest
     Color mBackgroundColor;
     Color mTopLayerColor;
 };
-// TODO(b/219576457) Enable tests once we have fixed the bug on composer.
-TEST_P(GraphicsBlendModeCompositionTest, DISABLED_None) {
+
+TEST_P(GraphicsBlendModeCompositionTest, None) {
     for (ColorMode mode : mTestColorModes) {
         EXPECT_TRUE(mComposerClient
                             ->setColorMode(getPrimaryDisplayId(), mode, RenderIntent::COLORIMETRIC)
@@ -1183,8 +1180,7 @@ TEST_P(GraphicsBlendModeCompositionTest, DISABLED_None) {
     }
 }
 
-// TODO(b/219737571) Enable test for HWC3.0 after we matched with 2.4
-TEST_P(GraphicsBlendModeCompositionTest, DISABLED_Coverage) {
+TEST_P(GraphicsBlendModeCompositionTest, Coverage) {
     for (ColorMode mode : mTestColorModes) {
         EXPECT_TRUE(mComposerClient
                             ->setColorMode(getPrimaryDisplayId(), mode, RenderIntent::COLORIMETRIC)

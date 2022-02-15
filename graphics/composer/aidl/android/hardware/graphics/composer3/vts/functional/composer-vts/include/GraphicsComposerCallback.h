@@ -18,7 +18,7 @@
 #include <aidl/android/hardware/graphics/composer3/BnComposerCallback.h>
 #include <android-base/thread_annotations.h>
 #include <mutex>
-#include <vector>
+#include <unordered_set>
 
 namespace aidl::android::hardware::graphics::composer3::vts {
 
@@ -58,7 +58,7 @@ class GraphicsComposerCallback : public BnComposerCallback {
 
     mutable std::mutex mMutex;
     // the set of all currently connected displays
-    std::vector<int64_t> mDisplays GUARDED_BY(mMutex);
+    std::unordered_set<int64_t> mDisplays GUARDED_BY(mMutex);
     // true only when vsync is enabled
     bool mVsyncAllowed GUARDED_BY(mMutex) = true;
 

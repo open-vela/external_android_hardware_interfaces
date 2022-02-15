@@ -31,7 +31,7 @@ void GraphicsComposerCallback::setVsyncAllowed(bool allowed) {
 
 std::vector<int64_t> GraphicsComposerCallback::getDisplays() const {
     std::scoped_lock lock(mMutex);
-    return mDisplays;
+    return std::vector<int64_t>(mDisplays.begin(), mDisplays.end());
 }
 
 int32_t GraphicsComposerCallback::getInvalidHotplugCount() const {
@@ -81,29 +81,22 @@ GraphicsComposerCallback::takeLastVsyncPeriodChangeTimeline() {
 
 ::ndk::ScopedAStatus GraphicsComposerCallback::onHotplug(int64_t in_display, bool in_connected) {
     std::scoped_lock lock(mMutex);
-
-    const auto it = std::find(mDisplays.begin(), mDisplays.end(), in_display);
     if (in_connected) {
-        if (it == mDisplays.end()) {
-            mDisplays.push_back(in_display);
-        } else {
+        if (!mDisplays.insert(in_display).second) {
             mInvalidHotplugCount++;
         }
     } else {
-        if (it != mDisplays.end()) {
-            mDisplays.erase(it);
-        } else {
+        if (!mDisplays.erase(in_display)) {
             mInvalidHotplugCount++;
         }
     }
     return ::ndk::ScopedAStatus::ok();
 }
 
-::ndk::ScopedAStatus GraphicsComposerCallback::onRefresh(int64_t in_display) {
+::ndk::ScopedAStatus GraphicsComposerCallback::onRefresh(int64_t display) {
     std::scoped_lock lock(mMutex);
 
-    const auto it = std::find(mDisplays.begin(), mDisplays.end(), in_display);
-    if (it == mDisplays.end()) {
+    if (mDisplays.count(display) == 0) {
         mInvalidRefreshCount++;
     }
 
@@ -113,9 +106,7 @@ GraphicsComposerCallback::takeLastVsyncPeriodChangeTimeline() {
 ::ndk::ScopedAStatus GraphicsComposerCallback::onVsync(int64_t in_display, int64_t in_timestamp,
                                                        int32_t in_vsyncPeriodNanos) {
     std::scoped_lock lock(mMutex);
-
-    const auto it = std::find(mDisplays.begin(), mDisplays.end(), in_display);
-    if (!mVsyncAllowed || it == mDisplays.end()) {
+    if (!mVsyncAllowed || mDisplays.count(in_display) == 0) {
         mInvalidVsyncCount++;
     }
 
@@ -129,9 +120,7 @@ GraphicsComposerCallback::takeLastVsyncPeriodChangeTimeline() {
         const ::aidl::android::hardware::graphics::composer3::VsyncPeriodChangeTimeline&
                 in_updatedTimeline) {
     std::scoped_lock lock(mMutex);
-
-    const auto it = std::find(mDisplays.begin(), mDisplays.end(), in_display);
-    if (it == mDisplays.end()) {
+    if (mDisplays.count(in_display) == 0) {
         mInvalidVsyncPeriodChangeCount++;
     }
     mTimeline = in_updatedTimeline;
@@ -141,9 +130,7 @@ GraphicsComposerCallback::takeLastVsyncPeriodChangeTimeline() {
 
 ::ndk::ScopedAStatus GraphicsComposerCallback::onSeamlessPossible(int64_t in_display) {
     std::scoped_lock lock(mMutex);
-
-    const auto it = std::find(mDisplays.begin(), mDisplays.end(), in_display);
-    if (it != mDisplays.end()) {
+    if (mDisplays.count(in_display)) {
         mInvalidSeamlessPossibleCount++;
     }
     return ::ndk::ScopedAStatus::ok();
@@ -151,9 +138,7 @@ GraphicsComposerCallback::takeLastVsyncPeriodChangeTimeline() {
 
 ::ndk::ScopedAStatus GraphicsComposerCallback::onVsyncIdle(int64_t in_display) {
     std::scoped_lock lock(mMutex);
-
-    const auto it = std::find(mDisplays.begin(), mDisplays.end(), in_display);
-    if (it != mDisplays.end()) {
+    if (mDisplays.count(in_display)) {
         mVsyncIdleCount++;
         mVsyncIdleTime = systemTime();
     }
