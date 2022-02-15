@@ -92,8 +92,8 @@ parcelable ProtectedData {
      *         },
      *         {},                   // Unprotected params
      *         bstr .size 32,                  // MAC key
-     *         bstr PureEd25519(KM_priv, .cbor SignedMac_structure) /
-     *              ECDSA(KM_priv, bstr .cbor SignedMac_structure)
+     *         bstr // PureEd25519(KM_priv, bstr .cbor SignedMac_structure) /
+     *              // ECDSA(KM_priv, bstr .cbor SignedMac_structure)
      *     ]
      *
      *     SignedMac_structure = [
@@ -144,8 +144,8 @@ parcelable ProtectedData {
      *         },
      *         unprotected: {},
      *         payload: bstr .cbor BccPayload,
-     *         signature: bstr .cbor PureEd25519(SigningKey, bstr .cbor BccEntryInput) /
-     *                    bstr .cbor ECDSA(SigningKey, bstr .cbor BccEntryInput)
+     *         signature: bstr // PureEd25519(SigningKey, bstr .cbor BccEntryInput) /
+     *                         // ECDSA(SigningKey, bstr .cbor BccEntryInput)
      *         // See RFC 8032 for details of how to encode the signature value for Ed25519.
      *     ]
      *
@@ -169,7 +169,6 @@ parcelable ProtectedData {
      *     PubKeyEd25519 = {                // COSE_Key
      *         1 : 1,                         // Key type : octet key pair
      *         3 : AlgorithmEdDSA,            // Algorithm : EdDSA
-     *         4 : 2,                         // Ops: Verify
      *         -1 : 6,                        // Curve : Ed25519
      *         -2 : bstr                      // X coordinate, little-endian
      *     }
@@ -184,7 +183,6 @@ parcelable ProtectedData {
      *     PubKeyECDSA256 = {                 // COSE_Key
      *         1 : 2,                         // Key type : EC2
      *         3 : AlgorithmES256,            // Algorithm : ECDSA w/ SHA-256
-     *         4 : 2,                         // Ops: Verify
      *         -1 : 1,                        // Curve: P256
      *         -2 : bstr,                     // X coordinate
      *         -3 : bstr                      // Y coordinate
