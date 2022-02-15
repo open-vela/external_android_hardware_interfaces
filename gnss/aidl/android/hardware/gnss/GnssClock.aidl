@@ -20,8 +20,6 @@ import android.hardware.gnss.GnssSignalType;
 
 /**
  * Represents an estimate of the GNSS clock time.
- *
- * @hide
  */
 @VintfStability
 parcelable GnssClock {

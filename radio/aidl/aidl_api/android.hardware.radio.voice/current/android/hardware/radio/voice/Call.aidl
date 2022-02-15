@@ -32,7 +32,7 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.radio.voice;
-@JavaDerive(toString=true) @VintfStability
+@VintfStability
 parcelable Call {
   int state;
   int index;

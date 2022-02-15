@@ -21,7 +21,6 @@ package android.hardware.radio.sim;
  */
 @VintfStability
 @Backing(type="byte")
-@JavaDerive(toString=true)
 enum PbReceivedStatus {
     /**
      * Indicates that retrieval is fine.

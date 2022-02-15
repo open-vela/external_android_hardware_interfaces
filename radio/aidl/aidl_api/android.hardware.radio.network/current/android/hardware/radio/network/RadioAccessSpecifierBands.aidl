@@ -32,7 +32,7 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.radio.network;
-@JavaDerive(toString=true) @VintfStability
+@VintfStability
 union RadioAccessSpecifierBands {
   boolean noinit;
   android.hardware.radio.network.GeranBands[] geranBands;

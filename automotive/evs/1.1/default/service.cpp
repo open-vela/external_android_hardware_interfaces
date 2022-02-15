@@ -14,42 +14,42 @@
  * limitations under the License.
  */
 
-#include "EvsDisplay.h"
-#include "EvsEnumerator.h"
-#include "ServiceNames.h"
+#define LOG_TAG "android.hardware.automotive.evs@1.1-service"
+
+#include <unistd.h>
 
 #include <hidl/HidlTransportSupport.h>
 #include <log/log.h>
 #include <utils/Errors.h>
 #include <utils/StrongPointer.h>
 
-#include <unistd.h>
+#include "ServiceNames.h"
+#include "EvsEnumerator.h"
+#include "EvsDisplay.h"
 
-using android::frameworks::automotive::display::V1_0::IAutomotiveDisplayProxyService;
+
+// libhidl:
 using android::hardware::configureRpcThreadpool;
 using android::hardware::joinRpcThreadpool;
-using android::hardware::automotive::evs::V1_0::DisplayState;
+
+// Generated HIDL files
 using android::hardware::automotive::evs::V1_1::IEvsEnumerator;
-using android::hardware::automotive::evs::V1_1::implementation::EvsEnumerator;
+
+// The namespace in which all our implementation code lives
+using namespace android::hardware::automotive::evs::V1_1::implementation;
+using namespace android;
+
 
 int main() {
     ALOGI("EVS Hardware Enumerator service is starting");
-
-    android::sp<IAutomotiveDisplayProxyService> carWindowService =
-            IAutomotiveDisplayProxyService::getService("default");
-    if (carWindowService == nullptr) {
-        ALOGE("Cannot use AutomotiveDisplayProxyService.  Exiting.");
-        return EXIT_FAILURE;
-    }
-
-    android::sp<IEvsEnumerator> service = new EvsEnumerator(carWindowService);
+    android::sp<IEvsEnumerator> service = new EvsEnumerator();
 
     configureRpcThreadpool(1, true /* callerWillJoin */);
 
     // Register our service -- if somebody is already registered by our name,
     // they will be killed (their thread pool will throw an exception).
-    auto status = service->registerAsService(kEnumeratorServiceName);
-    if (status == android::OK) {
+    status_t status = service->registerAsService(kEnumeratorServiceName);
+    if (status == OK) {
         ALOGD("%s is ready.", kEnumeratorServiceName);
         joinRpcThreadpool();
     } else {
@@ -58,5 +58,5 @@ int main() {
 
     // In normal operation, we don't expect the thread pool to exit
     ALOGE("EVS Hardware Enumerator is shutting down");
-    return EXIT_SUCCESS;
+    return 1;
 }

@@ -17,7 +17,6 @@
 package android.hardware.radio.network;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable TdscdmaSignalStrength {
     /**
      * UTRA carrier RSSI as defined in TS 25.225 5.1.4. Valid values are (0-31, 99) as defined in

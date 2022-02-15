@@ -19,7 +19,6 @@ package android.hardware.radio.network;
 import android.hardware.radio.network.OperatorInfo;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable CellIdentityCdma {
     /**
      * Network Id 0..65535, INT_MAX if unknown

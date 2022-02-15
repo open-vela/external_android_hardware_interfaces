@@ -18,7 +18,6 @@ package android.hardware.radio.network;
 
 @VintfStability
 @Backing(type="int")
-@JavaDerive(toString=true)
 enum IndicationFilter {
     NONE = 0,
     ALL = ~0,

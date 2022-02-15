@@ -18,7 +18,6 @@ package android.hardware.radio;
 
 @VintfStability
 @Backing(type="int")
-@JavaDerive(toString=true)
 enum RadioIndicationType {
     UNSOLICITED,
     UNSOLICITED_ACK_EXP,

@@ -14,36 +14,16 @@ aidl_interface {
     vendor_available: true,
     srcs: ["android/hardware/automotive/audiocontrol/*.aidl"],
     imports: [
-        "android.hardware.audio.common",
         "android.media.audio.common.types",
+        "android.hardware.audio.common",
     ],
     stability: "vintf",
     backend: {
         java: {
-            sdk_version: "module_current",
-            min_sdk_version: "31",
-            apex_available: [
-                "//apex_available:platform",
-                "com.android.car.framework",
-            ],
+            platform_apis: true,
         },
     },
-    versions_with_info: [
-        {
-            version: "1",
-            imports: [
-                "android.hardware.audio.common-V1",
-                "android.media.audio.common.types-V1",
-            ],
-        },
-        {
-            version: "2",
-            imports: [
-                "android.hardware.audio.common-V1",
-                "android.media.audio.common.types-V1",
-            ],
-        },
-
+    versions: [
+        "1",
     ],
-
 }

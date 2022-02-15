@@ -23,7 +23,6 @@ package android.hardware.radio.network;
  */
 @VintfStability
 @Backing(type="int")
-@JavaDerive(toString=true)
 enum RegState {
     /**
      * Not registered, MT is not currently searching for a new operator to register

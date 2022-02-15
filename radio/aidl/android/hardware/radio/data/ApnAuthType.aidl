@@ -18,7 +18,6 @@ package android.hardware.radio.data;
 
 @VintfStability
 @Backing(type="int")
-@JavaDerive(toString=true)
 enum ApnAuthType {
     /**
      * PAP and CHAP is never performed.

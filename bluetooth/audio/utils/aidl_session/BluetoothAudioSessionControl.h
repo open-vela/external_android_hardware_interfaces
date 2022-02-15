@@ -82,7 +82,6 @@ class BluetoothAudioSessionControl {
     }
     switch (session_type) {
       case SessionType::A2DP_HARDWARE_OFFLOAD_ENCODING_DATAPATH:
-      case SessionType::A2DP_HARDWARE_OFFLOAD_DECODING_DATAPATH:
         return AudioConfiguration(CodecConfiguration{});
       case SessionType::LE_AUDIO_HARDWARE_OFFLOAD_ENCODING_DATAPATH:
       case SessionType::LE_AUDIO_HARDWARE_OFFLOAD_DECODING_DATAPATH:

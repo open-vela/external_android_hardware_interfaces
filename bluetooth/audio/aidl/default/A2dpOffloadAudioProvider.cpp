@@ -28,17 +28,9 @@ namespace hardware {
 namespace bluetooth {
 namespace audio {
 
-A2dpOffloadEncodingAudioProvider::A2dpOffloadEncodingAudioProvider()
-    : A2dpOffloadAudioProvider() {
+A2dpOffloadAudioProvider::A2dpOffloadAudioProvider() {
   session_type_ = SessionType::A2DP_HARDWARE_OFFLOAD_ENCODING_DATAPATH;
 }
-
-A2dpOffloadDecodingAudioProvider::A2dpOffloadDecodingAudioProvider()
-    : A2dpOffloadAudioProvider() {
-  session_type_ = SessionType::A2DP_HARDWARE_OFFLOAD_DECODING_DATAPATH;
-}
-
-A2dpOffloadAudioProvider::A2dpOffloadAudioProvider() {}
 
 bool A2dpOffloadAudioProvider::isValid(const SessionType& session_type) {
   return (session_type == session_type_);

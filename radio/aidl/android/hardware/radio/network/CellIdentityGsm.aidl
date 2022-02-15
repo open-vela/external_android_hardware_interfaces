@@ -19,7 +19,6 @@ package android.hardware.radio.network;
 import android.hardware.radio.network.OperatorInfo;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable CellIdentityGsm {
     /**
      * 3-digit Mobile Country Code, 0..999, empty string if unknown

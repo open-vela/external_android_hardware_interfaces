@@ -17,7 +17,6 @@
 package android.hardware.radio.network;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable LceDataInfo {
     /**
      * Last-hop cellular capacity: kilobits/second.

@@ -20,7 +20,6 @@ import android.hardware.radio.network.CellIdentityTdscdma;
 import android.hardware.radio.network.TdscdmaSignalStrength;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable CellInfoTdscdma {
     CellIdentityTdscdma cellIdentityTdscdma;
     TdscdmaSignalStrength signalStrengthTdscdma;

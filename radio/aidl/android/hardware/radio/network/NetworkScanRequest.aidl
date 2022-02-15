@@ -19,7 +19,6 @@ package android.hardware.radio.network;
 import android.hardware.radio.network.RadioAccessSpecifier;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable NetworkScanRequest {
     const int RADIO_ACCESS_SPECIFIER_MAX_SIZE = 8;
 
