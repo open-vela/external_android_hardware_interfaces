@@ -18,7 +18,6 @@ package android.hardware.graphics.common;
 
 /**
  * Used by IAllocator/IMapper (gralloc) to describe standard interlaced strategies
- * @hide
  */
 @VintfStability
 @Backing(type="long")

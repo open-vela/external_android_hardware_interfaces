@@ -22,7 +22,6 @@ package android.hardware.graphics.common;
  * This is an AIDL counterpart of the NDK struct `AColor_xy`.
  *
  * @note This can be used to represent any 2-dimensional chromaticity.
- * @hide
  */
 @VintfStability
 parcelable XyColor {
