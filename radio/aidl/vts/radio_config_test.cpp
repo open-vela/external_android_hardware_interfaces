@@ -24,6 +24,11 @@
 void RadioConfigTest::SetUp() {
     std::string serviceName = GetParam();
 
+    if (!isServiceValidForDeviceConfiguration(serviceName)) {
+        ALOGI("Skipped the test due to device configuration.");
+        GTEST_SKIP();
+    }
+
     radio_config = IRadioConfig::fromBinder(
             ndk::SpAIBinder(AServiceManager_waitForService(GetParam().c_str())));
     ASSERT_NE(nullptr, radio_config.get());
@@ -37,19 +42,6 @@ void RadioConfigTest::SetUp() {
     ASSERT_NE(nullptr, radioInd_config.get());
 
     radio_config->setResponseFunctions(radioRsp_config, radioInd_config);
-}
-
-void RadioConfigTest::updateSimSlotStatus() {
-    serial = GetRandomSerialNumber();
-    radio_config->getSimSlotsStatus(serial);
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
-    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_config->rspInfo.type);
-    EXPECT_EQ(serial, radioRsp_config->rspInfo.serial);
-    EXPECT_EQ(RadioError::NONE, radioRsp_config->rspInfo.error);
-    // assuming only 1 slot
-    for (const SimSlotStatus& slotStatusResponse : radioRsp_config->simSlotStatus) {
-        slotStatus = slotStatusResponse;
-    }
 }
 
 /*
@@ -160,47 +152,4 @@ TEST_P(RadioConfigTest, setPreferredDataModem_invalidArgument) {
     ASSERT_TRUE(CheckAnyOfErrors(radioRsp_config->rspInfo.error,
                                  {RadioError::INVALID_ARGUMENTS, RadioError::RADIO_NOT_AVAILABLE,
                                   RadioError::INTERNAL_ERR}));
-}
-
-/*
- * Test IRadioConfig.setSimSlotsMapping() for the response returned.
- */
-TEST_P(RadioConfigTest, setSimSlotsMapping) {
-    serial = GetRandomSerialNumber();
-    SlotPortMapping slotPortMapping;
-    slotPortMapping.physicalSlotId = 0;
-    slotPortMapping.portId = 0;
-    std::vector<SlotPortMapping> slotPortMappingList = {slotPortMapping};
-    ndk::ScopedAStatus res = radio_config->setSimSlotsMapping(serial, slotPortMappingList);
-    ASSERT_OK(res);
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
-    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_config->rspInfo.type);
-    EXPECT_EQ(serial, radioRsp_config->rspInfo.serial);
-    ALOGI("setSimSlotsMapping, rspInfo.error = %s\n",
-          toString(radioRsp_config->rspInfo.error).c_str());
-    ASSERT_TRUE(CheckAnyOfErrors(radioRsp_config->rspInfo.error, {RadioError::NONE}));
-}
-
-/*
- * Test IRadioConfig.getSimSlotStatus() for the response returned.
- */
-
-TEST_P(RadioConfigTest, checkPortInfoExistsAndPortActive) {
-    serial = GetRandomSerialNumber();
-    ndk::ScopedAStatus res = radio_config->getSimSlotsStatus(serial);
-    ASSERT_OK(res);
-    ALOGI("getSimSlotsStatus, rspInfo.error = %s\n",
-          toString(radioRsp_config->rspInfo.error).c_str());
-    EXPECT_EQ(std::cv_status::no_timeout, wait());
-    EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_config->rspInfo.type);
-    EXPECT_EQ(serial, radioRsp_config->rspInfo.serial);
-    if (radioRsp_config->rspInfo.error == RadioError::NONE) {
-        // check if cardState is present, portInfo size should be more than 0
-        for (const SimSlotStatus& slotStatusResponse : radioRsp_config->simSlotStatus) {
-            if (slotStatusResponse.cardState == CardStatus::STATE_PRESENT) {
-                ASSERT_TRUE(slotStatusResponse.portInfo.size() > 0);
-                ASSERT_TRUE(slotStatusResponse.portInfo[0].portActive);
-            }
-        }
-    }
 }
