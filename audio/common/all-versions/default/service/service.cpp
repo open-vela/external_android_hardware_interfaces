@@ -16,9 +16,11 @@
 
 #define LOG_TAG "audiohalservice"
 
+#include <signal.h>
 #include <string>
 #include <vector>
 
+#include <android/binder_process.h>
 #include <binder/ProcessState.h>
 #include <cutils/properties.h>
 #include <hidl/HidlTransportSupport.h>
@@ -45,9 +47,14 @@ static bool registerPassthroughServiceImplementations(Iter first, Iter last) {
 }
 
 int main(int /* argc */, char* /* argv */ []) {
+    signal(SIGPIPE, SIG_IGN);
+
     ::android::ProcessState::initWithDriver("/dev/vndbinder");
     // start a threadpool for vndbinder interactions
     ::android::ProcessState::self()->startThreadPool();
+
+    ABinderProcess_setThreadPoolMaxThreadCount(1);
+    ABinderProcess_startThreadPool();
 
     const int32_t defaultValue = -1;
     int32_t value =
@@ -63,6 +70,7 @@ int main(int /* argc */, char* /* argv */ []) {
     const std::vector<InterfacesList> mandatoryInterfaces = {
         {
             "Audio Core API",
+            "android.hardware.audio@7.1::IDevicesFactory",
             "android.hardware.audio@7.0::IDevicesFactory",
             "android.hardware.audio@6.0::IDevicesFactory",
             "android.hardware.audio@5.0::IDevicesFactory",
@@ -87,6 +95,7 @@ int main(int /* argc */, char* /* argv */ []) {
         },
         {
             "Bluetooth Audio API",
+            "android.hardware.bluetooth.audio@2.2::IBluetoothAudioProvidersFactory",
             "android.hardware.bluetooth.audio@2.1::IBluetoothAudioProvidersFactory",
             "android.hardware.bluetooth.audio@2.0::IBluetoothAudioProvidersFactory",
         },
