@@ -40,8 +40,45 @@ bool ReplayUtils::isGnssRawMeasurement(const std::string& inputStr) {
 }
 
 bool ReplayUtils::isNMEA(const std::string& inputStr) {
-    return !inputStr.empty() && (inputStr.find("$GPRMC,", 0) != std::string::npos ||
-                                 inputStr.find("$GPRMA,", 0) != std::string::npos);
+    return !inputStr.empty() &&
+           (inputStr.rfind("$GPRMC,", 0) == 0 || inputStr.rfind("$GPRMA,", 0) == 0);
+}
+
+std::string ReplayUtils::getDataFromDeviceFile(const std::string& command, int mMinIntervalMs) {
+    char inputBuffer[INPUT_BUFFER_SIZE];
+    int mGnssFd = open(getGnssPath().c_str(), O_RDWR | O_NONBLOCK);
+
+    if (mGnssFd == -1) {
+        return "";
+    }
+
+    int bytes_write = write(mGnssFd, command.c_str(), command.size());
+    if (bytes_write <= 0) {
+        return "";
+    }
+
+    struct epoll_event ev, events[1];
+    ev.data.fd = mGnssFd;
+    ev.events = EPOLLIN;
+    int epoll_fd = epoll_create1(0);
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, mGnssFd, &ev);
+    int bytes_read = -1;
+    std::string inputStr = "";
+    int epoll_ret = epoll_wait(epoll_fd, events, 1, mMinIntervalMs);
+
+    if (epoll_ret == -1) {
+        return "";
+    }
+    while (true) {
+        memset(inputBuffer, 0, INPUT_BUFFER_SIZE);
+        bytes_read = read(mGnssFd, &inputBuffer, INPUT_BUFFER_SIZE);
+        if (bytes_read <= 0) {
+            break;
+        }
+        inputStr += std::string(inputBuffer, bytes_read);
+    }
+
+    return inputStr;
 }
 
 }  // namespace common

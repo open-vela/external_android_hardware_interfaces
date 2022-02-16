@@ -93,6 +93,13 @@ import android.hardware.security.secureclock.TimeStampToken;
  *        P-521.  STRONGBOX IKeyMintDevices must support NIST curve P-256.
  *      - TRUSTED_ENVIRONMENT IKeyMintDevices must support SHA1, SHA-2 224, SHA-2 256, SHA-2
  *        384 and SHA-2 512 digest modes.  STRONGBOX IKeyMintDevices must support SHA-2 256.
+ *      - TRUSTED_ENVRIONMENT IKeyMintDevices must support curve 25519 for Purpose::SIGN (Ed25519,
+ *        as specified in RFC 8032), Purpose::ATTEST_KEY (Ed25519) or for KeyPurpose::AGREE_KEY
+ *        (X25519, as specified in RFC 7748).  However, a key must have exactly one of these
+ *        purpose values; the same key cannot be used for multiple purposes. Signing operations
+ *        (Purpose::SIGN) have a message size limit of 16 KiB; operations on messages longer than
+ *        this limit must fail with ErrorCode::INVALID_INPUT_LENGTH.
+ *        STRONGBOX IKeyMintDevices do not support curve 25519.
  *
  * o   AES
  *
@@ -234,8 +241,6 @@ interface IKeyMintDevice {
      * indistinguishable from random.  Thus, if the entropy from any source is good, the output
      * must be good.
      *
-     * TODO(seleneh) specify what mixing functions and cprng we allow.
-     *
      * @param data Bytes to be mixed into the CRNG seed.  The caller must not provide more than 2
      *        KiB of data per invocation.
      *
@@ -289,7 +294,7 @@ interface IKeyMintDevice {
      *   except AGREE_KEY must be supported for RSA keys.
      *
      * o Tag::DIGEST specifies digest algorithms that may be used with the new key.  TEE
-     *   IKeyMintDevice implementations must support all Digest values (see digest.aidl) for RSA
+     *   IKeyMintDevice implementations must support all Digest values (see Digest.aidl) for RSA
      *   keys.  StrongBox IKeyMintDevice implementations must support SHA_2_256.
      *
      * o Tag::PADDING specifies the padding modes that may be used with the new
@@ -300,12 +305,23 @@ interface IKeyMintDevice {
      * == ECDSA Keys ==
      *
      * Tag::EC_CURVE must be provided to generate an ECDSA key.  If it is not provided, generateKey
-     * must return ErrorCode::UNSUPPORTED_KEY_SIZE. TEE IKeyMintDevice implementations must support
-     * all curves.  StrongBox implementations must support P_256.
-
+     * must return ErrorCode::UNSUPPORTED_KEY_SIZE or ErrorCode::UNSUPPORTED_EC_CURVE. TEE
+     * IKeyMintDevice implementations must support all required curves.  StrongBox implementations
+     * must support P_256 and no other curves.
+     *
      * Tag::CERTIFICATE_NOT_BEFORE and Tag::CERTIFICATE_NOT_AFTER must be provided to specify the
      * valid date range for the returned X.509 certificate holding the public key. If omitted,
      * generateKey must return ErrorCode::MISSING_NOT_BEFORE or ErrorCode::MISSING_NOT_AFTER.
+     *
+     * Keys with EC_CURVE of EcCurve::CURVE_25519 must have exactly one purpose in the set
+     * {KeyPurpose::SIGN, KeyPurpose::ATTEST_KEY, KeyPurpose::AGREE_KEY}.  Key generation with more
+     * than one purpose should be rejected with ErrorCode::INCOMPATIBLE_PURPOSE.
+     * StrongBox implementation do not support CURVE_25519.
+     *
+     * Tag::DIGEST specifies digest algorithms that may be used with the new key.  TEE
+     * IKeyMintDevice implementations must support all Digest values (see Digest.aidl) for ECDSA
+     * keys; Ed25519 keys only support Digest::NONE. StrongBox IKeyMintDevice implementations must
+     * support SHA_2_256.
      *
      * == AES Keys ==
      *
