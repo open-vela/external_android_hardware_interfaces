@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include "MessageDefinition.h"
-
 #include <sstream>
 
 namespace android::nl::protocols {
@@ -31,10 +29,5 @@ void arrayToStream(std::stringstream& ss, const Buffer<nlattr> attr) {
     ss.seekp(-1, std::ios_base::cur);
     ss << '}';
 }
-
-typedef std::map<uint64_t, std::string> FlagsMap;
-AttributeDefinition::ToStream flagsToStream(FlagsMap flags);
-
-void hwaddrToStream(std::stringstream& ss, const Buffer<nlattr> attr);
 
 }  // namespace android::nl::protocols
