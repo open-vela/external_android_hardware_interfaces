@@ -136,8 +136,4 @@ enum OperationType {
   HARD_SWISH = 99,
   FILL = 100,
   RANK = 101,
-  BATCH_MATMUL = 102,
-  PACK = 103,
-  MIRROR_PAD = 104,
-  REVERSE = 105,
 }

@@ -22,17 +22,8 @@ namespace common {
 
 void DeviceFileReader::getDataFromDeviceFile(const std::string& command, int mMinIntervalMs) {
     char inputBuffer[INPUT_BUFFER_SIZE];
-    std::string deviceFilePath = "";
-    if (command == CMD_GET_LOCATION) {
-        deviceFilePath = ReplayUtils::getFixedLocationPath();
-    } else if (command == CMD_GET_RAWMEASUREMENT) {
-        deviceFilePath = ReplayUtils::getGnssPath();
-    } else {
-        // Invalid command
-        return;
-    }
-
-    int mGnssFd = open(deviceFilePath.c_str(), O_RDWR | O_NONBLOCK);
+    int mGnssFd = open(ReplayUtils::getGnssPath().c_str(),
+                       O_RDWR | O_NONBLOCK);
 
     if (mGnssFd == -1) {
         return;
@@ -77,13 +68,10 @@ void DeviceFileReader::getDataFromDeviceFile(const std::string& command, int mMi
     }
 
     // Cache the injected data.
-    if (command == CMD_GET_LOCATION) {
-        // TODO validate data
+    if (ReplayUtils::isGnssRawMeasurement(inputStr)) {
+        data_[CMD_GET_RAWMEASUREMENT] = inputStr;
+    } else if (ReplayUtils::isNMEA(inputStr)) {
         data_[CMD_GET_LOCATION] = inputStr;
-    } else if (command == CMD_GET_RAWMEASUREMENT) {
-        if (ReplayUtils::isGnssRawMeasurement(inputStr)) {
-            data_[CMD_GET_RAWMEASUREMENT] = inputStr;
-        }
     }
 }
 
