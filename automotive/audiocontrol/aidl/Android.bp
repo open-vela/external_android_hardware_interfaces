@@ -13,11 +13,22 @@ aidl_interface {
     name: "android.hardware.automotive.audiocontrol",
     vendor_available: true,
     srcs: ["android/hardware/automotive/audiocontrol/*.aidl"],
+    imports: [
+        "android.hardware.audio.common",
+        "android.media.audio.common.types",
+    ],
     stability: "vintf",
     backend: {
         java: {
             sdk_version: "module_current",
+            min_sdk_version: "31",
+            apex_available: [
+                "//apex_available:platform",
+                "com.android.car.framework",
+            ],
         },
     },
-    versions: ["1"],
+    versions: [
+        "1",
+    ],
 }
