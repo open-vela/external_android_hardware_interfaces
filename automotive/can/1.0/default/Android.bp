@@ -46,7 +46,13 @@ cc_binary {
     vendor: true,
     relative_install_path: "hw",
     srcs: [
-        ":automotiveCanV1.0_sources",
+        "CanBus.cpp",
+        "CanBusNative.cpp",
+        "CanBusVirtual.cpp",
+        "CanBusSlcan.cpp",
+        "CanController.cpp",
+        "CanSocket.cpp",
+        "CloseHandle.cpp",
         "service.cpp",
     ],
     shared_libs: [
@@ -58,24 +64,4 @@ cc_binary {
         "android.hardware.automotive@libc++fs",
         "libnl++",
     ],
-    vintf_fragments: ["manifest_android.hardware.automotive.can@1.0.xml"],
-}
-
-filegroup {
-    name: "automotiveCanV1.0_sources",
-    srcs: [
-        "CanBus.cpp",
-        "CanBusNative.cpp",
-        "CanBusVirtual.cpp",
-        "CanBusSlcan.cpp",
-        "CanController.cpp",
-        "CanSocket.cpp",
-        "CloseHandle.cpp",
-    ],
-}
-
-cc_library_headers {
-    name: "automotiveCanV1.0_headers",
-    vendor: true,
-    export_include_dirs: ["."],
 }
