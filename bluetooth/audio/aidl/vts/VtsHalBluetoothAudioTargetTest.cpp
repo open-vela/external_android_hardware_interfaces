@@ -1390,7 +1390,7 @@ class BluetoothAudioProviderLeAudioBroadcastSoftwareAidl
  * stopped
  */
 TEST_P(BluetoothAudioProviderLeAudioBroadcastSoftwareAidl,
-       DISABLED_OpenLeAudioOutputSoftwareProvider) {}
+       OpenLeAudioOutputSoftwareProvider) {}
 
 /**
  * Test whether each provider of type
@@ -1398,7 +1398,7 @@ TEST_P(BluetoothAudioProviderLeAudioBroadcastSoftwareAidl,
  * stopped with different PCM config
  */
 TEST_P(BluetoothAudioProviderLeAudioBroadcastSoftwareAidl,
-       DISABLED_StartAndEndLeAudioOutputSessionWithPossiblePcmConfig) {
+       StartAndEndLeAudioOutputSessionWithPossiblePcmConfig) {
   for (auto sample_rate : le_audio_output_sample_rates_) {
     for (auto bits_per_sample : le_audio_output_bits_per_samples_) {
       for (auto channel_mode : le_audio_output_channel_modes_) {
@@ -1545,7 +1545,8 @@ TEST_P(BluetoothAudioProviderLeAudioBroadcastHardwareAidl,
             lc3_config);
     DataMQDesc mq_desc;
     auto aidl_retval = audio_provider_->startSession(
-        audio_port_, AudioConfiguration(le_audio_broadcast_config), &mq_desc);
+        audio_port_, AudioConfiguration(le_audio_broadcast_config),
+        latency_modes, &mq_desc);
 
     ASSERT_TRUE(aidl_retval.isOk());
     EXPECT_TRUE(audio_provider_->endSession().isOk());
@@ -1578,7 +1579,8 @@ TEST_P(
             lc3_config);
     DataMQDesc mq_desc;
     auto aidl_retval = audio_provider_->startSession(
-        audio_port_, AudioConfiguration(le_audio_broadcast_config), &mq_desc);
+        audio_port_, AudioConfiguration(le_audio_broadcast_config),
+        latency_modes, &mq_desc);
 
     // AIDL call should fail on invalid codec
     ASSERT_FALSE(aidl_retval.isOk());
