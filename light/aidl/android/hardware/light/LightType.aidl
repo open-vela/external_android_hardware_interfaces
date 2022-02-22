@@ -32,5 +32,4 @@ enum LightType {
     BLUETOOTH = 6,
     WIFI = 7,
     MICROPHONE = 8,
-    CAMERA = 9,
 }
