@@ -130,7 +130,8 @@ class SupplicantStaIfaceCallback : public BnSupplicantStaIfaceCallback {
     ::ndk::ScopedAStatus onDppSuccessConfigSent() override {
         return ndk::ScopedAStatus::ok();
     }
-    ::ndk::ScopedAStatus onEapFailure(int32_t /* errorCode */) override {
+    ::ndk::ScopedAStatus onEapFailure(const std::vector<uint8_t>& /* bssid */,
+                                      int32_t /* errorCode */) override {
         return ndk::ScopedAStatus::ok();
     }
     ::ndk::ScopedAStatus onExtRadioWorkStart(int32_t /* id */) override {
@@ -201,6 +202,7 @@ class SupplicantStaIfaceCallback : public BnSupplicantStaIfaceCallback {
     }
     ::ndk::ScopedAStatus onQosPolicyReset() override { return ndk::ScopedAStatus::ok(); }
     ::ndk::ScopedAStatus onQosPolicyRequest(
+            int32_t /* qosPolicyRequestId */,
             const std::vector<::aidl::android::hardware::wifi::supplicant ::
                                       QosPolicyData /* qosPolicyData */>&) override {
         return ndk::ScopedAStatus::ok();

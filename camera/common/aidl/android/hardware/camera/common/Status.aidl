@@ -35,26 +35,30 @@ enum Status {
      * One of the arguments to the method call is invalid. For example,
      * the camera ID is unknown.
      */
-    ILLEGAL_ARGUMENT,
+    ILLEGAL_ARGUMENT = 1,
     /**
      * The specified camera device is already in use
      */
-    CAMERA_IN_USE,
+    CAMERA_IN_USE = 2,
     /**
      * The HAL cannot support more simultaneous cameras in use.
      */
-    MAX_CAMERAS_IN_USE,
+    MAX_CAMERAS_IN_USE = 3,
+    /**
+     * This HAL does not support this method.
+     */
+    METHOD_NOT_SUPPORTED = 4,
     /**
      * The specified camera device does not support this operation.
      */
-    OPERATION_NOT_SUPPORTED,
+    OPERATION_NOT_SUPPORTED = 5,
     /**
      * This camera device is no longer connected or otherwise available for use
      */
-    CAMERA_DISCONNECTED,
+    CAMERA_DISCONNECTED = 6,
     /**
      * The HAL has encountered an internal error and cannot complete the
      * request.
      */
-    INTERNAL_ERROR,
+    INTERNAL_ERROR = 7,
 }
