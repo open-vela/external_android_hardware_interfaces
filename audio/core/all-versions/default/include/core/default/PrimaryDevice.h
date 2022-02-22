@@ -36,8 +36,7 @@ using ::android::hardware::hidl_string;
 using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
-using namespace ::android::hardware::audio::common::COMMON_TYPES_CPP_VERSION;
-using namespace ::android::hardware::audio::CORE_TYPES_CPP_VERSION;
+using namespace ::android::hardware::audio::common::CPP_VERSION;
 using namespace ::android::hardware::audio::CPP_VERSION;
 
 struct PrimaryDevice : public IPrimaryDevice {
@@ -136,10 +135,8 @@ struct PrimaryDevice : public IPrimaryDevice {
     Return<Result> setBtHfpVolume(float volume) override;
     Return<Result> updateRotation(IPrimaryDevice::Rotation rotation) override;
 #endif
-#if MAJOR_VERSION == 7 && MINOR_VERSION == 1
-    Return<sp<::android::hardware::audio::V7_1::IDevice>> getDevice() override { return mDevice; }
-#endif
-  private:
+
+   private:
     sp<Device> mDevice;
 
     virtual ~PrimaryDevice();

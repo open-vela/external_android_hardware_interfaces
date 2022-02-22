@@ -161,8 +161,7 @@ class GraphicsComposerHidlTest : public ::testing::TestWithParam<std::string> {
         return mGralloc->allocate(
                 width, height, /*layerCount*/ 1,
                 static_cast<common::V1_1::PixelFormat>(PixelFormat::RGBA_8888),
-                static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN |
-                                      BufferUsage::COMPOSER_OVERLAY));
+                static_cast<uint64_t>(BufferUsage::CPU_WRITE_OFTEN | BufferUsage::CPU_READ_OFTEN));
     }
 
     struct TestParameters {
