@@ -18,9 +18,5 @@ package android.hardware.camera.provider;
 
 @VintfStability
 parcelable ConcurrentCameraIdCombination {
-    /**
-     * Combination of camera ids, that can be opened
-     * and configured with sessions on, concurrently.
-     */
     List<String> combination;
 }

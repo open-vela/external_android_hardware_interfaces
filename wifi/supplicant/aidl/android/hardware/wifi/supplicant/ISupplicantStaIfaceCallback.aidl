@@ -154,11 +154,12 @@ oneway interface ISupplicantStaIfaceCallback {
 
     /**
      * Indicates an EAP authentication failure.
+     * @param bssid BSSID of the access point.
      * @param errorCode Error code for EAP authentication failure.
      *        Either standard error code (enum EapErrorCode) or
      *        private error code defined by network provider.
      */
-    void onEapFailure(in int errorCode);
+    void onEapFailure(in byte[] bssid, in int errorCode);
 
     /**
      * Used to indicate that the external radio work can start now.
@@ -298,7 +299,8 @@ oneway interface ISupplicantStaIfaceCallback {
     /**
      * Used to indicate a DSCP request was received from the AP.
      *
+     * @param qosPolicyRequestId Dialog token to identify the request.
      * @param qosPolicyData QoS policies info requested by the AP.
      */
-    void onQosPolicyRequest(in QosPolicyData[] qosPolicyData);
+    void onQosPolicyRequest(in int qosPolicyRequestId, in QosPolicyData[] qosPolicyData);
 }

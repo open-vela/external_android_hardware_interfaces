@@ -46,7 +46,7 @@ interface ISupplicantStaIfaceCallback {
   oneway void onDppSuccess(in android.hardware.wifi.supplicant.DppEventType event);
   oneway void onDppSuccessConfigReceived(in byte[] ssid, in String password, in byte[] psk, in android.hardware.wifi.supplicant.DppAkm securityAkm, in android.hardware.wifi.supplicant.DppConnectionKeys dppConnectionKeys);
   oneway void onDppSuccessConfigSent();
-  oneway void onEapFailure(in int errorCode);
+  oneway void onEapFailure(in byte[] bssid, in int errorCode);
   oneway void onExtRadioWorkStart(in int id);
   oneway void onExtRadioWorkTimeout(in int id);
   oneway void onHs20DeauthImminentNotice(in byte[] bssid, in int reasonCode, in int reAuthDelayInSec, in String url);
@@ -62,5 +62,5 @@ interface ISupplicantStaIfaceCallback {
   oneway void onWpsEventPbcOverlap();
   oneway void onWpsEventSuccess();
   oneway void onQosPolicyReset();
-  oneway void onQosPolicyRequest(in android.hardware.wifi.supplicant.QosPolicyData[] qosPolicyData);
+  oneway void onQosPolicyRequest(in int qosPolicyRequestId, in android.hardware.wifi.supplicant.QosPolicyData[] qosPolicyData);
 }

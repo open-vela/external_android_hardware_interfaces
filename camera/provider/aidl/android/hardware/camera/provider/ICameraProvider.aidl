@@ -56,6 +56,7 @@ import android.hardware.camera.provider.ICameraProviderCallback;
 
 @VintfStability
 interface ICameraProvider {
+
     /**
      * Device states to be passed to notifyDeviceStateChange().
      */
@@ -294,7 +295,7 @@ interface ICameraProvider {
      *                configurations that need to be queried for support.
      *
      * On error, the service specific error for the operation will be, one of:
-     *     OPERATION_NOT_SUPPORTED:
+     *     METHOD_NOT_SUPPORTED:
      *          The camera provider does not support stream combination query.
      *     INTERNAL_ERROR:
      *          The stream combination query cannot complete due to internal
