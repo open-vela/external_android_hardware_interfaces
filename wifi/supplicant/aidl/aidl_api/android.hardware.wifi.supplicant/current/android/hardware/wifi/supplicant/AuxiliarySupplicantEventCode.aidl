@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2021 The Android Open Source Project
+ * Copyright (C) 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,20 +32,9 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.wifi.supplicant;
-@VintfStability
-interface ISupplicant {
-  @PropagateAllowBlocking android.hardware.wifi.supplicant.ISupplicantP2pIface addP2pInterface(in String ifName);
-  @PropagateAllowBlocking android.hardware.wifi.supplicant.ISupplicantStaIface addStaInterface(in String ifName);
-  android.hardware.wifi.supplicant.DebugLevel getDebugLevel();
-  @PropagateAllowBlocking android.hardware.wifi.supplicant.ISupplicantP2pIface getP2pInterface(in String ifName);
-  @PropagateAllowBlocking android.hardware.wifi.supplicant.ISupplicantStaIface getStaInterface(in String ifName);
-  boolean isDebugShowKeysEnabled();
-  boolean isDebugShowTimestampEnabled();
-  android.hardware.wifi.supplicant.IfaceInfo[] listInterfaces();
-  void registerCallback(in android.hardware.wifi.supplicant.ISupplicantCallback callback);
-  void removeInterface(in android.hardware.wifi.supplicant.IfaceInfo ifaceInfo);
-  void setConcurrencyPriority(in android.hardware.wifi.supplicant.IfaceType type);
-  void setDebugParams(in android.hardware.wifi.supplicant.DebugLevel level, in boolean showTimestamp, in boolean showKeys);
-  oneway void terminate();
-  const int EXT_RADIO_WORK_TIMEOUT_IN_SECS = 10;
+@Backing(type="int") @VintfStability
+enum AuxiliarySupplicantEventCode {
+  EAP_METHOD_SELECTED = 0,
+  SSID_TEMP_DISABLED = 1,
+  OPEN_SSL_FAILURE = 2,
 }
