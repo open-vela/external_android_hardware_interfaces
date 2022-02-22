@@ -176,13 +176,7 @@ Return<Result> HalProxy::initialize_2_1(
     std::unique_ptr<EventMessageQueueWrapperBase> queue =
             std::make_unique<EventMessageQueueWrapperV2_1>(eventQueue);
 
-    // Create the Wake Lock FMQ from the wakeLockDescriptor. Reset the read/write positions.
-    auto hidlWakeLockQueue =
-            std::make_unique<WakeLockMessageQueue>(wakeLockDescriptor, true /* resetPointers */);
-    std::unique_ptr<WakeLockMessageQueueWrapperBase> wakeLockQueue =
-            std::make_unique<WakeLockMessageQueueWrapperHidl>(hidlWakeLockQueue);
-
-    return initializeCommon(queue, wakeLockQueue, dynamicCallback);
+    return initializeCommon(queue, wakeLockDescriptor, dynamicCallback);
 }
 
 Return<Result> HalProxy::initialize(
@@ -198,18 +192,12 @@ Return<Result> HalProxy::initialize(
     std::unique_ptr<EventMessageQueueWrapperBase> queue =
             std::make_unique<EventMessageQueueWrapperV1_0>(eventQueue);
 
-    // Create the Wake Lock FMQ from the wakeLockDescriptor. Reset the read/write positions.
-    auto hidlWakeLockQueue =
-            std::make_unique<WakeLockMessageQueue>(wakeLockDescriptor, true /* resetPointers */);
-    std::unique_ptr<WakeLockMessageQueueWrapperBase> wakeLockQueue =
-            std::make_unique<WakeLockMessageQueueWrapperHidl>(hidlWakeLockQueue);
-
-    return initializeCommon(queue, wakeLockQueue, dynamicCallback);
+    return initializeCommon(queue, wakeLockDescriptor, dynamicCallback);
 }
 
 Return<Result> HalProxy::initializeCommon(
         std::unique_ptr<EventMessageQueueWrapperBase>& eventQueue,
-        std::unique_ptr<WakeLockMessageQueueWrapperBase>& wakeLockQueue,
+        const ::android::hardware::MQDescriptorSync<uint32_t>& wakeLockDescriptor,
         const sp<ISensorsCallbackWrapperBase>& sensorsCallback) {
     Result result = Result::OK;
 
@@ -234,7 +222,8 @@ Return<Result> HalProxy::initializeCommon(
 
     // Create the Wake Lock FMQ that is used by the framework to communicate whenever WAKE_UP
     // events have been successfully read and handled by the framework.
-    mWakeLockQueue = std::move(wakeLockQueue);
+    mWakeLockQueue =
+            std::make_unique<WakeLockMessageQueue>(wakeLockDescriptor, true /* resetPointers */);
 
     if (mEventQueueFlag != nullptr) {
         EventFlag::deleteEventFlag(&mEventQueueFlag);

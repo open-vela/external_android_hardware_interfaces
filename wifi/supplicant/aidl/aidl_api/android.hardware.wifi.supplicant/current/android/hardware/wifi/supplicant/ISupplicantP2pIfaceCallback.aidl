@@ -50,6 +50,4 @@ interface ISupplicantP2pIfaceCallback {
   oneway void onServiceDiscoveryResponse(in byte[] srcAddress, in char updateIndicator, in byte[] tlvs);
   oneway void onStaAuthorized(in byte[] srcAddress, in byte[] p2pDeviceAddress);
   oneway void onStaDeauthorized(in byte[] srcAddress, in byte[] p2pDeviceAddress);
-  oneway void onGroupFrequencyChanged(in String groupIfname, in int frequency);
-  oneway void onDeviceFoundWithVendorElements(in byte[] srcAddress, in byte[] p2pDeviceAddress, in byte[] primaryDeviceType, in String deviceName, in android.hardware.wifi.supplicant.WpsConfigMethods configMethods, in byte deviceCapabilities, in android.hardware.wifi.supplicant.P2pGroupCapabilityMask groupCapabilities, in byte[] wfdDeviceInfo, in byte[] wfdR2DeviceInfo, in byte[] vendorElemBytes);
 }
