@@ -18,7 +18,6 @@ package android.hardware.common.fmq;
 
 /*
  * Included in MQDescriptor, for use with libfmq.
- * @hide
  */
 @VintfStability
 parcelable GrantorDescriptor {

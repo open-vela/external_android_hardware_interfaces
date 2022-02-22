@@ -25,8 +25,7 @@
 
 namespace aidl::android::hardware::neuralnetworks::utils {
 
-::android::nn::GeneralResult<::android::nn::SharedDevice> getDevice(
-        const std::string& name, ::android::nn::Version::Level maxFeatureLevelAllowed);
+::android::nn::GeneralResult<::android::nn::SharedDevice> getDevice(const std::string& name);
 
 }  // namespace aidl::android::hardware::neuralnetworks::utils
 
