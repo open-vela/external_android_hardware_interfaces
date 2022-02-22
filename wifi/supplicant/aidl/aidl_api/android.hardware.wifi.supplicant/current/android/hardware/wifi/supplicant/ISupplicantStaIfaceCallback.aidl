@@ -37,14 +37,13 @@ interface ISupplicantStaIfaceCallback {
   oneway void onAnqpQueryDone(in byte[] bssid, in android.hardware.wifi.supplicant.AnqpData data, in android.hardware.wifi.supplicant.Hs20AnqpData hs20Data);
   oneway void onAssociationRejected(in android.hardware.wifi.supplicant.AssociationRejectionData assocRejectData);
   oneway void onAuthenticationTimeout(in byte[] bssid);
-  oneway void onAuxiliarySupplicantEvent(in android.hardware.wifi.supplicant.AuxiliarySupplicantEventCode eventCode, in byte[] bssid, in String reasonString);
   oneway void onBssTmHandlingDone(in android.hardware.wifi.supplicant.BssTmData tmData);
   oneway void onBssidChanged(in android.hardware.wifi.supplicant.BssidChangeReason reason, in byte[] bssid);
   oneway void onDisconnected(in byte[] bssid, in boolean locallyGenerated, in android.hardware.wifi.supplicant.StaIfaceReasonCode reasonCode);
   oneway void onDppFailure(in android.hardware.wifi.supplicant.DppFailureCode code, in String ssid, in String channelList, in char[] bandList);
   oneway void onDppProgress(in android.hardware.wifi.supplicant.DppProgressCode code);
   oneway void onDppSuccess(in android.hardware.wifi.supplicant.DppEventType event);
-  oneway void onDppSuccessConfigReceived(in byte[] ssid, in String password, in byte[] psk, in android.hardware.wifi.supplicant.DppAkm securityAkm, in android.hardware.wifi.supplicant.DppConnectionKeys dppConnectionKeys);
+  oneway void onDppSuccessConfigReceived(in byte[] ssid, in String password, in byte[] psk, in android.hardware.wifi.supplicant.DppAkm securityAkm);
   oneway void onDppSuccessConfigSent();
   oneway void onEapFailure(in int errorCode);
   oneway void onExtRadioWorkStart(in int id);
@@ -61,6 +60,4 @@ interface ISupplicantStaIfaceCallback {
   oneway void onWpsEventFail(in byte[] bssid, in android.hardware.wifi.supplicant.WpsConfigError configError, in android.hardware.wifi.supplicant.WpsErrorIndication errorInd);
   oneway void onWpsEventPbcOverlap();
   oneway void onWpsEventSuccess();
-  oneway void onQosPolicyReset();
-  oneway void onQosPolicyRequest(in android.hardware.wifi.supplicant.QosPolicyData[] qosPolicyData);
 }
