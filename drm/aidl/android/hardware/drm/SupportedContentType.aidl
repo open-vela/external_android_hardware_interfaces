@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 The Android Open Source Project
+ * Copyright (C) 2022 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,17 +14,18 @@
  * limitations under the License.
  */
 
-package android.hardware.bluetooth.audio@2.2;
+package android.hardware.drm;
 
-import @2.0::IBluetoothAudioPort;
-import android.hardware.audio.common@5.0::SinkMetadata;
+import android.hardware.drm.SecurityLevel;
 
-interface IBluetoothAudioPort extends @2.0::IBluetoothAudioPort  {
-    /**
-     * Called when the metadata of the stream's sink has been changed.
-     *
-     * @param sinkMetadata Description of the audio that is recorded by the
-     *    clients.
-     */
-    updateSinkMetadata(SinkMetadata sinkMetadata);
-};
+@VintfStability
+parcelable SupportedContentType {
+    /** Supported mime type. E.g. cenc, video/mp4, etc */
+    String mime;
+
+    /** Minimum supported security level (inclusive) */
+    SecurityLevel minLevel;
+
+    /** Maximum supported security level (inclusive) */
+    SecurityLevel maxLevel;
+}

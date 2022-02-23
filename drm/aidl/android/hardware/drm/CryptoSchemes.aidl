@@ -16,7 +16,7 @@
 
 package android.hardware.drm;
 
-import android.hardware.drm.SecurityLevel;
+import android.hardware.drm.SupportedContentType;
 import android.hardware.drm.Uuid;
 
 @VintfStability
@@ -28,18 +28,8 @@ parcelable CryptoSchemes {
     List<Uuid> uuids;
 
     /**
-     * Minimum supported security level (inclusive)
+     * Supported mime types, and supported SecurityLevels for each mime
      */
-    SecurityLevel minLevel;
-
-    /**
-     * Maximum supported security level (inclusive)
-     */
-    SecurityLevel maxLevel;
-
-    /**
-     * Supported mime types
-     */
-    List<String> mimeTypes;
+    List<SupportedContentType> mimeTypes;
 
 }
