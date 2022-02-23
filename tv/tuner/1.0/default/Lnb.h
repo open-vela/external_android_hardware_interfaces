@@ -57,7 +57,6 @@ class Lnb : public ILnb {
   private:
     int mId;
     virtual ~Lnb();
-    sp<ILnbCallback> mCallback;
 };
 
 }  // namespace implementation

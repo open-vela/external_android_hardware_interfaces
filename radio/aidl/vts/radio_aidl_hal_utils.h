@@ -20,7 +20,6 @@
 #include <aidl/Vintf.h>
 #include <aidl/android/hardware/radio/RadioError.h>
 #include <aidl/android/hardware/radio/config/IRadioConfig.h>
-#include <aidl/android/hardware/radio/config/SimSlotStatus.h>
 #include <aidl/android/hardware/radio/network/RegState.h>
 #include <aidl/android/hardware/radio/sim/CardStatus.h>
 #include <aidl/android/hardware/radio/sim/IRadioSim.h>
@@ -28,12 +27,10 @@
 #include <vector>
 
 using namespace aidl::android::hardware::radio;
-using aidl::android::hardware::radio::config::SimSlotStatus;
 using aidl::android::hardware::radio::network::RegState;
 using aidl::android::hardware::radio::sim::CardStatus;
 
 extern CardStatus cardStatus;
-extern SimSlotStatus slotStatus;
 extern int serial;
 extern int count_;
 
@@ -144,7 +141,4 @@ class RadioServiceTest {
 
     /* Update SIM card status */
     void updateSimCardStatus();
-
-    /* Update SIM slot status */
-    void updateSimSlotStatus();
 };
