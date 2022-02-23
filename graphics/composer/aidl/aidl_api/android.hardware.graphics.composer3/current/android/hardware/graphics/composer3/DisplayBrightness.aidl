@@ -35,5 +35,4 @@ package android.hardware.graphics.composer3;
 @VintfStability
 parcelable DisplayBrightness {
   float brightness;
-  float brightnessNits;
 }
