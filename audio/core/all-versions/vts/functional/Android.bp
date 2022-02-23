@@ -30,6 +30,7 @@ cc_defaults {
         "android.hardware.audio.common.test.utility",
         "audioclient-types-aidl-cpp",
         "libaudioclient_aidl_conversion",
+        "libstagefright_foundation",
     ],
     shared_libs: [
         "libbinder",
@@ -48,9 +49,6 @@ cc_defaults {
 cc_test {
     name: "VtsHalAudioV2_0TargetTest",
     defaults: ["VtsHalAudioTargetTest_defaults"],
-    tidy_timeout_srcs: [
-        "2.0/AudioPrimaryHidlHalTest.cpp",
-    ],
     srcs: [
         "2.0/AudioPrimaryHidlHalTest.cpp",
     ],
@@ -60,6 +58,7 @@ cc_test {
         "libmedia_helper",
         "android.hardware.audio@2.0",
         "android.hardware.audio.common@2.0",
+        "android.media.audio.common.types-V1-cpp",
     ],
     cflags: [
         "-DMAJOR_VERSION=2",
@@ -77,9 +76,6 @@ cc_test {
 cc_test {
     name: "VtsHalAudioV4_0TargetTest",
     defaults: ["VtsHalAudioTargetTest_defaults"],
-    tidy_timeout_srcs: [
-        "4.0/AudioPrimaryHidlHalTest.cpp",
-    ],
     srcs: [
         "4.0/AudioPrimaryHidlHalTest.cpp",
     ],
@@ -89,6 +85,7 @@ cc_test {
         "libmedia_helper",
         "android.hardware.audio@4.0",
         "android.hardware.audio.common@4.0",
+        "android.media.audio.common.types-V1-cpp",
     ],
     cflags: [
         "-DMAJOR_VERSION=4",
@@ -115,6 +112,7 @@ cc_test {
         "libmedia_helper",
         "android.hardware.audio@5.0",
         "android.hardware.audio.common@5.0",
+        "android.media.audio.common.types-V1-cpp",
     ],
     cflags: [
         "-DMAJOR_VERSION=5",
@@ -132,9 +130,6 @@ cc_test {
 cc_test {
     name: "VtsHalAudioV6_0TargetTest",
     defaults: ["VtsHalAudioTargetTest_defaults"],
-    tidy_timeout_srcs: [
-        "6.0/AudioPrimaryHidlHalTest.cpp",
-    ],
     srcs: [
         "6.0/AudioPrimaryHidlHalTest.cpp",
         "6.0/Generators.cpp",
@@ -145,6 +140,7 @@ cc_test {
         "libmedia_helper",
         "android.hardware.audio@6.0",
         "android.hardware.audio.common@6.0",
+        "android.media.audio.common.types-V1-cpp",
     ],
     cflags: [
         "-DMAJOR_VERSION=6",
@@ -162,9 +158,6 @@ cc_test {
 cc_test {
     name: "VtsHalAudioV7_0TargetTest",
     defaults: ["VtsHalAudioTargetTest_defaults"],
-    tidy_timeout_srcs: [
-        "7.0/AudioPrimaryHidlHalTest.cpp",
-    ],
     srcs: [
         "7.0/AudioPrimaryHidlHalTest.cpp",
         "7.0/Generators.cpp",
@@ -244,6 +237,7 @@ cc_test {
     static_libs: [
         "android.hardware.audio@6.0",
         "android.hardware.audio.common@6.0",
+        "android.media.audio.common.types-V1-cpp",
         "libaudiofoundation",
         "libaudiopolicycomponents",
         "libmedia_helper",
