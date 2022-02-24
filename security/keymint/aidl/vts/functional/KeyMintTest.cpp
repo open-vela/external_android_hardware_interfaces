@@ -1018,37 +1018,6 @@ TEST_P(NewKeyGenerationTest, Rsa) {
 }
 
 /*
- * NewKeyGenerationTest.RsaWithMissingValidity
- *
- * Verifies that keymint returns an error while generating asymmetric key
- * without providing NOT_BEFORE and NOT_AFTER parameters.
- */
-TEST_P(NewKeyGenerationTest, RsaWithMissingValidity) {
-    // Per RFC 5280 4.1.2.5, an undefined expiration (not-after) field should be set to
-    // GeneralizedTime 999912312359559, which is 253402300799000 ms from Jan 1, 1970.
-    constexpr uint64_t kUndefinedExpirationDateTime = 253402300799000;
-
-    vector<uint8_t> key_blob;
-    vector<KeyCharacteristics> key_characteristics;
-    ASSERT_EQ(ErrorCode::MISSING_NOT_BEFORE,
-              GenerateKey(AuthorizationSetBuilder()
-                                  .RsaSigningKey(2048, 65537)
-                                  .Digest(Digest::NONE)
-                                  .Padding(PaddingMode::NONE)
-                                  .Authorization(TAG_CERTIFICATE_NOT_AFTER,
-                                                 kUndefinedExpirationDateTime),
-                          &key_blob, &key_characteristics));
-
-    ASSERT_EQ(ErrorCode::MISSING_NOT_AFTER,
-              GenerateKey(AuthorizationSetBuilder()
-                                  .RsaSigningKey(2048, 65537)
-                                  .Digest(Digest::NONE)
-                                  .Padding(PaddingMode::NONE)
-                                  .Authorization(TAG_CERTIFICATE_NOT_BEFORE, 0),
-                          &key_blob, &key_characteristics));
-}
-
-/*
  * NewKeyGenerationTest.RsaWithAttestation
  *
  * Verifies that keymint can generate all required RSA key sizes with attestation, and that the
@@ -1626,35 +1595,6 @@ TEST_P(NewKeyGenerationTest, EcdsaCurve25519MultiPurposeFail) {
                                            .SetDefaultValidity(),
                                    &key_blob, &key_characteristics);
     ASSERT_EQ(result, ErrorCode::INCOMPATIBLE_PURPOSE);
-}
-
-/*
- * NewKeyGenerationTest.EcdsaWithMissingValidity
- *
- * Verifies that keymint returns an error while generating asymmetric key
- * without providing NOT_BEFORE and NOT_AFTER parameters.
- */
-TEST_P(NewKeyGenerationTest, EcdsaWithMissingValidity) {
-    // Per RFC 5280 4.1.2.5, an undefined expiration (not-after) field should be set to
-    // GeneralizedTime 999912312359559, which is 253402300799000 ms from Jan 1, 1970.
-    constexpr uint64_t kUndefinedExpirationDateTime = 253402300799000;
-
-    vector<uint8_t> key_blob;
-    vector<KeyCharacteristics> key_characteristics;
-    ASSERT_EQ(ErrorCode::MISSING_NOT_BEFORE,
-              GenerateKey(AuthorizationSetBuilder()
-                                  .EcdsaSigningKey(EcCurve::P_256)
-                                  .Digest(Digest::NONE)
-                                  .Authorization(TAG_CERTIFICATE_NOT_AFTER,
-                                                 kUndefinedExpirationDateTime),
-                          &key_blob, &key_characteristics));
-
-    ASSERT_EQ(ErrorCode::MISSING_NOT_AFTER,
-              GenerateKey(AuthorizationSetBuilder()
-                                  .EcdsaSigningKey(EcCurve::P_256)
-                                  .Digest(Digest::NONE)
-                                  .Authorization(TAG_CERTIFICATE_NOT_BEFORE, 0),
-                          &key_blob, &key_characteristics));
 }
 
 /*
@@ -5663,6 +5603,49 @@ TEST_P(EncryptionOperationsTest, AesCbcRoundTripSuccess) {
     params.push_back(TAG_NONCE, iv1);
     string plaintext = DecryptMessage(ciphertext1, params);
     EXPECT_EQ(message, plaintext);
+}
+
+/*
+ * EncryptionOperationsTest.AesCbcZeroInputSuccessb
+ *
+ * Verifies that keymaster generates correct output on zero-input with
+ * NonePadding mode
+ */
+TEST_P(EncryptionOperationsTest, AesCbcZeroInputSuccess) {
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .AesEncryptionKey(128)
+                                                 .BlockMode(BlockMode::CBC)
+                                                 .Padding(PaddingMode::NONE, PaddingMode::PKCS7)));
+
+    // Zero input message
+    string message = "";
+    for (auto padding : {PaddingMode::NONE, PaddingMode::PKCS7}) {
+        auto params = AuthorizationSetBuilder().BlockMode(BlockMode::CBC).Padding(padding);
+        AuthorizationSet out_params;
+        string ciphertext1 = EncryptMessage(message, params, &out_params);
+        vector<uint8_t> iv1 = CopyIv(out_params);
+        if (padding == PaddingMode::NONE)
+            EXPECT_EQ(message.size(), ciphertext1.size()) << "PaddingMode: " << padding;
+        else
+            EXPECT_EQ(message.size(), ciphertext1.size() - 16) << "PaddingMode: " << padding;
+
+        out_params.Clear();
+
+        string ciphertext2 = EncryptMessage(message, params, &out_params);
+        vector<uint8_t> iv2 = CopyIv(out_params);
+        if (padding == PaddingMode::NONE)
+            EXPECT_EQ(message.size(), ciphertext2.size()) << "PaddingMode: " << padding;
+        else
+            EXPECT_EQ(message.size(), ciphertext2.size() - 16) << "PaddingMode: " << padding;
+
+        // IVs should be random
+        EXPECT_NE(iv1, iv2) << "PaddingMode: " << padding;
+
+        params.push_back(TAG_NONCE, iv1);
+        string plaintext = DecryptMessage(ciphertext1, params);
+        EXPECT_EQ(message, plaintext) << "PaddingMode: " << padding;
+    }
 }
 
 /*
