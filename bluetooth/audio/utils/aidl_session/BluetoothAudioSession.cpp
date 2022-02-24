@@ -198,7 +198,7 @@ bool BluetoothAudioSession::StartStream() {
                << " has NO session";
     return false;
   }
-  auto hal_retval = stack_iface_->startStream(false);
+  auto hal_retval = stack_iface_->startStream();
   if (!hal_retval.isOk()) {
     LOG(WARNING) << __func__ << " - IBluetoothAudioPort SessionType="
                  << toString(session_type_) << " failed";
