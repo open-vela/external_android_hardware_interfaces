@@ -218,7 +218,6 @@ void DefaultVehicleHal::onBinderDied(void* cookie) {
 }
 
 void DefaultVehicleHal::onBinderDiedWithContext(const AIBinder* clientId) {
-    ALOGD("binder died");
     std::scoped_lock<std::mutex> lockGuard(mLock);
     mSetValuesClients.erase(clientId);
     mGetValuesClients.erase(clientId);
@@ -233,7 +232,6 @@ void DefaultVehicleHal::onBinderUnlinked(void* cookie) {
 }
 
 void DefaultVehicleHal::onBinderUnlinkedWithContext(const AIBinder* clientId) {
-    ALOGD("binder unlinked");
     std::scoped_lock<std::mutex> lockGuard(mLock);
     mOnBinderDiedContexts.erase(clientId);
 }
@@ -536,10 +534,6 @@ ScopedAStatus DefaultVehicleHal::getPropConfigs(const std::vector<int32_t>& prop
     for (int32_t prop : props) {
         if (mConfigsByPropId.find(prop) != mConfigsByPropId.end()) {
             configs.push_back(mConfigsByPropId[prop]);
-        } else {
-            return ScopedAStatus::fromServiceSpecificErrorWithMessage(
-                    toInt(StatusCode::INVALID_ARG),
-                    StringPrintf("no config for property, ID: %" PRId32, prop).c_str());
         }
     }
     return vectorToStableLargeParcelable(std::move(configs), output);

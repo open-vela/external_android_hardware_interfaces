@@ -60,15 +60,11 @@ cc_library {
     export_include_dirs: [
         "include",
     ],
-    defaults: [
-        "keymint_use_latest_hal_aidl_ndk_shared",
-    ],
     shared_libs: [
         "libbase",
         "libcppbor_external",
         "libcppcose_rkp",
         "libcrypto",
-        "libkeymaster_portable",
         "libjsoncpp",
     ],
 }
@@ -79,9 +75,6 @@ cc_test {
     static_libs: [
         "libgmock",
         "libgtest_main",
-    ],
-    defaults: [
-        "keymint_use_latest_hal_aidl_ndk_shared",
     ],
     shared_libs: [
         "libbase",

@@ -67,8 +67,7 @@ void sendGetOrSetValueResult(std::shared_ptr<IVehicleCallback> callback, const R
     parcelableResults.payloads[0] = result;
     if (ScopedAStatus callbackStatus = callCallback(callback, parcelableResults);
         !callbackStatus.isOk()) {
-        ALOGE("failed to call callback, error: %s, exception: %d, service specific error: %d",
-              callbackStatus.getMessage(), callbackStatus.getExceptionCode(),
+        ALOGE("failed to call callback, error: %s, code: %d", callbackStatus.getMessage(),
               callbackStatus.getServiceSpecificError());
     }
 }
@@ -91,9 +90,8 @@ void sendGetOrSetValueResults(std::shared_ptr<IVehicleCallback> callback,
     if (status.isOk()) {
         if (ScopedAStatus callbackStatus = callCallback(callback, parcelableResults);
             !callbackStatus.isOk()) {
-            ALOGE("failed to call callback, error: %s, exception: %d, service specific error: %d",
-                  callbackStatus.getMessage(), callbackStatus.getExceptionCode(),
-                  callbackStatus.getServiceSpecificError());
+            ALOGE("failed to call callback, error: %s, code: %d", status.getMessage(),
+                  status.getServiceSpecificError());
         }
         return;
     }
@@ -298,10 +296,8 @@ void SubscriptionClient::sendUpdatedValues(std::shared_ptr<IVehicleCallback> cal
     if (ScopedAStatus callbackStatus =
                 callback->onPropertyEvent(vehiclePropValues, sharedMemoryFileCount);
         !callbackStatus.isOk()) {
-        ALOGE("subscribe: failed to call callback, error: %s, exception: %d, "
-              "service specific error: %d",
-              callbackStatus.getMessage(), callbackStatus.getExceptionCode(),
-              callbackStatus.getServiceSpecificError());
+        ALOGE("subscribe: failed to call callback, error: %s, code: %d", status.getMessage(),
+              status.getServiceSpecificError());
     }
 }
 
