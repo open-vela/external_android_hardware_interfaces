@@ -26,8 +26,6 @@
 #include <nnapi/Types.h>
 #include <nnapi/Validation.h>
 
-#include <type_traits>
-
 namespace aidl::android::hardware::neuralnetworks::utils {
 
 constexpr auto kDefaultPriority = Priority::MEDIUM;
@@ -80,11 +78,6 @@ template <typename Type>
 auto convertFromNonCanonical(const Type& nonCanonicalObject)
         -> decltype(convert(nn::convert(nonCanonicalObject).value())) {
     return convert(NN_TRY(nn::convert(nonCanonicalObject)));
-}
-
-template <typename Type>
-constexpr std::underlying_type_t<Type> underlyingType(Type value) {
-    return static_cast<std::underlying_type_t<Type>>(value);
 }
 
 nn::GeneralResult<Memory> clone(const Memory& memory);
