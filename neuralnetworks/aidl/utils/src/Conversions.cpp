@@ -57,6 +57,10 @@
     while (UNLIKELY(value > std::numeric_limits<int32_t>::max())) return NN_ERROR()
 
 namespace {
+template <typename Type>
+constexpr std::underlying_type_t<Type> underlyingType(Type value) {
+    return static_cast<std::underlying_type_t<Type>>(value);
+}
 
 constexpr int64_t kNoTiming = -1;
 
@@ -66,7 +70,6 @@ namespace android::nn {
 namespace {
 
 using ::aidl::android::hardware::common::NativeHandle;
-using ::aidl::android::hardware::neuralnetworks::utils::underlyingType;
 
 template <typename Input>
 using UnvalidatedConvertOutput =
@@ -401,7 +404,7 @@ GeneralResult<SharedMemory> unvalidatedConvert(const aidl_hal::Memory& memory) {
 #endif  // __ANDROID__
         }
     }
-    return NN_ERROR() << "Unrecognized Memory::Tag: " << underlyingType(memory.getTag());
+    return NN_ERROR() << "Unrecognized Memory::Tag: " << memory.getTag();
 }
 
 GeneralResult<Timing> unvalidatedConvert(const aidl_hal::Timing& timing) {
