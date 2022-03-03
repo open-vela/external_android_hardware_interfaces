@@ -16,8 +16,9 @@
 
 package android.hardware.automotive.audiocontrol;
 
-import android.hardware.audio.common.PlaybackTrackMetadata;
 import android.hardware.automotive.audiocontrol.AudioFocusChange;
+
+import android.hardware.audio.common.PlaybackTrackMetadata;
 
 /**
  * Callback interface for audio focus listener.
@@ -71,8 +72,8 @@ interface IFocusListener {
      * @param playbackMetaData The output stream metadata associated with the focus request
      * @param zoneId The identifier for the audio zone that the HAL abandoning focus
      */
-    oneway void abandonAudioFocusWithMetaData(
-            in PlaybackTrackMetadata playbackMetaData, in int zoneId);
+    oneway void abandonAudioFocusWithMetaData(in PlaybackTrackMetadata playbackMetaData,
+            in int zoneId);
 
     /**
      * Used to indicate that the audio output stream associated with
@@ -86,5 +87,5 @@ interface IFocusListener {
      *                  constants.
      */
     oneway void requestAudioFocusWithMetaData(in PlaybackTrackMetadata playbackMetaData,
-            in int zoneId, in AudioFocusChange focusGain);
+          in int zoneId, in AudioFocusChange focusGain);
 }
