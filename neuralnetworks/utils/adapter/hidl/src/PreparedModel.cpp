@@ -55,6 +55,15 @@ auto convertInput(const Type& object) -> decltype(nn::convert(std::declval<Type>
     return result;
 }
 
+nn::GeneralResult<nn::Version> validateRequestForModel(const nn::Request& request,
+                                                       const nn::Model& model) {
+    nn::GeneralResult<nn::Version> version = nn::validateRequestForModel(request, model);
+    if (!version.ok()) {
+        version.error().code = nn::ErrorStatus::INVALID_ARGUMENT;
+    }
+    return version;
+}
+
 class FencedExecutionCallback final : public V1_3::IFencedExecutionCallback {
   public:
     explicit FencedExecutionCallback(const nn::ExecuteFencedInfoCallback& callback)
@@ -135,48 +144,58 @@ void notify(CallbackType* callback, ExecutionResult result) {
 }
 
 nn::GeneralResult<void> execute(const nn::SharedPreparedModel& preparedModel,
-                                const V1_0::Request& request,
+                                const Executor& executor, const V1_0::Request& request,
                                 const sp<V1_0::IExecutionCallback>& callback) {
     if (callback.get() == nullptr) {
         return NN_ERROR(nn::ErrorStatus::INVALID_ARGUMENT) << "Invalid callback";
     }
 
-    const auto nnRequest = NN_TRY(convertInput(request));
+    auto nnRequest = NN_TRY(convertInput(request));
 
-    auto result = preparedModel->execute(nnRequest, nn::MeasureTiming::NO, {}, {}, {}, {});
-
-    if (!result.ok() && result.error().code == nn::ErrorStatus::INVALID_ARGUMENT) {
-        const auto& [message, code, outputShapes] = result.error();
-        return nn::error(code) << message;
+    const std::any resource = preparedModel->getUnderlyingResource();
+    if (const auto* model = std::any_cast<const nn::Model*>(&resource)) {
+        CHECK(*model != nullptr);
+        NN_TRY(adapter::validateRequestForModel(nnRequest, **model));
     }
 
-    notify(callback.get(), std::move(result));
+    Task task = [preparedModel, nnRequest = std::move(nnRequest), callback] {
+        auto result = preparedModel->execute(nnRequest, nn::MeasureTiming::NO, {}, {}, {}, {});
+        notify(callback.get(), std::move(result));
+    };
+    executor(std::move(task), {});
+
     return {};
 }
 
 nn::GeneralResult<void> execute_1_2(const nn::SharedPreparedModel& preparedModel,
-                                    const V1_0::Request& request, V1_2::MeasureTiming measure,
+                                    const Executor& executor, const V1_0::Request& request,
+                                    V1_2::MeasureTiming measure,
                                     const sp<V1_2::IExecutionCallback>& callback) {
     if (callback.get() == nullptr) {
         return NN_ERROR(nn::ErrorStatus::INVALID_ARGUMENT) << "Invalid callback";
     }
 
-    const auto nnRequest = NN_TRY(convertInput(request));
+    auto nnRequest = NN_TRY(convertInput(request));
     const auto nnMeasure = NN_TRY(convertInput(measure));
 
-    auto result = preparedModel->execute(nnRequest, nnMeasure, {}, {}, {}, {});
-
-    if (!result.ok() && result.error().code == nn::ErrorStatus::INVALID_ARGUMENT) {
-        const auto& [message, code, outputShapes] = result.error();
-        return nn::error(code) << message;
+    const std::any resource = preparedModel->getUnderlyingResource();
+    if (const auto* model = std::any_cast<const nn::Model*>(&resource)) {
+        CHECK(*model != nullptr);
+        NN_TRY(adapter::validateRequestForModel(nnRequest, **model));
     }
 
-    notify(callback.get(), std::move(result));
+    Task task = [preparedModel, nnRequest = std::move(nnRequest), nnMeasure, callback] {
+        auto result = preparedModel->execute(nnRequest, nnMeasure, {}, {}, {}, {});
+        notify(callback.get(), std::move(result));
+    };
+    executor(std::move(task), {});
+
     return {};
 }
 
 nn::GeneralResult<void> execute_1_3(const nn::SharedPreparedModel& preparedModel,
-                                    const V1_3::Request& request, V1_2::MeasureTiming measure,
+                                    const Executor& executor, const V1_3::Request& request,
+                                    V1_2::MeasureTiming measure,
                                     const V1_3::OptionalTimePoint& deadline,
                                     const V1_3::OptionalTimeoutDuration& loopTimeoutDuration,
                                     const sp<V1_3::IExecutionCallback>& callback) {
@@ -184,20 +203,25 @@ nn::GeneralResult<void> execute_1_3(const nn::SharedPreparedModel& preparedModel
         return NN_ERROR(nn::ErrorStatus::INVALID_ARGUMENT) << "Invalid callback";
     }
 
-    const auto nnRequest = NN_TRY(convertInput(request));
+    auto nnRequest = NN_TRY(convertInput(request));
     const auto nnMeasure = NN_TRY(convertInput(measure));
     const auto nnDeadline = NN_TRY(convertInput(deadline));
     const auto nnLoopTimeoutDuration = NN_TRY(convertInput(loopTimeoutDuration));
 
-    auto result =
-            preparedModel->execute(nnRequest, nnMeasure, nnDeadline, nnLoopTimeoutDuration, {}, {});
-
-    if (!result.ok() && result.error().code == nn::ErrorStatus::INVALID_ARGUMENT) {
-        const auto& [message, code, outputShapes] = result.error();
-        return nn::error(code) << message;
+    const std::any resource = preparedModel->getUnderlyingResource();
+    if (const auto* model = std::any_cast<const nn::Model*>(&resource)) {
+        CHECK(*model != nullptr);
+        NN_TRY(adapter::validateRequestForModel(nnRequest, **model));
     }
 
-    notify(callback.get(), std::move(result));
+    Task task = [preparedModel, nnRequest = std::move(nnRequest), nnMeasure, nnDeadline,
+                 nnLoopTimeoutDuration, callback] {
+        auto result = preparedModel->execute(nnRequest, nnMeasure, nnDeadline,
+                                             nnLoopTimeoutDuration, {}, {});
+        notify(callback.get(), std::move(result));
+    };
+    executor(std::move(task), nnDeadline);
+
     return {};
 }
 
@@ -280,9 +304,10 @@ nn::GeneralResult<std::pair<hidl_handle, sp<V1_3::IFencedExecutionCallback>>> ex
 
 }  // namespace
 
-PreparedModel::PreparedModel(nn::SharedPreparedModel preparedModel)
-    : kPreparedModel(std::move(preparedModel)) {
+PreparedModel::PreparedModel(nn::SharedPreparedModel preparedModel, Executor executor)
+    : kPreparedModel(std::move(preparedModel)), kExecutor(std::move(executor)) {
     CHECK(kPreparedModel != nullptr);
+    CHECK(kExecutor != nullptr);
 }
 
 nn::SharedPreparedModel PreparedModel::getUnderlyingPreparedModel() const {
@@ -291,7 +316,7 @@ nn::SharedPreparedModel PreparedModel::getUnderlyingPreparedModel() const {
 
 Return<V1_0::ErrorStatus> PreparedModel::execute(const V1_0::Request& request,
                                                  const sp<V1_0::IExecutionCallback>& callback) {
-    auto result = adapter::execute(kPreparedModel, request, callback);
+    auto result = adapter::execute(kPreparedModel, kExecutor, request, callback);
     if (!result.has_value()) {
         auto [message, code] = std::move(result).error();
         LOG(ERROR) << "adapter::PreparedModel::execute failed with " << code << ": " << message;
@@ -304,7 +329,7 @@ Return<V1_0::ErrorStatus> PreparedModel::execute(const V1_0::Request& request,
 Return<V1_0::ErrorStatus> PreparedModel::execute_1_2(const V1_0::Request& request,
                                                      V1_2::MeasureTiming measure,
                                                      const sp<V1_2::IExecutionCallback>& callback) {
-    auto result = adapter::execute_1_2(kPreparedModel, request, measure, callback);
+    auto result = adapter::execute_1_2(kPreparedModel, kExecutor, request, measure, callback);
     if (!result.has_value()) {
         auto [message, code] = std::move(result).error();
         LOG(ERROR) << "adapter::PreparedModel::execute_1_2 failed with " << code << ": " << message;
@@ -319,7 +344,7 @@ Return<V1_3::ErrorStatus> PreparedModel::execute_1_3(
         const V1_3::OptionalTimePoint& deadline,
         const V1_3::OptionalTimeoutDuration& loopTimeoutDuration,
         const sp<V1_3::IExecutionCallback>& callback) {
-    auto result = adapter::execute_1_3(kPreparedModel, request, measure, deadline,
+    auto result = adapter::execute_1_3(kPreparedModel, kExecutor, request, measure, deadline,
                                        loopTimeoutDuration, callback);
     if (!result.has_value()) {
         auto [message, code] = std::move(result).error();
@@ -380,8 +405,8 @@ Return<void> PreparedModel::configureExecutionBurst(
         cb(V1_2::utils::convert(code).value(), nullptr);
         return Void();
     }
-    const auto burstContext = std::move(result).value();
-    cb(V1_0::ErrorStatus::NONE, burstContext);
+    auto burstContext = std::move(result).value();
+    cb(V1_0::ErrorStatus::NONE, std::move(burstContext));
     return Void();
 }
 
