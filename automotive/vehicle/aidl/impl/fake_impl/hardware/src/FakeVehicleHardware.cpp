@@ -68,6 +68,8 @@ using ::android::base::Result;
 using ::android::base::StartsWith;
 using ::android::base::StringPrintf;
 
+using StatusError = android::base::Error<VhalError>;
+
 const char* VENDOR_OVERRIDE_DIR = "/vendor/etc/automotive/vhaloverride/";
 const char* OVERRIDE_PROPERTY = "persist.vendor.vhal_init_value_override";
 
@@ -191,7 +193,7 @@ VehiclePropValuePool::RecyclableType FakeVehicleHardware::createApPowerStateReq(
     return req;
 }
 
-VhalResult<void> FakeVehicleHardware::setApPowerStateReport(const VehiclePropValue& value) {
+Result<void, VhalError> FakeVehicleHardware::setApPowerStateReport(const VehiclePropValue& value) {
     auto updatedValue = mValuePool->obtain(value);
     updatedValue->timestamp = elapsedRealtimeNano();
 
@@ -268,7 +270,7 @@ bool FakeVehicleHardware::isHvacPropAndHvacNotAvailable(int32_t propId) {
     return false;
 }
 
-VhalResult<void> FakeVehicleHardware::setUserHalProp(const VehiclePropValue& value) {
+Result<void, VhalError> FakeVehicleHardware::setUserHalProp(const VehiclePropValue& value) {
     auto result = mFakeUserHal->onSetProperty(value);
     if (!result.ok()) {
         return StatusError(getErrorCode(result))
@@ -343,8 +345,8 @@ FakeVehicleHardware::ValueResultType FakeVehicleHardware::maybeGetSpecialValue(
     return nullptr;
 }
 
-VhalResult<void> FakeVehicleHardware::maybeSetSpecialValue(const VehiclePropValue& value,
-                                                           bool* isSpecialValue) {
+Result<void, VhalError> FakeVehicleHardware::maybeSetSpecialValue(const VehiclePropValue& value,
+                                                                  bool* isSpecialValue) {
     *isSpecialValue = false;
     VehiclePropValuePool::RecyclableType updatedValue;
     int32_t propId = value.prop;
@@ -440,7 +442,7 @@ StatusCode FakeVehicleHardware::setValues(std::shared_ptr<const SetValuesCallbac
     return StatusCode::OK;
 }
 
-VhalResult<void> FakeVehicleHardware::setValue(const VehiclePropValue& value) {
+Result<void, VhalError> FakeVehicleHardware::setValue(const VehiclePropValue& value) {
     bool isSpecialValue = false;
     auto setSpecialValueResult = maybeSetSpecialValue(value, &isSpecialValue);
 

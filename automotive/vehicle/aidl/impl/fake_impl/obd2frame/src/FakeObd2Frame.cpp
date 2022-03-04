@@ -46,6 +46,8 @@ using ::aidl::android::hardware::automotive::vehicle::VehiclePropertyType;
 using ::aidl::android::hardware::automotive::vehicle::VehiclePropValue;
 using ::android::base::Result;
 
+using StatusError = android::base::Error<VhalError>;
+
 std::unique_ptr<Obd2SensorStore> FakeObd2Frame::fillDefaultObd2Frame(size_t numVendorIntegerSensors,
                                                                      size_t numVendorFloatSensors) {
     std::unique_ptr<Obd2SensorStore> sensorStore(new Obd2SensorStore(
@@ -125,7 +127,7 @@ void FakeObd2Frame::initObd2FreezeFrame(const VehiclePropConfig& propConfig) {
     }
 }
 
-VhalResult<VehiclePropValuePool::RecyclableType> FakeObd2Frame::getObd2FreezeFrame(
+Result<VehiclePropValuePool::RecyclableType, VhalError> FakeObd2Frame::getObd2FreezeFrame(
         const VehiclePropValue& requestedPropValue) const {
     if (requestedPropValue.value.int64Values.size() != 1) {
         return StatusError(StatusCode::INVALID_ARG)
@@ -151,7 +153,7 @@ VhalResult<VehiclePropValuePool::RecyclableType> FakeObd2Frame::getObd2FreezeFra
     return readValueResult;
 }
 
-VhalResult<VehiclePropValuePool::RecyclableType> FakeObd2Frame::getObd2DtcInfo() const {
+Result<VehiclePropValuePool::RecyclableType, VhalError> FakeObd2Frame::getObd2DtcInfo() const {
     std::vector<int64_t> timestamps;
     auto result = mPropStore->readValuesForProperty(OBD2_FREEZE_FRAME);
     if (!result.ok()) {
@@ -168,7 +170,7 @@ VhalResult<VehiclePropValuePool::RecyclableType> FakeObd2Frame::getObd2DtcInfo()
     return outValue;
 }
 
-VhalResult<void> FakeObd2Frame::clearObd2FreezeFrames(const VehiclePropValue& propValue) {
+Result<void, VhalError> FakeObd2Frame::clearObd2FreezeFrames(const VehiclePropValue& propValue) {
     if (propValue.value.int64Values.size() == 0) {
         mPropStore->removeValuesForProperty(OBD2_FREEZE_FRAME);
         return {};

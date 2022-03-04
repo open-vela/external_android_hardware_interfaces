@@ -37,6 +37,8 @@ using ::android::base::Result;
 // At least check every 1s.
 constexpr int64_t CHECK_TIME_IN_NANO = 1'000'000'000;
 
+using StatusError = android::base::Error<VhalError>;
+
 }  // namespace
 
 PendingRequestPool::PendingRequestPool(int64_t timeoutInNano)
@@ -71,7 +73,7 @@ PendingRequestPool::~PendingRequestPool() {
     }
 }
 
-VhalResult<void> PendingRequestPool::addRequests(
+Result<void, VhalError> PendingRequestPool::addRequests(
         const void* clientId, const std::unordered_set<int64_t>& requestIds,
         std::shared_ptr<const TimeoutCallbackFunc> callback) {
     std::scoped_lock<std::mutex> lockGuard(mLock);

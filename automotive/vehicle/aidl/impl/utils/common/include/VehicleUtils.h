@@ -251,16 +251,9 @@ class VhalError final {
     aidl::android::hardware::automotive::vehicle::StatusCode mCode;
 };
 
-// VhalResult is a {@code Result} that contains {@code StatusCode} as error type.
 template <class T>
-using VhalResult = android::base::Result<T, VhalError>;
-
-// StatusError could be cast to {@code ResultError} with a {@code StatusCode} and should be used
-// as error type for {@VhalResult}.
-using StatusError = android::base::Error<VhalError>;
-
-template <class T>
-aidl::android::hardware::automotive::vehicle::StatusCode getErrorCode(const VhalResult<T>& result) {
+aidl::android::hardware::automotive::vehicle::StatusCode getErrorCode(
+        const android::base::Result<T, VhalError>& result) {
     if (result.ok()) {
         return aidl::android::hardware::automotive::vehicle::StatusCode::OK;
     }
@@ -268,7 +261,7 @@ aidl::android::hardware::automotive::vehicle::StatusCode getErrorCode(const Vhal
 }
 
 template <class T>
-int getIntErrorCode(const VhalResult<T>& result) {
+int getIntErrorCode(const android::base::Result<T, VhalError>& result) {
     return toInt(getErrorCode(result));
 }
 
@@ -300,12 +293,12 @@ ndk::ScopedAStatus toScopedAStatus(
 }
 
 template <class T>
-ndk::ScopedAStatus toScopedAStatus(const VhalResult<T>& result) {
+ndk::ScopedAStatus toScopedAStatus(const android::base::Result<T, VhalError>& result) {
     return toScopedAStatus(result, getErrorCode(result));
 }
 
 template <class T>
-ndk::ScopedAStatus toScopedAStatus(const VhalResult<T>& result,
+ndk::ScopedAStatus toScopedAStatus(const android::base::Result<T, VhalError>& result,
                                    const std::string& additionalErrorMsg) {
     return toScopedAStatus(result, getErrorCode(result), additionalErrorMsg);
 }

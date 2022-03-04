@@ -33,13 +33,12 @@ namespace vehicle {
 template <typename T>
 class ConcurrentQueue {
   public:
-    bool waitForItems() {
+    void waitForItems() {
         std::unique_lock<std::mutex> lockGuard(mLock);
         android::base::ScopedLockAssertion lockAssertion(mLock);
         while (mQueue.empty() && mIsActive) {
             mCond.wait(lockGuard);
         }
-        return mIsActive;
     }
 
     std::vector<T> flush() {
