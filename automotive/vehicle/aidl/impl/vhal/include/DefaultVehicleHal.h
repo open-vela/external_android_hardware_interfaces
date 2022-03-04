@@ -22,7 +22,6 @@
 #include "PendingRequestPool.h"
 #include "SubscriptionManager.h"
 
-#include <ConcurrentQueue.h>
 #include <IVehicleHardware.h>
 #include <VehicleUtils.h>
 #include <aidl/android/hardware/automotive/vehicle/BnVehicle.h>
@@ -32,7 +31,6 @@
 
 #include <memory>
 #include <mutex>
-#include <shared_mutex>
 #include <unordered_map>
 #include <vector>
 
@@ -45,6 +43,7 @@ class DefaultVehicleHal final : public aidl::android::hardware::automotive::vehi
   public:
     using CallbackType =
             std::shared_ptr<aidl::android::hardware::automotive::vehicle::IVehicleCallback>;
+    using StatusError = android::base::Error<VhalError>;
 
     explicit DefaultVehicleHal(std::unique_ptr<IVehicleHardware> hardware);
 
@@ -106,8 +105,6 @@ class DefaultVehicleHal final : public aidl::android::hardware::automotive::vehi
       public:
         SubscriptionClients(std::shared_ptr<PendingRequestPool> pool) : mPendingRequestPool(pool) {}
 
-        std::shared_ptr<SubscriptionClient> maybeAddClient(const CallbackType& callback);
-
         std::shared_ptr<SubscriptionClient> getClient(const CallbackType& callback);
 
         void removeClient(const AIBinder* clientId);
@@ -122,24 +119,20 @@ class DefaultVehicleHal final : public aidl::android::hardware::automotive::vehi
         std::shared_ptr<PendingRequestPool> mPendingRequestPool;
     };
 
-    // A wrapper for binder operations to enable stubbing for test.
-    class IBinder {
+    // A wrapper for linkToDeath to enable stubbing for test.
+    class ILinkToDeath {
       public:
-        virtual ~IBinder() = default;
+        virtual ~ILinkToDeath() = default;
 
         virtual binder_status_t linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
                                             void* cookie) = 0;
-
-        virtual bool isAlive(const AIBinder* binder) = 0;
     };
 
-    // A real implementation for IBinder.
-    class AIBinderImpl final : public IBinder {
+    // A real implementation for ILinkToDeath.
+    class AIBinderLinkToDeathImpl final : public ILinkToDeath {
       public:
         binder_status_t linkToDeath(AIBinder* binder, AIBinder_DeathRecipient* recipient,
                                     void* cookie) override;
-
-        bool isAlive(const AIBinder* binder) override;
     };
 
     // OnBinderDiedContext is a type used as a cookie passed deathRecipient. The deathRecipient's
@@ -147,13 +140,6 @@ class DefaultVehicleHal final : public aidl::android::hardware::automotive::vehi
     // as the cookie.
     struct OnBinderDiedContext {
         DefaultVehicleHal* vhal;
-        const AIBinder* clientId;
-    };
-
-    // BinderDiedUnlinkedEvent represents either an onBinderDied or an onBinderUnlinked event.
-    struct BinderDiedUnlinkedEvent {
-        // true for onBinderDied, false for onBinderUnlinked.
-        bool onBinderDied;
         const AIBinder* clientId;
     };
 
@@ -185,19 +171,13 @@ class DefaultVehicleHal final : public aidl::android::hardware::automotive::vehi
             GUARDED_BY(mLock);
     // SubscriptionClients is thread-safe.
     std::shared_ptr<SubscriptionClients> mSubscriptionClients;
-    // mBinderImpl is only going to be changed in test.
-    std::unique_ptr<IBinder> mBinderImpl;
+    // mLinkToDeathImpl is only going to be changed in test.
+    std::unique_ptr<ILinkToDeath> mLinkToDeathImpl;
 
     // RecurrentTimer is thread-safe.
     RecurrentTimer mRecurrentTimer;
 
     ndk::ScopedAIBinder_DeathRecipient mDeathRecipient;
-
-    // ConcurrentQueue is thread-safe.
-    ConcurrentQueue<BinderDiedUnlinkedEvent> mBinderEvents;
-
-    // A thread to handle onBinderDied or onBinderUnlinked event.
-    std::thread mOnBinderDiedUnlinkedHandlerThread;
 
     android::base::Result<void> checkProperty(
             const aidl::android::hardware::automotive::vehicle::VehiclePropValue& propValue);
@@ -210,14 +190,14 @@ class DefaultVehicleHal final : public aidl::android::hardware::automotive::vehi
             const std::vector<aidl::android::hardware::automotive::vehicle::SetValueRequest>&
                     requests);
 
-    VhalResult<void> checkSubscribeOptions(
+    android::base::Result<void, VhalError> checkSubscribeOptions(
             const std::vector<aidl::android::hardware::automotive::vehicle::SubscribeOptions>&
                     options);
 
-    VhalResult<void> checkReadPermission(
+    android::base::Result<void, VhalError> checkReadPermission(
             const aidl::android::hardware::automotive::vehicle::VehiclePropValue& value) const;
 
-    VhalResult<void> checkWritePermission(
+    android::base::Result<void, VhalError> checkWritePermission(
             const aidl::android::hardware::automotive::vehicle::VehiclePropValue& value) const;
 
     android::base::Result<const aidl::android::hardware::automotive::vehicle::VehiclePropConfig*>
@@ -227,17 +207,10 @@ class DefaultVehicleHal final : public aidl::android::hardware::automotive::vehi
 
     void onBinderUnlinkedWithContext(const AIBinder* clientId);
 
-    // Registers a onBinderDied callback for the client if not already registered.
-    // Returns true if the client Binder is alive, false otherwise.
-    bool monitorBinderLifeCycleLocked(const AIBinder* clientId) REQUIRES(mLock);
+    void monitorBinderLifeCycle(const CallbackType& callback);
 
     bool checkDumpPermission();
 
-    // The looping handler function to process all onBinderDied or onBinderUnlinked events in
-    // mBinderEvents.
-    void onBinderDiedUnlinkedHandler();
-
-    // Gets or creates a {@code T} object for the client to or from {@code clients}.
     template <class T>
     static std::shared_ptr<T> getOrCreateClient(
             std::unordered_map<const AIBinder*, std::shared_ptr<T>>* clients,
@@ -266,7 +239,7 @@ class DefaultVehicleHal final : public aidl::android::hardware::automotive::vehi
     void setTimeout(int64_t timeoutInNano);
 
     // Test-only
-    void setBinderImpl(std::unique_ptr<IBinder> impl);
+    void setLinkToDeathImpl(std::unique_ptr<ILinkToDeath> impl);
 };
 
 }  // namespace vehicle

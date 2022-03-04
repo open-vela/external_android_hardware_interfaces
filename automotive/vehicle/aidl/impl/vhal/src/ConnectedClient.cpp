@@ -67,10 +67,9 @@ void sendGetOrSetValueResult(std::shared_ptr<IVehicleCallback> callback, const R
     parcelableResults.payloads[0] = result;
     if (ScopedAStatus callbackStatus = callCallback(callback, parcelableResults);
         !callbackStatus.isOk()) {
-        ALOGE("failed to call GetOrSetValueResult callback, client ID: %p, error: %s, "
-              "exception: %d, service specific error: %d",
-              callback->asBinder().get(), callbackStatus.getMessage(),
-              callbackStatus.getExceptionCode(), callbackStatus.getServiceSpecificError());
+        ALOGE("failed to call callback, error: %s, exception: %d, service specific error: %d",
+              callbackStatus.getMessage(), callbackStatus.getExceptionCode(),
+              callbackStatus.getServiceSpecificError());
     }
 }
 
@@ -92,10 +91,9 @@ void sendGetOrSetValueResults(std::shared_ptr<IVehicleCallback> callback,
     if (status.isOk()) {
         if (ScopedAStatus callbackStatus = callCallback(callback, parcelableResults);
             !callbackStatus.isOk()) {
-            ALOGE("failed to call GetOrSetValueResults callback, client ID: %p, error: %s, "
-                  "exception: %d, service specific error: %d",
-                  callback->asBinder().get(), callbackStatus.getMessage(),
-                  callbackStatus.getExceptionCode(), callbackStatus.getServiceSpecificError());
+            ALOGE("failed to call callback, error: %s, exception: %d, service specific error: %d",
+                  callbackStatus.getMessage(), callbackStatus.getExceptionCode(),
+                  callbackStatus.getServiceSpecificError());
         }
         return;
     }
@@ -196,7 +194,8 @@ const void* ConnectedClient::id() {
     return reinterpret_cast<const void*>(this);
 }
 
-VhalResult<void> ConnectedClient::addRequests(const std::unordered_set<int64_t>& requestIds) {
+Result<void, VhalError> ConnectedClient::addRequests(
+        const std::unordered_set<int64_t>& requestIds) {
     return mRequestPool->addRequests(id(), requestIds, getTimeoutCallback());
 }
 
@@ -300,10 +299,10 @@ void SubscriptionClient::sendUpdatedValues(std::shared_ptr<IVehicleCallback> cal
     if (ScopedAStatus callbackStatus =
                 callback->onPropertyEvent(vehiclePropValues, sharedMemoryFileCount);
         !callbackStatus.isOk()) {
-        ALOGE("subscribe: failed to call UpdateValues callback, client ID: %p, error: %s, "
-              "exception: %d, service specific error: %d",
-              callback->asBinder().get(), callbackStatus.getMessage(),
-              callbackStatus.getExceptionCode(), callbackStatus.getServiceSpecificError());
+        ALOGE("subscribe: failed to call callback, error: %s, exception: %d, "
+              "service specific error: %d",
+              callbackStatus.getMessage(), callbackStatus.getExceptionCode(),
+              callbackStatus.getServiceSpecificError());
     }
 }
 
