@@ -20,8 +20,6 @@ import android.hardware.gnss.BlocklistedSource;
 
 /**
  * Extended interface for GNSS Configuration support.
- *
- * @hide
  */
 @VintfStability
 interface IGnssConfiguration {

@@ -22,6 +22,8 @@
 namespace android::hardware::radio::compat {
 
 class RadioSim : public RadioCompatBase, public aidl::android::hardware::radio::sim::BnRadioSim {
+    std::shared_ptr<::aidl::android::hardware::radio::sim::IRadioSimResponse> respond();
+
     ::ndk::ScopedAStatus areUiccApplicationsEnabled(int32_t serial) override;
     ::ndk::ScopedAStatus changeIccPin2ForApp(int32_t serial, const std::string& oldPin2,
                                              const std::string& newPin2,
@@ -99,9 +101,6 @@ class RadioSim : public RadioCompatBase, public aidl::android::hardware::radio::
     ::ndk::ScopedAStatus updateSimPhonebookRecords(
             int32_t serial,
             const ::aidl::android::hardware::radio::sim::PhonebookRecordInfo& recordInfo) override;
-
-  protected:
-    std::shared_ptr<::aidl::android::hardware::radio::sim::IRadioSimResponse> respond();
 
   public:
     using RadioCompatBase::RadioCompatBase;

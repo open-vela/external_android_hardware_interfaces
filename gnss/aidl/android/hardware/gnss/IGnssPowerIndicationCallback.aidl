@@ -20,8 +20,6 @@ import android.hardware.gnss.GnssPowerStats;
 
 /**
  * The callback interface to report GNSS Power Indication from the HAL.
- *
- * @hide
  */
 @VintfStability
 interface IGnssPowerIndicationCallback {

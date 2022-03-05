@@ -21,8 +21,6 @@ package android.hardware.gnss;
  *
  * The satellite position must be defined at the time of transmission of the
  * signal receivedSvTimeNs.
- *
- * @hide
  */
 @VintfStability
 parcelable SatellitePositionEcef {
