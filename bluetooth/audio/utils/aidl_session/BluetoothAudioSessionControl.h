@@ -98,12 +98,11 @@ class BluetoothAudioSessionControl {
   stop
    * stream, to check position, and to update metadata.
   ***/
-  static bool StartStream(const SessionType& session_type,
-                          bool low_latency = false) {
+  static bool StartStream(const SessionType& session_type) {
     std::shared_ptr<BluetoothAudioSession> session_ptr =
         BluetoothAudioSessionInstance::GetSessionInstance(session_type);
     if (session_ptr != nullptr) {
-      return session_ptr->StartStream(low_latency);
+      return session_ptr->StartStream();
     }
     return false;
   }
@@ -152,25 +151,6 @@ class BluetoothAudioSessionControl {
         BluetoothAudioSessionInstance::GetSessionInstance(session_type);
     if (session_ptr != nullptr) {
       session_ptr->UpdateSinkMetadata(sink_metadata);
-    }
-  }
-
-  static std::vector<LatencyMode> GetSupportedLatencyModes(
-      const SessionType& session_type) {
-    std::shared_ptr<BluetoothAudioSession> session_ptr =
-        BluetoothAudioSessionInstance::GetSessionInstance(session_type);
-    if (session_ptr != nullptr) {
-      return session_ptr->GetSupportedLatencyModes();
-    }
-    return std::vector<LatencyMode>();
-  }
-
-  static void SetLatencyMode(const SessionType& session_type,
-                             const LatencyMode& latency_mode) {
-    std::shared_ptr<BluetoothAudioSession> session_ptr =
-        BluetoothAudioSessionInstance::GetSessionInstance(session_type);
-    if (session_ptr != nullptr) {
-      session_ptr->SetLatencyMode(latency_mode);
     }
   }
 
