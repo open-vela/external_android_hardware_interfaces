@@ -27,7 +27,6 @@
 
 #include <mutex>
 #include <unordered_map>
-#include <vector>
 
 namespace aidl {
 namespace android {
@@ -121,8 +120,7 @@ class BluetoothAudioSession {
    ***/
   void OnSessionStarted(const std::shared_ptr<IBluetoothAudioPort> stack_iface,
                         const DataMQDesc* mq_desc,
-                        const AudioConfiguration& audio_config,
-                        const std::vector<LatencyMode>& latency_modes);
+                        const AudioConfiguration& audio_config);
 
   /***
    * The report function is used to report that the Bluetooth stack has ended
@@ -177,15 +175,13 @@ class BluetoothAudioSession {
    * Those control functions are for the bluetooth_audio module to start,
    * suspend, stop stream, to check position, and to update metadata.
    ***/
-  bool StartStream(bool low_latency);
+  bool StartStream();
   bool SuspendStream();
   void StopStream();
   bool GetPresentationPosition(PresentationPosition& presentation_position);
   void UpdateSourceMetadata(const struct source_metadata& source_metadata);
   void UpdateSinkMetadata(const struct sink_metadata& sink_metadata);
-
-  std::vector<LatencyMode> GetSupportedLatencyModes();
-  void SetLatencyMode(const LatencyMode& latency_mode);
+  void SetLatencyMode(LatencyMode latency_mode);
 
   // The control function writes stream to FMQ
   size_t OutWritePcmData(const void* buffer, size_t bytes);
@@ -206,8 +202,6 @@ class BluetoothAudioSession {
   std::unique_ptr<DataMQ> data_mq_;
   // audio data configuration for both software and offloading
   std::unique_ptr<AudioConfiguration> audio_config_;
-  std::vector<LatencyMode> latency_modes_;
-  bool low_latency_allowed_ = true;
 
   // saving those registered bluetooth_audio's callbacks
   std::unordered_map<uint16_t, std::shared_ptr<struct PortStatusCallbacks>>

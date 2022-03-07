@@ -57,7 +57,9 @@ bool HearingAidAudioProvider::isValid(const SessionType& sessionType) {
 ndk::ScopedAStatus HearingAidAudioProvider::startSession(
     const std::shared_ptr<IBluetoothAudioPort>& host_if,
     const AudioConfiguration& audio_config,
-    const std::vector<LatencyMode>& latency_modes, DataMQDesc* _aidl_return) {
+    const std::vector<LatencyMode>& latency_modes,
+    DataMQDesc* _aidl_return) {
+  latency_modes_ = latency_modes;
   if (audio_config.getTag() != AudioConfiguration::pcmConfig) {
     LOG(WARNING) << __func__ << " - Invalid Audio Configuration="
                  << audio_config.toString();
@@ -84,8 +86,8 @@ ndk::ScopedAStatus HearingAidAudioProvider::onSessionReady(
   }
   *_aidl_return = data_mq_->dupeDesc();
   auto desc = data_mq_->dupeDesc();
-  BluetoothAudioSessionReport::OnSessionStarted(
-      session_type_, stack_iface_, &desc, *audio_config_, latency_modes_);
+  BluetoothAudioSessionReport::OnSessionStarted(session_type_, stack_iface_,
+                                                &desc, *audio_config_);
   return ndk::ScopedAStatus::ok();
 }
 

@@ -63,9 +63,6 @@ class SecureElementProvisioningTest : public testing::Test {
 map<SecurityLevel, shared_ptr<IKeyMintDevice>> SecureElementProvisioningTest::keymints_;
 
 TEST_F(SecureElementProvisioningTest, ValidConfigurations) {
-    if (keymints_.empty()) {
-        GTEST_SKIP() << "Test not applicable to device with no KeyMint devices";
-    }
     // TEE is required
     ASSERT_EQ(keymints_.count(SecurityLevel::TRUSTED_ENVIRONMENT), 1);
     // StrongBox is optional
@@ -73,9 +70,6 @@ TEST_F(SecureElementProvisioningTest, ValidConfigurations) {
 }
 
 TEST_F(SecureElementProvisioningTest, TeeOnly) {
-    if (keymints_.empty()) {
-        GTEST_SKIP() << "Test not applicable to device with no KeyMint devices";
-    }
     ASSERT_EQ(keymints_.count(SecurityLevel::TRUSTED_ENVIRONMENT), 1);
     auto tee = keymints_.find(SecurityLevel::TRUSTED_ENVIRONMENT)->second;
     ASSERT_NE(tee, nullptr);
@@ -111,9 +105,6 @@ TEST_F(SecureElementProvisioningTest, TeeOnly) {
 }
 
 TEST_F(SecureElementProvisioningTest, TeeDoesNotImplementStrongBoxMethods) {
-    if (keymints_.empty()) {
-        GTEST_SKIP() << "Test not applicable to device with no KeyMint devices";
-    }
     ASSERT_EQ(keymints_.count(SecurityLevel::TRUSTED_ENVIRONMENT), 1);
     auto tee = keymints_.find(SecurityLevel::TRUSTED_ENVIRONMENT)->second;
     ASSERT_NE(tee, nullptr);
@@ -131,10 +122,7 @@ TEST_F(SecureElementProvisioningTest, TeeDoesNotImplementStrongBoxMethods) {
 }
 
 TEST_F(SecureElementProvisioningTest, StrongBoxDoesNotImplementTeeMethods) {
-    if (keymints_.count(SecurityLevel::STRONGBOX) == 0) {
-        // Need a StrongBox to provision.
-        GTEST_SKIP() << "Test not applicable to device with no StrongBox KeyMint device";
-    }
+    if (keymints_.count(SecurityLevel::STRONGBOX) == 0) return;
 
     auto sb = keymints_.find(SecurityLevel::STRONGBOX)->second;
     ASSERT_NE(sb, nullptr);
@@ -147,10 +135,7 @@ TEST_F(SecureElementProvisioningTest, StrongBoxDoesNotImplementTeeMethods) {
 }
 
 TEST_F(SecureElementProvisioningTest, UnimplementedTest) {
-    if (keymints_.count(SecurityLevel::STRONGBOX) == 0) {
-        // Need a StrongBox to provision.
-        GTEST_SKIP() << "Test not applicable to device with no StrongBox KeyMint device";
-    }
+    if (keymints_.count(SecurityLevel::STRONGBOX) == 0) return;  // Need a StrongBox to provision.
 
     ASSERT_EQ(keymints_.count(SecurityLevel::TRUSTED_ENVIRONMENT), 1);
     auto tee = keymints_.find(SecurityLevel::TRUSTED_ENVIRONMENT)->second;
@@ -181,10 +166,7 @@ TEST_F(SecureElementProvisioningTest, UnimplementedTest) {
 }
 
 TEST_F(SecureElementProvisioningTest, ChallengeQualityTest) {
-    if (keymints_.count(SecurityLevel::STRONGBOX) == 0) {
-        // Need a StrongBox to provision.
-        GTEST_SKIP() << "Test not applicable to device with no StrongBox KeyMint device";
-    }
+    if (keymints_.count(SecurityLevel::STRONGBOX) == 0) return;  // Need a StrongBox to provision.
 
     ASSERT_EQ(keymints_.count(SecurityLevel::STRONGBOX), 1);
     auto sb = keymints_.find(SecurityLevel::STRONGBOX)->second;
@@ -204,10 +186,7 @@ TEST_F(SecureElementProvisioningTest, ChallengeQualityTest) {
 }
 
 TEST_F(SecureElementProvisioningTest, ProvisioningTest) {
-    if (keymints_.count(SecurityLevel::STRONGBOX) == 0) {
-        // Need a StrongBox to provision.
-        GTEST_SKIP() << "Test not applicable to device with no StrongBox KeyMint device";
-    }
+    if (keymints_.count(SecurityLevel::STRONGBOX) == 0) return;  // Need a StrongBox to provision.
 
     ASSERT_EQ(keymints_.count(SecurityLevel::TRUSTED_ENVIRONMENT), 1);
     auto tee = keymints_.find(SecurityLevel::TRUSTED_ENVIRONMENT)->second;
@@ -236,10 +215,7 @@ TEST_F(SecureElementProvisioningTest, ProvisioningTest) {
 }
 
 TEST_F(SecureElementProvisioningTest, InvalidProvisioningTest) {
-    if (keymints_.count(SecurityLevel::STRONGBOX) == 0) {
-        // Need a StrongBox to provision.
-        GTEST_SKIP() << "Test not applicable to device with no StrongBox KeyMint device";
-    }
+    if (keymints_.count(SecurityLevel::STRONGBOX) == 0) return;  // Need a StrongBox to provision.
 
     ASSERT_EQ(keymints_.count(SecurityLevel::TRUSTED_ENVIRONMENT), 1);
     auto tee = keymints_.find(SecurityLevel::TRUSTED_ENVIRONMENT)->second;
