@@ -66,9 +66,7 @@ class WifiRttControllerHidlTest : public ::testing::TestWithParam<std::string> {
         stopWifi(GetInstanceName());
 
         wifi_rtt_controller_ = getWifiRttController();
-        if (wifi_rtt_controller_.get() == nullptr) {
-            GTEST_SKIP() << "Skipping this test since API is deprecated.";
-        }
+        ASSERT_NE(nullptr, wifi_rtt_controller_.get());
 
         // Check RTT support before we run the test.
         std::pair<WifiStatus, RttCapabilities> status_and_caps;
@@ -81,7 +79,7 @@ class WifiRttControllerHidlTest : public ::testing::TestWithParam<std::string> {
 
     virtual void TearDown() override { stopWifi(GetInstanceName()); }
 
-    // A simple test implementation of WifiRttControllerEventCallback.
+    // A simple test implementation of WifiChipEventCallback.
     class WifiRttControllerEventCallback
         : public ::testing::VtsHalHidlTargetCallbackBase<
               WifiRttControllerHidlTest>,
@@ -124,11 +122,6 @@ class WifiRttControllerHidlTest : public ::testing::TestWithParam<std::string> {
 
         const auto& status_and_controller =
             HIDL_INVOKE(wifi_chip, createRttController_1_4, wifi_sta_iface);
-
-        if (status_and_controller.first.code == WifiStatusCode::ERROR_NOT_SUPPORTED) {
-            return nullptr;
-        }
-
         EXPECT_EQ(WifiStatusCode::SUCCESS, status_and_controller.first.code);
         EXPECT_NE(nullptr, status_and_controller.second.get());
 

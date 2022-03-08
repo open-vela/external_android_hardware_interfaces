@@ -18,13 +18,7 @@
 
 #include <android-base/logging.h>
 
-namespace android {
-namespace hardware {
-namespace automotive {
-namespace vehicle {
-namespace V2_0 {
-
-namespace impl {
+namespace android::hardware::automotive::vehicle::V2_0::impl {
 
 void VehicleHalClient::onPropertyValue(const VehiclePropValue& value, bool updateStatus) {
     if (!mPropCallback) {
@@ -42,10 +36,4 @@ void VehicleHalClient::registerPropertyValueCallback(PropertyCallBackType&& call
     mPropCallback = std::move(callback);
 }
 
-}  // namespace impl
-
-}  // namespace V2_0
-}  // namespace vehicle
-}  // namespace automotive
-}  // namespace hardware
-}  // namespace android
+}  // namespace android::hardware::automotive::vehicle::V2_0::impl

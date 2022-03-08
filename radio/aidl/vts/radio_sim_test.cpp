@@ -108,13 +108,7 @@ TEST_P(RadioSimTest, setSimCardPower) {
     // have CardStatus::STATE_PRESENT after turning the power back on
     if (radioRsp_sim->rspInfo.error == RadioError::NONE) {
         updateSimCardStatus();
-        updateSimSlotStatus();
         EXPECT_EQ(CardStatus::STATE_PRESENT, cardStatus.cardState);
-        EXPECT_EQ(CardStatus::STATE_PRESENT, slotStatus.cardState);
-        if (CardStatus::STATE_PRESENT == slotStatus.cardState) {
-            ASSERT_TRUE(slotStatus.portInfo[0].portActive);
-            EXPECT_EQ(0, cardStatus.slotMap.portId);
-        }
     }
 }
 
@@ -382,6 +376,8 @@ TEST_P(RadioSimTest, getAllowedCarriers) {
  * Test IRadioSim.setAllowedCarriers() for the response returned.
  */
 TEST_P(RadioSimTest, setAllowedCarriers) {
+    // TODO (b/210712359): remove once shim supports 1.4 or alternative is found
+    GTEST_SKIP();
     serial = GetRandomSerialNumber();
     CarrierRestrictions carrierRestrictions;
     memset(&carrierRestrictions, 0, sizeof(carrierRestrictions));
@@ -415,8 +411,7 @@ TEST_P(RadioSimTest, setAllowedCarriers) {
                 sleep(2);
                 updateSimCardStatus();
             }
-            // TODO: uncomment once CF fully supports setAllowedCarriers
-            // EXPECT_EQ(CardStatus::STATE_RESTRICTED, cardStatus.cardState);
+            EXPECT_EQ(CardStatus::STATE_RESTRICTED, cardStatus.cardState);
         }
 
         /* Verify that configuration was set correctly, retrieving it from the modem */
