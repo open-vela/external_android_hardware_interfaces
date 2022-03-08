@@ -39,7 +39,9 @@ bool A2dpOffloadAudioProvider::isValid(const SessionType& session_type) {
 ndk::ScopedAStatus A2dpOffloadAudioProvider::startSession(
     const std::shared_ptr<IBluetoothAudioPort>& host_if,
     const AudioConfiguration& audio_config,
-    const std::vector<LatencyMode>& latency_modes, DataMQDesc* _aidl_return) {
+    const std::vector<LatencyMode>& latency_modes,
+    DataMQDesc* _aidl_return) {
+  latency_modes_ = latency_modes;
   if (audio_config.getTag() != AudioConfiguration::a2dpConfig) {
     LOG(WARNING) << __func__ << " - Invalid Audio Configuration="
                  << audio_config.toString();
@@ -60,8 +62,8 @@ ndk::ScopedAStatus A2dpOffloadAudioProvider::startSession(
 ndk::ScopedAStatus A2dpOffloadAudioProvider::onSessionReady(
     DataMQDesc* _aidl_return) {
   *_aidl_return = DataMQDesc();
-  BluetoothAudioSessionReport::OnSessionStarted(
-      session_type_, stack_iface_, nullptr, *audio_config_, latency_modes_);
+  BluetoothAudioSessionReport::OnSessionStarted(session_type_, stack_iface_,
+                                                nullptr, *audio_config_);
   return ndk::ScopedAStatus::ok();
 }
 
