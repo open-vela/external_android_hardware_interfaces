@@ -363,7 +363,7 @@ class CertificateRequestTest : public VtsRemotelyProvisionedComponentTests {
 
     void generateTestEekChain(size_t eekLength) {
         auto chain = generateEekChain(rpcHardwareInfo.supportedEekCurve, eekLength, eekId_);
-        ASSERT_TRUE(chain) << chain.message();
+        EXPECT_TRUE(chain) << chain.message();
         if (chain) testEekChain_ = chain.moveValue();
         testEekLength_ = eekLength;
     }
@@ -669,9 +669,7 @@ TEST_P(CertificateRequestTest, DISABLED_NonEmptyRequest_prodMode) {
 TEST_P(CertificateRequestTest, NonEmptyRequestCorruptMac_testMode) {
     bool testMode = true;
     generateKeys(testMode, 1 /* numKeys */);
-    auto result = corrupt_maced_key(keysToSign_[0]);
-    ASSERT_TRUE(result) << result.moveMessage();
-    MacedPublicKey keyWithCorruptMac = result.moveValue();
+    MacedPublicKey keyWithCorruptMac = corrupt_maced_key(keysToSign_[0]).moveValue();
 
     bytevec keysToSignMac;
     DeviceInfo deviceInfo;
@@ -690,9 +688,7 @@ TEST_P(CertificateRequestTest, NonEmptyRequestCorruptMac_testMode) {
 TEST_P(CertificateRequestTest, NonEmptyRequestCorruptMac_prodMode) {
     bool testMode = false;
     generateKeys(testMode, 1 /* numKeys */);
-    auto result = corrupt_maced_key(keysToSign_[0]);
-    ASSERT_TRUE(result) << result.moveMessage();
-    MacedPublicKey keyWithCorruptMac = result.moveValue();
+    MacedPublicKey keyWithCorruptMac = corrupt_maced_key(keysToSign_[0]).moveValue();
 
     bytevec keysToSignMac;
     DeviceInfo deviceInfo;
