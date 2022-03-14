@@ -27,7 +27,7 @@ package android.hardware.camera.metadata;
  * @see ANDROID_SCALER_AVAILABLE_STREAM_USE_CASES
  */
 @VintfStability
-@Backing(type="long")
+@Backing(type="int")
 enum ScalerAvailableStreamUseCases {
     ANDROID_SCALER_AVAILABLE_STREAM_USE_CASES_DEFAULT = 0x0,
     ANDROID_SCALER_AVAILABLE_STREAM_USE_CASES_PREVIEW = 0x1,
