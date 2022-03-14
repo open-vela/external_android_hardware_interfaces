@@ -36,7 +36,7 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.camera.metadata;
-@Backing(type="long") @VintfStability
+@Backing(type="int") @VintfStability
 enum ScalerAvailableStreamUseCases {
   ANDROID_SCALER_AVAILABLE_STREAM_USE_CASES_DEFAULT = 0,
   ANDROID_SCALER_AVAILABLE_STREAM_USE_CASES_PREVIEW = 1,
