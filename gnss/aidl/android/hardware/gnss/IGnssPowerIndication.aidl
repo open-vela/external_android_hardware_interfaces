@@ -20,8 +20,6 @@ import android.hardware.gnss.IGnssPowerIndicationCallback;
 
 /**
  * Extended interface for GNSS Power Indication support.
- *
- * @hide
  */
 @VintfStability
 interface IGnssPowerIndication {
