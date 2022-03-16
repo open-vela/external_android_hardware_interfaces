@@ -87,7 +87,6 @@ interface ISupplicantStaNetwork {
   void sendNetworkEapSimUmtsAutsResponse(in byte[] auts);
   void setAuthAlg(in android.hardware.wifi.supplicant.AuthAlgMask authAlgMask);
   void setBssid(in byte[] bssid);
-  void setDppKeys(in android.hardware.wifi.supplicant.DppConnectionKeys keys);
   void setEapAltSubjectMatch(in String match);
   void setEapAnonymousIdentity(in byte[] identity);
   void setEapCACert(in String path);
@@ -126,7 +125,6 @@ interface ISupplicantStaNetwork {
   void setWapiCertSuite(in String suite);
   void setWepKey(in int keyIdx, in byte[] wepKey);
   void setWepTxKeyIdx(in int keyIdx);
-  void setRoamingConsortiumSelection(in byte[] selectedRcoi);
   const int SSID_MAX_LEN_IN_BYTES = 32;
   const int PSK_PASSPHRASE_MIN_LEN_IN_BYTES = 8;
   const int PSK_PASSPHRASE_MAX_LEN_IN_BYTES = 63;
