@@ -167,9 +167,9 @@ static float getFrequencyMaximumHz(sp<IVibrator> vibrator, int32_t capabilities)
         EXPECT_TRUE(isUnknownOrUnsupported(status)) << status;
     }
 
-    float freqMaximumHz = ((bandwidthAmplitudeMap.size() - 1) *
-                           getFrequencyResolutionHz(vibrator, capabilities)) +
-                          getFrequencyMinimumHz(vibrator, capabilities);
+    float freqMaximumHz =
+        (bandwidthAmplitudeMap.size() * getFrequencyResolutionHz(vibrator, capabilities)) +
+        getFrequencyMinimumHz(vibrator, capabilities);
     return freqMaximumHz;
 }
 
@@ -417,9 +417,6 @@ TEST_P(VibratorAidl, GetPrimitiveDuration) {
 
             if (isPrimitiveSupported) {
                 EXPECT_EQ(Status::EX_NONE, status.exceptionCode());
-                if (primitive != CompositePrimitive::NOOP) {
-                    ASSERT_GT(duration, 0) << toString(primitive) << " " << duration;
-                }
             } else {
                 EXPECT_TRUE(isUnknownOrUnsupported(status)) << status;
             }
