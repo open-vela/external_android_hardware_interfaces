@@ -16,11 +16,7 @@
 
 package android.hardware.gnss;
 
-/**
- * The type of PSDS data.
- *
- * @hide
- */
+/** The type of PSDS data. */
 @VintfStability
 @Backing(type="int")
 enum PsdsType {
