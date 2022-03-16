@@ -82,11 +82,6 @@ std::optional<VehiclePropValues> MockVehicleCallback::nextOnPropertyEventResults
     return pop(mOnPropertyEventResults);
 }
 
-size_t MockVehicleCallback::countOnPropertyEventResults() {
-    std::scoped_lock<std::mutex> lockGuard(mLock);
-    return mOnPropertyEventResults.size();
-}
-
 }  // namespace vehicle
 }  // namespace automotive
 }  // namespace hardware
