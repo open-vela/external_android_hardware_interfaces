@@ -62,7 +62,6 @@ class MockVehicleCallback final
     nextSetValueResults();
     std::optional<aidl::android::hardware::automotive::vehicle::VehiclePropValues>
     nextOnPropertyEventResults();
-    size_t countOnPropertyEventResults();
 
   private:
     std::mutex mLock;
