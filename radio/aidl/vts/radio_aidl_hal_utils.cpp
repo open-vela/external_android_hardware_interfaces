@@ -24,6 +24,7 @@
 #define WAIT_TIMEOUT_PERIOD 75
 
 sim::CardStatus cardStatus = {};
+config::SimSlotStatus slotStatus = {};
 int serial = 0;
 int count_ = 0;
 
@@ -107,7 +108,7 @@ bool isVoiceEmergencyOnly(RegState state) {
 
 bool stringEndsWith(std::string const& string, std::string const& end) {
     if (string.size() >= end.size()) {
-        return (0 == string.compare(string.size() - end.size() - 1, end.size(), end));
+        return std::equal(end.rbegin(), end.rend(), string.rbegin());
     } else {
         return false;
     }
@@ -116,7 +117,7 @@ bool stringEndsWith(std::string const& string, std::string const& end) {
 bool isServiceValidForDeviceConfiguration(std::string& serviceName) {
     if (isSsSsEnabled()) {
         // Device is configured as SSSS.
-        if (stringEndsWith(serviceName, RADIO_SERVICE_SLOT1_NAME)) {
+        if (!stringEndsWith(serviceName, RADIO_SERVICE_SLOT1_NAME)) {
             ALOGI("%s instance is not valid for SSSS device.", serviceName.c_str());
             return false;
         }
@@ -203,4 +204,23 @@ void RadioServiceTest::updateSimCardStatus() {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioSimRsp->rspInfo.type);
     EXPECT_EQ(serial, radioSimRsp->rspInfo.serial);
     EXPECT_EQ(RadioError::NONE, radioSimRsp->rspInfo.error);
+}
+
+void RadioServiceTest::updateSimSlotStatus() {
+    // Update SimSlotStatus from RadioConfig
+    std::shared_ptr<RadioConfigResponse> radioConfigRsp =
+            ndk::SharedRefBase::make<RadioConfigResponse>(*this);
+    std::shared_ptr<RadioConfigIndication> radioConfigInd =
+            ndk::SharedRefBase::make<RadioConfigIndication>(*this);
+    radio_config->setResponseFunctions(radioConfigRsp, radioConfigInd);
+    serial = GetRandomSerialNumber();
+    radio_config->getSimSlotsStatus(serial);
+    EXPECT_EQ(std::cv_status::no_timeout, wait());
+    EXPECT_EQ(RadioResponseType::SOLICITED, radioConfigRsp->rspInfo.type);
+    EXPECT_EQ(serial, radioConfigRsp->rspInfo.serial);
+    EXPECT_EQ(RadioError::NONE, radioConfigRsp->rspInfo.error);
+    // assuming only 1 slot
+    for (const SimSlotStatus& slotStatusResponse : radioConfigRsp->simSlotStatus) {
+        slotStatus = slotStatusResponse;
+    }
 }
