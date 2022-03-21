@@ -17,7 +17,6 @@
 package android.hardware.radio.data;
 
 @VintfStability
-@JavaDerive(toString=true)
 union QosFilterIpsecSpi {
     boolean noinit;
     int value;

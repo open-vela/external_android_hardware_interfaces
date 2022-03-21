@@ -21,7 +21,6 @@ package android.hardware.radio.network;
  */
 @VintfStability
 @Backing(type="byte")
-@JavaDerive(toString=true)
 enum NrDualConnectivityState {
     /**
      * Enable NR dual connectivity. Enabled state does not mean dual connectivity is active.

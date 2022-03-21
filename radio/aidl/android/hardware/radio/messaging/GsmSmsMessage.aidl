@@ -17,7 +17,6 @@
 package android.hardware.radio.messaging;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable GsmSmsMessage {
     /**
      * SMSC address in GSM BCD format prefixed by a length byte (as expected by TS 27.005)
