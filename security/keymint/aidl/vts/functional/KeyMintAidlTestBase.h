@@ -73,11 +73,14 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
 
     void InitializeKeyMint(std::shared_ptr<IKeyMintDevice> keyMint);
     IKeyMintDevice& keyMint() { return *keymint_; }
+    int32_t AidlVersion();
     uint32_t os_version() { return os_version_; }
     uint32_t os_patch_level() { return os_patch_level_; }
     uint32_t vendor_patch_level() { return vendor_patch_level_; }
     uint32_t boot_patch_level(const vector<KeyCharacteristics>& key_characteristics);
     uint32_t boot_patch_level();
+
+    bool Curve25519Supported();
 
     ErrorCode GetReturnErrorCode(const Status& result);
 
@@ -166,6 +169,8 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
 
     string MacMessage(const string& message, Digest digest, size_t mac_length);
 
+    void CheckAesIncrementalEncryptOperation(BlockMode block_mode, int message_size);
+
     void CheckHmacTestVector(const string& key, const string& message, Digest digest,
                              const string& expected_mac);
 
@@ -250,7 +255,10 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
                                                      .SetDefaultValidity();
         tagModifier(&rsaBuilder);
         errorCode = GenerateKey(rsaBuilder, &rsaKeyData.blob, &rsaKeyData.characteristics);
-        EXPECT_EQ(expectedReturn, errorCode);
+        if (!(SecLevel() == SecurityLevel::STRONGBOX &&
+              ErrorCode::ATTESTATION_KEYS_NOT_PROVISIONED == errorCode)) {
+            EXPECT_EQ(expectedReturn, errorCode);
+        }
 
         /* ECDSA */
         KeyData ecdsaKeyData;
@@ -262,7 +270,10 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
                                                        .SetDefaultValidity();
         tagModifier(&ecdsaBuilder);
         errorCode = GenerateKey(ecdsaBuilder, &ecdsaKeyData.blob, &ecdsaKeyData.characteristics);
-        EXPECT_EQ(expectedReturn, errorCode);
+        if (!(SecLevel() == SecurityLevel::STRONGBOX &&
+              ErrorCode::ATTESTATION_KEYS_NOT_PROVISIONED == errorCode)) {
+            EXPECT_EQ(expectedReturn, errorCode);
+        }
         return {aesKeyData, hmacKeyData, rsaKeyData, ecdsaKeyData};
     }
     bool IsSecure() const { return securityLevel_ != SecurityLevel::SOFTWARE; }
@@ -279,6 +290,7 @@ class KeyMintAidlTestBase : public ::testing::TestWithParam<string> {
     vector<EcCurve> InvalidCurves();
 
     vector<Digest> ValidDigests(bool withNone, bool withMD5);
+    vector<uint64_t> ValidExponents();
 
     static vector<string> build_params() {
         auto params = ::android::getAidlHalInstanceNames(IKeyMintDevice::descriptor);
@@ -333,7 +345,8 @@ void verify_subject_and_serial(const Certificate& certificate,  //
                                const uint64_t expected_serial,  //
                                const string& subject, bool self_signed);
 
-bool verify_attestation_record(const string& challenge,                //
+bool verify_attestation_record(int aidl_version,                       //
+                               const string& challenge,                //
                                const string& app_id,                   //
                                AuthorizationSet expected_sw_enforced,  //
                                AuthorizationSet expected_hw_enforced,  //
