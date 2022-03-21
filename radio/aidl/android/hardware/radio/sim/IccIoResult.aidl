@@ -17,7 +17,6 @@
 package android.hardware.radio.sim;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable IccIoResult {
     int sw1;
     int sw2;

@@ -17,7 +17,6 @@
 package android.hardware.radio.data;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable KeepaliveStatus {
     /**
      * Keepalive is currently active.

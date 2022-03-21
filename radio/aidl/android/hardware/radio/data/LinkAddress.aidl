@@ -20,7 +20,6 @@ package android.hardware.radio.data;
  * Describes a data link address for mobile data connection.
  */
 @VintfStability
-@JavaDerive(toString=true)
 parcelable LinkAddress {
     const int ADDRESS_PROPERTY_NONE = 0;
     /**

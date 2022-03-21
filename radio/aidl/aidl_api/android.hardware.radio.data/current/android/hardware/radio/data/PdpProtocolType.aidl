@@ -32,7 +32,7 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.radio.data;
-@Backing(type="int") @JavaDerive(toString=true) @VintfStability
+@Backing(type="int") @VintfStability
 enum PdpProtocolType {
   UNKNOWN = -1,
   IP = 0,

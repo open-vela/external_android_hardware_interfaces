@@ -39,7 +39,6 @@ package android.hardware.radio.voice;
  *            RFC 5031
  */
 @VintfStability
-@JavaDerive(toString=true)
 parcelable EmergencyNumber {
     /**
      * Indicates the number is from the network signal.
