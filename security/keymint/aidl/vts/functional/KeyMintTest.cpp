@@ -3821,13 +3821,6 @@ TEST_P(ImportKeyTest, RsaPublicExponentMismatch) {
  * Verifies that importing an RSA key pair with purpose ATTEST_KEY+SIGN fails.
  */
 TEST_P(ImportKeyTest, RsaAttestMultiPurposeFail) {
-    if (AidlVersion() < 2) {
-        // The KeyMint v1 spec required that KeyPurpose::ATTEST_KEY not be combined
-        // with other key purposes.  However, this was not checked at the time
-        // so we can only be strict about checking this for implementations of KeyMint
-        // version 2 and above.
-        GTEST_SKIP() << "Single-purpose for KeyPurpose::ATTEST_KEY only strict since KeyMint v2";
-    }
     uint32_t key_size = 2048;
     string key = rsa_2048_key;
 
@@ -3966,13 +3959,6 @@ TEST_P(ImportKeyTest, EcdsaCurveMismatch) {
  * Verifies that importing and using an ECDSA P-256 key pair with purpose ATTEST_KEY+SIGN fails.
  */
 TEST_P(ImportKeyTest, EcdsaAttestMultiPurposeFail) {
-    if (AidlVersion() < 2) {
-        // The KeyMint v1 spec required that KeyPurpose::ATTEST_KEY not be combined
-        // with other key purposes.  However, this was not checked at the time
-        // so we can only be strict about checking this for implementations of KeyMint
-        // version 2 and above.
-        GTEST_SKIP() << "Single-purpose for KeyPurpose::ATTEST_KEY only strict since KeyMint v2";
-    }
     ASSERT_EQ(ErrorCode::INCOMPATIBLE_PURPOSE,
               ImportKey(AuthorizationSetBuilder()
                                 .Authorization(TAG_NO_AUTH_REQUIRED)
@@ -5627,6 +5613,49 @@ TEST_P(EncryptionOperationsTest, AesCbcRoundTripSuccess) {
     params.push_back(TAG_NONCE, iv1);
     string plaintext = DecryptMessage(ciphertext1, params);
     EXPECT_EQ(message, plaintext);
+}
+
+/*
+ * EncryptionOperationsTest.AesCbcZeroInputSuccessb
+ *
+ * Verifies that keymaster generates correct output on zero-input with
+ * NonePadding mode
+ */
+TEST_P(EncryptionOperationsTest, AesCbcZeroInputSuccess) {
+    ASSERT_EQ(ErrorCode::OK, GenerateKey(AuthorizationSetBuilder()
+                                                 .Authorization(TAG_NO_AUTH_REQUIRED)
+                                                 .AesEncryptionKey(128)
+                                                 .BlockMode(BlockMode::CBC)
+                                                 .Padding(PaddingMode::NONE, PaddingMode::PKCS7)));
+
+    // Zero input message
+    string message = "";
+    for (auto padding : {PaddingMode::NONE, PaddingMode::PKCS7}) {
+        auto params = AuthorizationSetBuilder().BlockMode(BlockMode::CBC).Padding(padding);
+        AuthorizationSet out_params;
+        string ciphertext1 = EncryptMessage(message, params, &out_params);
+        vector<uint8_t> iv1 = CopyIv(out_params);
+        if (padding == PaddingMode::NONE)
+            EXPECT_EQ(message.size(), ciphertext1.size()) << "PaddingMode: " << padding;
+        else
+            EXPECT_EQ(message.size(), ciphertext1.size() - 16) << "PaddingMode: " << padding;
+
+        out_params.Clear();
+
+        string ciphertext2 = EncryptMessage(message, params, &out_params);
+        vector<uint8_t> iv2 = CopyIv(out_params);
+        if (padding == PaddingMode::NONE)
+            EXPECT_EQ(message.size(), ciphertext2.size()) << "PaddingMode: " << padding;
+        else
+            EXPECT_EQ(message.size(), ciphertext2.size() - 16) << "PaddingMode: " << padding;
+
+        // IVs should be random
+        EXPECT_NE(iv1, iv2) << "PaddingMode: " << padding;
+
+        params.push_back(TAG_NONCE, iv1);
+        string plaintext = DecryptMessage(ciphertext1, params);
+        EXPECT_EQ(message, plaintext) << "PaddingMode: " << padding;
+    }
 }
 
 /*
