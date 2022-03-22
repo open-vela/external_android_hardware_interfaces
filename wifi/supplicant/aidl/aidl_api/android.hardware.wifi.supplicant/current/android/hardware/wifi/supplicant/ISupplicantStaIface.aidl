@@ -44,7 +44,9 @@ interface ISupplicantStaIface {
   void filsHlpAddRequest(in byte[] dst_mac, in byte[] pkt);
   void filsHlpFlushRequest();
   android.hardware.wifi.supplicant.DppResponderBootstrapInfo generateDppBootstrapInfoForResponder(in byte[] macAddress, in String deviceInfo, in android.hardware.wifi.supplicant.DppCurve curve);
+  void generateSelfDppConfiguration(in String ssid, in byte[] privEcKey);
   android.hardware.wifi.supplicant.ConnectionCapabilities getConnectionCapabilities();
+  android.hardware.wifi.supplicant.MloLinksInfo getConnectionMloLinksInfo();
   android.hardware.wifi.supplicant.KeyMgmtMask getKeyMgmtCapabilities();
   byte[] getMacAddress();
   String getName();
@@ -61,6 +63,9 @@ interface ISupplicantStaIface {
   void reassociate();
   void reconnect();
   void registerCallback(in android.hardware.wifi.supplicant.ISupplicantStaIfaceCallback callback);
+  void setQosPolicyFeatureEnabled(in boolean enable);
+  void sendQosPolicyResponse(in int qosPolicyRequestId, in boolean morePolicies, in android.hardware.wifi.supplicant.QosPolicyStatus[] qosPolicyStatusList);
+  void removeAllQosPolicies();
   void removeDppUri(in int id);
   void removeExtRadioWork(in int id);
   void removeNetwork(in int id);
@@ -79,7 +84,7 @@ interface ISupplicantStaIface {
   void setWpsModelName(in String modelName);
   void setWpsModelNumber(in String modelNumber);
   void setWpsSerialNumber(in String serialNumber);
-  void startDppConfiguratorInitiator(in int peerBootstrapId, in int ownBootstrapId, in String ssid, in String password, in String psk, in android.hardware.wifi.supplicant.DppNetRole netRole, in android.hardware.wifi.supplicant.DppAkm securityAkm);
+  byte[] startDppConfiguratorInitiator(in int peerBootstrapId, in int ownBootstrapId, in String ssid, in String password, in String psk, in android.hardware.wifi.supplicant.DppNetRole netRole, in android.hardware.wifi.supplicant.DppAkm securityAkm, in byte[] privEcKey);
   void startDppEnrolleeInitiator(in int peerBootstrapId, in int ownBootstrapId);
   void startDppEnrolleeResponder(in int listenChannel);
   void startRxFilter();
