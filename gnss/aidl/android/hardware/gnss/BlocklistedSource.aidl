@@ -20,8 +20,6 @@ import android.hardware.gnss.GnssConstellationType;
 
 /**
  * Represents a blocklisted source.
- *
- * @hide
  */
 @VintfStability
 parcelable BlocklistedSource {
