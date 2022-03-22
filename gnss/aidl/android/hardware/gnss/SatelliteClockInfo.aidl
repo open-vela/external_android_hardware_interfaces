@@ -18,8 +18,6 @@ package android.hardware.gnss;
 
 /**
  * Contains estimates of the satellite clock info.
- *
- * @hide
  */
 @VintfStability
 parcelable SatelliteClockInfo {
