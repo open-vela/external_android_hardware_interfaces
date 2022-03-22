@@ -39,6 +39,8 @@ class RadioConfig : public aidl::android::hardware::radio::config::BnRadioConfig
     const sp<RadioConfigResponse> mRadioConfigResponse;
     const sp<RadioConfigIndication> mRadioConfigIndication;
 
+    std::shared_ptr<::aidl::android::hardware::radio::config::IRadioConfigResponse> respond();
+
     ::ndk::ScopedAStatus getHalDeviceCapabilities(int32_t serial) override;
     ::ndk::ScopedAStatus getNumOfLiveModems(int32_t serial) override;
     ::ndk::ScopedAStatus getPhoneCapability(int32_t serial) override;
@@ -54,9 +56,6 @@ class RadioConfig : public aidl::android::hardware::radio::config::BnRadioConfig
             int32_t serial,
             const std::vector<aidl::android::hardware::radio::config::SlotPortMapping>& slotMap)
             override;
-
-  protected:
-    std::shared_ptr<::aidl::android::hardware::radio::config::IRadioConfigResponse> respond();
 
   public:
     /**

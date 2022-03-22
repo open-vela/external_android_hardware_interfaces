@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <aidl/android/hardware/gnss/BnGnssCallback.h>
 #include <aidl/android/hardware/gnss/BnGnssConfiguration.h>
 #include <android/hardware/gnss/2.1/IGnssCallback.h>
 #include <mutex>
@@ -63,7 +62,6 @@ struct GnssConfiguration : public BnGnssConfiguration {
     ndk::ScopedAStatus setBlocklist(const vector<BlocklistedSource>& blocklist) override;
 
     bool isBlocklistedV2_1(const GnssSvInfoV2_1& gnssSvInfo) const;
-    bool isBlocklisted(const IGnssCallback::GnssSvInfo& gnssSvInfo) const;
 
   private:
     BlocklistedSourceSet mBlocklistedSourceSet;

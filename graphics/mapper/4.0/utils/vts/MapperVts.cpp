@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <android-base/properties.h>
 #include <gralloctypes/Gralloc4.h>
 #include <mapper-vts/4.0/MapperVts.h>
 
@@ -96,14 +95,7 @@ std::vector<const native_handle_t*> Gralloc::allocate(const BufferDescriptor& de
                                  return;
                              }
 
-                             if (tmpError != Error::NONE) {
-                                 if (base::GetIntProperty("ro.vendor.build.version.sdk", 0, 0,
-                                                          INT_MAX) < 33) {
-                                     GTEST_SKIP() << "Old vendor grallocs may not support P010";
-                                 } else {
-                                     GTEST_FAIL() << "failed to allocate buffers";
-                                 }
-                             }
+                             ASSERT_EQ(Error::NONE, tmpError) << "failed to allocate buffers";
                              ASSERT_EQ(count, tmpBuffers.size()) << "invalid buffer array";
 
                              for (uint32_t i = 0; i < count; i++) {
@@ -141,7 +133,11 @@ const native_handle_t* Gralloc::allocate(const IMapper::BufferDescriptorInfo& de
     }
 
     auto buffers = allocate(descriptor, 1, import, tolerance, outStride);
-    if (::testing::Test::HasFatalFailure() || ::testing::Test::IsSkipped() || buffers.size() != 1) {
+    if (::testing::Test::HasFatalFailure()) {
+        return nullptr;
+    }
+
+    if (buffers.size() != 1) {
         return nullptr;
     }
     return buffers[0];
@@ -303,14 +299,6 @@ bool Gralloc::isSupported(const IMapper::BufferDescriptorInfo& descriptorInfo) {
     mMapper->isSupported(descriptorInfo, [&](const auto& tmpError, const auto& tmpSupported) {
         ASSERT_EQ(Error::NONE, tmpError) << "failed to check is supported";
         supported = tmpSupported;
-    });
-    return supported;
-}
-
-bool Gralloc::isSupportedNoFailure(const IMapper::BufferDescriptorInfo& descriptorInfo) {
-    bool supported = false;
-    mMapper->isSupported(descriptorInfo, [&](const auto& tmpError, const auto& tmpSupported) {
-        supported = tmpSupported && tmpError == Error::NONE;
     });
     return supported;
 }
