@@ -23,6 +23,7 @@
 #include <FakeObd2Frame.h>
 #include <JsonFakeValueGenerator.h>
 #include <PropertyUtils.h>
+#include <TestPropertyUtils.h>
 #include <VehicleHalTypes.h>
 #include <VehicleUtils.h>
 #include <android-base/parsedouble.h>
@@ -65,6 +66,7 @@ using ::android::base::EqualsIgnoreCase;
 using ::android::base::Error;
 using ::android::base::ParseFloat;
 using ::android::base::Result;
+using ::android::base::ScopedLockAssertion;
 using ::android::base::StartsWith;
 using ::android::base::StringPrintf;
 
@@ -130,18 +132,14 @@ void FakeVehicleHardware::storePropInitialValue(const defaultconfig::ConfigDecla
 }
 
 FakeVehicleHardware::FakeVehicleHardware()
-    : mValuePool(new VehiclePropValuePool),
-      mServerSidePropStore(new VehiclePropertyStore(mValuePool)),
-      mFakeObd2Frame(new obd2frame::FakeObd2Frame(mServerSidePropStore)),
-      mFakeUserHal(new FakeUserHal(mValuePool)) {
-    init();
-}
+    : FakeVehicleHardware(std::make_unique<VehiclePropValuePool>()) {}
 
 FakeVehicleHardware::FakeVehicleHardware(std::unique_ptr<VehiclePropValuePool> valuePool)
     : mValuePool(std::move(valuePool)),
       mServerSidePropStore(new VehiclePropertyStore(mValuePool)),
       mFakeObd2Frame(new obd2frame::FakeObd2Frame(mServerSidePropStore)),
-      mFakeUserHal(new FakeUserHal(mValuePool)) {
+      mFakeUserHal(new FakeUserHal(mValuePool)),
+      mRecurrentTimer(new RecurrentTimer()) {
     init();
 }
 
@@ -335,12 +333,31 @@ FakeVehicleHardware::ValueResultType FakeVehicleHardware::maybeGetSpecialValue(
                 result.value()->timestamp = elapsedRealtimeNano();
             }
             return result;
+        case ECHO_REVERSE_BYTES:
+            *isSpecialValue = true;
+            return getEchoReverseBytes(value);
         default:
             // Do nothing.
             break;
     }
 
     return nullptr;
+}
+
+FakeVehicleHardware::ValueResultType FakeVehicleHardware::getEchoReverseBytes(
+        const VehiclePropValue& value) const {
+    auto readResult = mServerSidePropStore->readValue(value);
+    if (!readResult.ok()) {
+        return readResult;
+    }
+    auto& gotValue = readResult.value();
+    gotValue->timestamp = elapsedRealtimeNano();
+    std::vector<uint8_t> byteValues = gotValue->value.byteValues;
+    size_t byteSize = byteValues.size();
+    for (size_t i = 0; i < byteSize; i++) {
+        gotValue->value.byteValues[i] = byteValues[byteSize - 1 - i];
+    }
+    return std::move(gotValue);
 }
 
 VhalResult<void> FakeVehicleHardware::maybeSetSpecialValue(const VehiclePropValue& value,
@@ -817,18 +834,57 @@ StatusCode FakeVehicleHardware::checkHealth() {
 
 void FakeVehicleHardware::registerOnPropertyChangeEvent(
         std::unique_ptr<const PropertyChangeCallback> callback) {
-    std::scoped_lock<std::mutex> lockGuard(mCallbackLock);
+    std::scoped_lock<std::mutex> lockGuard(mLock);
     mOnPropertyChangeCallback = std::move(callback);
 }
 
 void FakeVehicleHardware::registerOnPropertySetErrorEvent(
         std::unique_ptr<const PropertySetErrorCallback> callback) {
-    std::scoped_lock<std::mutex> lockGuard(mCallbackLock);
+    std::scoped_lock<std::mutex> lockGuard(mLock);
     mOnPropertySetErrorCallback = std::move(callback);
 }
 
+StatusCode FakeVehicleHardware::updateSampleRate(int32_t propId, int32_t areaId, float sampleRate) {
+    // DefaultVehicleHal makes sure that sampleRate must be within minSampleRate and maxSampleRate.
+    // For fake implementation, we would write the same value with a new timestamp into propStore
+    // at sample rate.
+    std::scoped_lock<std::mutex> lockGuard(mLock);
+
+    PropIdAreaId propIdAreaId{
+            .propId = propId,
+            .areaId = areaId,
+    };
+    if (mRecurrentActions.find(propIdAreaId) != mRecurrentActions.end()) {
+        mRecurrentTimer->unregisterTimerCallback(mRecurrentActions[propIdAreaId]);
+    }
+    if (sampleRate == 0) {
+        return StatusCode::OK;
+    }
+    int64_t interval = static_cast<int64_t>(1'000'000'000. / sampleRate);
+    auto action = std::make_shared<RecurrentTimer::Callback>([this, propId, areaId] {
+        // Refresh the property value. In real implementation, this should poll the latest value
+        // from vehicle bus. Here, we are just refreshing the existing value with a new timestamp.
+        auto result = getValue(VehiclePropValue{
+                .prop = propId,
+                .areaId = areaId,
+        });
+        if (!result.ok()) {
+            // Failed to read current value, skip refreshing.
+            return;
+        }
+        result.value()->timestamp = elapsedRealtimeNano();
+        // Must remove the value before writing, otherwise, we would generate no update event since
+        // the value is the same.
+        mServerSidePropStore->removeValue(*result.value());
+        mServerSidePropStore->writeValue(std::move(result.value()));
+    });
+    mRecurrentTimer->registerTimerCallback(interval, action);
+    mRecurrentActions[propIdAreaId] = action;
+    return StatusCode::OK;
+}
+
 void FakeVehicleHardware::onValueChangeCallback(const VehiclePropValue& value) {
-    std::scoped_lock<std::mutex> lockGuard(mCallbackLock);
+    std::scoped_lock<std::mutex> lockGuard(mLock);
 
     if (mOnPropertyChangeCallback == nullptr) {
         return;

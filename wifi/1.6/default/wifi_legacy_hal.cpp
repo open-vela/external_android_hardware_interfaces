@@ -1549,14 +1549,13 @@ wifi_error WifiLegacyHal::setIndoorState(bool isIndoor) {
 
 std::pair<wifi_error, wifi_radio_combination_matrix*>
 WifiLegacyHal::getSupportedRadioCombinationsMatrix() {
-    char* buffer = new char[kMaxSupportedRadioCombinationsMatrixLength];
-    std::fill(buffer, buffer + kMaxSupportedRadioCombinationsMatrixLength, 0);
+    std::array<char, kMaxSupportedRadioCombinationsMatrixLength> buffer;
+    buffer.fill(0);
     uint32_t size = 0;
     wifi_radio_combination_matrix* radio_combination_matrix_ptr =
-            reinterpret_cast<wifi_radio_combination_matrix*>(buffer);
+            reinterpret_cast<wifi_radio_combination_matrix*>(buffer.data());
     wifi_error status = global_func_table_.wifi_get_supported_radio_combinations_matrix(
-            global_handle_, kMaxSupportedRadioCombinationsMatrixLength, &size,
-            radio_combination_matrix_ptr);
+            global_handle_, buffer.size(), &size, radio_combination_matrix_ptr);
     CHECK(size >= 0 && size <= kMaxSupportedRadioCombinationsMatrixLength);
     return {status, radio_combination_matrix_ptr};
 }

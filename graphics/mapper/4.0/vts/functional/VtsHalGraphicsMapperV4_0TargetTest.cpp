@@ -999,13 +999,10 @@ TEST_P(GraphicsMapperHidlTest, Lock_YCBCR_P010) {
     auto info = mDummyDescriptorInfo;
     info.format = PixelFormat::YCBCR_P010;
 
+    const native_handle_t* bufferHandle;
     uint32_t stride;
-    const native_handle_t* bufferHandle =
-            mGralloc->allocate(info, true, Tolerance::kToleranceStrict, &stride);
-
-    if (::testing::Test::IsSkipped()) {
-        GTEST_SKIP();
-    }
+    ASSERT_NO_FATAL_FAILURE(
+            bufferHandle = mGralloc->allocate(info, true, Tolerance::kToleranceStrict, &stride));
 
     const IMapper::Rect region{0, 0, static_cast<int32_t>(info.width),
                                static_cast<int32_t>(info.height)};
