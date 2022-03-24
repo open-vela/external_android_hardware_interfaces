@@ -17,7 +17,6 @@
 package android.hardware.radio.messaging;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable CdmaSmsAck {
     boolean errorClass;
     /**

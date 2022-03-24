@@ -20,7 +20,6 @@ package android.hardware.radio.network;
  * The parameters of NR 5G Non-Standalone.
  */
 @VintfStability
-@JavaDerive(toString=true)
 parcelable NrIndicators {
     /**
      * Indicates that if E-UTRA-NR Dual Connectivity (EN-DC) is supported by the primary serving

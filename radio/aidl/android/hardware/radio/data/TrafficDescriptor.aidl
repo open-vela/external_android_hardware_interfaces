@@ -24,7 +24,6 @@ import android.hardware.radio.data.OsAppId;
  * TS 24.526 Section 5.2.
  */
 @VintfStability
-@JavaDerive(toString=true)
 parcelable TrafficDescriptor {
     /**
      * DNN stands for Data Network Name and represents an APN as defined in 3GPP TS 23.003.

@@ -18,7 +18,6 @@ package android.hardware.radio;
 
 @VintfStability
 @Backing(type="int")
-@JavaDerive(toString=true)
 enum RadioResponseType {
     SOLICITED,
     SOLICITED_ACK,
