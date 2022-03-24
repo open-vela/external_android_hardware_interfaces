@@ -19,7 +19,6 @@ package android.hardware.radio.modem;
 import android.hardware.radio.modem.NvItem;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable NvWriteItem {
     NvItem itemId;
     String value;

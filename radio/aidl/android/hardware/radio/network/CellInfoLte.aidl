@@ -20,7 +20,6 @@ import android.hardware.radio.network.CellIdentityLte;
 import android.hardware.radio.network.LteSignalStrength;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable CellInfoLte {
     CellIdentityLte cellIdentityLte;
     LteSignalStrength signalStrengthLte;
