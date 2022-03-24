@@ -17,7 +17,6 @@
 package android.hardware.radio.data;
 
 @VintfStability
-@JavaDerive(toString=true)
 union QosFilterIpv6FlowLabel {
     boolean noinit;
     int value;

@@ -19,7 +19,6 @@ package android.hardware.radio.network;
 import android.hardware.radio.network.BarringTypeSpecificInfo;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable BarringInfo {
     /**
      * Device is not barred for the given service
