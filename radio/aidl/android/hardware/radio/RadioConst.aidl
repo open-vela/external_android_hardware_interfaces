@@ -17,7 +17,6 @@
 package android.hardware.radio;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable RadioConst {
     const int MAX_RILDS = 3;
     const int MAX_UUID_LENGTH = 64;

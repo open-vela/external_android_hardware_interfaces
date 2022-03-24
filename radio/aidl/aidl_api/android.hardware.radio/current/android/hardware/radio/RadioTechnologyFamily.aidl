@@ -32,7 +32,7 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.radio;
-@Backing(type="int") @JavaDerive(toString=true) @VintfStability
+@Backing(type="int") @VintfStability
 enum RadioTechnologyFamily {
   THREE_GPP = 0,
   THREE_GPP2 = 1,
