@@ -24,18 +24,23 @@ package android.hardware.wifi.supplicant;
  * |ISupplicant.registerCallback| method.
  */
 @VintfStability
-oneway interface ISupplicantCallback {
+interface ISupplicantCallback {
     /**
      * Used to indicate that a new interface has been created.
      *
      * @param ifaceName Name of the network interface, e.g., wlan0
      */
-    void onInterfaceCreated(in String ifaceName);
+    oneway void onInterfaceCreated(in String ifaceName);
 
     /**
      * Used to indicate that an interface has been removed.
      *
      * @param ifaceName Name of the network interface, e.g., wlan0
      */
-    void onInterfaceRemoved(in String ifaceName);
+    oneway void onInterfaceRemoved(in String ifaceName);
+
+    /**
+     * Used to indicate that the supplicant daemon is terminating.
+     */
+    oneway void onTerminating();
 }
