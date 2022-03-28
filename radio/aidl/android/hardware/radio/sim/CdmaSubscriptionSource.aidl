@@ -18,7 +18,6 @@ package android.hardware.radio.sim;
 
 @VintfStability
 @Backing(type="int")
-@JavaDerive(toString=true)
 enum CdmaSubscriptionSource {
     RUIM_SIM,
     NV,

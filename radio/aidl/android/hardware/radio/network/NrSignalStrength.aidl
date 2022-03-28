@@ -17,7 +17,6 @@
 package android.hardware.radio.network;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable NrSignalStrength {
     /**
      * SS reference signal received power, multiplied by -1.

@@ -22,7 +22,6 @@ import android.hardware.radio.AccessNetwork;
  * Contains the threshold values of each signal measurement type.
  */
 @VintfStability
-@JavaDerive(toString=true)
 parcelable SignalThresholdInfo {
     /**
      * Received Signal Strength Indication.

@@ -32,7 +32,7 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.radio.network;
-@JavaDerive(toString=true) @VintfStability
+@VintfStability
 union CellInfoRatSpecificInfo {
   android.hardware.radio.network.CellInfoGsm gsm;
   android.hardware.radio.network.CellInfoWcdma wcdma;

@@ -19,7 +19,6 @@ package android.hardware.radio.sim;
 import android.hardware.radio.sim.Carrier;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable CarrierRestrictions {
     /**
      * Allowed carriers

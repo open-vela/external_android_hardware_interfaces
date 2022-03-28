@@ -17,7 +17,6 @@
 package android.hardware.radio.network;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable Cdma2000RegistrationInfo {
     const int PRL_INDICATOR_NOT_REGISTERED = -1;
     const int PRL_INDICATOR_NOT_IN_PRL = 0;
