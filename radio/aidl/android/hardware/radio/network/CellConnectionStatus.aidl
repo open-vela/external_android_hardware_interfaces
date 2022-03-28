@@ -18,7 +18,6 @@ package android.hardware.radio.network;
 
 @VintfStability
 @Backing(type="int")
-@JavaDerive(toString=true)
 enum CellConnectionStatus {
     /**
      * Cell is not a serving cell.

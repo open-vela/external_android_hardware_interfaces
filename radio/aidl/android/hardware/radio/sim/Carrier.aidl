@@ -17,7 +17,6 @@
 package android.hardware.radio.sim;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable Carrier {
     /**
      * Apply to all carrier with the same mcc/mnc
