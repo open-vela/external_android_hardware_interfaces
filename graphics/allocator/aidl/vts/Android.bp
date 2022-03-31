@@ -28,7 +28,6 @@ cc_test {
     defaults: [
         "VtsHalTargetTestDefaults",
         "use_libaidlvintf_gtest_helper_static",
-        "hwui_defaults",
     ],
     srcs: [
         "VtsHalGraphicsAllocatorAidl_TargetTest.cpp",
@@ -47,15 +46,10 @@ cc_test {
         "libgui",
         "libhidlbase",
         "libvndksupport",
-        "libnativewindow",
     ],
     static_libs: [
         "libaidlcommonsupport",
         "libgtest",
-        "libhwui",
-    ],
-    header_libs: [
-        "libhwui_internal_headers",
     ],
     cflags: [
         "-Wall",
