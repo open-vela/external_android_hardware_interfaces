@@ -206,7 +206,7 @@ void RadioServiceTest::updateSimCardStatus() {
     EXPECT_EQ(RadioError::NONE, radioSimRsp->rspInfo.error);
 }
 
-void RadioServiceTest::updateSimSlotStatus(int physicalSlotId) {
+void RadioServiceTest::updateSimSlotStatus() {
     // Update SimSlotStatus from RadioConfig
     std::shared_ptr<RadioConfigResponse> radioConfigRsp =
             ndk::SharedRefBase::make<RadioConfigResponse>(*this);
@@ -219,7 +219,8 @@ void RadioServiceTest::updateSimSlotStatus(int physicalSlotId) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioConfigRsp->rspInfo.type);
     EXPECT_EQ(serial, radioConfigRsp->rspInfo.serial);
     EXPECT_EQ(RadioError::NONE, radioConfigRsp->rspInfo.error);
-    if (radioConfigRsp->simSlotStatus.size() > physicalSlotId) {
-        slotStatus = radioConfigRsp->simSlotStatus[physicalSlotId];
+    // assuming only 1 slot
+    for (const SimSlotStatus& slotStatusResponse : radioConfigRsp->simSlotStatus) {
+        slotStatus = slotStatusResponse;
     }
 }
