@@ -23,11 +23,4 @@ aidl_interface {
             enabled: false,
         },
     },
-    versions_with_info: [
-        {
-            version: "1",
-            imports: ["android.hardware.input.common-V1"],
-        },
-    ],
-
 }
