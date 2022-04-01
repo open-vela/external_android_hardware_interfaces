@@ -20,8 +20,6 @@ import android.hardware.gnss.GnssConstellationType;
 
 /**
  * Represents a GNSS signal type.
- *
- * @hide
  */
 @VintfStability
 parcelable GnssSignalType {

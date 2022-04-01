@@ -21,8 +21,6 @@ import android.hardware.gnss.PsdsType;
 /**
  * This interface is used by the GNSS HAL to request download data from Predicted Satellite Data
  * Service (PSDS).
- *
- * @hide
  */
 @VintfStability
 interface IGnssPsdsCallback {

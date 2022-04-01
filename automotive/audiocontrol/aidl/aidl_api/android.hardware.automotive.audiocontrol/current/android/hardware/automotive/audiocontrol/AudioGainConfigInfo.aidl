@@ -32,7 +32,7 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.automotive.audiocontrol;
-@VintfStability
+@JavaDerive(equals=true, toString=true) @VintfStability
 parcelable AudioGainConfigInfo {
   int zoneId;
   String devicePortAddress;

@@ -39,5 +39,4 @@ enum WifiTechnology {
   HT = 2,
   VHT = 3,
   HE = 4,
-  EHT = 5,
 }

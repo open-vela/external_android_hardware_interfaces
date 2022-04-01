@@ -71,8 +71,6 @@ cc_test {
         "android.hardware.graphics.mapper@4.0-vts",
         "libgtest",
         "librenderengine",
-        "libshaders",
-        "libtonemap",
     ],
     header_libs: [
         "android.hardware.graphics.composer@2.1-command-buffer",
