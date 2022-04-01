@@ -32,9 +32,17 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.gnss;
+/* @hide */
 @VintfStability
 parcelable GnssData {
   android.hardware.gnss.GnssMeasurement[] measurements;
   android.hardware.gnss.GnssClock clock;
   android.hardware.gnss.ElapsedRealtime elapsedRealtime;
+  android.hardware.gnss.GnssData.GnssAgc[] gnssAgcs = {};
+  @VintfStability
+  parcelable GnssAgc {
+    double agcLevelDb;
+    android.hardware.gnss.GnssConstellationType constellation = android.hardware.gnss.GnssConstellationType.UNKNOWN;
+    long carrierFrequencyHz;
+  }
 }
