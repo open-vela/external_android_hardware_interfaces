@@ -18,7 +18,6 @@ package android.hardware.graphics.common;
 
 /**
  * Used by IAllocator/IMapper (gralloc) to describe standard chroma siting
- * @hide
  */
 @VintfStability
 @Backing(type="long")
