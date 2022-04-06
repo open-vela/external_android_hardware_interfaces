@@ -66,7 +66,6 @@ using ::android::base::EqualsIgnoreCase;
 using ::android::base::Error;
 using ::android::base::ParseFloat;
 using ::android::base::Result;
-using ::android::base::ScopedLockAssertion;
 using ::android::base::StartsWith;
 using ::android::base::StringPrintf;
 
@@ -132,14 +131,18 @@ void FakeVehicleHardware::storePropInitialValue(const defaultconfig::ConfigDecla
 }
 
 FakeVehicleHardware::FakeVehicleHardware()
-    : FakeVehicleHardware(std::make_unique<VehiclePropValuePool>()) {}
+    : mValuePool(new VehiclePropValuePool),
+      mServerSidePropStore(new VehiclePropertyStore(mValuePool)),
+      mFakeObd2Frame(new obd2frame::FakeObd2Frame(mServerSidePropStore)),
+      mFakeUserHal(new FakeUserHal(mValuePool)) {
+    init();
+}
 
 FakeVehicleHardware::FakeVehicleHardware(std::unique_ptr<VehiclePropValuePool> valuePool)
     : mValuePool(std::move(valuePool)),
       mServerSidePropStore(new VehiclePropertyStore(mValuePool)),
       mFakeObd2Frame(new obd2frame::FakeObd2Frame(mServerSidePropStore)),
-      mFakeUserHal(new FakeUserHal(mValuePool)),
-      mRecurrentTimer(new RecurrentTimer()) {
+      mFakeUserHal(new FakeUserHal(mValuePool)) {
     init();
 }
 
@@ -834,57 +837,18 @@ StatusCode FakeVehicleHardware::checkHealth() {
 
 void FakeVehicleHardware::registerOnPropertyChangeEvent(
         std::unique_ptr<const PropertyChangeCallback> callback) {
-    std::scoped_lock<std::mutex> lockGuard(mLock);
+    std::scoped_lock<std::mutex> lockGuard(mCallbackLock);
     mOnPropertyChangeCallback = std::move(callback);
 }
 
 void FakeVehicleHardware::registerOnPropertySetErrorEvent(
         std::unique_ptr<const PropertySetErrorCallback> callback) {
-    std::scoped_lock<std::mutex> lockGuard(mLock);
+    std::scoped_lock<std::mutex> lockGuard(mCallbackLock);
     mOnPropertySetErrorCallback = std::move(callback);
 }
 
-StatusCode FakeVehicleHardware::updateSampleRate(int32_t propId, int32_t areaId, float sampleRate) {
-    // DefaultVehicleHal makes sure that sampleRate must be within minSampleRate and maxSampleRate.
-    // For fake implementation, we would write the same value with a new timestamp into propStore
-    // at sample rate.
-    std::scoped_lock<std::mutex> lockGuard(mLock);
-
-    PropIdAreaId propIdAreaId{
-            .propId = propId,
-            .areaId = areaId,
-    };
-    if (mRecurrentActions.find(propIdAreaId) != mRecurrentActions.end()) {
-        mRecurrentTimer->unregisterTimerCallback(mRecurrentActions[propIdAreaId]);
-    }
-    if (sampleRate == 0) {
-        return StatusCode::OK;
-    }
-    int64_t interval = static_cast<int64_t>(1'000'000'000. / sampleRate);
-    auto action = std::make_shared<RecurrentTimer::Callback>([this, propId, areaId] {
-        // Refresh the property value. In real implementation, this should poll the latest value
-        // from vehicle bus. Here, we are just refreshing the existing value with a new timestamp.
-        auto result = getValue(VehiclePropValue{
-                .prop = propId,
-                .areaId = areaId,
-        });
-        if (!result.ok()) {
-            // Failed to read current value, skip refreshing.
-            return;
-        }
-        result.value()->timestamp = elapsedRealtimeNano();
-        // Must remove the value before writing, otherwise, we would generate no update event since
-        // the value is the same.
-        mServerSidePropStore->removeValue(*result.value());
-        mServerSidePropStore->writeValue(std::move(result.value()));
-    });
-    mRecurrentTimer->registerTimerCallback(interval, action);
-    mRecurrentActions[propIdAreaId] = action;
-    return StatusCode::OK;
-}
-
 void FakeVehicleHardware::onValueChangeCallback(const VehiclePropValue& value) {
-    std::scoped_lock<std::mutex> lockGuard(mLock);
+    std::scoped_lock<std::mutex> lockGuard(mCallbackLock);
 
     if (mOnPropertyChangeCallback == nullptr) {
         return;
