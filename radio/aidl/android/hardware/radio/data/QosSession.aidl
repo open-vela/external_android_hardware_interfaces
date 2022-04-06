@@ -23,7 +23,6 @@ import android.hardware.radio.data.QosFilter;
  * QOS session associated with a dedicated bearer
  */
 @VintfStability
-@JavaDerive(toString=true)
 parcelable QosSession {
     /**
      * Unique ID of the QoS session within the data call

@@ -18,7 +18,6 @@ package android.hardware.radio;
 
 @VintfStability
 @Backing(type="int")
-@JavaDerive(toString=true)
 enum RadioTechnology {
     UNKNOWN,
     GPRS,

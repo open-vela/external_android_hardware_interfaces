@@ -22,7 +22,6 @@ package android.hardware.radio.voice;
  * Connected Number Info Rec as defined in C.S0005 section 3.7.5.4
  */
 @VintfStability
-@JavaDerive(toString=true)
 parcelable CdmaNumberInfoRecord {
     const int CDMA_NUMBER_INFO_BUFFER_LENGTH = 81;
     /**

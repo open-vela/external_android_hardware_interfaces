@@ -17,7 +17,6 @@
 package android.hardware.radio.sim;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable IccIo {
     /**
      * One of the commands listed for TS 27.007 +CRSM

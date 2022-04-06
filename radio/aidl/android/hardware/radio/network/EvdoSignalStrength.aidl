@@ -17,7 +17,6 @@
 package android.hardware.radio.network;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable EvdoSignalStrength {
     /**
      * This value is the actual RSSI value multiplied by -1. Example: If the actual RSSI is -75,

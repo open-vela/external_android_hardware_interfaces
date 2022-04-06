@@ -21,7 +21,6 @@ import android.hardware.radio.voice.CfData;
 import android.hardware.radio.voice.SsInfoData;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable StkCcUnsolSsResult {
     const int REQUEST_TYPE_ACTIVATION = 0;
     const int REQUEST_TYPE_DEACTIVATION = 1;

@@ -20,7 +20,6 @@ package android.hardware.radio.voice;
  * See also com.android.internal.telephony.gsm.CallForwardInfo
  */
 @VintfStability
-@JavaDerive(toString=true)
 parcelable CallForwardInfo {
     const int STATUS_DISABLE = 0;
     const int STATUS_ENABLE = 1;

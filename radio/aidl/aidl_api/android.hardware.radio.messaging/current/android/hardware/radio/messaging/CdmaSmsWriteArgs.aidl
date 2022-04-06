@@ -32,7 +32,7 @@
 // later when a module using the interface is updated, e.g., Mainline modules.
 
 package android.hardware.radio.messaging;
-@JavaDerive(toString=true) @VintfStability
+@VintfStability
 parcelable CdmaSmsWriteArgs {
   int status;
   android.hardware.radio.messaging.CdmaSmsMessage message;

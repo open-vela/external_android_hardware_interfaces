@@ -17,7 +17,6 @@
 package android.hardware.radio.sim;
 
 @VintfStability
-@JavaDerive(toString=true)
 parcelable SimApdu {
     /**
      * "sessionid" from TS 27.007 +CGLA command. Must be ignored for +CSIM command.
