@@ -41,8 +41,7 @@ TEST(RecurrentTimerTest, oneInterval) {
 
     timer.registerRecurrentEvent(milliseconds(1), 0xdead);
     std::this_thread::sleep_for(milliseconds(100));
-    // This test is unstable, so set the tolerance to 50.
-    ASSERT_EQ_WITH_TOLERANCE(100, counter.load(), 50);
+    ASSERT_EQ_WITH_TOLERANCE(100, counter.load(), 20);
 }
 
 TEST(RecurrentTimerTest, multipleIntervals) {
@@ -67,8 +66,7 @@ TEST(RecurrentTimerTest, multipleIntervals) {
     timer.registerRecurrentEvent(milliseconds(5), 0xbeef);
 
     std::this_thread::sleep_for(milliseconds(100));
-    // This test is unstable, so set the tolerance to 50.
-    ASSERT_EQ_WITH_TOLERANCE(100, counter1ms.load(), 50);
+    ASSERT_EQ_WITH_TOLERANCE(100, counter1ms.load(), 20);
     ASSERT_EQ_WITH_TOLERANCE(20, counter5ms.load(), 5);
 }
 

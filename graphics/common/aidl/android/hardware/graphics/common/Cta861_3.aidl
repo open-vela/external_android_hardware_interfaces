@@ -20,7 +20,6 @@ package android.hardware.graphics.common;
  * HDR static metadata extension as specified by CTA-861.3.
  *
  * This is an AIDL counterpart of the NDK struct `AHdrMetadata_cta861_3`.
- * @hide
  */
 @VintfStability
 parcelable Cta861_3 {

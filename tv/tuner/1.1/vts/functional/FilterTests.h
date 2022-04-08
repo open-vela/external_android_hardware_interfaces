@@ -88,8 +88,9 @@ class FilterCallback : public IFilterCallback {
         android::Mutex::Autolock autoLock(mMsgLock);
         // Temprarily we treat the first coming back filter data on the matching pid a success
         // once all of the MQ are cleared, means we got all the expected output
-        readFilterEventData(filterEvent);
-        readFilterEventExtData(filterEventExt);
+        mFilterEvent = filterEvent;
+        mFilterEventExt = filterEventExt;
+        readFilterEventData();
         mPidFilterOutputCount++;
         mMsgCondition.signal();
         return Void();
@@ -100,7 +101,8 @@ class FilterCallback : public IFilterCallback {
         android::Mutex::Autolock autoLock(mMsgLock);
         // Temprarily we treat the first coming back filter data on the matching pid a success
         // once all of the MQ are cleared, means we got all the expected output
-        readFilterEventData(filterEvent);
+        mFilterEvent = filterEvent;
+        readFilterEventData();
         mPidFilterOutputCount++;
         mMsgCondition.signal();
         return Void();
@@ -113,7 +115,7 @@ class FilterCallback : public IFilterCallback {
     void setFilterId(uint32_t filterId) { mFilterId = filterId; }
     void setFilterInterface(sp<IFilter> filter) { mFilter = filter; }
     void setFilterEventType(FilterEventType type) { mFilterEventType = type; }
-    void setSharedHandle(hidl_handle& sharedHandle) { mAvSharedHandle = sharedHandle; }
+    void setSharedHandle(hidl_handle sharedHandle) { mAvSharedHandle = sharedHandle; }
     void setMemSize(uint64_t size) { mAvSharedMemSize = size; }
 
     void testFilterDataOutput();
@@ -121,14 +123,15 @@ class FilterCallback : public IFilterCallback {
     void testFilterIpCidEvent();
     void testStartIdAfterReconfigure();
 
-    void readFilterEventData(const DemuxFilterEvent& filterEvent);
-    void readFilterEventExtData(const DemuxFilterEventExt& filterEventExt);
-    bool dumpAvData(DemuxFilterMediaEvent& event);
+    void readFilterEventData();
+    bool dumpAvData(DemuxFilterMediaEvent event);
 
   private:
     uint32_t mFilterId;
     sp<IFilter> mFilter;
     FilterEventType mFilterEventType;
+    DemuxFilterEvent mFilterEvent;
+    DemuxFilterEventExt mFilterEventExt;
 
     hidl_handle mAvSharedHandle = NULL;
     uint64_t mAvSharedMemSize = -1;
