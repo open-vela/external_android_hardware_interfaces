@@ -30,7 +30,6 @@
 #include <hidl/ServiceManagement.h>
 #include <inttypes.h>
 #include <utils/Log.h>
-#include <utils/SystemClock.h>
 
 #include <chrono>
 #include <mutex>
@@ -68,7 +67,6 @@ class VtsVehicleCallback final : public ISubscriptionCallback {
   private:
     std::mutex mLock;
     std::unordered_map<int32_t, size_t> mEventsCount GUARDED_BY(mLock);
-    std::unordered_map<int32_t, std::vector<int64_t>> mEventTimestamps GUARDED_BY(mLock);
     std::condition_variable mEventCond;
 
   public:
@@ -76,9 +74,7 @@ class VtsVehicleCallback final : public ISubscriptionCallback {
         {
             std::lock_guard<std::mutex> lockGuard(mLock);
             for (auto& value : values) {
-                int32_t propId = value->getPropId();
-                mEventsCount[propId] += 1;
-                mEventTimestamps[propId].push_back(value->getTimestamp());
+                mEventsCount[value->getPropId()] += 1;
             }
         }
         mEventCond.notify_one();
@@ -96,13 +92,6 @@ class VtsVehicleCallback final : public ISubscriptionCallback {
             ScopedLockAssertion lockAssertion(mLock);
             return mEventsCount[propId] >= expectedEvents;
         });
-    }
-
-    std::vector<int64_t> getEventTimestamps(int32_t propId) {
-        {
-            std::lock_guard<std::mutex> lockGuard(mLock);
-            return mEventTimestamps[propId];
-        }
     }
 
     void reset() {
@@ -296,59 +285,19 @@ TEST_P(VtsHalAutomotiveVehicleTargetTest, subscribeAndUnsubscribe) {
 
     int32_t propId = toInt(VehicleProperty::PERF_VEHICLE_SPEED);
 
-    auto propConfigsResult = mVhalClient->getPropConfigs({propId});
-
-    ASSERT_TRUE(propConfigsResult.ok()) << "Failed to get property config for PERF_VEHICLE_SPEED: "
-                                        << "error: " << propConfigsResult.error().message();
-    ASSERT_EQ(propConfigsResult.value().size(), 1u)
-            << "Expect to return 1 config for PERF_VEHICLE_SPEED";
-    auto& propConfig = propConfigsResult.value()[0];
-    float minSampleRate = propConfig->getMinSampleRate();
-    float maxSampleRate = propConfig->getMaxSampleRate();
-
-    if (minSampleRate < 1) {
-        GTEST_SKIP() << "Sample rate for vehicle speed < 1 times/sec, skip test since it would "
-                        "take too long";
-    }
+    std::vector<SubscribeOptions> options = {
+            SubscribeOptions{.propId = propId, .sampleRate = 10.0}};
 
     auto client = mVhalClient->getSubscriptionClient(mCallback);
     ASSERT_NE(client, nullptr) << "Failed to get subscription client";
 
-    auto result = client->subscribe({{.propId = propId, .sampleRate = minSampleRate}});
+    auto result = client->subscribe(options);
 
     ASSERT_TRUE(result.ok()) << StringPrintf("Failed to subscribe to property: %" PRId32
                                              ", error: %s",
                                              propId, result.error().message().c_str());
-
-    if (mVhalClient->isAidlVhal()) {
-        // Skip checking timestamp for HIDL because the behavior for sample rate and timestamp is
-        // only specified clearly for AIDL.
-
-        // Timeout is 2 seconds, which gives a 1 second buffer.
-        ASSERT_TRUE(mCallback->waitForExpectedEvents(propId, std::floor(minSampleRate),
-                                                     std::chrono::seconds(2)))
-                << "Didn't get enough events for subscribing to minSampleRate";
-    }
-
-    result = client->subscribe({{.propId = propId, .sampleRate = maxSampleRate}});
-
-    ASSERT_TRUE(result.ok()) << StringPrintf("Failed to subscribe to property: %" PRId32
-                                             ", error: %s",
-                                             propId, result.error().message().c_str());
-
-    if (mVhalClient->isAidlVhal()) {
-        ASSERT_TRUE(mCallback->waitForExpectedEvents(propId, std::floor(maxSampleRate),
-                                                     std::chrono::seconds(2)))
-                << "Didn't get enough events for subscribing to maxSampleRate";
-
-        std::unordered_set<int64_t> timestamps;
-        // Event event should have a different timestamp.
-        for (const int64_t& eventTimestamp : mCallback->getEventTimestamps(propId)) {
-            ASSERT_TRUE(timestamps.find(eventTimestamp) == timestamps.end())
-                    << "two events for the same property must not have the same timestamp";
-            timestamps.insert(eventTimestamp);
-        }
-    }
+    ASSERT_TRUE(mCallback->waitForExpectedEvents(propId, 10, std::chrono::seconds(10)))
+            << "Didn't get enough events for subscription";
 
     result = client->unsubscribe({propId});
     ASSERT_TRUE(result.ok()) << StringPrintf("Failed to unsubscribe to property: %" PRId32
@@ -374,49 +323,6 @@ TEST_P(VtsHalAutomotiveVehicleTargetTest, subscribeInvalidProp) {
 
     ASSERT_FALSE(result.ok()) << StringPrintf("Expect subscribing to property: %" PRId32 " to fail",
                                               kInvalidProp);
-}
-
-// Test the timestamp returned in GetValues results is the timestamp when the value is retrieved.
-TEST_P(VtsHalAutomotiveVehicleTargetTest, testGetValuesTimestampAIDL) {
-    if (!mVhalClient->isAidlVhal()) {
-        GTEST_SKIP() << "Skip checking timestamp for HIDL because the behavior is only specified "
-                        "for AIDL";
-    }
-
-    int32_t propId = toInt(VehicleProperty::PARKING_BRAKE_ON);
-    auto prop = mVhalClient->createHalPropValue(propId);
-
-    auto result = mVhalClient->getValueSync(*prop);
-
-    ASSERT_TRUE(result.ok()) << StringPrintf("Failed to get value for property: %" PRId32
-                                             ", error: %s",
-                                             propId, result.error().message().c_str());
-    ASSERT_NE(result.value(), nullptr) << "Result value must not be null";
-    ASSERT_EQ(result.value()->getInt32Values().size(), 1u) << "Result must contain 1 int value";
-
-    bool parkBrakeOnValue1 = (result.value()->getInt32Values()[0] == 1);
-    int64_t timestampValue1 = result.value()->getTimestamp();
-
-    result = mVhalClient->getValueSync(*prop);
-
-    ASSERT_TRUE(result.ok()) << StringPrintf("Failed to get value for property: %" PRId32
-                                             ", error: %s",
-                                             propId, result.error().message().c_str());
-    ASSERT_NE(result.value(), nullptr) << "Result value must not be null";
-    ASSERT_EQ(result.value()->getInt32Values().size(), 1u) << "Result must contain 1 int value";
-
-    bool parkBarkeOnValue2 = (result.value()->getInt32Values()[0] == 1);
-    int64_t timestampValue2 = result.value()->getTimestamp();
-
-    if (parkBarkeOnValue2 == parkBrakeOnValue1) {
-        ASSERT_EQ(timestampValue2, timestampValue1)
-                << "getValue result must contain a timestamp updated when the value was updated, if"
-                   "the value does not change, expect the same timestamp";
-    } else {
-        ASSERT_GT(timestampValue2, timestampValue1)
-                << "getValue result must contain a timestamp updated when the value was updated, if"
-                   "the value changes, expect the newer value has a larger timestamp";
-    }
 }
 
 std::vector<ServiceDescriptor> getDescriptors() {
