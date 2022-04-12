@@ -238,24 +238,12 @@ TEST_P(RadioConfigTest, checkPortInfoExistsAndPortActive) {
     EXPECT_EQ(RadioResponseType::SOLICITED, radioRsp_config->rspInfo.type);
     EXPECT_EQ(serial, radioRsp_config->rspInfo.serial);
     if (radioRsp_config->rspInfo.error == RadioError::NONE) {
-        uint8_t simCount = 0;
         // check if cardState is present, portInfo size should be more than 0
         for (const SimSlotStatus& slotStatusResponse : radioRsp_config->simSlotStatus) {
             if (slotStatusResponse.cardState == CardStatus::STATE_PRESENT) {
                 ASSERT_TRUE(slotStatusResponse.portInfo.size() > 0);
-                for (const SimPortInfo& simPortInfo : slotStatusResponse.portInfo) {
-                    if (simPortInfo.portActive) {
-                        simCount++;
-                    }
-                }
+                ASSERT_TRUE(slotStatusResponse.portInfo[0].portActive);
             }
-        }
-        if (isSsSsEnabled()) {
-            EXPECT_EQ(1, simCount);
-        } else if (isDsDsEnabled()) {
-            EXPECT_EQ(2, simCount);
-        } else if (isTsTsEnabled()) {
-            EXPECT_EQ(3, simCount);
         }
     }
 }
