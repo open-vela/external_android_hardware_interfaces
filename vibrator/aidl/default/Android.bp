@@ -63,6 +63,7 @@ cc_fuzz {
         "libbinder_random_parcel",
         "libcutils",
         "liblog",
+        "libutils",
         "libvibratorexampleimpl",
     ],
     target: {
@@ -70,14 +71,12 @@ cc_fuzz {
             shared_libs: [
                 "libbinder_ndk",
                 "libbinder",
-                "libutils",
             ],
         },
         host: {
             static_libs: [
                 "libbinder_ndk",
                 "libbinder",
-                "libutils",
             ],
         },
         darwin: {
