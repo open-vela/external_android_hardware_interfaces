@@ -14,9 +14,7 @@
  * limitations under the License.
  */
 
-#include <android-base/properties.h>
 #include <mapper-vts/3.0/MapperVts.h>
-#include "gtest/gtest.h"
 
 namespace android {
 namespace hardware {
@@ -96,31 +94,23 @@ std::vector<const native_handle_t*> Gralloc::allocate(const BufferDescriptor& de
     std::vector<const native_handle_t*> bufferHandles;
     bufferHandles.reserve(count);
     mAllocator->allocate(
-            descriptor, count,
-            [&](const auto& tmpError, const auto& tmpStride, const auto& tmpBuffers) {
-                if (tmpError != Error::NONE) {
-                    if (base::GetIntProperty("ro.vendor.build.version.sdk", 0, 0, INT_MAX) < 33) {
-                        GTEST_SKIP() << "Old vendor grallocs may not support P010";
-                    } else {
-                        GTEST_FAIL() << "failed to allocate buffers";
-                    }
-                }
-                ASSERT_EQ(count, tmpBuffers.size()) << "invalid buffer array";
+        descriptor, count,
+        [&](const auto& tmpError, const auto& tmpStride, const auto& tmpBuffers) {
+            ASSERT_EQ(Error::NONE, tmpError) << "failed to allocate buffers";
+            ASSERT_EQ(count, tmpBuffers.size()) << "invalid buffer array";
 
-                for (uint32_t i = 0; i < count; i++) {
-                    if (import) {
-                        ASSERT_NO_FATAL_FAILURE(
-                                bufferHandles.push_back(importBuffer(tmpBuffers[i])));
-                    } else {
-                        ASSERT_NO_FATAL_FAILURE(
-                                bufferHandles.push_back(cloneBuffer(tmpBuffers[i])));
-                    }
+            for (uint32_t i = 0; i < count; i++) {
+                if (import) {
+                    ASSERT_NO_FATAL_FAILURE(bufferHandles.push_back(importBuffer(tmpBuffers[i])));
+                } else {
+                    ASSERT_NO_FATAL_FAILURE(bufferHandles.push_back(cloneBuffer(tmpBuffers[i])));
                 }
+            }
 
-                if (outStride) {
-                    *outStride = tmpStride;
-                }
-            });
+            if (outStride) {
+                *outStride = tmpStride;
+            }
+        });
 
     if (::testing::Test::HasFatalFailure()) {
         bufferHandles.clear();
@@ -137,7 +127,7 @@ const native_handle_t* Gralloc::allocate(const IMapper::BufferDescriptorInfo& de
     }
 
     auto buffers = allocate(descriptor, 1, import, outStride);
-    if (::testing::Test::HasFatalFailure() || ::testing::Test::IsSkipped()) {
+    if (::testing::Test::HasFatalFailure()) {
         return nullptr;
     }
 
