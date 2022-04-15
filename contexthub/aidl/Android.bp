@@ -35,11 +35,4 @@ aidl_interface {
             apps_enabled: false,
         },
     },
-    versions_with_info: [
-        {
-            version: "1",
-            imports: [],
-        },
-    ],
-
 }
