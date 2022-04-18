@@ -33,7 +33,7 @@ aidl_interface {
         "android/hardware/audio/common/SourceMetadata.aidl",
     ],
     imports: [
-        "android.media.audio.common.types-V1",
+        "android.media.audio.common.types",
     ],
     stability: "vintf",
     backend: {
@@ -41,12 +41,7 @@ aidl_interface {
             enabled: true,
         },
         java: {
-            sdk_version: "module_current",
-            min_sdk_version: "31",
-            apex_available: [
-                "//apex_available:platform",
-                "com.android.car.framework",
-            ],
+            platform_apis: true,
         },
         ndk: {
             vndk: {
@@ -59,11 +54,6 @@ aidl_interface {
             min_sdk_version: "31",
         },
     },
-    versions_with_info: [
-        {
-            version: "1",
-            imports: ["android.media.audio.common.types-V1"],
-        },
+    versions: [
     ],
-
 }
