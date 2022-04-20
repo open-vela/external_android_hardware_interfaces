@@ -31,6 +31,7 @@
 #include <cutils/properties.h>
 
 #include "DeviceFileReader.h"
+#include "FixLocationParser.h"
 #include "GnssAntennaInfo.h"
 #include "GnssConfiguration.h"
 #include "GnssDebug.h"
@@ -38,7 +39,6 @@
 #include "GnssMeasurementCorrections.h"
 #include "GnssReplayUtils.h"
 #include "MockLocation.h"
-#include "NmeaFixInfo.h"
 #include "Utils.h"
 
 namespace android::hardware::gnss::common::implementation {
@@ -46,7 +46,6 @@ namespace android::hardware::gnss::common::implementation {
 constexpr int INPUT_BUFFER_SIZE = 128;
 constexpr char CMD_GET_LOCATION[] = "CMD_GET_LOCATION";
 constexpr char GNSS_PATH[] = "/dev/gnss0";
-constexpr int TTFF_MILLIS = 2200;
 
 template <class T_IGnss>
 struct GnssTemplate : public T_IGnss {
@@ -132,7 +131,6 @@ struct GnssTemplate : public T_IGnss {
     std::atomic<bool> mHardwareModeChecked;
     std::atomic<int> mGnssFd;
     std::thread mThread;
-    std::atomic<bool> mFirstFixReceived;
 
     mutable std::mutex mMutex;
     virtual hidl_vec<V2_1::IGnssCallback::GnssSvInfo> filterBlocklistedSatellitesV2_1(
@@ -154,8 +152,7 @@ GnssTemplate<T_IGnss>::GnssTemplate()
     : mMinIntervalMs(1000),
       mGnssConfiguration{new V2_1::implementation::GnssConfiguration()},
       mHardwareModeChecked(false),
-      mGnssFd(-1),
-      mFirstFixReceived(false) {}
+      mGnssFd(-1) {}
 
 template <class T_IGnss>
 GnssTemplate<T_IGnss>::~GnssTemplate() {
@@ -165,9 +162,12 @@ GnssTemplate<T_IGnss>::~GnssTemplate() {
 template <class T_IGnss>
 std::unique_ptr<V2_0::GnssLocation> GnssTemplate<T_IGnss>::getLocationFromHW() {
     mHardwareModeChecked = true;
+    if (!ReplayUtils::hasFixedLocationDeviceFile()) {
+        return nullptr;
+    }
     std::string inputStr =
             ::android::hardware::gnss::common::DeviceFileReader::Instance().getLocationData();
-    return NmeaFixInfo::getLocationFromInputStr(inputStr);
+    return FixLocationParser::getLocationFromInputStr(inputStr);
 }
 
 template <class T_IGnss>
@@ -180,12 +180,6 @@ Return<bool> GnssTemplate<T_IGnss>::start() {
     mIsActive = true;
     this->reportGnssStatusValue(V1_0::IGnssCallback::GnssStatusValue::SESSION_BEGIN);
     mThread = std::thread([this]() {
-        auto svStatus = filterBlocklistedSatellitesV2_1(Utils::getMockSvInfoListV2_1());
-        this->reportSvStatus(svStatus);
-        if (!mFirstFixReceived) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(TTFF_MILLIS));
-            mFirstFixReceived = true;
-        }
         while (mIsActive == true) {
             auto svStatus = filterBlocklistedSatellitesV2_1(Utils::getMockSvInfoListV2_1());
             this->reportSvStatus(svStatus);
@@ -288,7 +282,7 @@ Return<bool> GnssTemplate<T_IGnss>::injectLocation(double, double, float) {
 
 template <class T_IGnss>
 Return<void> GnssTemplate<T_IGnss>::deleteAidingData(V1_0::IGnss::GnssAidingData) {
-    mFirstFixReceived = false;
+    // TODO implement
     return Void();
 }
 
@@ -523,7 +517,7 @@ Return<bool> GnssTemplate<T_IGnss>::setCallback_2_1(const sp<V2_1::IGnssCallback
     using Capabilities = V2_1::IGnssCallback::Capabilities;
     const auto capabilities = Capabilities::MEASUREMENTS | Capabilities::MEASUREMENT_CORRECTIONS |
                               Capabilities::LOW_POWER_MODE | Capabilities::SATELLITE_BLACKLIST |
-                              Capabilities::ANTENNA_INFO | Capabilities::NAV_MESSAGES;
+                              Capabilities::ANTENNA_INFO;
     auto ret = sGnssCallback_2_1->gnssSetCapabilitiesCb_2_1(capabilities);
     if (!ret.isOk()) {
         ALOGE("%s: Unable to invoke callback", __func__);
