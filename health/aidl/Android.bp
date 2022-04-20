@@ -42,13 +42,6 @@ aidl_interface {
             },
         },
     },
-    versions_with_info: [
-        {
-            version: "1",
-            imports: [],
-        },
-    ],
-
 }
 
 cc_library {

@@ -35,15 +35,9 @@ aidl_interface {
         },
         ndk: {
             vndk: {
-                enabled: true,
+                // TODO(b/206116595) enable this
+                enabled: false,
             },
         },
     },
-    versions_with_info: [
-        {
-            version: "1",
-            imports: [],
-        },
-    ],
-
 }
