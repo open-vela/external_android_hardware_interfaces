@@ -358,7 +358,8 @@ TEST_P(GenerateKeyTests, generateEcdsaP256Key_testMode) {
 
 class CertificateRequestTest : public VtsRemotelyProvisionedComponentTests {
   protected:
-    CertificateRequestTest() : eekId_(string_to_bytevec("eekid")), challenge_(randomBytes(64)) {}
+    CertificateRequestTest() : eekId_(string_to_bytevec("eekid")), challenge_(randomBytes(32)) {
+    }
 
     void generateTestEekChain(size_t eekLength) {
         auto chain = generateEekChain(rpcHardwareInfo.supportedEekCurve, eekLength, eekId_);
