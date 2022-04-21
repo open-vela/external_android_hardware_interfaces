@@ -326,8 +326,6 @@ const std::vector<ConfigDeclaration> kVehicleProperties = {
                          .prop = toInt(VehicleProperty::EV_CHARGE_TIME_REMAINING),
                          .access = VehiclePropertyAccess::READ,
                          .changeMode = VehiclePropertyChangeMode::CONTINUOUS,
-                         .minSampleRate = 1.0f,
-                         .maxSampleRate = 10.0f,
                  },
          .initialValue = {.int32Values = {20}}},
 
