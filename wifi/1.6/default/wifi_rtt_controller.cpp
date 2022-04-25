@@ -316,9 +316,7 @@ WifiStatus WifiRttController::rangeRequestInternal_1_6(
                     return;
                 }
                 for (const auto& callback : shared_ptr_this->getEventCallbacks()) {
-                    if (!callback->onResults_1_6(id, hidl_results).isOk()) {
-                        LOG(ERROR) << "Failed to invoke the callback";
-                    }
+                    callback->onResults_1_6(id, hidl_results);
                 }
             };
     legacy_hal::wifi_error legacy_status = legacy_hal_.lock()->startRttRangeRequest(
