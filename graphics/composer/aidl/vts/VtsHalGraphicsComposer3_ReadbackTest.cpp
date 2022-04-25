@@ -109,11 +109,6 @@ class GraphicsCompositionTestBase : public ::testing::Test {
 
     int32_t getDisplayHeight() const { return getPrimaryDisplay().getDisplayHeight(); }
 
-    void assertServiceSpecificError(const ScopedAStatus& status, int32_t serviceSpecificError) {
-        ASSERT_EQ(status.getExceptionCode(), EX_SERVICE_SPECIFIC);
-        ASSERT_EQ(status.getServiceSpecificError(), serviceSpecificError);
-    }
-
     std::pair<bool, ::android::sp<::android::GraphicBuffer>> allocateBuffer(uint32_t usage) {
         const auto width = static_cast<uint32_t>(getDisplayWidth());
         const auto height = static_cast<uint32_t>(getDisplayHeight());
@@ -227,8 +222,7 @@ class GraphicsCompositionTestBase : public ::testing::Test {
             mDataspace = readBackBufferAttributes.dataspace;
             return ReadbackHelper::readbackSupported(mPixelFormat, mDataspace);
         }
-        EXPECT_NO_FATAL_FAILURE(
-                assertServiceSpecificError(status, IComposerClient::EX_UNSUPPORTED));
+        EXPECT_EQ(IComposerClient::EX_UNSUPPORTED, status.getServiceSpecificError());
         return false;
     }
 
@@ -464,7 +458,7 @@ TEST_P(GraphicsCompositionTest, SetReadbackBuffer_BadDisplay) {
             mComposerClient->setReadbackBuffer(getInvalidDisplayId(), bufferHandle, fence);
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    ASSERT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsCompositionTest, SetReadbackBuffer_BadParameter) {
@@ -481,7 +475,7 @@ TEST_P(GraphicsCompositionTest, SetReadbackBuffer_BadParameter) {
             mComposerClient->setReadbackBuffer(getPrimaryDisplayId(), &bufferHandle, releaseFence);
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_PARAMETER));
+    ASSERT_EQ(IComposerClient::EX_BAD_PARAMETER, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsCompositionTest, GetReadbackBufferFenceInactive) {
@@ -496,7 +490,7 @@ TEST_P(GraphicsCompositionTest, GetReadbackBufferFenceInactive) {
             mComposerClient->getReadbackBufferFence(getPrimaryDisplayId());
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_UNSUPPORTED));
+    EXPECT_EQ(IComposerClient::EX_UNSUPPORTED, status.getServiceSpecificError());
     EXPECT_EQ(-1, releaseFence.get());
 }
 
@@ -1306,7 +1300,7 @@ TEST_P(GraphicsTransformCompositionTest, FLIP_H) {
     for (ColorMode mode : mTestColorModes) {
         auto status = mComposerClient->setColorMode(getPrimaryDisplayId(), mode,
                                                     RenderIntent::COLORIMETRIC);
-        if (!status.isOk() && status.getExceptionCode() == EX_SERVICE_SPECIFIC &&
+        if (!status.isOk() &&
             (status.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED ||
              status.getServiceSpecificError() == IComposerClient::EX_BAD_PARAMETER)) {
             SUCCEED() << "ColorMode not supported, skip test";

@@ -71,11 +71,6 @@ class GraphicsComposerAidlTest : public ::testing::TestWithParam<std::string> {
         mComposerClient.reset();
     }
 
-    void assertServiceSpecificError(const ScopedAStatus& status, int32_t serviceSpecificError) {
-        ASSERT_EQ(status.getExceptionCode(), EX_SERVICE_SPECIFIC);
-        ASSERT_EQ(status.getServiceSpecificError(), serviceSpecificError);
-    }
-
     void Test_setContentTypeForDisplay(int64_t display,
                                        const std::vector<ContentType>& supportedContentTypes,
                                        ContentType contentType, const char* contentTypeStr) {
@@ -86,8 +81,7 @@ class GraphicsComposerAidlTest : public ::testing::TestWithParam<std::string> {
         if (!contentTypeSupport) {
             const auto& status = mComposerClient->setContentType(display, contentType);
             EXPECT_FALSE(status.isOk());
-            EXPECT_NO_FATAL_FAILURE(
-                    assertServiceSpecificError(status, IComposerClient::EX_UNSUPPORTED));
+            EXPECT_EQ(IComposerClient::EX_UNSUPPORTED, status.getServiceSpecificError());
             GTEST_SUCCEED() << contentTypeStr << " content type is not supported on display "
                             << std::to_string(display) << ", skipping test";
             return;
@@ -138,7 +132,7 @@ TEST_P(GraphicsComposerAidlTest, GetDisplayCapabilities_BadDisplay) {
     const auto& [status, _] = mComposerClient->getDisplayCapabilities(getInvalidDisplayId());
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, GetDisplayCapabilities) {
@@ -159,14 +153,13 @@ TEST_P(GraphicsComposerAidlTest, CreateClientSingleton) {
     const auto& status = mComposerClient->createClient();
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_NO_RESOURCES));
+    EXPECT_EQ(IComposerClient::EX_NO_RESOURCES, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, GetDisplayIdentificationData) {
     const auto& [status0, displayIdentification0] =
             mComposerClient->getDisplayIdentificationData(getPrimaryDisplayId());
-    if (!status0.isOk() && status0.getExceptionCode() == EX_SERVICE_SPECIFIC &&
-        status0.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED) {
+    if (!status0.isOk() && status0.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED) {
         GTEST_SUCCEED() << "Display identification data not supported, skipping test";
         return;
     }
@@ -207,8 +200,7 @@ TEST_P(GraphicsComposerAidlTest, GetHdrCapabilities) {
 
 TEST_P(GraphicsComposerAidlTest, GetPerFrameMetadataKeys) {
     const auto& [status, keys] = mComposerClient->getPerFrameMetadataKeys(getPrimaryDisplayId());
-    if (!status.isOk() && status.getExceptionCode() == EX_SERVICE_SPECIFIC &&
-        status.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED) {
+    if (!status.isOk() && status.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED) {
         GTEST_SUCCEED() << "getPerFrameMetadataKeys is not supported";
         return;
     }
@@ -219,8 +211,7 @@ TEST_P(GraphicsComposerAidlTest, GetPerFrameMetadataKeys) {
 
 TEST_P(GraphicsComposerAidlTest, GetReadbackBufferAttributes) {
     const auto& [status, _] = mComposerClient->getReadbackBufferAttributes(getPrimaryDisplayId());
-    if (!status.isOk() && status.getExceptionCode() == EX_SERVICE_SPECIFIC &&
-        status.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED) {
+    if (!status.isOk() && status.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED) {
         GTEST_SUCCEED() << "getReadbackBufferAttributes is not supported";
         return;
     }
@@ -263,8 +254,7 @@ TEST_P(GraphicsComposerAidlTest, GetRenderIntents_BadDisplay) {
                 mComposerClient->getRenderIntents(getInvalidDisplayId(), mode);
 
         EXPECT_FALSE(intentStatus.isOk());
-        EXPECT_NO_FATAL_FAILURE(
-                assertServiceSpecificError(intentStatus, IComposerClient::EX_BAD_DISPLAY));
+        EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, intentStatus.getServiceSpecificError());
     }
 }
 
@@ -273,7 +263,7 @@ TEST_P(GraphicsComposerAidlTest, GetRenderIntents_BadParameter) {
             mComposerClient->getRenderIntents(getPrimaryDisplayId(), static_cast<ColorMode>(-1));
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_PARAMETER));
+    EXPECT_EQ(IComposerClient::EX_BAD_PARAMETER, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, GetColorModes) {
@@ -288,7 +278,7 @@ TEST_P(GraphicsComposerAidlTest, GetColorMode_BadDisplay) {
     const auto& [status, _] = mComposerClient->getColorModes(getInvalidDisplayId());
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, SetColorMode) {
@@ -304,8 +294,7 @@ TEST_P(GraphicsComposerAidlTest, SetColorMode) {
             const auto modeStatus =
                     mComposerClient->setColorMode(getPrimaryDisplayId(), mode, intent);
             EXPECT_TRUE(modeStatus.isOk() ||
-                        (modeStatus.getExceptionCode() == EX_SERVICE_SPECIFIC &&
-                         IComposerClient::EX_UNSUPPORTED == modeStatus.getServiceSpecificError()))
+                        IComposerClient::EX_UNSUPPORTED == modeStatus.getServiceSpecificError())
                     << "failed to set color mode";
         }
     }
@@ -313,8 +302,7 @@ TEST_P(GraphicsComposerAidlTest, SetColorMode) {
     const auto modeStatus = mComposerClient->setColorMode(getPrimaryDisplayId(), ColorMode::NATIVE,
                                                           RenderIntent::COLORIMETRIC);
     EXPECT_TRUE(modeStatus.isOk() ||
-                (modeStatus.getExceptionCode() == EX_SERVICE_SPECIFIC &&
-                 IComposerClient::EX_UNSUPPORTED == modeStatus.getServiceSpecificError()))
+                IComposerClient::EX_UNSUPPORTED == modeStatus.getServiceSpecificError())
             << "failed to set color mode";
 }
 
@@ -332,8 +320,7 @@ TEST_P(GraphicsComposerAidlTest, SetColorMode_BadDisplay) {
                     mComposerClient->setColorMode(getInvalidDisplayId(), mode, intent);
 
             EXPECT_FALSE(modeStatus.isOk());
-            EXPECT_NO_FATAL_FAILURE(
-                    assertServiceSpecificError(modeStatus, IComposerClient::EX_BAD_DISPLAY));
+            EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, modeStatus.getServiceSpecificError());
         }
     }
 }
@@ -343,13 +330,13 @@ TEST_P(GraphicsComposerAidlTest, SetColorMode_BadParameter) {
                                                 RenderIntent::COLORIMETRIC);
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_PARAMETER));
+    EXPECT_EQ(IComposerClient::EX_BAD_PARAMETER, status.getServiceSpecificError());
 
     status = mComposerClient->setColorMode(getPrimaryDisplayId(), ColorMode::NATIVE,
                                            static_cast<RenderIntent>(-1));
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_PARAMETER));
+    EXPECT_EQ(IComposerClient::EX_BAD_PARAMETER, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, GetDisplayedContentSamplingAttributes) {
@@ -357,8 +344,7 @@ TEST_P(GraphicsComposerAidlTest, GetDisplayedContentSamplingAttributes) {
     const auto& [status, format] =
             mComposerClient->getDisplayedContentSamplingAttributes(getPrimaryDisplayId());
 
-    if (!status.isOk() && status.getExceptionCode() == EX_SERVICE_SPECIFIC &&
-        status.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED) {
+    if (!status.isOk() && status.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED) {
         SUCCEED() << "Device does not support optional extension. Test skipped";
         return;
     }
@@ -374,8 +360,7 @@ TEST_P(GraphicsComposerAidlTest, SetDisplayedContentSamplingEnabled) {
     FormatColorComponent enableAllComponents = FormatColorComponent::FORMAT_COMPONENT_0;
     auto status = mComposerClient->setDisplayedContentSamplingEnabled(
             getPrimaryDisplayId(), /*isEnabled*/ true, enableAllComponents, kMaxFrames);
-    if (!status.isOk() && status.getExceptionCode() == EX_SERVICE_SPECIFIC &&
-        status.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED) {
+    if (!status.isOk() && status.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED) {
         SUCCEED() << "Device does not support optional extension. Test skipped";
         return;
     }
@@ -389,8 +374,7 @@ TEST_P(GraphicsComposerAidlTest, SetDisplayedContentSamplingEnabled) {
 TEST_P(GraphicsComposerAidlTest, GetDisplayedContentSample) {
     const auto& [status, displayContentSamplingAttributes] =
             mComposerClient->getDisplayedContentSamplingAttributes(getPrimaryDisplayId());
-    if (!status.isOk() && status.getExceptionCode() == EX_SERVICE_SPECIFIC &&
-        status.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED) {
+    if (!status.isOk() && status.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED) {
         SUCCEED() << "Sampling attributes aren't supported on this device, test skipped";
         return;
     }
@@ -399,7 +383,7 @@ TEST_P(GraphicsComposerAidlTest, GetDisplayedContentSample) {
     int64_t constexpr kTimestamp = 0;
     const auto& [sampleStatus, displayContentSample] = mComposerClient->getDisplayedContentSample(
             getPrimaryDisplayId(), kMaxFrames, kTimestamp);
-    if (!sampleStatus.isOk() && sampleStatus.getExceptionCode() == EX_SERVICE_SPECIFIC &&
+    if (!sampleStatus.isOk() &&
         sampleStatus.getServiceSpecificError() == IComposerClient::EX_UNSUPPORTED) {
         SUCCEED() << "Device does not support optional extension. Test skipped";
         return;
@@ -421,7 +405,7 @@ TEST_P(GraphicsComposerAidlTest, GetDisplayConnectionType) {
     const auto& [status, type] = mComposerClient->getDisplayConnectionType(getInvalidDisplayId());
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 
     for (const auto& display : mDisplays) {
         const auto& [connectionTypeStatus, _] =
@@ -456,10 +440,8 @@ TEST_P(GraphicsComposerAidlTest, GetDisplayAttribute) {
             for (const auto& attribute : optionalAttributes) {
                 const auto& [attribStatus, value] = mComposerClient->getDisplayAttribute(
                         display.getDisplayId(), config, attribute);
-                EXPECT_TRUE(attribStatus.isOk() ||
-                            (attribStatus.getExceptionCode() == EX_SERVICE_SPECIFIC &&
-                             IComposerClient::EX_UNSUPPORTED ==
-                                     attribStatus.getServiceSpecificError()));
+                EXPECT_TRUE(attribStatus.isOk() || IComposerClient::EX_UNSUPPORTED ==
+                                                           attribStatus.getServiceSpecificError());
             }
         }
     }
@@ -481,7 +463,7 @@ TEST_P(GraphicsComposerAidlTest, GetDisplayVsyncPeriod_BadDisplay) {
             mComposerClient->getDisplayVsyncPeriod(getInvalidDisplayId());
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, SetActiveConfigWithConstraints_BadDisplay) {
@@ -494,7 +476,7 @@ TEST_P(GraphicsComposerAidlTest, SetActiveConfigWithConstraints_BadDisplay) {
             &invalidDisplay, /*config*/ 0, constraints);
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, SetActiveConfigWithConstraints_BadConfig) {
@@ -508,7 +490,7 @@ TEST_P(GraphicsComposerAidlTest, SetActiveConfigWithConstraints_BadConfig) {
                 &display, kInvalidConfigId, constraints);
 
         EXPECT_FALSE(status.isOk());
-        EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_CONFIG));
+        EXPECT_EQ(IComposerClient::EX_BAD_CONFIG, status.getServiceSpecificError());
     }
 }
 
@@ -520,7 +502,7 @@ TEST_P(GraphicsComposerAidlTest, SetBootDisplayConfig_BadDisplay) {
     const auto& status = mComposerClient->setBootDisplayConfig(getInvalidDisplayId(), /*config*/ 0);
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, SetBootDisplayConfig_BadConfig) {
@@ -534,7 +516,7 @@ TEST_P(GraphicsComposerAidlTest, SetBootDisplayConfig_BadConfig) {
                 mComposerClient->setBootDisplayConfig(display.getDisplayId(), kInvalidConfigId);
 
         EXPECT_FALSE(status.isOk());
-        EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_CONFIG));
+        EXPECT_EQ(IComposerClient::EX_BAD_CONFIG, status.getServiceSpecificError());
     }
 }
 
@@ -558,7 +540,7 @@ TEST_P(GraphicsComposerAidlTest, ClearBootDisplayConfig_BadDisplay) {
     const auto& status = mComposerClient->clearBootDisplayConfig(getInvalidDisplayId());
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, ClearBootDisplayConfig) {
@@ -577,7 +559,7 @@ TEST_P(GraphicsComposerAidlTest, GetPreferredBootDisplayConfig_BadDisplay) {
     const auto& [status, _] = mComposerClient->getPreferredBootDisplayConfig(getInvalidDisplayId());
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, GetPreferredBootDisplayConfig) {
@@ -603,29 +585,26 @@ TEST_P(GraphicsComposerAidlTest, BootDisplayConfig_Unsupported) {
 
         auto status = mComposerClient->setBootDisplayConfig(getPrimaryDisplayId(), config);
         EXPECT_FALSE(status.isOk());
-        EXPECT_NO_FATAL_FAILURE(
-                assertServiceSpecificError(status, IComposerClient::EX_UNSUPPORTED));
+        EXPECT_EQ(IComposerClient::EX_UNSUPPORTED, status.getServiceSpecificError());
 
         status = mComposerClient->getPreferredBootDisplayConfig(getPrimaryDisplayId()).first;
         EXPECT_FALSE(status.isOk());
-        EXPECT_NO_FATAL_FAILURE(
-                assertServiceSpecificError(status, IComposerClient::EX_UNSUPPORTED));
+        EXPECT_EQ(IComposerClient::EX_UNSUPPORTED, status.getServiceSpecificError());
 
         status = mComposerClient->clearBootDisplayConfig(getPrimaryDisplayId());
         EXPECT_FALSE(status.isOk());
-        EXPECT_NO_FATAL_FAILURE(
-                assertServiceSpecificError(status, IComposerClient::EX_UNSUPPORTED));
+        EXPECT_EQ(IComposerClient::EX_UNSUPPORTED, status.getServiceSpecificError());
     }
 }
 
 TEST_P(GraphicsComposerAidlTest, SetAutoLowLatencyMode_BadDisplay) {
     auto status = mComposerClient->setAutoLowLatencyMode(getInvalidDisplayId(), /*isEnabled*/ true);
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 
     status = mComposerClient->setAutoLowLatencyMode(getInvalidDisplayId(), /*isEnabled*/ false);
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, SetAutoLowLatencyMode) {
@@ -642,13 +621,11 @@ TEST_P(GraphicsComposerAidlTest, SetAutoLowLatencyMode) {
             const auto& statusIsOn = mComposerClient->setAutoLowLatencyMode(display.getDisplayId(),
                                                                             /*isEnabled*/ true);
             EXPECT_FALSE(statusIsOn.isOk());
-            EXPECT_NO_FATAL_FAILURE(
-                    assertServiceSpecificError(statusIsOn, IComposerClient::EX_UNSUPPORTED));
+            EXPECT_EQ(IComposerClient::EX_UNSUPPORTED, statusIsOn.getServiceSpecificError());
             const auto& statusIsOff = mComposerClient->setAutoLowLatencyMode(display.getDisplayId(),
                                                                              /*isEnabled*/ false);
             EXPECT_FALSE(statusIsOff.isOk());
-            EXPECT_NO_FATAL_FAILURE(
-                    assertServiceSpecificError(statusIsOff, IComposerClient::EX_UNSUPPORTED));
+            EXPECT_EQ(IComposerClient::EX_UNSUPPORTED, statusIsOff.getServiceSpecificError());
             GTEST_SUCCEED() << "Auto Low Latency Mode is not supported on display "
                             << std::to_string(display.getDisplayId()) << ", skipping test";
             return;
@@ -663,7 +640,7 @@ TEST_P(GraphicsComposerAidlTest, GetSupportedContentTypes_BadDisplay) {
     const auto& [status, _] = mComposerClient->getSupportedContentTypes(getInvalidDisplayId());
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, GetSupportedContentTypes) {
@@ -694,8 +671,7 @@ TEST_P(GraphicsComposerAidlTest, SetContentType_BadDisplay) {
         const auto& status = mComposerClient->setContentType(getInvalidDisplayId(), type);
 
         EXPECT_FALSE(status.isOk());
-        EXPECT_NO_FATAL_FAILURE(
-                assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+        EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
     }
 }
 
@@ -744,8 +720,7 @@ TEST_P(GraphicsComposerAidlTest, DestroyVirtualDisplay_BadDisplay) {
     const auto& destroyStatus = mComposerClient->destroyVirtualDisplay(getInvalidDisplayId());
 
     EXPECT_FALSE(destroyStatus.isOk());
-    EXPECT_NO_FATAL_FAILURE(
-            assertServiceSpecificError(destroyStatus, IComposerClient::EX_BAD_DISPLAY));
+    ASSERT_EQ(IComposerClient::EX_BAD_DISPLAY, destroyStatus.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, CreateLayer) {
@@ -760,7 +735,7 @@ TEST_P(GraphicsComposerAidlTest, CreateLayer_BadDisplay) {
     const auto& [status, _] = mComposerClient->createLayer(getInvalidDisplayId(), kBufferSlotCount);
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    ASSERT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, DestroyLayer_BadDisplay) {
@@ -771,8 +746,7 @@ TEST_P(GraphicsComposerAidlTest, DestroyLayer_BadDisplay) {
     const auto& destroyStatus = mComposerClient->destroyLayer(getInvalidDisplayId(), layer);
 
     EXPECT_FALSE(destroyStatus.isOk());
-    EXPECT_NO_FATAL_FAILURE(
-            assertServiceSpecificError(destroyStatus, IComposerClient::EX_BAD_DISPLAY));
+    EXPECT_EQ(IComposerClient::EX_BAD_DISPLAY, destroyStatus.getServiceSpecificError());
     ASSERT_TRUE(mComposerClient->destroyLayer(getPrimaryDisplayId(), layer).isOk());
 }
 
@@ -781,14 +755,14 @@ TEST_P(GraphicsComposerAidlTest, DestroyLayer_BadLayerError) {
     const auto& status = mComposerClient->destroyLayer(getPrimaryDisplayId(), /*layer*/ 1);
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_LAYER));
+    EXPECT_EQ(IComposerClient::EX_BAD_LAYER, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, GetActiveConfig_BadDisplay) {
     const auto& [status, _] = mComposerClient->getActiveConfig(getInvalidDisplayId());
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    ASSERT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, GetDisplayConfig) {
@@ -800,7 +774,7 @@ TEST_P(GraphicsComposerAidlTest, GetDisplayConfig_BadDisplay) {
     const auto& [status, _] = mComposerClient->getDisplayConfigs(getInvalidDisplayId());
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    ASSERT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, GetDisplayName) {
@@ -812,7 +786,7 @@ TEST_P(GraphicsComposerAidlTest, GetDisplayPhysicalOrientation_BadDisplay) {
     const auto& [status, _] = mComposerClient->getDisplayPhysicalOrientation(getInvalidDisplayId());
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    ASSERT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, GetDisplayPhysicalOrientation) {
@@ -889,28 +863,27 @@ TEST_P(GraphicsComposerAidlTest, SetPowerModeUnsupported) {
         const auto& powerModeDozeStatus =
                 mComposerClient->setPowerMode(getPrimaryDisplayId(), PowerMode::DOZE);
         EXPECT_FALSE(powerModeDozeStatus.isOk());
-        EXPECT_NO_FATAL_FAILURE(
-                assertServiceSpecificError(powerModeDozeStatus, IComposerClient::EX_UNSUPPORTED));
+        EXPECT_EQ(IComposerClient::EX_UNSUPPORTED, powerModeDozeStatus.getServiceSpecificError());
 
         const auto& powerModeDozeSuspendStatus =
                 mComposerClient->setPowerMode(getPrimaryDisplayId(), PowerMode::DOZE_SUSPEND);
         EXPECT_FALSE(powerModeDozeSuspendStatus.isOk());
-        EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(powerModeDozeSuspendStatus,
-                                                           IComposerClient::EX_UNSUPPORTED));
+        EXPECT_EQ(IComposerClient::EX_UNSUPPORTED,
+                  powerModeDozeSuspendStatus.getServiceSpecificError());
     }
 
     if (!isSuspendSupported) {
         const auto& powerModeSuspendStatus =
                 mComposerClient->setPowerMode(getPrimaryDisplayId(), PowerMode::ON_SUSPEND);
         EXPECT_FALSE(powerModeSuspendStatus.isOk());
-        EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(powerModeSuspendStatus,
-                                                           IComposerClient::EX_UNSUPPORTED));
+        EXPECT_EQ(IComposerClient::EX_UNSUPPORTED,
+                  powerModeSuspendStatus.getServiceSpecificError());
 
         const auto& powerModeDozeSuspendStatus =
                 mComposerClient->setPowerMode(getPrimaryDisplayId(), PowerMode::DOZE_SUSPEND);
         EXPECT_FALSE(powerModeDozeSuspendStatus.isOk());
-        EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(powerModeDozeSuspendStatus,
-                                                           IComposerClient::EX_UNSUPPORTED));
+        EXPECT_EQ(IComposerClient::EX_UNSUPPORTED,
+                  powerModeDozeSuspendStatus.getServiceSpecificError());
     }
 }
 
@@ -1021,7 +994,7 @@ TEST_P(GraphicsComposerAidlTest, SetPowerMode_BadDisplay) {
     const auto& status = mComposerClient->setPowerMode(getInvalidDisplayId(), PowerMode::ON);
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_DISPLAY));
+    ASSERT_EQ(IComposerClient::EX_BAD_DISPLAY, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, SetPowerMode_BadParameter) {
@@ -1029,7 +1002,7 @@ TEST_P(GraphicsComposerAidlTest, SetPowerMode_BadParameter) {
             mComposerClient->setPowerMode(getPrimaryDisplayId(), static_cast<PowerMode>(-1));
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_PARAMETER));
+    ASSERT_EQ(IComposerClient::EX_BAD_PARAMETER, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlTest, GetDataspaceSaturationMatrix) {
@@ -1050,7 +1023,7 @@ TEST_P(GraphicsComposerAidlTest, GetDataspaceSaturationMatrix_BadParameter) {
             mComposerClient->getDataspaceSaturationMatrix(common::Dataspace::UNKNOWN);
 
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_PARAMETER));
+    EXPECT_EQ(IComposerClient::EX_BAD_PARAMETER, status.getServiceSpecificError());
 }
 
 // Tests for Command.
@@ -2030,8 +2003,8 @@ TEST_P(GraphicsComposerAidlCommandTest, SetActiveConfigWithConstraints_SeamlessN
                 const auto& [status, _] = mComposerClient->setActiveConfigWithConstraints(
                         &display, config2, constraints);
                 EXPECT_FALSE(status.isOk());
-                EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(
-                        status, IComposerClient::EX_SEAMLESS_NOT_ALLOWED));
+                EXPECT_EQ(IComposerClient::EX_SEAMLESS_NOT_ALLOWED,
+                          status.getServiceSpecificError());
             }
         });
     }
@@ -2056,8 +2029,7 @@ TEST_P(GraphicsComposerAidlCommandTest, SetIdleTimerEnabled_Unsupported) {
         const auto& status =
                 mComposerClient->setIdleTimerEnabled(getPrimaryDisplayId(), /*timeout*/ 0);
         EXPECT_FALSE(status.isOk());
-        EXPECT_NO_FATAL_FAILURE(
-                assertServiceSpecificError(status, IComposerClient::EX_UNSUPPORTED));
+        EXPECT_EQ(IComposerClient::EX_UNSUPPORTED, status.getServiceSpecificError());
     }
 }
 
@@ -2072,7 +2044,7 @@ TEST_P(GraphicsComposerAidlCommandTest, SetIdleTimerEnabled_BadParameter) {
     const auto& status =
             mComposerClient->setIdleTimerEnabled(getPrimaryDisplayId(), /*timeout*/ -1);
     EXPECT_FALSE(status.isOk());
-    EXPECT_NO_FATAL_FAILURE(assertServiceSpecificError(status, IComposerClient::EX_BAD_PARAMETER));
+    EXPECT_EQ(IComposerClient::EX_BAD_PARAMETER, status.getServiceSpecificError());
 }
 
 TEST_P(GraphicsComposerAidlCommandTest, SetIdleTimerEnabled_Disable) {
