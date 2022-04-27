@@ -659,7 +659,6 @@ void EvaluatePreparedModel(const std::shared_ptr<IDevice>& device,
                 ASSERT_NE(nullptr, burst.get());
 
                 // associate a unique slot with each memory pool
-                constexpr int64_t kIgnoreSlot = -1;
                 int64_t currentSlot = 0;
                 std::vector<int64_t> slots;
                 slots.reserve(request.pools.size());
@@ -668,7 +667,7 @@ void EvaluatePreparedModel(const std::shared_ptr<IDevice>& device,
                         slots.push_back(currentSlot++);
                     } else {
                         EXPECT_EQ(pool.getTag(), RequestMemoryPool::Tag::token);
-                        slots.push_back(kIgnoreSlot);
+                        slots.push_back(-1);
                     }
                 }
 
@@ -699,10 +698,8 @@ void EvaluatePreparedModel(const std::shared_ptr<IDevice>& device,
                 // Mark each slot as unused after the execution. This is unnecessary because the
                 // burst is freed after this scope ends, but this is here to test the functionality.
                 for (int64_t slot : slots) {
-                    if (slot != kIgnoreSlot) {
-                        ret = burst->releaseMemoryResource(slot);
-                        ASSERT_TRUE(ret.isOk()) << ret.getDescription();
-                    }
+                    ret = burst->releaseMemoryResource(slot);
+                    ASSERT_TRUE(ret.isOk()) << ret.getDescription();
                 }
 
                 break;
