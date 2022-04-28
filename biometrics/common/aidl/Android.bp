@@ -22,16 +22,5 @@ aidl_interface {
             enabled: false,
         },
     },
-    versions_with_info: [
-        {
-            version: "1",
-            imports: [],
-        },
-        {
-            version: "2",
-            imports: [],
-        },
-
-    ],
-
+    versions: ["1"],
 }
