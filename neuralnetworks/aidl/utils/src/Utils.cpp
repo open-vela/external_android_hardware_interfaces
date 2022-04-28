@@ -51,9 +51,8 @@ nn::GeneralResult<ndk::ScopedFileDescriptor> clone(const ndk::ScopedFileDescript
 }
 
 nn::GeneralResult<common::NativeHandle> clone(const common::NativeHandle& handle) {
-    auto fds = NN_TRY(cloneVec(handle.fds));
     return common::NativeHandle{
-            .fds = std::move(fds),
+            .fds = NN_TRY(cloneVec(handle.fds)),
             .ints = handle.ints,
     };
 }
@@ -64,32 +63,29 @@ nn::GeneralResult<Memory> clone(const Memory& memory) {
     switch (memory.getTag()) {
         case Memory::Tag::ashmem: {
             const auto& ashmem = memory.get<Memory::Tag::ashmem>();
-            auto fd = NN_TRY(clone(ashmem.fd));
             auto handle = common::Ashmem{
-                    .fd = std::move(fd),
+                    .fd = NN_TRY(clone(ashmem.fd)),
                     .size = ashmem.size,
             };
             return Memory::make<Memory::Tag::ashmem>(std::move(handle));
         }
         case Memory::Tag::mappableFile: {
             const auto& memFd = memory.get<Memory::Tag::mappableFile>();
-            auto fd = NN_TRY(clone(memFd.fd));
             auto handle = common::MappableFile{
                     .length = memFd.length,
                     .prot = memFd.prot,
-                    .fd = std::move(fd),
+                    .fd = NN_TRY(clone(memFd.fd)),
                     .offset = memFd.offset,
             };
             return Memory::make<Memory::Tag::mappableFile>(std::move(handle));
         }
         case Memory::Tag::hardwareBuffer: {
             const auto& hardwareBuffer = memory.get<Memory::Tag::hardwareBuffer>();
-            auto handle = NN_TRY(clone(hardwareBuffer.handle));
-            auto ahwbHandle = graphics::common::HardwareBuffer{
+            auto handle = graphics::common::HardwareBuffer{
                     .description = hardwareBuffer.description,
-                    .handle = std::move(handle),
+                    .handle = NN_TRY(clone(hardwareBuffer.handle)),
             };
-            return Memory::make<Memory::Tag::hardwareBuffer>(std::move(ahwbHandle));
+            return Memory::make<Memory::Tag::hardwareBuffer>(std::move(handle));
         }
     }
     return (NN_ERROR() << "Unrecognized Memory::Tag: " << underlyingType(memory.getTag()))
@@ -113,21 +109,19 @@ nn::GeneralResult<RequestMemoryPool> clone(const RequestMemoryPool& requestPool)
 }
 
 nn::GeneralResult<Request> clone(const Request& request) {
-    auto pools = NN_TRY(clone(request.pools));
     return Request{
             .inputs = request.inputs,
             .outputs = request.outputs,
-            .pools = std::move(pools),
+            .pools = NN_TRY(clone(request.pools)),
     };
 }
 
 nn::GeneralResult<Model> clone(const Model& model) {
-    auto pools = NN_TRY(clone(model.pools));
     return Model{
             .main = model.main,
             .referenced = model.referenced,
             .operandValues = model.operandValues,
-            .pools = std::move(pools),
+            .pools = NN_TRY(clone(model.pools)),
             .relaxComputationFloat32toFloat16 = model.relaxComputationFloat32toFloat16,
             .extensionNameToPrefix = model.extensionNameToPrefix,
     };

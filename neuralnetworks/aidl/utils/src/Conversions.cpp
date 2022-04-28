@@ -177,28 +177,22 @@ GeneralResult<Capabilities> unvalidatedConvert(const aidl_hal::Capabilities& cap
     auto table =
             NN_TRY(Capabilities::OperandPerformanceTable::create(std::move(operandPerformance)));
 
-    const auto relaxedFloat32toFloat16PerformanceScalar =
-            NN_TRY(unvalidatedConvert(capabilities.relaxedFloat32toFloat16PerformanceScalar));
-    const auto relaxedFloat32toFloat16PerformanceTensor =
-            NN_TRY(unvalidatedConvert(capabilities.relaxedFloat32toFloat16PerformanceTensor));
-    const auto ifPerformance = NN_TRY(unvalidatedConvert(capabilities.ifPerformance));
-    const auto whilePerformance = NN_TRY(unvalidatedConvert(capabilities.whilePerformance));
     return Capabilities{
-            .relaxedFloat32toFloat16PerformanceScalar = relaxedFloat32toFloat16PerformanceScalar,
-            .relaxedFloat32toFloat16PerformanceTensor = relaxedFloat32toFloat16PerformanceTensor,
+            .relaxedFloat32toFloat16PerformanceScalar = NN_TRY(
+                    unvalidatedConvert(capabilities.relaxedFloat32toFloat16PerformanceScalar)),
+            .relaxedFloat32toFloat16PerformanceTensor = NN_TRY(
+                    unvalidatedConvert(capabilities.relaxedFloat32toFloat16PerformanceTensor)),
             .operandPerformance = std::move(table),
-            .ifPerformance = ifPerformance,
-            .whilePerformance = whilePerformance,
+            .ifPerformance = NN_TRY(unvalidatedConvert(capabilities.ifPerformance)),
+            .whilePerformance = NN_TRY(unvalidatedConvert(capabilities.whilePerformance)),
     };
 }
 
 GeneralResult<Capabilities::OperandPerformance> unvalidatedConvert(
         const aidl_hal::OperandPerformance& operandPerformance) {
-    const auto type = NN_TRY(unvalidatedConvert(operandPerformance.type));
-    const auto info = NN_TRY(unvalidatedConvert(operandPerformance.info));
     return Capabilities::OperandPerformance{
-            .type = type,
-            .info = info,
+            .type = NN_TRY(unvalidatedConvert(operandPerformance.type)),
+            .info = NN_TRY(unvalidatedConvert(operandPerformance.info)),
     };
 }
 
@@ -234,13 +228,10 @@ GeneralResult<DataLocation> unvalidatedConvert(const aidl_hal::DataLocation& loc
 }
 
 GeneralResult<Operation> unvalidatedConvert(const aidl_hal::Operation& operation) {
-    const auto type = NN_TRY(unvalidatedConvert(operation.type));
-    auto inputs = NN_TRY(toUnsigned(operation.inputs));
-    auto outputs = NN_TRY(toUnsigned(operation.outputs));
     return Operation{
-            .type = type,
-            .inputs = std::move(inputs),
-            .outputs = std::move(outputs),
+            .type = NN_TRY(unvalidatedConvert(operation.type)),
+            .inputs = NN_TRY(toUnsigned(operation.inputs)),
+            .outputs = NN_TRY(toUnsigned(operation.outputs)),
     };
 }
 
@@ -250,19 +241,14 @@ GeneralResult<Operand::LifeTime> unvalidatedConvert(
 }
 
 GeneralResult<Operand> unvalidatedConvert(const aidl_hal::Operand& operand) {
-    const auto type = NN_TRY(unvalidatedConvert(operand.type));
-    auto dimensions = NN_TRY(toUnsigned(operand.dimensions));
-    const auto lifetime = NN_TRY(unvalidatedConvert(operand.lifetime));
-    const auto location = NN_TRY(unvalidatedConvert(operand.location));
-    auto extraParams = NN_TRY(unvalidatedConvert(operand.extraParams));
     return Operand{
-            .type = type,
-            .dimensions = std::move(dimensions),
+            .type = NN_TRY(unvalidatedConvert(operand.type)),
+            .dimensions = NN_TRY(toUnsigned(operand.dimensions)),
             .scale = operand.scale,
             .zeroPoint = operand.zeroPoint,
-            .lifetime = lifetime,
-            .location = location,
-            .extraParams = std::move(extraParams),
+            .lifetime = NN_TRY(unvalidatedConvert(operand.lifetime)),
+            .location = NN_TRY(unvalidatedConvert(operand.location)),
+            .extraParams = NN_TRY(unvalidatedConvert(operand.extraParams)),
     };
 }
 
@@ -294,31 +280,22 @@ GeneralResult<Operand::SymmPerChannelQuantParams> unvalidatedConvert(
 }
 
 GeneralResult<Model> unvalidatedConvert(const aidl_hal::Model& model) {
-    auto main = NN_TRY(unvalidatedConvert(model.main));
-    auto referenced = NN_TRY(unvalidatedConvert(model.referenced));
-    auto operandValues = NN_TRY(unvalidatedConvert(model.operandValues));
-    auto pools = NN_TRY(unvalidatedConvert(model.pools));
-    auto extensionNameToPrefix = NN_TRY(unvalidatedConvert(model.extensionNameToPrefix));
     return Model{
-            .main = std::move(main),
-            .referenced = std::move(referenced),
-            .operandValues = std::move(operandValues),
-            .pools = std::move(pools),
+            .main = NN_TRY(unvalidatedConvert(model.main)),
+            .referenced = NN_TRY(unvalidatedConvert(model.referenced)),
+            .operandValues = NN_TRY(unvalidatedConvert(model.operandValues)),
+            .pools = NN_TRY(unvalidatedConvert(model.pools)),
             .relaxComputationFloat32toFloat16 = model.relaxComputationFloat32toFloat16,
-            .extensionNameToPrefix = std::move(extensionNameToPrefix),
+            .extensionNameToPrefix = NN_TRY(unvalidatedConvert(model.extensionNameToPrefix)),
     };
 }
 
 GeneralResult<Model::Subgraph> unvalidatedConvert(const aidl_hal::Subgraph& subgraph) {
-    auto operands = NN_TRY(unvalidatedConvert(subgraph.operands));
-    auto operations = NN_TRY(unvalidatedConvert(subgraph.operations));
-    auto inputIndexes = NN_TRY(toUnsigned(subgraph.inputIndexes));
-    auto outputIndexes = NN_TRY(toUnsigned(subgraph.outputIndexes));
     return Model::Subgraph{
-            .operands = std::move(operands),
-            .operations = std::move(operations),
-            .inputIndexes = std::move(inputIndexes),
-            .outputIndexes = std::move(outputIndexes),
+            .operands = NN_TRY(unvalidatedConvert(subgraph.operands)),
+            .operations = NN_TRY(unvalidatedConvert(subgraph.operations)),
+            .inputIndexes = NN_TRY(toUnsigned(subgraph.inputIndexes)),
+            .outputIndexes = NN_TRY(toUnsigned(subgraph.outputIndexes)),
     };
 }
 
@@ -331,10 +308,9 @@ GeneralResult<ExtensionNameAndPrefix> unvalidatedConvert(
 }
 
 GeneralResult<Extension> unvalidatedConvert(const aidl_hal::Extension& extension) {
-    auto operandTypes = NN_TRY(unvalidatedConvert(extension.operandTypes));
     return Extension{
             .name = extension.name,
-            .operandTypes = std::move(operandTypes),
+            .operandTypes = NN_TRY(unvalidatedConvert(extension.operandTypes)),
     };
 }
 
@@ -350,9 +326,8 @@ GeneralResult<Extension::OperandTypeInformation> unvalidatedConvert(
 }
 
 GeneralResult<OutputShape> unvalidatedConvert(const aidl_hal::OutputShape& outputShape) {
-    auto dimensions = NN_TRY(toUnsigned(outputShape.dimensions));
     return OutputShape{
-            .dimensions = std::move(dimensions),
+            .dimensions = NN_TRY(toUnsigned(outputShape.dimensions)),
             .isSufficient = outputShape.isSufficient,
     };
 }
@@ -371,9 +346,8 @@ GeneralResult<SharedMemory> unvalidatedConvert(const aidl_hal::Memory& memory) {
                 return NN_ERROR() << "Memory: size must be <= std::numeric_limits<size_t>::max()";
             }
 
-            auto fd = NN_TRY(dupFd(ashmem.fd.get()));
             auto handle = Memory::Ashmem{
-                    .fd = std::move(fd),
+                    .fd = NN_TRY(dupFd(ashmem.fd.get())),
                     .size = static_cast<size_t>(ashmem.size),
             };
             return std::make_shared<const Memory>(Memory{.handle = std::move(handle)});
@@ -452,8 +426,7 @@ GeneralResult<Model::OperandValues> unvalidatedConvert(const std::vector<uint8_t
 }
 
 GeneralResult<BufferDesc> unvalidatedConvert(const aidl_hal::BufferDesc& bufferDesc) {
-    auto dimensions = NN_TRY(toUnsigned(bufferDesc.dimensions));
-    return BufferDesc{.dimensions = std::move(dimensions)};
+    return BufferDesc{.dimensions = NN_TRY(toUnsigned(bufferDesc.dimensions))};
 }
 
 GeneralResult<BufferRole> unvalidatedConvert(const aidl_hal::BufferRole& bufferRole) {
@@ -467,25 +440,20 @@ GeneralResult<BufferRole> unvalidatedConvert(const aidl_hal::BufferRole& bufferR
 }
 
 GeneralResult<Request> unvalidatedConvert(const aidl_hal::Request& request) {
-    auto inputs = NN_TRY(unvalidatedConvert(request.inputs));
-    auto outputs = NN_TRY(unvalidatedConvert(request.outputs));
-    auto pools = NN_TRY(unvalidatedConvert(request.pools));
     return Request{
-            .inputs = std::move(inputs),
-            .outputs = std::move(outputs),
-            .pools = std::move(pools),
+            .inputs = NN_TRY(unvalidatedConvert(request.inputs)),
+            .outputs = NN_TRY(unvalidatedConvert(request.outputs)),
+            .pools = NN_TRY(unvalidatedConvert(request.pools)),
     };
 }
 
 GeneralResult<Request::Argument> unvalidatedConvert(const aidl_hal::RequestArgument& argument) {
     const auto lifetime = argument.hasNoValue ? Request::Argument::LifeTime::NO_VALUE
                                               : Request::Argument::LifeTime::POOL;
-    const auto location = NN_TRY(unvalidatedConvert(argument.location));
-    auto dimensions = NN_TRY(toUnsigned(argument.dimensions));
     return Request::Argument{
             .lifetime = lifetime,
-            .location = location,
-            .dimensions = std::move(dimensions),
+            .location = NN_TRY(unvalidatedConvert(argument.location)),
+            .dimensions = NN_TRY(toUnsigned(argument.dimensions)),
     };
 }
 
@@ -752,9 +720,8 @@ nn::GeneralResult<PerformanceInfo> unvalidatedConvert(
 
 nn::GeneralResult<OperandPerformance> unvalidatedConvert(
         const nn::Capabilities::OperandPerformance& operandPerformance) {
-    const auto type = NN_TRY(unvalidatedConvert(operandPerformance.type));
-    const auto info = NN_TRY(unvalidatedConvert(operandPerformance.info));
-    return OperandPerformance{.type = type, .info = info};
+    return OperandPerformance{.type = NN_TRY(unvalidatedConvert(operandPerformance.type)),
+                              .info = NN_TRY(unvalidatedConvert(operandPerformance.info))};
 }
 
 nn::GeneralResult<std::vector<OperandPerformance>> unvalidatedConvert(
@@ -821,8 +788,7 @@ nn::GeneralResult<std::vector<uint8_t>> unvalidatedConvert(const nn::CacheToken&
 }
 
 nn::GeneralResult<BufferDesc> unvalidatedConvert(const nn::BufferDesc& bufferDesc) {
-    auto dimensions = NN_TRY(toSigned(bufferDesc.dimensions));
-    return BufferDesc{.dimensions = std::move(dimensions)};
+    return BufferDesc{.dimensions = NN_TRY(toSigned(bufferDesc.dimensions))};
 }
 
 nn::GeneralResult<BufferRole> unvalidatedConvert(const nn::BufferRole& bufferRole) {
@@ -881,8 +847,7 @@ nn::GeneralResult<ErrorStatus> unvalidatedConvert(const nn::ErrorStatus& errorSt
 }
 
 nn::GeneralResult<OutputShape> unvalidatedConvert(const nn::OutputShape& outputShape) {
-    auto dimensions = NN_TRY(toSigned(outputShape.dimensions));
-    return OutputShape{.dimensions = std::move(dimensions),
+    return OutputShape{.dimensions = NN_TRY(toSigned(outputShape.dimensions)),
                        .isSufficient = outputShape.isSufficient};
 }
 
@@ -950,19 +915,14 @@ nn::GeneralResult<std::optional<OperandExtraParams>> unvalidatedConvert(
 }
 
 nn::GeneralResult<Operand> unvalidatedConvert(const nn::Operand& operand) {
-    const auto type = NN_TRY(unvalidatedConvert(operand.type));
-    auto dimensions = NN_TRY(toSigned(operand.dimensions));
-    const auto lifetime = NN_TRY(unvalidatedConvert(operand.lifetime));
-    const auto location = NN_TRY(unvalidatedConvert(operand.location));
-    auto extraParams = NN_TRY(unvalidatedConvert(operand.extraParams));
     return Operand{
-            .type = type,
-            .dimensions = std::move(dimensions),
+            .type = NN_TRY(unvalidatedConvert(operand.type)),
+            .dimensions = NN_TRY(toSigned(operand.dimensions)),
             .scale = operand.scale,
             .zeroPoint = operand.zeroPoint,
-            .lifetime = lifetime,
-            .location = location,
-            .extraParams = std::move(extraParams),
+            .lifetime = NN_TRY(unvalidatedConvert(operand.lifetime)),
+            .location = NN_TRY(unvalidatedConvert(operand.location)),
+            .extraParams = NN_TRY(unvalidatedConvert(operand.extraParams)),
     };
 }
 
@@ -974,26 +934,19 @@ nn::GeneralResult<OperationType> unvalidatedConvert(const nn::OperationType& ope
 }
 
 nn::GeneralResult<Operation> unvalidatedConvert(const nn::Operation& operation) {
-    const auto type = NN_TRY(unvalidatedConvert(operation.type));
-    auto inputs = NN_TRY(toSigned(operation.inputs));
-    auto outputs = NN_TRY(toSigned(operation.outputs));
     return Operation{
-            .type = type,
-            .inputs = std::move(inputs),
-            .outputs = std::move(outputs),
+            .type = NN_TRY(unvalidatedConvert(operation.type)),
+            .inputs = NN_TRY(toSigned(operation.inputs)),
+            .outputs = NN_TRY(toSigned(operation.outputs)),
     };
 }
 
 nn::GeneralResult<Subgraph> unvalidatedConvert(const nn::Model::Subgraph& subgraph) {
-    auto operands = NN_TRY(unvalidatedConvert(subgraph.operands));
-    auto operations = NN_TRY(unvalidatedConvert(subgraph.operations));
-    auto inputIndexes = NN_TRY(toSigned(subgraph.inputIndexes));
-    auto outputIndexes = NN_TRY(toSigned(subgraph.outputIndexes));
     return Subgraph{
-            .operands = std::move(operands),
-            .operations = std::move(operations),
-            .inputIndexes = std::move(inputIndexes),
-            .outputIndexes = std::move(outputIndexes),
+            .operands = NN_TRY(unvalidatedConvert(subgraph.operands)),
+            .operations = NN_TRY(unvalidatedConvert(subgraph.operations)),
+            .inputIndexes = NN_TRY(toSigned(subgraph.inputIndexes)),
+            .outputIndexes = NN_TRY(toSigned(subgraph.outputIndexes)),
     };
 }
 
@@ -1016,18 +969,13 @@ nn::GeneralResult<Model> unvalidatedConvert(const nn::Model& model) {
                << "Model cannot be unvalidatedConverted because it contains pointer-based memory";
     }
 
-    auto main = NN_TRY(unvalidatedConvert(model.main));
-    auto referenced = NN_TRY(unvalidatedConvert(model.referenced));
-    auto operandValues = NN_TRY(unvalidatedConvert(model.operandValues));
-    auto pools = NN_TRY(unvalidatedConvert(model.pools));
-    auto extensionNameToPrefix = NN_TRY(unvalidatedConvert(model.extensionNameToPrefix));
     return Model{
-            .main = std::move(main),
-            .referenced = std::move(referenced),
-            .operandValues = std::move(operandValues),
-            .pools = std::move(pools),
+            .main = NN_TRY(unvalidatedConvert(model.main)),
+            .referenced = NN_TRY(unvalidatedConvert(model.referenced)),
+            .operandValues = NN_TRY(unvalidatedConvert(model.operandValues)),
+            .pools = NN_TRY(unvalidatedConvert(model.pools)),
             .relaxComputationFloat32toFloat16 = model.relaxComputationFloat32toFloat16,
-            .extensionNameToPrefix = std::move(extensionNameToPrefix),
+            .extensionNameToPrefix = NN_TRY(unvalidatedConvert(model.extensionNameToPrefix)),
     };
 }
 
@@ -1041,13 +989,10 @@ nn::GeneralResult<Request> unvalidatedConvert(const nn::Request& request) {
                << "Request cannot be unvalidatedConverted because it contains pointer-based memory";
     }
 
-    auto inputs = NN_TRY(unvalidatedConvert(request.inputs));
-    auto outputs = NN_TRY(unvalidatedConvert(request.outputs));
-    auto pools = NN_TRY(unvalidatedConvert(request.pools));
     return Request{
-            .inputs = std::move(inputs),
-            .outputs = std::move(outputs),
-            .pools = std::move(pools),
+            .inputs = NN_TRY(unvalidatedConvert(request.inputs)),
+            .outputs = NN_TRY(unvalidatedConvert(request.outputs)),
+            .pools = NN_TRY(unvalidatedConvert(request.pools)),
     };
 }
 
@@ -1058,12 +1003,10 @@ nn::GeneralResult<RequestArgument> unvalidatedConvert(
                << "Request cannot be unvalidatedConverted because it contains pointer-based memory";
     }
     const bool hasNoValue = requestArgument.lifetime == nn::Request::Argument::LifeTime::NO_VALUE;
-    const auto location = NN_TRY(unvalidatedConvert(requestArgument.location));
-    auto dimensions = NN_TRY(toSigned(requestArgument.dimensions));
     return RequestArgument{
             .hasNoValue = hasNoValue,
-            .location = location,
-            .dimensions = std::move(dimensions),
+            .location = NN_TRY(unvalidatedConvert(requestArgument.location)),
+            .dimensions = NN_TRY(toSigned(requestArgument.dimensions)),
     };
 }
 
@@ -1090,11 +1033,9 @@ nn::GeneralResult<RequestMemoryPool> unvalidatedConvert(const nn::Request::Memor
 }
 
 nn::GeneralResult<Timing> unvalidatedConvert(const nn::Timing& timing) {
-    const auto timeOnDeviceNs = NN_TRY(unvalidatedConvert(timing.timeOnDevice));
-    const auto timeInDriverNs = NN_TRY(unvalidatedConvert(timing.timeInDriver));
     return Timing{
-            .timeOnDeviceNs = timeOnDeviceNs,
-            .timeInDriverNs = timeInDriverNs,
+            .timeOnDeviceNs = NN_TRY(unvalidatedConvert(timing.timeOnDevice)),
+            .timeInDriverNs = NN_TRY(unvalidatedConvert(timing.timeInDriver)),
     };
 }
 
@@ -1123,25 +1064,20 @@ nn::GeneralResult<ndk::ScopedFileDescriptor> unvalidatedConvert(const nn::Shared
 }
 
 nn::GeneralResult<Capabilities> unvalidatedConvert(const nn::Capabilities& capabilities) {
-    const auto relaxedFloat32toFloat16PerformanceTensor =
-            NN_TRY(unvalidatedConvert(capabilities.relaxedFloat32toFloat16PerformanceTensor));
-    const auto relaxedFloat32toFloat16PerformanceScalar =
-            NN_TRY(unvalidatedConvert(capabilities.relaxedFloat32toFloat16PerformanceScalar));
-    auto operandPerformance = NN_TRY(unvalidatedConvert(capabilities.operandPerformance));
-    const auto ifPerformance = NN_TRY(unvalidatedConvert(capabilities.ifPerformance));
-    const auto whilePerformance = NN_TRY(unvalidatedConvert(capabilities.whilePerformance));
     return Capabilities{
-            .relaxedFloat32toFloat16PerformanceTensor = relaxedFloat32toFloat16PerformanceTensor,
-            .relaxedFloat32toFloat16PerformanceScalar = relaxedFloat32toFloat16PerformanceScalar,
-            .operandPerformance = std::move(operandPerformance),
-            .ifPerformance = ifPerformance,
-            .whilePerformance = whilePerformance,
+            .relaxedFloat32toFloat16PerformanceTensor = NN_TRY(
+                    unvalidatedConvert(capabilities.relaxedFloat32toFloat16PerformanceTensor)),
+            .relaxedFloat32toFloat16PerformanceScalar = NN_TRY(
+                    unvalidatedConvert(capabilities.relaxedFloat32toFloat16PerformanceScalar)),
+            .operandPerformance = NN_TRY(unvalidatedConvert(capabilities.operandPerformance)),
+            .ifPerformance = NN_TRY(unvalidatedConvert(capabilities.ifPerformance)),
+            .whilePerformance = NN_TRY(unvalidatedConvert(capabilities.whilePerformance)),
     };
 }
 
 nn::GeneralResult<Extension> unvalidatedConvert(const nn::Extension& extension) {
-    auto operandTypes = NN_TRY(unvalidatedConvert(extension.operandTypes));
-    return Extension{.name = extension.name, .operandTypes = std::move(operandTypes)};
+    return Extension{.name = extension.name,
+                     .operandTypes = NN_TRY(unvalidatedConvert(extension.operandTypes))};
 }
 #ifdef NN_AIDL_V4_OR_ABOVE
 nn::GeneralResult<TokenValuePair> unvalidatedConvert(const nn::TokenValuePair& tokenValuePair) {
