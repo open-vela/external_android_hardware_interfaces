@@ -24,10 +24,12 @@ using android::hardware::gnss::GnssData;
 
 android::binder::Status GnssMeasurementCallbackAidl::gnssMeasurementCb(const GnssData& gnssData) {
     ALOGI("gnssMeasurementCb");
-    ALOGV("elapsedRealtime: flags = 0x%X, timestampNs: %" PRId64 ", timeUncertaintyNs=%lf",
+    ALOGI("elapsedRealtime: flags = %d, timestampNs: %" PRId64 ", timeUncertaintyNs=%lf",
           gnssData.elapsedRealtime.flags, gnssData.elapsedRealtime.timestampNs,
           gnssData.elapsedRealtime.timeUncertaintyNs);
-
+    for (const auto& measurement : gnssData.measurements) {
+        ALOGI("measurement.receivedSvTimeInNs=%" PRId64, measurement.receivedSvTimeInNs);
+    }
     gnss_data_cbq_.store(gnssData);
     return android::binder::Status::ok();
 }

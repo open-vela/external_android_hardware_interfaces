@@ -17,7 +17,6 @@
 #pragma once
 
 #include <android/hardware/gnss/BnGnssCallback.h>
-#include <utility>
 #include "GnssCallbackEventQueue.h"
 
 /* Callback class for data & Event. */
@@ -27,8 +26,7 @@ class GnssCallbackAidl : public android::hardware::gnss::BnGnssCallback {
         : capabilities_cbq_("capabilities"),
           info_cbq_("system_info"),
           location_cbq_("location"),
-          sv_info_list_cbq_("sv_info"),
-          nmea_cbq_("nmea"){};
+          sv_info_list_cbq_("sv_info"){};
     ~GnssCallbackAidl(){};
 
     android::binder::Status gnssSetCapabilitiesCb(const int capabilities) override;
@@ -57,6 +55,4 @@ class GnssCallbackAidl : public android::hardware::gnss::BnGnssCallback {
     android::hardware::gnss::common::GnssCallbackEventQueue<
             std::vector<android::hardware::gnss::IGnssCallback::GnssSvInfo>>
             sv_info_list_cbq_;
-    android::hardware::gnss::common::GnssCallbackEventQueue<std::pair<int64_t, std::string>>
-            nmea_cbq_;
 };
