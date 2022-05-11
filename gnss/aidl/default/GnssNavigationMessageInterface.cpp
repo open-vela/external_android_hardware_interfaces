@@ -32,7 +32,7 @@ std::shared_ptr<IGnssNavigationMessageCallback> GnssNavigationMessageInterface::
 GnssNavigationMessageInterface::GnssNavigationMessageInterface() : mMinIntervalMillis(1000) {}
 
 GnssNavigationMessageInterface::~GnssNavigationMessageInterface() {
-    waitForStoppingThreads();
+    stop();
 }
 
 ndk::ScopedAStatus GnssNavigationMessageInterface::setCallback(
@@ -46,9 +46,7 @@ ndk::ScopedAStatus GnssNavigationMessageInterface::setCallback(
 
 ndk::ScopedAStatus GnssNavigationMessageInterface::close() {
     ALOGD("close");
-    if (mIsActive) {
-        stop();
-    }
+    stop();
     std::unique_lock<std::mutex> lock(mMutex);
     sCallback = nullptr;
     return ndk::ScopedAStatus::ok();
@@ -56,20 +54,9 @@ ndk::ScopedAStatus GnssNavigationMessageInterface::close() {
 
 void GnssNavigationMessageInterface::start() {
     ALOGD("start");
-
-    if (mIsActive) {
-        ALOGD("restarting since nav msg has started");
-        stop();
-    }
-    // Wait for stopping previous thread.
-    waitForStoppingThreads();
-
     mIsActive = true;
     mThread = std::thread([this]() {
-        do {
-            if (!mIsActive) {
-                break;
-            }
+        while (mIsActive == true) {
             GnssNavigationMessage message = {
                     .svid = 19,
                     .type = GnssNavigationMessageType::GPS_L1CA,
@@ -79,18 +66,15 @@ void GnssNavigationMessageInterface::start() {
                     .data = std::vector<uint8_t>(40, 0xF9),
             };
             this->reportMessage(message);
-        } while (mIsActive &&
-                 mThreadBlocker.wait_for(std::chrono::milliseconds(mMinIntervalMillis)));
+            std::this_thread::sleep_for(std::chrono::milliseconds(mMinIntervalMillis));
+        }
     });
+    mThread.detach();
 }
 
 void GnssNavigationMessageInterface::stop() {
     ALOGD("stop");
     mIsActive = false;
-    mThreadBlocker.notify();
-    if (mThread.joinable()) {
-        mFutures.push_back(std::async(std::launch::async, [this] { mThread.join(); }));
-    }
 }
 
 void GnssNavigationMessageInterface::reportMessage(const GnssNavigationMessage& message) {
@@ -105,15 +89,6 @@ void GnssNavigationMessageInterface::reportMessage(const GnssNavigationMessage& 
         callbackCopy = sCallback;
     }
     callbackCopy->gnssNavigationMessageCb(message);
-}
-
-void GnssNavigationMessageInterface::waitForStoppingThreads() {
-    for (auto& future : mFutures) {
-        ALOGD("Stopping previous thread.");
-        future.wait();
-        ALOGD("Done stopping thread.");
-    }
-    mFutures.clear();
 }
 
 }  // namespace aidl::android::hardware::gnss

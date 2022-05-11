@@ -19,10 +19,8 @@
 #include <aidl/android/hardware/gnss/BnGnssMeasurementCallback.h>
 #include <aidl/android/hardware/gnss/BnGnssMeasurementInterface.h>
 #include <atomic>
-#include <future>
 #include <mutex>
 #include <thread>
-#include "Utils.h"
 
 namespace aidl::android::hardware::gnss {
 
@@ -37,22 +35,15 @@ struct GnssMeasurementInterface : public BnGnssMeasurementInterface {
     ndk::ScopedAStatus setCallbackWithOptions(
             const std::shared_ptr<IGnssMeasurementCallback>& callback,
             const Options& options) override;
-    void setLocationInterval(const int intervalMs);
-    void setLocationEnabled(const bool enabled);
 
   private:
     void start(const bool enableCorrVecOutputs);
     void stop();
     void reportMeasurement(const GnssData&);
-    void waitForStoppingThreads();
 
-    std::atomic<long> mIntervalMs;
-    std::atomic<long> mLocationIntervalMs;
+    std::atomic<long> mMinIntervalMillis;
     std::atomic<bool> mIsActive;
-    std::atomic<bool> mLocationEnabled;
     std::thread mThread;
-    std::vector<std::future<void>> mFutures;
-    ::android::hardware::gnss::common::ThreadBlocker mThreadBlocker;
 
     // Guarded by mMutex
     static std::shared_ptr<IGnssMeasurementCallback> sCallback;
