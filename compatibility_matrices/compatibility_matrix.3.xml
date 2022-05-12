@@ -183,10 +183,7 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <!-- Either the AIDL or the HIDL allocator HAL must exist on the device.
-         If the HIDL composer HAL exists, it must be at least version 2.0.
-         See DeviceManifestTest.GrallocHal -->
-    <hal format="hidl" optional="true">
+    <hal format="hidl" optional="false">
         <name>android.hardware.graphics.allocator</name>
         <version>2.0</version>
         <interface>
