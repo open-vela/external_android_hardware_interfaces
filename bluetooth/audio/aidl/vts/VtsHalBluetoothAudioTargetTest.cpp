@@ -57,8 +57,6 @@ using aidl::android::hardware::bluetooth::audio::
     LeAudioCodecCapabilitiesSetting;
 using aidl::android::hardware::bluetooth::audio::LeAudioCodecConfiguration;
 using aidl::android::hardware::bluetooth::audio::LeAudioConfiguration;
-using aidl::android::hardware::bluetooth::audio::OpusCapabilities;
-using aidl::android::hardware::bluetooth::audio::OpusConfiguration;
 using aidl::android::hardware::bluetooth::audio::PcmConfiguration;
 using aidl::android::hardware::bluetooth::audio::PresentationPosition;
 using aidl::android::hardware::bluetooth::audio::SbcAllocMethod;
@@ -123,9 +121,9 @@ void copy_codec_specific(CodecConfiguration::CodecSpecific& dst,
       dst.set<CodecConfiguration::CodecSpecific::aptxConfig>(
           src.get<CodecConfiguration::CodecSpecific::aptxConfig>());
       break;
-    case CodecConfiguration::CodecSpecific::opusConfig:
-      dst.set<CodecConfiguration::CodecSpecific::opusConfig>(
-          src.get<CodecConfiguration::CodecSpecific::opusConfig>());
+    case CodecConfiguration::CodecSpecific::lc3Config:
+      dst.set<CodecConfiguration::CodecSpecific::lc3Config>(
+          src.get<CodecConfiguration::CodecSpecific::lc3Config>());
       break;
     case CodecConfiguration::CodecSpecific::aptxAdaptiveConfig:
       dst.set<CodecConfiguration::CodecSpecific::aptxAdaptiveConfig>(
@@ -232,12 +230,11 @@ class BluetoothAudioProviderFactoryAidl
               ASSERT_EQ(codec_capabilities.capabilities.getTag(),
                         CodecCapabilities::Capabilities::ldacCapabilities);
               break;
-            case CodecType::OPUS:
+            case CodecType::LC3:
               ASSERT_EQ(codec_capabilities.capabilities.getTag(),
-                        CodecCapabilities::Capabilities::opusCapabilities);
+                        CodecCapabilities::Capabilities::lc3Capabilities);
               break;
             case CodecType::APTX_ADAPTIVE:
-            case CodecType::LC3:
             case CodecType::VENDOR:
             case CodecType::UNKNOWN:
               break;
@@ -487,40 +484,39 @@ class BluetoothAudioProviderFactoryAidl
   }
 
   std::vector<CodecConfiguration::CodecSpecific>
-  GetOpusCodecSpecificSupportedList(bool supported) {
-    std::vector<CodecConfiguration::CodecSpecific> opus_codec_specifics;
+  GetLc3CodecSpecificSupportedList(bool supported) {
+    std::vector<CodecConfiguration::CodecSpecific> lc3_codec_specifics;
     if (!supported) {
-      OpusConfiguration opus_config{.samplingFrequencyHz = 0,
-                                    .frameDurationUs = 0};
-      opus_codec_specifics.push_back(
-          CodecConfiguration::CodecSpecific(opus_config));
-      return opus_codec_specifics;
+      Lc3Configuration lc3_config{.samplingFrequencyHz = 0,
+                                  .frameDurationUs = 0};
+      lc3_codec_specifics.push_back(
+          CodecConfiguration::CodecSpecific(lc3_config));
+      return lc3_codec_specifics;
     }
-    GetA2dpOffloadCapabilityHelper(CodecType::OPUS);
+    GetA2dpOffloadCapabilityHelper(CodecType::LC3);
     if (temp_codec_capabilities_ == nullptr ||
-        temp_codec_capabilities_->codecType != CodecType::OPUS) {
-      return opus_codec_specifics;
+        temp_codec_capabilities_->codecType != CodecType::LC3) {
+      return lc3_codec_specifics;
     }
     // parse the capability
-    auto& opus_capability =
+    auto& lc3_capability =
         temp_codec_capabilities_->capabilities
-            .get<CodecCapabilities::Capabilities::opusCapabilities>();
+            .get<CodecCapabilities::Capabilities::lc3Capabilities>();
 
     // combine those parameters into one list of
     // CodecConfiguration::CodecSpecific
-    for (int32_t samplingFrequencyHz : opus_capability->samplingFrequencyHz) {
-      for (int32_t frameDurationUs : opus_capability->frameDurationUs) {
-        for (auto channel_mode : opus_capability->channelMode) {
-          OpusConfiguration opus_data{
-              .samplingFrequencyHz = samplingFrequencyHz,
-              .channelMode = channel_mode,
-              .frameDurationUs = frameDurationUs};
-          opus_codec_specifics.push_back(
-              CodecConfiguration::CodecSpecific(opus_data));
+    for (int32_t samplingFrequencyHz : lc3_capability.samplingFrequencyHz) {
+      for (int32_t frameDurationUs : lc3_capability.frameDurationUs) {
+        for (auto channel_mode : lc3_capability.channelMode) {
+          Lc3Configuration lc3_data{.samplingFrequencyHz = samplingFrequencyHz,
+                                    .channelMode = channel_mode,
+                                    .frameDurationUs = frameDurationUs};
+          lc3_codec_specifics.push_back(
+              CodecConfiguration::CodecSpecific(lc3_data));
         }
       }
     }
-    return opus_codec_specifics;
+    return lc3_codec_specifics;
   }
 
   bool IsPcmConfigSupported(const PcmConfiguration& pcm_config) {
@@ -766,23 +762,23 @@ TEST_P(BluetoothAudioProviderA2dpEncodingHardwareAidl,
 /**
  * Test whether each provider of type
  * SessionType::A2DP_HARDWARE_ENCODING_DATAPATH can be started and stopped with
- * Opus hardware encoding config
+ * LDAC hardware encoding config
  */
 TEST_P(BluetoothAudioProviderA2dpEncodingHardwareAidl,
-       StartAndEndA2dpOpusEncodingHardwareSession) {
+       StartAndEndA2dpLc3EncodingHardwareSession) {
   if (!IsOffloadSupported()) {
     return;
   }
 
   CodecConfiguration codec_config = {
-      .codecType = CodecType::OPUS,
+      .codecType = CodecType::LC3,
       .encodedAudioBitrate = 990000,
       .peerMtu = 1005,
       .isScmstEnabled = false,
   };
-  auto opus_codec_specifics = GetOpusCodecSpecificSupportedList(true);
+  auto lc3_codec_specifics = GetLc3CodecSpecificSupportedList(true);
 
-  for (auto& codec_specific : opus_codec_specifics) {
+  for (auto& codec_specific : lc3_codec_specifics) {
     copy_codec_specific(codec_config.config, codec_specific);
     DataMQDesc mq_desc;
     auto aidl_retval = audio_provider_->startSession(
@@ -859,11 +855,10 @@ TEST_P(BluetoothAudioProviderA2dpEncodingHardwareAidl,
       case CodecType::APTX_HD:
         codec_specifics = GetAptxCodecSpecificSupportedList(true, false);
         break;
-      case CodecType::OPUS:
-        codec_specifics = GetOpusCodecSpecificSupportedList(false);
+      case CodecType::LC3:
+        codec_specifics = GetLc3CodecSpecificSupportedList(false);
         continue;
       case CodecType::APTX_ADAPTIVE:
-      case CodecType::LC3:
       case CodecType::VENDOR:
       case CodecType::UNKNOWN:
         codec_specifics.clear();
@@ -1793,23 +1788,23 @@ TEST_P(BluetoothAudioProviderA2dpDecodingHardwareAidl,
 /**
  * Test whether each provider of type
  * SessionType::A2DP_HARDWARE_DECODING_DATAPATH can be started and stopped with
- * Opus hardware encoding config
+ * LDAC hardware encoding config
  */
 TEST_P(BluetoothAudioProviderA2dpDecodingHardwareAidl,
-       StartAndEndA2dpOpusDecodingHardwareSession) {
+       StartAndEndA2dpLc3DecodingHardwareSession) {
   if (!IsOffloadSupported()) {
     return;
   }
 
   CodecConfiguration codec_config = {
-      .codecType = CodecType::OPUS,
+      .codecType = CodecType::LC3,
       .encodedAudioBitrate = 990000,
       .peerMtu = 1005,
       .isScmstEnabled = false,
   };
-  auto opus_codec_specifics = GetOpusCodecSpecificSupportedList(true);
+  auto lc3_codec_specifics = GetLc3CodecSpecificSupportedList(true);
 
-  for (auto& codec_specific : opus_codec_specifics) {
+  for (auto& codec_specific : lc3_codec_specifics) {
     copy_codec_specific(codec_config.config, codec_specific);
     DataMQDesc mq_desc;
     auto aidl_retval = audio_provider_->startSession(
@@ -1886,11 +1881,10 @@ TEST_P(BluetoothAudioProviderA2dpDecodingHardwareAidl,
       case CodecType::APTX_HD:
         codec_specifics = GetAptxCodecSpecificSupportedList(true, false);
         break;
-      case CodecType::OPUS:
-        codec_specifics = GetOpusCodecSpecificSupportedList(false);
+      case CodecType::LC3:
+        codec_specifics = GetLc3CodecSpecificSupportedList(false);
         continue;
       case CodecType::APTX_ADAPTIVE:
-      case CodecType::LC3:
       case CodecType::VENDOR:
       case CodecType::UNKNOWN:
         codec_specifics.clear();

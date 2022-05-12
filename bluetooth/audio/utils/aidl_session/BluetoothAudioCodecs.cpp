@@ -26,8 +26,6 @@
 #include <aidl/android/hardware/bluetooth/audio/LdacChannelMode.h>
 #include <aidl/android/hardware/bluetooth/audio/LdacQualityIndex.h>
 #include <aidl/android/hardware/bluetooth/audio/LeAudioConfiguration.h>
-#include <aidl/android/hardware/bluetooth/audio/OpusCapabilities.h>
-#include <aidl/android/hardware/bluetooth/audio/OpusConfiguration.h>
 #include <aidl/android/hardware/bluetooth/audio/SbcCapabilities.h>
 #include <aidl/android/hardware/bluetooth/audio/SbcChannelMode.h>
 #include <android-base/logging.h>
@@ -80,9 +78,9 @@ static const AptxCapabilities kDefaultOffloadAptxHdCapability = {
     .bitsPerSample = {24},
 };
 
-static const OpusCapabilities kDefaultOffloadOpusCapability = {
-    .samplingFrequencyHz = {48000},
-    .frameDurationUs = {10000, 20000},
+static const Lc3Capabilities kDefaultA2dpOffloadLc3Capability = {
+    .samplingFrequencyHz = {44100, 48000},
+    .frameDurationUs = {7500, 10000},
     .channelMode = {ChannelMode::MONO, ChannelMode::STEREO},
 };
 
@@ -92,7 +90,7 @@ const std::vector<CodecCapabilities> kDefaultOffloadA2dpCodecCapabilities = {
     {.codecType = CodecType::LDAC, .capabilities = {}},
     {.codecType = CodecType::APTX, .capabilities = {}},
     {.codecType = CodecType::APTX_HD, .capabilities = {}},
-    {.codecType = CodecType::OPUS, .capabilities = {}}};
+    {.codecType = CodecType::LC3, .capabilities = {}}};
 
 std::vector<LeAudioCodecCapabilitiesSetting> kDefaultOffloadLeAudioCapabilities;
 
@@ -296,24 +294,22 @@ bool BluetoothAudioCodecs::IsOffloadAptxHdConfigurationValid(
   return false;
 }
 
-bool BluetoothAudioCodecs::IsOffloadOpusConfigurationValid(
+bool BluetoothAudioCodecs::IsOffloadLc3ConfigurationValid(
     const CodecConfiguration::CodecSpecific& codec_specific) {
-  if (codec_specific.getTag() !=
-      CodecConfiguration::CodecSpecific::opusConfig) {
+  if (codec_specific.getTag() != CodecConfiguration::CodecSpecific::lc3Config) {
     LOG(WARNING) << __func__
                  << ": Invalid CodecSpecific=" << codec_specific.toString();
     return false;
   }
-  std::optional<OpusConfiguration> opus_data =
-      codec_specific.get<CodecConfiguration::CodecSpecific::opusConfig>();
+  const Lc3Configuration lc3_data =
+      codec_specific.get<CodecConfiguration::CodecSpecific::lc3Config>();
 
-  if (opus_data.has_value() &&
-      ContainedInVector(kDefaultOffloadOpusCapability.samplingFrequencyHz,
-                        opus_data->samplingFrequencyHz) &&
-      ContainedInVector(kDefaultOffloadOpusCapability.frameDurationUs,
-                        opus_data->frameDurationUs) &&
-      ContainedInVector(kDefaultOffloadOpusCapability.channelMode,
-                        opus_data->channelMode)) {
+  if (ContainedInVector(kDefaultA2dpOffloadLc3Capability.samplingFrequencyHz,
+                        lc3_data.samplingFrequencyHz) &&
+      ContainedInVector(kDefaultA2dpOffloadLc3Capability.frameDurationUs,
+                        lc3_data.frameDurationUs) &&
+      ContainedInVector(kDefaultA2dpOffloadLc3Capability.channelMode,
+                        lc3_data.channelMode)) {
     return true;
   }
   LOG(WARNING) << __func__
@@ -375,14 +371,13 @@ BluetoothAudioCodecs::GetA2dpOffloadCodecCapabilities(
             .set<CodecCapabilities::Capabilities::aptxCapabilities>(
                 kDefaultOffloadAptxHdCapability);
         break;
-      case CodecType::OPUS:
+      case CodecType::LC3:
         codec_capability.capabilities
-            .set<CodecCapabilities::Capabilities::opusCapabilities>(
-                kDefaultOffloadOpusCapability);
+            .set<CodecCapabilities::Capabilities::lc3Capabilities>(
+                kDefaultA2dpOffloadLc3Capability);
         break;
       case CodecType::UNKNOWN:
       case CodecType::VENDOR:
-      case CodecType::LC3:
       case CodecType::APTX_ADAPTIVE:
         break;
     }
@@ -443,13 +438,12 @@ bool BluetoothAudioCodecs::IsOffloadCodecConfigurationValid(
         return true;
       }
       break;
-    case CodecType::OPUS:
-      if (IsOffloadOpusConfigurationValid(codec_specific)) {
+    case CodecType::LC3:
+      if (IsOffloadLc3ConfigurationValid(codec_specific)) {
         return true;
       }
       break;
     case CodecType::APTX_ADAPTIVE:
-    case CodecType::LC3:
     case CodecType::UNKNOWN:
     case CodecType::VENDOR:
       break;

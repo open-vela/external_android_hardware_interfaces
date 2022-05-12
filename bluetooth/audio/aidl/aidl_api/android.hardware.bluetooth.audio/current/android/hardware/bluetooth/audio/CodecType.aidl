@@ -43,5 +43,4 @@ enum CodecType {
   LC3 = 6,
   VENDOR = 7,
   APTX_ADAPTIVE = 8,
-  OPUS = 9,
 }

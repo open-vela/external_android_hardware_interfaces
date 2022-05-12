@@ -28,5 +28,4 @@ enum CodecType {
     LC3,
     VENDOR,
     APTX_ADAPTIVE,
-    OPUS,
 }
