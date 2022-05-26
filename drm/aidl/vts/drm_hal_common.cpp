@@ -73,7 +73,6 @@ std::string HalBaseName(const std::string& fullname) {
 }
 
 const char* kDrmIface = "android.hardware.drm.IDrmFactory";
-const int MAX_OPEN_SESSION_ATTEMPTS = 3;
 
 std::string HalFullName(const std::string& iface, const std::string& basename) {
     return iface + '/' + basename;
@@ -329,19 +328,9 @@ SessionId DrmHalTest::openSession(SecurityLevel level, Status* err) {
  */
 SessionId DrmHalTest::openSession() {
     SessionId sessionId;
-
-    int attmpt = 0;
-    while (attmpt++ < MAX_OPEN_SESSION_ATTEMPTS) {
-        auto ret = drmPlugin->openSession(SecurityLevel::DEFAULT, &sessionId);
-        if(DrmErr(ret) == Status::ERROR_DRM_NOT_PROVISIONED) {
-            provision();
-        } else {
-            EXPECT_OK(ret);
-            EXPECT_NE(0u, sessionId.size());
-            break;
-        }
-    }
-
+    auto ret = drmPlugin->openSession(SecurityLevel::DEFAULT, &sessionId);
+    EXPECT_OK(ret);
+    EXPECT_NE(0u, sessionId.size());
     return sessionId;
 }
 
