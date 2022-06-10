@@ -26,10 +26,7 @@ package {
 cc_test {
     name: "VtsHalSensorsV2_0TargetTest",
     cflags: ["-DLOG_TAG=\"sensors_hidl_hal_test\""],
-    defaults: [
-        "VtsHalSensorsDefaults",
-        "VtsHalTargetTestDefaults",
-    ],
+    defaults: ["VtsHalTargetTestDefaults"],
     tidy_timeout_srcs: [
         "VtsHalSensorsV2_0TargetTest.cpp",
     ],
@@ -39,15 +36,13 @@ cc_test {
     header_libs: [
         "android.hardware.sensors@2.X-shared-utils",
     ],
-    shared_libs: [
-        "libbinder_ndk",
-    ],
     static_libs: [
         "android.hardware.sensors@1.0",
         "android.hardware.sensors@1.0-convert",
         "android.hardware.sensors@2.0",
         "android.hardware.sensors@2.1",
         "libfmq",
+        "VtsHalSensorsTargetTestUtils",
         "VtsHalSensorsV2_0TargetTest-lib",
     ],
     test_suites: [

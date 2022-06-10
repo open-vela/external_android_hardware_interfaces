@@ -16,9 +16,6 @@
 
 #include "GrallocWrapper.h"
 
-#include <aidl/android/hardware/graphics/allocator/IAllocator.h>
-#include <aidlcommonsupport/NativeHandle.h>
-#include <android/binder_manager.h>
 #include <android/hardware/graphics/allocator/2.0/IAllocator.h>
 #include <android/hardware/graphics/allocator/3.0/IAllocator.h>
 #include <android/hardware/graphics/allocator/4.0/IAllocator.h>
@@ -30,10 +27,8 @@
 #include <utils/Log.h>
 
 #include <cinttypes>
-#include <memory>
 #include <type_traits>
 
-using IAllocatorAidl = ::aidl::android::hardware::graphics::allocator::IAllocator;
 using IAllocator2 = ::android::hardware::graphics::allocator::V2_0::IAllocator;
 using IAllocator3 = ::android::hardware::graphics::allocator::V3_0::IAllocator;
 using IAllocator4 = ::android::hardware::graphics::allocator::V4_0::IAllocator;
@@ -45,9 +40,6 @@ using IMapper4 = ::android::hardware::graphics::mapper::V4_0::IMapper;
 using Error2 = ::android::hardware::graphics::mapper::V2_0::Error;
 using Error3 = ::android::hardware::graphics::mapper::V3_0::Error;
 using Error4 = ::android::hardware::graphics::mapper::V4_0::Error;
-
-using ::aidl::android::hardware::common::NativeHandle;
-using ::aidl::android::hardware::graphics::allocator::AllocationResult;
 
 using ::android::hardware::graphics::common::V1_0::BufferUsage;
 using ::android::hardware::graphics::common::V1_0::PixelFormat;
@@ -105,11 +97,10 @@ using BaseTypeOfFirstArg = typename std::remove_const<
 
 // Since all the type and function names are the same for the things we use across the major HAL
 // versions, we use template magic to avoid repeating ourselves.
-template <typename AllocatorT, typename MapperT,
-          template <typename> typename AllocatorWrapperT = sp>
+template <typename AllocatorT, typename MapperT>
 class GrallocHalWrapper : public IGrallocHalWrapper {
   public:
-    GrallocHalWrapper(const AllocatorWrapperT<AllocatorT>& allocator, const sp<MapperT>& mapper)
+    GrallocHalWrapper(const sp<AllocatorT>& allocator, const sp<MapperT>& mapper)
         : mAllocator(allocator), mMapper(mapper) {
         if (mapper->isRemote()) {
             ALOGE("Mapper is in passthrough mode");
@@ -125,7 +116,7 @@ class GrallocHalWrapper : public IGrallocHalWrapper {
   private:
     static constexpr uint64_t kBufferUsage =
             static_cast<uint64_t>(BufferUsage::SENSOR_DIRECT_DATA | BufferUsage::CPU_READ_OFTEN);
-    AllocatorWrapperT<AllocatorT> mAllocator;
+    sp<AllocatorT> mAllocator;
     sp<MapperT> mMapper;
 
     // v2.0 and v3.0 use vec<uint32_t> for BufferDescriptor, but v4.0 uses vec<uint8_t>, so use
@@ -137,34 +128,8 @@ class GrallocHalWrapper : public IGrallocHalWrapper {
     native_handle_t* importBuffer(const hidl_handle& rawHandle);
 };
 
-template <>
-native_handle_t* GrallocHalWrapper<IAllocatorAidl, IMapper4, std::shared_ptr>::allocate(
-        uint32_t size) {
-    constexpr uint32_t kBufferCount = 1;
-    BufferDescriptorT descriptor = getDescriptor(size);
-    native_handle_t* bufferHandle = nullptr;
-
-    AllocationResult result;
-    auto status = mAllocator->allocate(descriptor, kBufferCount, &result);
-    if (!status.isOk()) {
-        status_t error = status.getExceptionCode();
-        ALOGE("Failed to allocate buffer: %" PRId32, static_cast<int32_t>(error));
-    } else if (result.buffers.size() != kBufferCount) {
-        ALOGE("Invalid buffer array size (got %zu, expected %" PRIu32 ")", result.buffers.size(),
-              kBufferCount);
-    } else {
-        // Convert from AIDL NativeHandle to native_handle_t to hidl_handle
-        hidl_handle hidlHandle;
-        hidlHandle.setTo(dupFromAidl(result.buffers[0]), /*shouldOwn*/ true);
-        bufferHandle = importBuffer(hidlHandle);
-    }
-
-    return bufferHandle;
-}
-
-template <typename AllocatorT, typename MapperT, template <typename> typename AllocatorWrapperT>
-native_handle_t* GrallocHalWrapper<AllocatorT, MapperT, AllocatorWrapperT>::allocate(
-        uint32_t size) {
+template <typename AllocatorT, typename MapperT>
+native_handle_t* GrallocHalWrapper<AllocatorT, MapperT>::allocate(uint32_t size) {
     constexpr uint32_t kBufferCount = 1;
     BufferDescriptorT descriptor = getDescriptor(size);
     native_handle_t* bufferHandle = nullptr;
@@ -184,18 +149,17 @@ native_handle_t* GrallocHalWrapper<AllocatorT, MapperT, AllocatorWrapperT>::allo
     return bufferHandle;
 }
 
-template <typename AllocatorT, typename MapperT, template <typename> typename AllocatorWrapperT>
-void GrallocHalWrapper<AllocatorT, MapperT, AllocatorWrapperT>::freeBuffer(
-        native_handle_t* bufferHandle) {
+template <typename AllocatorT, typename MapperT>
+void GrallocHalWrapper<AllocatorT, MapperT>::freeBuffer(native_handle_t* bufferHandle) {
     auto error = mMapper->freeBuffer(bufferHandle);
     if (!error.isOk() || failed(error)) {
         ALOGE("Failed to free buffer %p", bufferHandle);
     }
 }
 
-template <typename AllocatorT, typename MapperT, template <typename> typename AllocatorWrapperT>
-typename GrallocHalWrapper<AllocatorT, MapperT, AllocatorWrapperT>::BufferDescriptorT
-GrallocHalWrapper<AllocatorT, MapperT, AllocatorWrapperT>::getDescriptor(uint32_t size) {
+template <typename AllocatorT, typename MapperT>
+typename GrallocHalWrapper<AllocatorT, MapperT>::BufferDescriptorT
+GrallocHalWrapper<AllocatorT, MapperT>::getDescriptor(uint32_t size) {
     typename MapperT::BufferDescriptorInfo descriptorInfo = {
             .width = size,
             .height = 1,
@@ -217,8 +181,8 @@ GrallocHalWrapper<AllocatorT, MapperT, AllocatorWrapperT>::getDescriptor(uint32_
     return descriptor;
 }
 
-template <typename AllocatorT, typename MapperT, template <typename> typename AllocatorWrapperT>
-native_handle_t* GrallocHalWrapper<AllocatorT, MapperT, AllocatorWrapperT>::importBuffer(
+template <typename AllocatorT, typename MapperT>
+native_handle_t* GrallocHalWrapper<AllocatorT, MapperT>::importBuffer(
         const hidl_handle& rawHandle) {
     native_handle_t* bufferHandle = nullptr;
 
@@ -234,9 +198,8 @@ native_handle_t* GrallocHalWrapper<AllocatorT, MapperT, AllocatorWrapperT>::impo
     return bufferHandle;
 }
 
-template <typename AllocatorT, typename MapperT, template <typename> typename AllocatorWrapperT>
-void* GrallocHalWrapper<AllocatorT, MapperT, AllocatorWrapperT>::lock(
-        native_handle_t* bufferHandle) {
+template <typename AllocatorT, typename MapperT>
+void* GrallocHalWrapper<AllocatorT, MapperT>::lock(native_handle_t* bufferHandle) {
     // Per the HAL, all-zeros Rect means the entire buffer
     typename MapperT::Rect accessRegion = {};
     hidl_handle acquireFenceHandle;  // No fence needed, already safe to lock
@@ -255,9 +218,8 @@ void* GrallocHalWrapper<AllocatorT, MapperT, AllocatorWrapperT>::lock(
     return data;
 }
 
-template <typename AllocatorT, typename MapperT, template <typename> typename AllocatorWrapperT>
-void GrallocHalWrapper<AllocatorT, MapperT, AllocatorWrapperT>::unlock(
-        native_handle_t* bufferHandle) {
+template <typename AllocatorT, typename MapperT>
+void GrallocHalWrapper<AllocatorT, MapperT>::unlock(native_handle_t* bufferHandle) {
     mMapper->unlock(bufferHandle, [&](auto error, const hidl_handle& /*releaseFence*/) {
         if (failed(error)) {
             ALOGE("Failed to unlock buffer %p: %" PRId32, bufferHandle,
@@ -272,22 +234,8 @@ GrallocWrapper::GrallocWrapper() {
     sp<IAllocator4> allocator4 = IAllocator4::getService();
     sp<IMapper4> mapper4 = IMapper4::getService();
 
-    const auto kAllocatorSvc = std::string(IAllocatorAidl::descriptor) + "/default";
-    std::shared_ptr<IAllocatorAidl> allocatorAidl;
-    if (AServiceManager_isDeclared(kAllocatorSvc.c_str())) {
-        allocatorAidl = IAllocatorAidl::fromBinder(
-                ndk::SpAIBinder(AServiceManager_checkService(kAllocatorSvc.c_str())));
-    }
-
-    // As of T, AIDL Allocator is supported only with HIDL Mapper4
-    // (ref: VtsHalGraphicsAllocatorAidl_TargetTest.cpp)
-    if (allocatorAidl != nullptr && mapper4 != nullptr) {
-        ALOGD("Using AIDL IAllocator + HIDL IMapper v4.0");
-        mGrallocHal = std::unique_ptr<IGrallocHalWrapper>(
-                new GrallocHalWrapper<IAllocatorAidl, IMapper4, std::shared_ptr>(allocatorAidl,
-                                                                                 mapper4));
-    } else if (allocator4 != nullptr && mapper4 != nullptr) {
-        ALOGD("AIDL IAllocator not found, using HIDL IAllocator/IMapper v4.0");
+    if (allocator4 != nullptr && mapper4 != nullptr) {
+        ALOGD("Using IAllocator/IMapper v4.0");
         mGrallocHal = std::unique_ptr<IGrallocHalWrapper>(
                 new GrallocHalWrapper<IAllocator4, IMapper4>(allocator4, mapper4));
     } else {
