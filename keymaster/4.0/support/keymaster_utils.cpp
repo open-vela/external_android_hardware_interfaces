@@ -15,6 +15,7 @@
  */
 
 #include <regex.h>
+#include <arpa/inet.h>
 
 #include <android-base/logging.h>
 #include <android-base/properties.h>
