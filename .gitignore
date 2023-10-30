@@ -1,1 +1,7 @@
 .vscode/
+.built
+.depend
+Make.dep
+*.o
+android/hardware/**/*.h
+android/tests/
