@@ -49,17 +49,19 @@ if(CONFIG_ANDROID_HARDWARE_INTERFACES)
 
   add_dependencies(android interface_hidl_out)
 
+  nuttx_add_library(android_hwbinder_bench)
+  target_link_libraries(android android_hwbinder_bench)
   nuttx_add_aidl(
     TARGET
-    android
+    android_hwbinder_bench
     AIDL_BASE_DIR
-    ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/tests/libhwbinder/aidl
     AIDL_INCLUDE_DIR
-    ${CMAKE_CURRENT_LIST_DIR}/tests/libhwbinder
+    ${CMAKE_CURRENT_LIST_DIR}/tests/libhwbinder/aidl
     AIDL_HEADER_DIR
-    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/tests/libhwbinder/aidl
     AIDL_OUT_DIR
-    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}/tests/libhwbinder/aidl
     AIDL_FLAGS
     --lang=cpp
     AIDLS
