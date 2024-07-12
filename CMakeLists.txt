@@ -39,11 +39,11 @@ if(CONFIG_ANDROID_HARDWARE_INTERFACES)
              ${CMAKE_CURRENT_LIST_DIR}/keymaster/4.0/support/include
              ${CMAKE_CURRENT_LIST_DIR}
              ${HIDL_OUTPUT_DIR})
-
+  # ignore update-makefiles.sh error for some hal dependent on framework
   add_custom_target(
     interface_hidl_out
     COMMAND ANDROID_BUILD_TOP=${NUTTX_APPS_DIR}/external/android
-            ./update-makefiles.sh ${HIDL_OUTPUT_DIR} 2>&1 || true
+            ./update-makefiles.sh ${HIDL_OUTPUT_DIR} > /dev/null 2>&1 || true
     WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
     COMMENT "HIDL:Gen HIDL INTERFACE")
 
