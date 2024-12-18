@@ -220,7 +220,7 @@ OutStreams& serializeParamValue(OutStreams& out, const hidl_vec<uint8_t>& blob) 
 
     // write indirect_offset
     auto offset = out.indirect.tellp();
-    if (offset < 0 || offset > std::numeric_limits<uint32_t>::max() ||
+    if (offset < 0 || offset > std::numeric_limits<int32_t>::max() ||
         uint32_t(offset) + uint32_t(blob_length) < uint32_t(offset)) {  // overflow check
         out.elements.setstate(std::ios_base::badbit);
         return out;
@@ -297,17 +297,17 @@ std::ostream& serialize(std::ostream& out, const std::vector<KeyParameter>& para
         return out;
     }
     auto pos = indirect.tellp();
-    if (pos < 0 || pos > std::numeric_limits<uint32_t>::max()) {
+    if (pos < 0 || pos > std::numeric_limits<int32_t>::max()) {
         out.setstate(std::ios_base::badbit);
         return out;
     }
-    uint32_t indirect_size = pos;
+    int32_t indirect_size = pos;
     pos = elements.tellp();
-    if (pos < 0 || pos > std::numeric_limits<uint32_t>::max()) {
+    if (pos < 0 || pos > std::numeric_limits<int32_t>::max()) {
         out.setstate(std::ios_base::badbit);
         return out;
     }
-    uint32_t elements_size = pos;
+    int32_t elements_size = pos;
     uint32_t element_count = params.size() - streams.skipped;
 
     out.write(reinterpret_cast<const char*>(&indirect_size), sizeof(uint32_t));
