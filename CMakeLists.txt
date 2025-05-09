@@ -67,4 +67,6 @@ if(CONFIG_ANDROID_HARDWARE_INTERFACES)
     AIDLS
     tests/libhwbinder/aidl/android/tests/binder/IBenchmark.aidl)
 
+    nuttx_include_directories_for_all_apps(${CMAKE_CURRENT_BINARY_DIR}/android/hardware)
+
 endif()
